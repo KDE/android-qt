@@ -51,11 +51,14 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
-
 #ifdef Q_OS_SOLARIS
 # include <sys/sockio.h>
 #endif
 #include <net/if.h>
+
+#ifdef Q_OS_ANDROID
+# define QT_NO_IPV6IFNAME
+#endif
 
 #ifndef QT_NO_GETIFADDRS
 # include <ifaddrs.h>

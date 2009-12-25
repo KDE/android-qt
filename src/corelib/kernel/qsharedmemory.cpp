@@ -359,7 +359,11 @@ bool QSharedMemory::attach(AccessMode mode)
         return false;
 #endif
 
-    if (isAttached() || !d->handle())
+    if (isAttached()
+#ifndef Q_OS_ANDROID
+      || !d->handle()
+#endif
+      )
         return false;
 
     return d->attach(mode);

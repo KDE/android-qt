@@ -119,9 +119,13 @@ bool QFSFileEngineIterator::hasNext() const
             that->platform->done = true;
         } else {
             // ### Race condition; we should use fpathconf and dirfd().
-            long maxPathName = ::pathconf(QFile::encodeName(path()).data(), _PC_NAME_MAX);
-            if ((int) maxPathName == -1)
-                maxPathName = FILENAME_MAX;
+#ifndef Q_OS_ANDROID // ### Android give me a link problem when I use pathconf or fpathconf
+	    long maxPathName = pathconf(QFile::encodeName(path()).data(), _PC_NAME_MAX);
+	    if ((int) maxPathName == -1)
+		maxPathName = FILENAME_MAX;
+#else
+	    long maxPathName = FILENAME_MAX;
+#endif
             maxPathName += sizeof(dirent) + 1;
 #if defined(_POSIX_THREAD_SAFE_FUNCTIONS) && !defined(Q_OS_CYGWIN) && !defined(Q_OS_SYMBIAN)
             if (that->platform->mt_file)

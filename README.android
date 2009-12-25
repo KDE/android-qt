@@ -1,0 +1,5 @@
+1. Download android ndk (>=1.6)
+2. Clone android-linghthouse branch
+
+$ ./configure -embedded-lite arm -no-phonon -freetype -developer-build -static -fast -xplatform android-g++ -little-endian -no-webkit -no-qt3support -no-largefile -no-stl -no-javascript-jit -opengl es1
+$ make

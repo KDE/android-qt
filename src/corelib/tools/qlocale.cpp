@@ -2682,6 +2682,8 @@ static QString timeZone()
 # endif
 #elif defined(Q_OS_VXWORKS)
     return QString();
+#elif defined(Q_OS_ANDROID)
+    return QString();
 #else
     tzset();
     return QString::fromLocal8Bit(tzname[1]);

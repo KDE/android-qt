@@ -74,6 +74,9 @@ namespace QSharedMemoryPrivate
 #elif defined(Q_OS_SYMBIAN)
 #include <e32std.h>
 #include <sys/types.h>
+#elif defined(Q_OS_ANDROID)
+#include <semaphore.h>
+typedef int key_t;
 #else
 #include <sys/sem.h>
 #endif
@@ -129,13 +132,17 @@ public:
     bool lockedByMe;
 #endif
 
+#ifndef Q_OS_ANDROID
     static int createUnixKeyFile(const QString &fileName);
+#endif
     static QString makePlatformSafeKey(const QString &key,
             const QString &prefix = QLatin1String("qipc_sharedmemory_"));
+#ifndef Q_OS_ANDROID
 #ifdef Q_OS_WIN
     HANDLE handle();
 #else
     key_t handle();
+#endif
 #endif
     bool initKey();
     bool cleanHandle();
@@ -165,6 +172,8 @@ private:
     HANDLE hand;
 #elif defined(Q_OS_SYMBIAN)
     RChunk chunk;
+#elif defined(Q_OS_ANDROID)
+    int ashmem_fd;
 #else
     key_t unix_key;
 #endif

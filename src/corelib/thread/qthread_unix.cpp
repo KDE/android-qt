@@ -209,7 +209,7 @@ void QThreadPrivate::createEventDispatcher(QThreadData *data)
 void *QThreadPrivate::start(void *arg)
 {
     // Symbian Open C supports neither thread cancellation nor cleanup_push.
-#ifndef Q_OS_SYMBIAN
+#if !defined(Q_OS_SYMBIAN) && !defined(Q_OS_ANDROID)
     pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
     pthread_cleanup_push(QThreadPrivate::finish, arg);
 #endif
@@ -237,7 +237,7 @@ void *QThreadPrivate::start(void *arg)
     createEventDispatcher(data);
 
     emit thr->started();
-#ifndef Q_OS_SYMBIAN
+#if !defined(Q_OS_SYMBIAN) && !defined(Q_OS_ANDROID)
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     pthread_testcancel();
 #endif
@@ -246,13 +246,15 @@ void *QThreadPrivate::start(void *arg)
 #ifdef Q_OS_SYMBIAN
     QThreadPrivate::finish(arg);
 #else
-    pthread_cleanup_pop(1);
+	#ifndef Q_OS_ANDROID
+	    pthread_cleanup_pop(1);
+	#endif
 #endif
 
     return 0;
 }
 
-#ifdef Q_OS_SYMBIAN
+#if defined(Q_OS_SYMBIAN) || defined(Q_OS_ANDROID)
 void QThreadPrivate::finish(void *arg, bool lockAnyway, bool closeNativeHandle)
 #else
 void QThreadPrivate::finish(void *arg)
@@ -539,8 +541,8 @@ void QThread::start(Priority priority)
     if (code == EPERM) {
         // caller does not have permission to set the scheduling
         // parameters/policy
-#ifndef Q_OS_SYMBIAN
-        pthread_attr_setinheritsched(&attr, PTHREAD_INHERIT_SCHED);
+#if !defined(Q_OS_SYMBIAN) && !defined(Q_OS_ANDROID)
+	pthread_attr_setinheritsched(&attr, PTHREAD_INHERIT_SCHED);
 #endif
         code =
             pthread_create(&d->thread_id, &attr, QThreadPrivate::start, this);
@@ -568,7 +570,7 @@ void QThread::terminate()
     if (!d->thread_id)
         return;
 
-#ifndef Q_OS_SYMBIAN
+#if !defined(Q_OS_SYMBIAN) && !defined(Q_OS_ANDROID)
     int code = pthread_cancel(d->thread_id);
     if (code) {
         qWarning("QThread::start: Thread termination error: %s",
@@ -591,10 +593,11 @@ void QThread::terminate()
     // 2. closeNativeSymbianHandle = false. We don't want to close the thread handle,
     //    because we need it here to terminate the thread.
     QThreadPrivate::finish(this, false, false);
+#ifndef Q_OS_ANDROID
     d->data->symbian_thread_handle.Terminate(KErrNone);
     d->data->symbian_thread_handle.Close();
 #endif
-
+#endif // !defined(Q_OS_SYMBIAN) && !defined(Q_OS_ANDROID)
 
 }
 
@@ -623,7 +626,7 @@ void QThread::setTerminationEnabled(bool enabled)
     QThread *thr = currentThread();
     Q_ASSERT_X(thr != 0, "QThread::setTerminationEnabled()",
                "Current thread was not started with QThread.");
-#ifndef Q_OS_SYMBIAN
+#if !defined(Q_OS_SYMBIAN) && !defined(Q_OS_ANDROID)
     Q_UNUSED(thr)
     pthread_setcancelstate(enabled ? PTHREAD_CANCEL_ENABLE : PTHREAD_CANCEL_DISABLE, NULL);
     if (enabled)

@@ -136,7 +136,7 @@ public:
     QWaitCondition thread_done;
 
     static void *start(void *arg);
-#if defined(Q_OS_SYMBIAN)
+#if defined(Q_OS_SYMBIAN) || defined(Q_OS_ANDROID)
     static void finish(void *arg, bool lockAnyway=true, bool closeNativeHandle=true);
 #else
     static void finish(void *);
@@ -152,7 +152,7 @@ public:
     static void finish(void *, bool lockAnyway=true);
 #endif // Q_OS_WIN32
 
-#if defined(Q_OS_WIN32) || defined(Q_OS_WINCE) || defined (Q_OS_SYMBIAN)
+#if defined(Q_OS_WIN32) || defined(Q_OS_WINCE) || defined (Q_OS_SYMBIAN) || defined (Q_OS_ANDROID)
     bool terminationEnabled, terminatePending;
 # endif
     QThreadData *data;

@@ -1213,8 +1213,10 @@ bool QFSFileEngine::setSize(qint64 size)
         ret = QT_FTRUNCATE(d->fd, size) == 0;
     else if (d->fh)
         ret = QT_FTRUNCATE(QT_FILENO(d->fh), size) == 0;
+#ifndef Q_OS_ANDROID
     else
         ret = QT_TRUNCATE(d->nativeFilePath.constData(), size) == 0;
+#endif
     if (!ret)
         setError(QFile::ResizeError, qt_error_string(errno));
     return ret;

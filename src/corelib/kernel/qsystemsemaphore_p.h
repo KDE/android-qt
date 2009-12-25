@@ -85,7 +85,10 @@ public:
 #elif defined(Q_OS_SYMBIAN)
     int handle(QSystemSemaphore::AccessMode mode = QSystemSemaphore::Open);
     void setErrorString(const QString &function,int err = 0);
-#else
+#elif defined(Q_OS_ANDROID)
+    void handle(QSystemSemaphore::AccessMode mode = QSystemSemaphore::Open);
+    void setErrorString(const QString &function);
+# else
     key_t handle(QSystemSemaphore::AccessMode mode = QSystemSemaphore::Open);
     void setErrorString(const QString &function);
 #endif
@@ -100,6 +103,8 @@ public:
     HANDLE semaphoreLock;
 #elif defined(Q_OS_SYMBIAN)
     RSemaphore semaphore;
+#elif defined(Q_OS_ANDROID)
+    sem_t* android_key;
 #else
     int semaphore;
     bool createdFile;
