@@ -242,13 +242,10 @@ void *QThreadPrivate::start(void *arg)
     pthread_testcancel();
 #endif
     thr->run();
-
-#ifdef Q_OS_SYMBIAN
+#if defined(Q_OS_SYMBIAN) || defined(Q_OS_ANDROID)
     QThreadPrivate::finish(arg);
 #else
-	#ifndef Q_OS_ANDROID
-	    pthread_cleanup_pop(1);
-	#endif
+    pthread_cleanup_pop(1);
 #endif
 
     return 0;
@@ -262,7 +259,7 @@ void QThreadPrivate::finish(void *arg)
 {
     QThread *thr = reinterpret_cast<QThread *>(arg);
     QThreadPrivate *d = thr->d_func();
-#ifdef Q_OS_SYMBIAN
+#if defined(Q_OS_SYMBIAN) || defined(Q_OS_ANDROID)
     if (lockAnyway)
 #endif
         d->mutex.lock();
@@ -291,7 +288,7 @@ void QThreadPrivate::finish(void *arg)
         d->data->symbian_thread_handle.Close();
 #endif
     d->thread_done.wakeAll();
-#ifdef Q_OS_SYMBIAN
+#if defined(Q_OS_SYMBIAN) || defined(Q_OS_ANDROID)
     if (lockAnyway)
 #endif
         d->mutex.unlock();
