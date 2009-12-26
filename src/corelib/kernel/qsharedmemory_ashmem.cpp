@@ -52,6 +52,8 @@
 #ifndef QT_NO_SHAREDMEMORY
 #include <sys/types.h>
 #include <sys/ipc.h>
+#include <sys/mman.h>
+
 #include <linux/ashmem.h>
 
 #define ASHMEM_DEVICE	"/"ASHMEM_NAME_DEF
@@ -172,151 +174,57 @@ void QSharedMemoryPrivate::setErrorString(const QString &function)
 
 bool QSharedMemoryPrivate::cleanHandle()
 {
-    if (-1!=ashmem_fd)
-    {
-        close(ashmem_fd);
-        return true;
-    }
-    return false;
+    if (ashmem_fd<0)
+	return false;
+    munmap(memory, size);
+    close(ashmem_fd);
+    return true;
 }
 
-bool QSharedMemoryPrivate::create(int size)
+bool QSharedMemoryPrivate::create(int sz)
 {
-#ifndef Q_OS_ANDROID
-    // build file if needed
-    bool createdFile = false;
-    int built = createUnixKeyFile(makePlatformSafeKey(key));
-    if (built == -1) {
-        errorString = QSharedMemory::tr("%1: unable to make key").arg(QLatin1String("QSharedMemory::handle:"));
-        error = QSharedMemory::KeyError;
-        return false;
-    }
-    if (built == 1) {
-        createdFile = true;
-    }
-
-    // get handle
-    if (!handle()) {
-        if (createdFile)
-            QFile::remove(makePlatformSafeKey(key));
-        return false;
-    }
-
-    // create
-    if (-1 == shmget(handle(), size, 0666 | IPC_CREAT | IPC_EXCL)) {
+    ashmem_fd=ashmem_create_region(makePlatformSafeKey(key).toLatin1(),sz);
+    if (ashmem_fd<0)
+    {
         QString function = QLatin1String("QSharedMemory::create");
-        switch (errno) {
-        case EINVAL:
-            errorString = QSharedMemory::tr("%1: system-imposed size restrictions").arg(QLatin1String("QSharedMemory::handle"));
-            error = QSharedMemory::InvalidSize;
-            break;
-        default:
-            setErrorString(function);
-        }
-        if (createdFile && error != QSharedMemory::AlreadyExists)
-            QFile::remove(makePlatformSafeKey(key));
-        return false;
+        setErrorString(function);
+	return false;
     }
-
+    size=sz;
     return true;
-#else
-#warning PLEASE IMPLEMENT !!!
-    return false;
-#endif
 }
 
 bool QSharedMemoryPrivate::attach(QSharedMemory::AccessMode mode)
 {
-#ifndef Q_OS_ANDROID
-    // grab the shared memory segment id
-    if (!handle())
+    if (ashmem_fd<0)
         return false;
+    int prot=(mode == QSharedMemory::ReadOnly)?PROT_READ:PROT_READ | PROT_WRITE;
 
-    int id = shmget(handle(), 0, (mode == QSharedMemory::ReadOnly ? 0444 : 0660));
-    if (-1 == id) {
-        setErrorString(QLatin1String("QSharedMemory::attach (shmget)"));
-        return false;
-    }
+    if (old_prot != prot)
+    {
+        if(memory && memory != MAP_FAILED)
+            munmap(memory, size);
 
-    // grab the memory
-    memory = shmat(id, 0, (mode == QSharedMemory::ReadOnly ? SHM_RDONLY : 0));
-    if ((void*) - 1 == memory) {
-        memory = 0;
-        setErrorString(QLatin1String("QSharedMemory::attach (shmat)"));
-        return false;
+        if (ashmem_set_prot_region(ashmem_fd,prot)<0)
+            return false;
+        
+        if ((memory = mmap(0, size, prot, MAP_SHARED, ashmem_fd, 0))==MAP_FAILED)
+            return false;
+        
+        old_prot = prot;
     }
-
-    // grab the size
-    shmid_ds shmid_ds;
-    if (!shmctl(id, IPC_STAT, &shmid_ds)) {
-        size = (int)shmid_ds.shm_segsz;
-    } else {
-        setErrorString(QLatin1String("QSharedMemory::attach (shmctl)"));
-        return false;
-    }
+    else
+        if (ashmem_pin_region(ashmem_fd, 0, 0)<0)
+            return false;
 
     return true;
-#else
-#warning PLEASE IMPLEMENT !!!
-    return false;
-#endif
 }
 
 bool QSharedMemoryPrivate::detach()
 {
-#ifndef Q_OS_ANDROID
-    // detach from the memory segment
-    if (-1 == shmdt(memory)) {
-        QString function = QLatin1String("QSharedMemory::detach");
-        switch (errno) {
-        case EINVAL:
-            errorString = QSharedMemory::tr("%1: not attached").arg(function);
-            error = QSharedMemory::NotFound;
-            break;
-        default:
-            setErrorString(function);
-        }
-        return false;
-    }
-    memory = 0;
-
-    // Get the number of current attachments
-    if (!handle())
-        return false;
-    int id = shmget(handle(), 0, 0444);
-    unix_key = 0;
-
-    struct shmid_ds shmid_ds;
-    if (0 != shmctl(id, IPC_STAT, &shmid_ds)) {
-        switch (errno) {
-        case EINVAL:
-            return true;
-        default:
-            return false;
-        }
-    }
-    // If there are no attachments then remove it.
-    if (shmid_ds.shm_nattch == 0) {
-        // mark for removal
-        if (-1 == shmctl(id, IPC_RMID, &shmid_ds)) {
-            setErrorString(QLatin1String("QSharedMemory::remove"));
-            switch (errno) {
-            case EINVAL:
-                return true;
-            default:
-                return false;
-            }
-        }
-
-        // remove file
-        if (!QFile::remove(makePlatformSafeKey(key)))
-            return false;
-    }
+    if (ashmem_unpin_region(ashmem_fd, 0, 0)<0)
+	return false;
     return true;
-#else
-#warning PLEASE IMPLEMENT !!!
-    return false;
-#endif
 }
 
 

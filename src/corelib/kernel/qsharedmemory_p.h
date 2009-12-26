@@ -174,6 +174,7 @@ private:
     RChunk chunk;
 #elif defined(Q_OS_ANDROID)
     int ashmem_fd;
+    int old_prot;
 #else
     key_t unix_key;
 #endif
