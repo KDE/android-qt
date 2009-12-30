@@ -127,6 +127,8 @@ struct GLXFBConfig {
 
 #elif defined(Q_WS_WIN)
 DECLARE_HANDLE(HPBUFFERARB);
+#elif defined(Q_OS_ANDROID)
+#include <EGL/egl.h>
 #elif defined(QT_OPENGL_ES_2)
 #include <EGL/egl.h>
 #elif defined(QT_OPENGL_ES)

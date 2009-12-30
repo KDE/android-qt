@@ -92,9 +92,20 @@ mac {
 unix:!symbian {
 	SOURCES += \
                 kernel/qcore_unix.cpp \
-                kernel/qcrashhandler.cpp \
-                kernel/qsharedmemory_ashmem.cpp \
-                kernel/qsystemsemaphore_android.cpp
+                kernel/qcrashhandler.cpp
+
+    contains(CONFIG, android){
+        SOURCES += kernel/qsystemsemaphore_android.cpp
+    } else {
+        SOURCES += kernel/qsystemsemaphore_unix.cpp
+    }
+
+    contains(CONFIG, ashmem){
+        SOURCES += kernel/qsharedmemory_ashmem.cpp
+    } else {
+        SOURCES += kernel/qsharedmemory_unix.cpp
+    }
+
 	HEADERS += \
                 kernel/qcore_unix_p.h \
 		kernel/qcrashhandler_p.h

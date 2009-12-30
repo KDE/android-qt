@@ -3055,9 +3055,10 @@ if [ "$CFG_USE_GNUMAKE" = "auto" ] && "$MAKE" -v | grep "GNU Make" >/dev/null 2>
 fi
 
 # If -opengl wasn't specified, don't try to auto-detect
-if [ "$PLATFORM_QWS" = "yes" -o "$PLATFORM_EMBLITE" = "yes" ] && [ "$CFG_OPENGL" = "auto" ]; then
-        CFG_OPENGL=no
-fi
+#Why not ?
+#if [ "$PLATFORM_QWS" = "yes" -o "$PLATFORM_EMBLITE" = "yes" ] && [ "$CFG_OPENGL" = "auto" ]; then
+#        CFG_OPENGL=no
+#fi
 
 # mac
 if [ "$PLATFORM_MAC" = "yes" ]; then
@@ -5430,10 +5431,13 @@ if [ "$PLATFORM_QWS" = "yes" -o "$PLATFORM_EMBLITE" = "yes" ]; then
     # auto-detect OpenGL support (es1 = OpenGL ES 1.x Common, es1cl = ES 1.x common lite, es2 = OpenGL ES 2.x)
     if [ "$CFG_OPENGL" = "yes" ]; then
         if "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/opengles2 "OpenGL ES 2.x" $L_FLAGS $I_FLAGS $l_FLAGS; then
+            CFG_EGL=yes
             CFG_OPENGL=es2
 	elif "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/opengles1 "OpenGL ES 1.x" $L_FLAGS $I_FLAGS $l_FLAGS; then
+            CFG_EGL=yes
             CFG_OPENGL=es1
 	elif "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/opengles1cl "OpenGL ES 1.x Lite" $L_FLAGS $I_FLAGS $l_FLAGS; then
+            CFG_EGL=yes
             CFG_OPENGL=es1cl
         else
             echo "All the OpenGL ES functionality tests failed!"
@@ -5444,6 +5448,7 @@ if [ "$PLATFORM_QWS" = "yes" -o "$PLATFORM_EMBLITE" = "yes" ]; then
         fi
     elif [ "$CFG_OPENGL" = "es1" ]; then
         # OpenGL ES 1.x
+        CFG_EGL=yes
 	"$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/opengles1 "OpenGL ES 1.x" $L_FLAGS $I_FLAGS $l_FLAGS
         if [ $? != "0" ]; then
 	    echo "The OpenGL ES 1.x functionality test failed!"
@@ -5454,6 +5459,7 @@ if [ "$PLATFORM_QWS" = "yes" -o "$PLATFORM_EMBLITE" = "yes" ]; then
         fi
     elif [ "$CFG_OPENGL" = "es2" ]; then
         #OpenGL ES 2.x
+        CFG_EGL=yes
 	"$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/opengles2 "OpenGL ES 2.x" $L_FLAGS $I_FLAGS $l_FLAGS
         if [ $? != "0" ]; then
 	    echo "The OpenGL ES 2.0 functionality test failed!"

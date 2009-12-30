@@ -801,7 +801,7 @@ QFontDatabase::findFont(int script, const QFontPrivate *fp,
              "    family: %s [%s], script: %d\n"
              "    weight: %d, style: %d\n"
              "    stretch: %d\n"
-             "    pixelSize: %d\n"
+             "    pixelSize: %f\n"
              "    pitch: %c",
              family_name.isEmpty() ? "-- first in script --" : family_name.toLatin1().constData(),
              foundry_name.isEmpty() ? "-- any --" : foundry_name.toLatin1().constData(),

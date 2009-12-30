@@ -82,11 +82,15 @@
 
 #ifdef QT_OPENGL_ES
 QT_BEGIN_INCLUDE_NAMESPACE
+#ifdef Q_OS_ANDROID
+#include <EGL/egl.h>
+#else
 #if defined(QT_OPENGL_ES_2)
 #include <EGL/egl.h>
 #else
 #include <GLES/egl.h>
 #endif
+#endif // Q_OS_ANDROID
 QT_END_INCLUDE_NAMESPACE
 #endif
 

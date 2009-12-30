@@ -21,3 +21,7 @@ embedded_lite:  {
 embedded_lite:x11 {
     SUBDIRS += linuxfb
 }
+
+contains(CONFIG, android) {
+    SUBDIRS += android
+}
