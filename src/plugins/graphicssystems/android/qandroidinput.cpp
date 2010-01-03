@@ -1,158 +1,71 @@
 #include "qandroidinput.h"
 
-#include <QThread>
+#include <QMutexLocker>
 #include <QDebug>
+#include <QTimer>
+
 #include <private/qapplication_p.h>
-#include <QMouseEvent>
-#include <QEvent>
 
-/*
-InputSocketWaiter::InputSocketWaiter(IDirectFBEventBuffer *eventBuffer, QObject *parent)
-        : QThread(parent), eventBuffer(eventBuffer)
-    {
-        this->start();
-    }
-*/
-void InputSocketWaiter::run()
-{
-    /*
-    while (1) {
-        eventBuffer->WaitForEvent(eventBuffer);
-        emit newEvent();
-    }
-    */
-}
 
-QDirectFbInput::QDirectFbInput(QObject *parent)
+QAndroidInput * QAndroidInput::m_androidInput=NULL;
+
+QAndroidInput::QAndroidInput(QObject *parent)
     : QObject(parent)
 {
-    /*
-    DFBResult ok = DirectFBCreate(&dfbInterface);
-    if (ok != DFB_OK)
-        DirectFBError("Failed to initialise QDirectFBInput", ok);
-
-    ok = dfbInterface->CreateEventBuffer(dfbInterface,&eventBuffer);
-    if (ok != DFB_OK)
-        DirectFBError("Failed to initialise eventbuffer", ok);
-
-    dfbInterface->GetDisplayLayer(dfbInterface,DLID_PRIMARY, &dfbDisplayLayer);
-
-    InputSocketWaiter *inputHandler = new InputSocketWaiter(eventBuffer,this);
-    connect(inputHandler,SIGNAL(newEvent()),this,SLOT(handleEvents()));
-    */
+    connect(&mTimer, SIGNAL(timeout()), this, SLOT(consumeEvents()));
+    mTimer.setSingleShot(true);
+    mTimer.setInterval(1);
 }
 
-/*
-void QDirectFbInput::addWindow(DFBWindowID id, QWidget *tlw)
+void QAndroidInput::registerWindow(long mWindowId, QWidget * window)
 {
-    tlwMap.insert(id,tlw);
-    IDirectFBWindow *window;
-    dfbDisplayLayer->GetWindow(dfbDisplayLayer,id,&window);
-
-    window->AttachEventBuffer(window,eventBuffer);
-}
-    */
-
-void QDirectFbInput::handleEvents()
-{
-    /*
-    DFBResult hasEvent = eventBuffer->HasEvent(eventBuffer);
-    while(hasEvent == DFB_OK){
-        DFBEvent event;
-        DFBResult ok = eventBuffer->GetEvent(eventBuffer,&event);
-        if (ok != DFB_OK)
-            DirectFBError("Failed to get event",ok);
-        if (event.clazz == DFEC_WINDOW) {
-            switch (event.window.type) {
-            case DWET_BUTTONDOWN:
-            case DWET_BUTTONUP:
-            case DWET_MOTION:
-                handleMouseEvents(event);
-                break;
-            case DWET_WHEEL:
-                handleWheelEvent(event);
-                break;
-            case DWET_KEYDOWN:
-            case DWET_KEYUP:
-                handleKeyEvents(event);
-                break;
-            default:
-                break;
-            }
-
-        } else
-            qDebug() << "WHAT!";
-
-        hasEvent = eventBuffer->HasEvent(eventBuffer);
-    }
-    */
+    mMutex.lock();
+    mWindows[mWindowId]=window;
+    mMutex.unlock();
 }
 
-/*
-void QDirectFbInput::handleMouseEvents(const DFBEvent &event)
+void QAndroidInput::unregisterWindow(long mWindowId)
 {
-    QEvent::Type type = QDirectFbConvenience::eventType(event.window.type);
-    QPoint p(event.window.cx, event.window.cy);
-    QPoint globalPos = globalPoint(event);
-    Qt::MouseButton button = QDirectFbConvenience::mouseButton(event.window.button);
-    Qt::MouseButtons buttons = QDirectFbConvenience::mouseButtons(event.window.buttons);
-    QWidget *tlw = tlwMap.value(event.window.window_id);
+    mMutex.lock();
+    mWindows.remove(mWindowId);
+    mMutex.unlock();
+}
 
-    if (event.window.type == DWET_BUTTONDOWN) {
-        static long prevTime = 0;
-        static QWidget *prevWindow;
-        static int prevX = -999;
-        static int prevY = -999;
-        long timestamp = (event.window.timestamp.tv_sec*1000) + (event.window.timestamp.tv_usec/1000);
-        timestamp /= 1000;
+void QAndroidInput::addMouseEvent(long mWindowId, const QMouseEvent & event)
+{
+    QMutexLocker locker(&mMutex);
+    Q_UNUSED(locker);
+    QWidget* window=mWindows.value(mWindowId,0);
+    if (!window)
+        return;
+    mMouseEvents.enqueue(QPair<QWidget*, QMouseEvent>(window, event));
+    mTimer.start();
+}
 
-        if (tlw == prevWindow && timestamp - prevTime < QApplication::doubleClickInterval()
-            && qAbs(event.window.cx - prevX) < 5 && qAbs(event.window.cy - prevY) < 5) {
-            type = QEvent::MouseButtonDblClick;
-            prevTime = timestamp - QApplication::doubleClickInterval(); //no double click next time
-        } else {
-            prevTime = timestamp;
-        }
-        prevWindow = tlw;
-        prevX = event.window.cx;
-        prevY = event.window.cy;
+void QAndroidInput::addKeyEvent(long mWindowId, const QKeyEvent & event)
+{
+    QMutexLocker locker(&mMutex);
+    Q_UNUSED(locker);
+    QWidget* window=mWindows.value(mWindowId,0);
+    if (!window)
+        return;
+    mKeyEvents.enqueue(QPair<QWidget*, QKeyEvent>(window, event));
+    mTimer.start();
+}
+
+void QAndroidInput::consumeEvents()
+{
+    QMutexLocker locker(&mMutex);
+    Q_UNUSED(locker);
+    while(!mMouseEvents.isEmpty())
+    {
+        QPair<QWidget*, QMouseEvent> event=mMouseEvents.dequeue();
+        QApplicationPrivate::handleMouseEvent(event.first,event.second);
     }
 
-    //DFB doesn't give keyboardmodifiers on mouseevents
-    QMouseEvent mouseEvent(type,p,globalPos,button, buttons,(Qt::KeyboardModifiers)0);
-    QApplicationPrivate::handleMouseEvent(tlw,mouseEvent);
+    while(!mKeyEvents.isEmpty())
+    {
+        QPair<QWidget*, QKeyEvent> event=mKeyEvents.dequeue();
+        QApplicationPrivate::handleKeyEvent(event.first,&event.second);
+    }
 }
-
-void QDirectFbInput::handleWheelEvent(const DFBEvent &event)
-{
-    QPoint p(event.window.cx, event.window.cy);
-    QPoint globalPos = globalPoint(event);
-    Qt::MouseButton button = QDirectFbConvenience::mouseButton(event.window.button);
-    Qt::MouseButtons buttons = QDirectFbConvenience::mouseButtons(event.window.buttons);
-    QWidget *tlw = tlwMap.value(event.window.window_id);
-
-    QWheelEvent wheelEvent(p,globalPos,event.window.step*120,buttons,Qt::NoModifier,Qt::Vertical);
-    QApplicationPrivate::handleWheelEvent(tlw,wheelEvent);
-}
-
-void QDirectFbInput::handleKeyEvents(const DFBEvent &event)
-{
-    QEvent::Type type = QDirectFbConvenience::eventType(event.window.type);
-    Qt::Key key = QDirectFbConvenience::keyMap()->value(event.window.key_symbol);
-    Qt::KeyboardModifiers modifiers = QDirectFbConvenience::keyboardModifiers(event.window.modifiers);
-
-    QKeyEvent keyEvent(type,key,modifiers,QChar(event.window.key_symbol));
-    QWidget *tlw = tlwMap.value(event.window.window_id);
-    QApplicationPrivate::handleKeyEvent(tlw,&keyEvent);
-}
-
-inline QPoint QDirectFbInput::globalPoint(const DFBEvent &event) const
-{
-    IDirectFBWindow *window;
-    dfbDisplayLayer->GetWindow(dfbDisplayLayer,event.window.window_id,&window);
-    int x,y;
-    window->GetPosition(window,&x,&y);
-    return QPoint(event.window.cx +x, event.window.cy + y);
-}
-
-*/

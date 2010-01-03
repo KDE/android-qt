@@ -1,11 +1,15 @@
-#include "android_app.h"
 #include <android/log.h>
 #include <pthread.h>
 #include <qcoreapplication.h>
 
+#include "android_app.h"
+
 static JavaVM *m_javaVM = NULL;
 static jobject m_object  = NULL;
-static jmethodID m_createWindowMethodID;
+static jmethodID m_createWindowMethodID=0;
+static jmethodID m_destroyWindowMethodID=0;
+static jmethodID m_flushImageMethodID=0;
+static jmethodID m_setWindowGeomatryMethodID=0;
 
 namespace QtAndroid
 {
@@ -27,12 +31,45 @@ namespace QtAndroid
         m_javaVM->DetachCurrentThread();
         return ret;
     }
+
+    void destroyWindow(long winId)
+    {
+        JNIEnv* env;
+        m_javaVM->AttachCurrentThread(&env, NULL);
+        env->CallVoidMethod(m_object, m_destroyWindowMethodID, (jlong)winId);
+        m_javaVM->DetachCurrentThread();
+    }
+
+    void flushImage(long winId, const QImage & image, const QRect & rect)
+    {
+        JNIEnv* env;
+        m_javaVM->AttachCurrentThread(&env, NULL);
+        jshortArray img=env->NewShortArray(image.byteCount()/2);
+        env->SetShortArrayRegion(img,0,image.byteCount(), (const jshort*)(const uchar *)image.bits());
+        env->CallVoidMethod(m_object, m_flushImageMethodID, (jlong)winId,
+                            (jint)img, (jint)image.bytesPerLine(),
+                            (jint)rect.x(), (jint)rect.y(),
+                            (jint)rect.right(), (jint)rect.bottom());
+        env->DeleteLocalRef(img);
+        m_javaVM->DetachCurrentThread();
+    }
+
+    void setWindowGeometry(long winId, const QRect &rect)
+    {
+        JNIEnv* env;
+        m_javaVM->AttachCurrentThread(&env, NULL);
+        env->CallVoidMethod(m_object, m_setWindowGeomatryMethodID, (jlong)winId,
+                            (jint)rect.x(), (jint)rect.y(),
+                            (jint)rect.right(), (jint)rect.bottom());
+        m_javaVM->DetachCurrentThread();
+   }
+
 }
 
 
 static void * startMainMethod(void * /*data*/)
 {
-    extern int main(int, char **); //use the standard main methos to start the application
+    extern int main(int, char **); //use the standard main method to start the application
 
     const char params[][50]={"qtApp","-graphicssystem=android"}; // default use raster as default graphics system
 
@@ -80,7 +117,11 @@ static int registerNativeMethods(JNIEnv* env, const char* className,
         return JNI_FALSE;
     }
     m_object = clazz;
+
     m_createWindowMethodID = env->GetMethodID(clazz, "createWindow", "()J");
+    m_destroyWindowMethodID = env->GetMethodID((jclass)m_object, "destroyWindow", "(J)V");
+    m_flushImageMethodID = env->GetMethodID((jclass)m_object, "flushImage", "(JSIIIII)V");
+    m_setWindowGeomatryMethodID = env->GetMethodID((jclass)m_object, "setWindowGeometry", "(JIIII)V");
 
     return JNI_TRUE;
 }
@@ -121,4 +162,3 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* /*reserved*/)
     m_javaVM = vm;
     return JNI_VERSION_1_4;
 }
-

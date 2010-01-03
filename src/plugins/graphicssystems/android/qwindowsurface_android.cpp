@@ -41,6 +41,7 @@
 #include "android_app.h"
 #include "qwindowsurface_android.h"
 #include "qgraphicssystem_android.h"
+#include "qandroidinput.h"
 #include <QtCore/qdebug.h>
 
 QT_BEGIN_NAMESPACE
@@ -53,10 +54,12 @@ QAndroidWindowSurface::QAndroidWindowSurface
 {
     mWindowId = createWindow();
     connect(screen, SIGNAL(screenResized(QSize)),SLOT(screenResized(QSize)));
+    QAndroidInput::androidInput()->registerWindow(mWindowId, window);
 }
 
 QAndroidWindowSurface::~QAndroidWindowSurface()
 {
+    QAndroidInput::androidInput()->unregisterWindow(mWindowId);
 }
 
 void QAndroidWindowSurface::screenResized(const QSize & size)
@@ -86,18 +89,19 @@ QPaintDevice *QAndroidWindowSurface::paintDevice()
 void QAndroidWindowSurface::flush(QWidget *widget, const QRegion &region, const QPoint &offset)
 {
     Q_UNUSED(widget);
-    Q_UNUSED(region);
     Q_UNUSED(offset);
 
-    static int c = 0;
+/*    static int c = 0;
     QString filename = QString("output%1.png").arg(c++, 4, 10, QLatin1Char('0'));
     qDebug() << "QMinimalWindowSurface::flush() saving contents to" << filename.toLocal8Bit().constData();
     mImage.save(filename);
+    */
+    flushImage(mWindowId, mImage.copy(region.boundingRect()), region.boundingRect());
 }
 
 void QAndroidWindowSurface::setGeometry(const QRect &rect)
 {
-    //qDebug() << "QMinimalWindowSurface::setGeometry:" << (long)this << rect;
+    setWindowGeometry(mWindowId, rect);
     QWindowSurface::setGeometry(rect);
     if (mImage.size() != rect.size())
         mImage = QImage(rect.size(), mScreen->format());

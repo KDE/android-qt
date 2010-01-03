@@ -1,50 +1,42 @@
 #ifndef QDIRECTFBINPUT_H
 #define QDIRECTFBINPUT_H
 
-#include <QThread>
-#include <QObject>
 #include <QHash>
-#include <QPoint>
+#include <QMouseEvent>
 #include <QEvent>
+#include <QPair>
+#include <QQueue>
+#include <QTimer>
+#include <QMutex>
 
+class QAndroidGraphicsSystem;
 
-class InputSocketWaiter : public QThread
+class QAndroidInput : public QObject
 {
     Q_OBJECT
 public:
-//    InputSocketWaiter(IDirectFBEventBuffer *eventBuffer, QObject *parent);
-protected:
-    void run();
-signals:
-    void newEvent();
-private:
-//     IDirectFBEventBuffer *eventBuffer;
-};
+    static QAndroidInput * androidInput(){return QAndroidInput::m_androidInput;}
+    void registerWindow(long mWindowId, QWidget * window);
+    void unregisterWindow(long mWindowId);
 
-class QDirectFbInput : public QObject
-{
-    Q_OBJECT
-public:
-    QDirectFbInput(QObject *parent = 0);
-
-    //void addWindow(DFBWindowID id, QWidget *tlw);
-
-public slots:
-    void handleEvents();
+    void addMouseEvent(long mWindowId, const QMouseEvent & event);
+    void addKeyEvent(long mWindowId, const QKeyEvent & event);
 
 private:
-/*
-    void handleMouseEvents(const DFBEvent &event);
-    void handleWheelEvent(const DFBEvent &event);
-    void handleKeyEvents(const DFBEvent &event);
-    IDirectFB *dfbInterface;
-    IDirectFBDisplayLayer *dfbDisplayLayer;
-    IDirectFBEventBuffer *eventBuffer;
+    QAndroidInput(QObject *parent = 0);
+    friend class QAndroidGraphicsSystem;
 
-    QHash<DFBWindowID,QWidget *>tlwMap;
+private slots:
+    void consumeEvents();
 
-    inline QPoint globalPoint(const DFBEvent &event) const;
-*/
+private:
+    static QAndroidInput * m_androidInput;
+    QMutex mMutex;
+    QTimer mTimer;
+    QHash<long, QWidget*> mWindows;
+    QQueue< QPair<QWidget*, QMouseEvent> > mMouseEvents;
+    QQueue< QPair<QWidget*, QKeyEvent> > mKeyEvents;
 };
+
 
 #endif // QDIRECTFBINPUT_H
