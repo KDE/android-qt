@@ -1,8 +1,16 @@
 #include <android/log.h>
 #include <pthread.h>
 #include <qcoreapplication.h>
+#include <qimage.h>
+#include <qplugin.h>
+#include "androidjnimain.h"
 
-#include "android_app.h"
+Q_IMPORT_PLUGIN (QtAndroid)
+
+#ifdef QT_USE_CUSTOM_NDK
+    #include <ui/Surface.h>
+    #include <qmap.h>
+#endif
 
 static JavaVM *m_javaVM = NULL;
 static jobject m_object  = NULL;
@@ -10,7 +18,10 @@ static jmethodID m_createWindowMethodID=0;
 static jmethodID m_destroyWindowMethodID=0;
 static jmethodID m_flushImageMethodID=0;
 static jmethodID m_setWindowGeomatryMethodID=0;
-
+#ifdef QT_USE_CUSTOM_NDK
+static jfieldID  IDsurface;
+static QMap<long, android::Surface* > m_surfaces;
+#endif
 namespace QtAndroid
 {
     JavaVM * getJavaVM()
@@ -40,18 +51,51 @@ namespace QtAndroid
         m_javaVM->DetachCurrentThread();
     }
 
-    void flushImage(long winId, const QImage & image, const QRect & rect)
+    void flushImage(long winId, const QImage & image, const QRect & destinationRect)
     {
+#ifdef QT_USE_CUSTOM_NDK
+        android::Surface *surface=m_surfaces.value(winId);
+        if (!surface)
+            return;
+
+        android::Surface::SurfaceInfo info;
+        android::status_t err = surface->lock(&info);
+        if(err < 0)
+        {
+            __android_log_print(ANDROID_LOG_ERROR,"Qt", "Unable to lock the surface");
+            return;
+        }
+        if (info.w != (unsigned)image.size().width() || info.h != (unsigned)image.size().height())
+        {
+            surface->unlockAndPost();
+            __android_log_print(ANDROID_LOG_ERROR,"Qt", "Screen surface size != internal buffer size");
+            return;
+        }
+
+        unsigned char * screenBits=(unsigned char*)info.bits;
+        int bpl=image.bytesPerLine();
+        int bpp=2;
+
+        for (int y=0;y<destinationRect.height();y++)
+        {
+            memcpy(screenBits+info.s*(y+destinationRect.y())+destinationRect.x()*bpp,
+                   ((const uchar*)image.bits())+bpl*(y+destinationRect.y())+destinationRect.x()*bpp,
+                   destinationRect.x()*bpp);
+        }
+        surface->unlockAndPost();
+#else
         JNIEnv* env;
         m_javaVM->AttachCurrentThread(&env, NULL);
+        QImage imag=image.copy(destinationRect);
         jshortArray img=env->NewShortArray(image.byteCount()/2);
-        env->SetShortArrayRegion(img,0,image.byteCount(), (const jshort*)(const uchar *)image.bits());
+        env->SetShortArrayRegion(img,0,imag.byteCount(), (const jshort*)(const uchar *)imag.bits());
         env->CallVoidMethod(m_object, m_flushImageMethodID, (jlong)winId,
                             (jint)img, (jint)image.bytesPerLine(),
-                            (jint)rect.x(), (jint)rect.y(),
-                            (jint)rect.right(), (jint)rect.bottom());
+                            (jint)destinationRect.x(), (jint)destinationRect.y(),
+                            (jint)destinationRect.right(), (jint)destinationRect.bottom());
         env->DeleteLocalRef(img);
         m_javaVM->DetachCurrentThread();
+#endif
     }
 
     void setWindowGeometry(long winId, const QRect &rect)
@@ -73,7 +117,8 @@ static void * startMainMethod(void * /*data*/)
 
     const char params[][50]={"qtApp","-graphicssystem=android"}; // default use raster as default graphics system
 
-    main(2, (char**)params);
+    int ret = main(2, (char**)params);
+    Q_UNUSED(ret);
     pthread_exit(NULL);
     return NULL;
 }
@@ -89,11 +134,21 @@ static void quitQtApp(JNIEnv* /*env*/, jclass /*clazz*/)
     qApp->quit();
 }
 
+#ifdef QT_USE_CUSTOM_NDK
+static void setSurface(JNIEnv *env, jobject /*thiz*/, jlong winId, jobject jSurface)
+{
+    m_surfaces[winId]=reinterpret_cast<android::Surface*>(env->GetIntField(jSurface, IDsurface));;
+}
+#endif
+
 static const char *classPathName = "com/nokia/qt/Native";
 
 static JNINativeMethod methods[] = {
     {"startQtApp", "()Z", (void *)startQtApp},
     {"quitQtApp", "()V", (void *)quitQtApp},
+#ifdef QT_USE_CUSTOM_NDK
+    {"setSurface", "(JLandroid/view/Surface;)V", (void *)setSurface},
+#endif
 };
 
 /*
@@ -133,6 +188,21 @@ static int registerNatives(JNIEnv* env)
 {
     if (!registerNativeMethods(env, classPathName, methods, sizeof(methods) / sizeof(methods[0])))
         return JNI_FALSE;
+
+#ifdef QT_USE_CUSTOM_NDK
+    jclass clazz = env->FindClass("android/view/Surface");
+    if (clazz == NULL)
+    {
+        __android_log_print(ANDROID_LOG_FATAL,"Qt", "Can't find android/view/Surface");
+        return JNI_FALSE;
+    }
+
+    IDsurface = env->GetFieldID(clazz, "mSurface", "I");
+    if (IDsurface == NULL) {
+        __android_log_print(ANDROID_LOG_FATAL,"Qt", "Can't find android/view/Surface mSurface");
+        return JNI_FALSE;
+    }
+#endif
     return JNI_TRUE;
 }
 

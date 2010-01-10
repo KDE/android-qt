@@ -10,8 +10,10 @@ import android.util.Log;
 class Native {
 	private static final String TAG = "Java Gps";
 	private static final String LIB = "QtTest";
+	
 	static
 	{
+		//Runtime.getRuntime().;
 		 File f = new File("/data/local/lib"+LIB+".so");
 		 if (f.exists())
 			 System.load("/data/local/lib"+LIB+".so");

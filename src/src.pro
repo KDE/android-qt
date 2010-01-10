@@ -15,6 +15,7 @@ wince*:{
 }
 win32:SRC_SUBDIRS += src_activeqt
 
+CONFIG(android): SRC_SUBDIRS += src_android
 contains(QT_CONFIG, opengl)|contains(QT_CONFIG, opengles1)|contains(QT_CONFIG, opengles2): SRC_SUBDIRS += src_opengl
 contains(QT_CONFIG, openvg): SRC_SUBDIRS += src_openvg
 contains(QT_CONFIG, xmlpatterns): SRC_SUBDIRS += src_xmlpatterns
@@ -36,6 +37,12 @@ src_s60installs.subdir = $$QT_SOURCE_TREE/src/s60installs
 src_s60installs.target = sub-s60installs
 src_winmain.subdir = $$QT_SOURCE_TREE/src/winmain
 src_winmain.target = sub-winmain
+src_android.subdir = $$QT_SOURCE_TREE/src/android
+src_android.target = sub-android
+#src_androidjnimain.depends = src_corelib
+#src_androidsetqtenv.subdir = $$QT_SOURCE_TREE/src/androidsetqtenv
+#src_androidsetqtenv.target = sub-androidsetqtenv
+#src_androidsetqtenv.depends = src_corelib
 src_corelib.subdir = $$QT_SOURCE_TREE/src/corelib
 src_corelib.target = sub-corelib
 src_xml.subdir = $$QT_SOURCE_TREE/src/xml

@@ -1,9 +1,10 @@
-#include "android_app.h"
+#include "androidjnimain.h"
 #include "EGL/egl.h"
 
 EGLAPI EGLint EGLAPIENTRY eglGetError(void)
 {
 #warning "PLEASE IMPLEMENT"
+    return 0;
 }
 
 EGLAPI EGLDisplay EGLAPIENTRY eglGetDisplay(EGLNativeDisplayType display_id)

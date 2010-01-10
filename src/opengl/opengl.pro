@@ -17,7 +17,7 @@ contains(QT_CONFIG, opengles1cl):CONFIG += opengles1cl
 contains(QT_CONFIG, opengles2):CONFIG += opengles2
 contains(QT_CONFIG, egl):CONFIG += egl
 
-contains(CONFIG, android):INCLUDEPATH += ../plugins/graphicssystems/android
+CONFIG(android):INCLUDEPATH += ../plugins/graphicssystems/android
 
 HEADERS += qgl.h \
 	   qgl_p.h \

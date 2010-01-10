@@ -1,7 +1,8 @@
 TEMPLATE      = subdirs
 SUBDIRS       = mandelbrot \
-                semaphores \
-                waitconditions
+                semaphores
+
+!CONFIG(android) : SUBDIRS += waitconditions
 
 # install
 target.path = $$[QT_INSTALL_EXAMPLES]/threads

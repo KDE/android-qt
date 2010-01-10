@@ -36,7 +36,7 @@ INCLUDEPATH = $$QMAKE_INCDIR_QT $$INCLUDEPATH #prepending prevents us from picki
 win32:INCLUDEPATH += $$QMAKE_INCDIR_QT/ActiveQt
 
 # As order does matter for static libs, we reorder the QT variable here
-TMPLIBS = declarative webkit phonon multimedia dbus testlib script scripttools svg qt3support sql xmlpatterns xml egl opengl openvg gui network core
+TMPLIBS = declarative webkit phonon multimedia dbus testlib script scripttools svg qt3support sql xmlpatterns xml egl opengl openvg gui network core android
 for(QTLIB, $$list($$TMPLIBS)) {
    contains(QT, $$QTLIB): QT_ORDERED += $$QTLIB
 }
@@ -158,6 +158,17 @@ for(QTLIB, $$list($$lower($$unique(QT)))) {
    else:isEqual(QTLIB, scripttools):qlib = QtScriptTools
    else:isEqual(QTLIB, testlib):qlib = QtTest
    else:isEqual(QTLIB, dbus):qlib = QtDBus
+   else:isEqual(QTLIB, android) {
+        contains(TEMPLATE, ".*app"):{
+            QMAKE_LFLAGS += $$ANDROID_TOOLCHAIN_ROOT/lib/crtbegin_dynamic.o
+            QMAKE_LIBS = $$ANDROID_TOOLCHAIN_ROOT/lib/crtend_android.o $$QMAKE_LIBS
+        }
+        else:contains(TEMPLATE, ".*lib"):!CONFIG(plugin):{
+            QMAKE_LFLAGS += -Wl,--whole-archive \
+                            $$QMAKE_LIBDIR_QT/libQtAndroid.a \
+                            -Wl,--no-whole-archive
+        }
+   }
    else:isEqual(QTLIB, phonon) {
        qlib = phonon
        INCLUDEPATH += $$QMAKE_INCDIR_QT/phonon_compat/phonon

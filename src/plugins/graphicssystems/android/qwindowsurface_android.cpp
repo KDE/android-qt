@@ -38,7 +38,7 @@
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
-#include "android_app.h"
+#include "androidjnimain.h"
 #include "qwindowsurface_android.h"
 #include "qgraphicssystem_android.h"
 #include "qandroidinput.h"

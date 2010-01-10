@@ -13,7 +13,6 @@ SUBDIRS       = \
                 mainwindows \
                 network \
                 painting \
-                qtconcurrent \
                 richtext \
                 sql \
                 statemachine \
@@ -25,6 +24,8 @@ SUBDIRS       = \
                 xml \
                 multitouch \
                 gestures
+
+!CONFIG(android) : SUBDIRS += qtconcurrent
 
 symbian: SUBDIRS = \
                 graphicsview \

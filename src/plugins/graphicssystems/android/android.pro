@@ -1,20 +1,27 @@
-TARGET = android
+TARGET = QtAndroid
+
 include(../../qpluginbase.pri)
-QTDIR_build:DESTDIR = $$QT_BUILD_TREE/plugins/graphicssystems
+
+CONFIG -= dll
+CONFIG += staticlib static
+DESTDIR	 = $$QMAKE_LIBDIR_QT
+
+CONFIG(android_official_ndk) : DEFINES += QT_USE_OFFICIAL_NDK
+                        else : DEFINES += QT_USE_CUSTOM_NDK
 
 QT += opengl
 
 SOURCES = main.cpp \
-    android_app.cpp \
+    androidjnimain.cpp \
     qgraphicssystem_android.cpp \
     qwindowsurface_android.cpp \
     android_egl.cpp \
     qandroidinput.cpp
 
-HEADERS = android_app.h \
-    qgraphicssystem_android.h \
+HEADERS = qgraphicssystem_android.h \
     qwindowsurface_android.h \
     qandroidinput.h
 
-target.path += $$[QT_INSTALL_PLUGINS]/graphicssystems
+target.path=$$[QT_INSTALL_LIBS]
+
 INSTALLS += target

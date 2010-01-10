@@ -211,7 +211,7 @@ int main(int argc, char **argv)
     view->setBackgroundBrush(bgPix);
     view->setCacheMode(QGraphicsView::CacheBackground);
     view->setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
-    view->show();
+    view->showFullScreen();
 
     QStateMachine states;
     states.addState(rootState);

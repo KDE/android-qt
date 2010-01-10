@@ -77,6 +77,6 @@ QGraphicsSystem* QAndroidGraphicsSystemPlugin::create(const QString& system)
     return 0;
 }
 
-Q_EXPORT_PLUGIN2(android, QAndroidGraphicsSystemPlugin)
+Q_EXPORT_PLUGIN2(QtAndroid, QAndroidGraphicsSystemPlugin)
 
 QT_END_NAMESPACE

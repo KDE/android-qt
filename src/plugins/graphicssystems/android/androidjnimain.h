@@ -1,7 +1,9 @@
 #ifndef ANDROID_APP_H
 #define ANDROID_APP_H
 #include <jni.h>
-#include <QImage>
+
+class QImage;
+class QRect;
 
 namespace QtAndroid
 {
