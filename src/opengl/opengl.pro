@@ -56,7 +56,8 @@ SOURCES	+= qgl.cpp \
                 gl2paintengineex/qpaintengineex_opengl2_p.h \
                 gl2paintengineex/qglengineshadersource_p.h \
                 gl2paintengineex/qglcustomshaderstage_p.h \
-                gl2paintengineex/qtriangulatingstroker_p.h
+                gl2paintengineex/qtriangulatingstroker_p.h \
+                gl2paintengineex/qtextureglyphcache_gl_p.h
 
     SOURCES +=  qglshaderprogram.cpp \
                 qglpixmapfilter.cpp \
@@ -69,7 +70,8 @@ SOURCES	+= qgl.cpp \
                 gl2paintengineex/qgl2pexvertexarray.cpp \
                 gl2paintengineex/qpaintengineex_opengl2.cpp \
                 gl2paintengineex/qglcustomshaderstage.cpp \
-                gl2paintengineex/qtriangulatingstroker.cpp
+                gl2paintengineex/qtriangulatingstroker.cpp \
+                gl2paintengineex/qtextureglyphcache_gl.cpp
 
 }
 

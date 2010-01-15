@@ -9,6 +9,7 @@ SUBDIRS       = \
               diagramscene \
               dragdroprobot \
               anchorlayout \
+              simpleanchorlayout \
               weatheranchorlayout
 
 !symbian: !CONFIG(android) : SUBDIRS += flowlayout
