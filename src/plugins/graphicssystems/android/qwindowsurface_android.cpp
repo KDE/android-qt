@@ -122,4 +122,9 @@ void QAndroidWindowSurface::endPaint(const QRegion &region)
     Q_UNUSED(region);
 }
 
+WId QAndroidWindowSurface::winId() const
+{
+    return mWindowId;
+}
+
 QT_END_NAMESPACE

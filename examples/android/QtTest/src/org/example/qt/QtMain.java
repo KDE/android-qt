@@ -19,7 +19,7 @@ public class QtMain extends Activity {
 			if (null==getLastNonConfigurationInstance())
 			{
 				QtApplication.loadApplication("animatedtiles");
-				Log.i(TAG,"Duda");
+				Log.i(TAG,"Application start");
 			}
 		}
 		catch (Exception e)

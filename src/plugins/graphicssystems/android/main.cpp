@@ -40,8 +40,8 @@
 ****************************************************************************/
 
 #include <private/qgraphicssystemplugin_p.h>
-#include <private/qgraphicssystem_gl_p.h>
-#include <qgl.h>
+//#include <private/qgraphicssystem_gl_p.h>
+//#include <qgl.h>
 #include "qgraphicssystem_android.h"
 
 QT_BEGIN_NAMESPACE
@@ -56,7 +56,7 @@ public:
 QStringList QAndroidGraphicsSystemPlugin::keys() const
 {
     QStringList list;
-    list << "android" << "androidGL";
+    list << "android";// << "androidGL";
     return list;
 }
 
@@ -64,7 +64,7 @@ QGraphicsSystem* QAndroidGraphicsSystemPlugin::create(const QString& system)
 {
     if (system.toLower() == "android")
         return new QAndroidGraphicsSystem;
-
+/*
     if (system.toLower() == "androidgl")
     {
 #if !defined(QT_OPENGL_ES_1) && !defined(QT_OPENGL_ES_1_CL)
@@ -74,6 +74,7 @@ QGraphicsSystem* QAndroidGraphicsSystemPlugin::create(const QString& system)
 #endif
         return new QGLGraphicsSystem;
     }
+*/
     return 0;
 }
 

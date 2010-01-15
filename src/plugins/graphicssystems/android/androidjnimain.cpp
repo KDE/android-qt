@@ -135,19 +135,19 @@ static void quitQtApp(JNIEnv* /*env*/, jclass /*clazz*/)
 }
 
 #ifdef QT_USE_CUSTOM_NDK
-static void setSurface(JNIEnv *env, jobject /*thiz*/, jlong winId, jobject jSurface)
+static void setWindowSurface(JNIEnv *env, jobject /*thiz*/, jlong winId, jobject jSurface)
 {
     m_surfaces[winId]=reinterpret_cast<android::Surface*>(env->GetIntField(jSurface, IDsurface));;
 }
 #endif
 
-static const char *classPathName = "com/nokia/qt/Native";
+static const char *classPathName = "com/nokia/qt/QtApplication";
 
 static JNINativeMethod methods[] = {
-    {"startQtApp", "()Z", (void *)startQtApp},
+    {"startQtApp", "()V", (void *)startQtApp},
     {"quitQtApp", "()V", (void *)quitQtApp},
 #ifdef QT_USE_CUSTOM_NDK
-    {"setSurface", "(JLandroid/view/Surface;)V", (void *)setSurface},
+    {"setWindowSurface", "(JLandroid/view/Surface;)V", (void *)setWindowSurface},
 #endif
 };
 
@@ -175,7 +175,7 @@ static int registerNativeMethods(JNIEnv* env, const char* className,
 
     m_createWindowMethodID = env->GetMethodID(clazz, "createWindow", "()J");
     m_destroyWindowMethodID = env->GetMethodID((jclass)m_object, "destroyWindow", "(J)V");
-    m_flushImageMethodID = env->GetMethodID((jclass)m_object, "flushImage", "(JSIIIII)V");
+    //m_flushImageMethodID = env->GetMethodID((jclass)m_object, "flushImage", "(JSIIIII)V");
     m_setWindowGeomatryMethodID = env->GetMethodID((jclass)m_object, "setWindowGeometry", "(JIIII)V");
 
     return JNI_TRUE;

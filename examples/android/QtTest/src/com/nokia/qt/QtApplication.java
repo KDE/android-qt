@@ -13,7 +13,7 @@ public class QtApplication {
 	
 	static
 	{
-		System.load("/data/local/qt/lib/libAndroidSetQtEnv.so");
+	//	System.load("/data/local/qt/lib/libAndroidSetQtEnv.so");
 	}
 	
 	public static void loadApplication(String lib)

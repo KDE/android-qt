@@ -1,5 +1,6 @@
 SOURCES = main.cpp
 RESOURCES = animatedtiles.qrc
+CONFIG += dll
 
 # install
 target.path = $$[QT_INSTALL_EXAMPLES]/animation/animatedtiles
