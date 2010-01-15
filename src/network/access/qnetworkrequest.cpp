@@ -49,9 +49,6 @@
 #include "QtCore/qdatetime.h"
 
 #include <ctype.h>
-#ifdef Q_OS_ANDROID
-#include <stdio.h>
-#endif
 QT_BEGIN_NAMESPACE
 
 /*!
