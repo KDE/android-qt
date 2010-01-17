@@ -110,14 +110,22 @@ namespace QtAndroid
 
 }
 
-
+extern "C" int main(int, char **); //use the standard main method to start the application
 static void * startMainMethod(void * /*data*/)
 {
-    extern int main(int, char **); //use the standard main method to start the application
-
-    const char params[][50]={"qtApp","-graphicssystem=android"}; // default use raster as default graphics system
-
-    int ret = main(2, (char**)params);
+    char ** params;//[2][50]={"qtApp","-graphicssystem=android"}; // default use raster as default graphics system
+    params=(char**)malloc(sizeof(char*)*2);
+    params[0]=(char*)malloc(20);
+    strcpy(params[0],"QtApp");
+    params[1]=(char*)malloc(20);
+    strcpy(params[1],"-graphicssystem");
+    params[2]=(char*)malloc(20);
+    strcpy(params[2],"android");
+    int ret = main(3, params);
+    free(params[2]);
+    free(params[1]);
+    free(params[0]);
+    free(params);
     Q_UNUSED(ret);
     pthread_exit(NULL);
     return NULL;

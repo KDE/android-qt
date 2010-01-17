@@ -41,6 +41,7 @@
 
 #include <QtGui>
 #include <QtCore/qstate.h>
+#include <QPluginLoader>
 
 class Pixmap : public QObject, public QGraphicsPixmapItem
 {
@@ -132,10 +133,15 @@ protected:
 
 int main(int argc, char **argv)
 {
+    qDebug()<<"Static plugins "<<QPluginLoader::staticInstances().count();
+    foreach(QObject * obj, QPluginLoader::staticInstances())
+        qDebug()<<"Plugin: "<<obj;
+
+    qDebug()<<"main "<<argc<<","<<argv[0]<<argv[1];
     Q_INIT_RESOURCE(animatedtiles);
 
     QApplication app(argc, argv);
-
+    qDebug()<<"app";
     QPixmap kineticPix(":/images/kinetic.png");
     QPixmap bgPix(":/images/Time-For-Lunch-2.jpg");
 
@@ -251,6 +257,7 @@ int main(int argc, char **argv)
 #ifdef QT_KEYPAD_NAVIGATION
     QApplication::setNavigationMode(Qt::NavigationModeCursorAuto);
 #endif
+    qDebug()<<"app exec !!!";
     return app.exec();
 }
 

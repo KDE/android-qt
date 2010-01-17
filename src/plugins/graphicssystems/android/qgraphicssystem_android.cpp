@@ -48,6 +48,7 @@ QT_BEGIN_NAMESPACE
 
 QAndroidGraphicsSystem::QAndroidGraphicsSystem()
 {
+    qDebug()<<"QAndroidGraphicsSystem::QAndroidGraphicsSystem()";
     mPrimaryScreen = new QAndroidGraphicsSystemScreen();
     mPrimaryScreen->mGeometry = QRect(0, 0, 240, 320);
     mPrimaryScreen->mDepth = 16;
@@ -59,11 +60,13 @@ QAndroidGraphicsSystem::QAndroidGraphicsSystem()
 
 QPixmapData *QAndroidGraphicsSystem::createPixmapData(QPixmapData::PixelType type) const
 {
+    qDebug()<<"QAndroidGraphicsSystem::createPixmapData()";
     return new QRasterPixmapData(type);
 }
 
 QWindowSurface *QAndroidGraphicsSystem::createWindowSurface(QWidget *widget) const
 {
+    qDebug()<<"QAndroidGraphicsSystem::createWindowSurface()";
     return new QAndroidWindowSurface(mPrimaryScreen, widget);
 }
 

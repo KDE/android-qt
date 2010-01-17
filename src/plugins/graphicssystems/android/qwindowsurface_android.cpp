@@ -52,6 +52,7 @@ QAndroidWindowSurface::QAndroidWindowSurface
     : QWindowSurface(window),
       mScreen(screen)
 {
+    qDebug()<<"QAndroidWindowSurface::QAndroidWindowSurface()";
     mWindowId = createWindow();
     connect(screen, SIGNAL(screenResized(QSize)),SLOT(screenResized(QSize)));
     QAndroidInput::androidInput()->registerWindow(mWindowId, window);
@@ -64,6 +65,7 @@ QAndroidWindowSurface::~QAndroidWindowSurface()
 
 void QAndroidWindowSurface::screenResized(const QSize & size)
 {
+    qDebug()<<"QAndroidWindowSurface::screenResized()";
     QRect widgetRect=window()->geometry();
     if (widgetRect.width()>size.width())
         widgetRect.setWidth(size.width());
@@ -74,6 +76,7 @@ void QAndroidWindowSurface::screenResized(const QSize & size)
 
 void QAndroidWindowSurface::resize(const QSize & size)
 {
+    qDebug()<<"QAndroidWindowSurface::resize()";
     QRect widgetRect=window()->geometry();
     widgetRect.setSize(size);
     window()->setGeometry(widgetRect);
@@ -82,7 +85,7 @@ void QAndroidWindowSurface::resize(const QSize & size)
 
 QPaintDevice *QAndroidWindowSurface::paintDevice()
 {
-    //qDebug() << "QMinimalWindowSurface::paintDevice";
+    qDebug() << "QMinimalWindowSurface::paintDevice";
     return &mImage;
 }
 
@@ -91,16 +94,17 @@ void QAndroidWindowSurface::flush(QWidget *widget, const QRegion &region, const 
     Q_UNUSED(widget);
     Q_UNUSED(offset);
 
+    qDebug() << "QMinimalWindowSurface::flush()";
 /*    static int c = 0;
     QString filename = QString("output%1.png").arg(c++, 4, 10, QLatin1Char('0'));
-    qDebug() << "QMinimalWindowSurface::flush() saving contents to" << filename.toLocal8Bit().constData();
     mImage.save(filename);
     */
-    flushImage(mWindowId, mImage.copy(region.boundingRect()), region.boundingRect());
+    flushImage(mWindowId, mImage, region.boundingRect());
 }
 
 void QAndroidWindowSurface::setGeometry(const QRect &rect)
 {
+    qDebug() << "QMinimalWindowSurface::setGeometry()";
     setWindowGeometry(mWindowId, rect);
     QWindowSurface::setGeometry(rect);
     if (mImage.size() != rect.size())
@@ -109,21 +113,25 @@ void QAndroidWindowSurface::setGeometry(const QRect &rect)
 
 bool QAndroidWindowSurface::scroll(const QRegion &area, int dx, int dy)
 {
+    qDebug() << "QMinimalWindowSurface::scroll()";
     return QWindowSurface::scroll(area, dx, dy);
 }
 
 void QAndroidWindowSurface::beginPaint(const QRegion &region)
 {
+//    qDebug() << "QMinimalWindowSurface::beginPaint()";
     Q_UNUSED(region);
 }
 
 void QAndroidWindowSurface::endPaint(const QRegion &region)
 {
+//    qDebug() << "QMinimalWindowSurface::endPaint()";
     Q_UNUSED(region);
 }
 
 WId QAndroidWindowSurface::winId() const
 {
+    qDebug() << "QMinimalWindowSurface::winId()";
     return mWindowId;
 }
 

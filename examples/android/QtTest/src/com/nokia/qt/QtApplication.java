@@ -5,7 +5,8 @@ import java.nio.ShortBuffer;
 import java.util.HashMap;
 
 import android.app.Application;
-import android.util.Log;
+import android.content.Context;
+import android.content.Intent;
 import android.view.Surface;
 
 public class QtApplication {
@@ -26,21 +27,21 @@ public class QtApplication {
 		 startQtApp();
 	}
 
-	private static 	Application main=null;
+	private static Context mainContext=null;
 	private static HashMap<Long, QtActivity> windows = new HashMap<Long, QtActivity>();
 	
-	public static void setApplication(Application main) {
-		QtApplication.main = main;
+	public static void setMainContext(Context context){
+		mainContext = context;
 	}
-
-
+	
 	@SuppressWarnings("unused")
 	private long createWindow()
 	{
-		QtActivity window = new QtActivity();
-		main.startActivity(window.getIntent());
-		windows.put(window.getId(), window);
-		return window.getId();
+		Intent window = new Intent(mainContext, QtActivity.class);
+		mainContext.startActivity(window);
+		//main.startActivity(window);
+//		windows.put(window.getId(), window);
+		return 0;//window.getId();
 	}
 	
 	@SuppressWarnings("unused")

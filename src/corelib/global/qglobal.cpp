@@ -84,6 +84,10 @@ _LIT(qt_S60Filter, "Series60v?.*.sis");
 _LIT(qt_S60SystemInstallDir, "z:\\system\\install\\");
 #endif
 
+#ifdef Q_OS_ANDROID
+#include <android/log.h>
+#endif
+
 QT_BEGIN_NAMESPACE
 
 
@@ -2085,7 +2089,30 @@ static void mac_default_handler(const char *msg)
 }
 #endif // Q_CC_MWERKS && Q_OS_MACX
 
+#ifdef Q_OS_ANDROID
+static void android_default_handler(QtMsgType msgType, const char *buf)
+{
+    switch(msgType)
+    {
+    case QtDebugMsg:
+        __android_log_print(ANDROID_LOG_DEBUG,"Qt", buf);
+        break;
+    case QtWarningMsg:
+        __android_log_print(ANDROID_LOG_WARN,"Qt", buf);
+        break;
+    case QtCriticalMsg:
+        __android_log_print(ANDROID_LOG_ERROR,"Qt", buf);
+        break;
+    case QtFatalMsg:
+        __android_log_print(ANDROID_LOG_FATAL,"Qt", buf);
+        break;
+    default:
+        __android_log_print(ANDROID_LOG_VERBOSE,"Qt", buf);
+        break;
+    }
+}
 
+#endif //Q_OS_ANDROID
 
 QString qt_error_string(int errorCode)
 {
@@ -2221,6 +2248,8 @@ void qt_message_output(QtMsgType msgType, const char *buf)
             RDebug::Print(format, hbuffer);
         }
         delete hbuffer;
+#elif defined(Q_OS_ANDROID)
+        android_default_handler(msgType, buf);
 #else
         fprintf(stderr, "%s\n", buf);
         fflush(stderr);

@@ -5,7 +5,7 @@ import android.os.Bundle;
 
 public class QtActivity extends Activity {
 	private QtSurface mSurface=null;
-	
+
 	long getId()
 	{
 		if (mSurface!=null)

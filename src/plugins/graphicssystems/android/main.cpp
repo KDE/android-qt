@@ -55,13 +55,16 @@ public:
 
 QStringList QAndroidGraphicsSystemPlugin::keys() const
 {
+
     QStringList list;
-    list << "android";// << "androidGL";
+    list << "android"<< "androidGL";
+    qDebug()<<"QAndroidGraphicsSystemPlugin::keys"<<list;
     return list;
 }
 
 QGraphicsSystem* QAndroidGraphicsSystemPlugin::create(const QString& system)
 {
+    qDebug()<<"QAndroidGraphicsSystemPlugin::create"<<system;
     if (system.toLower() == "android")
         return new QAndroidGraphicsSystem;
 /*
