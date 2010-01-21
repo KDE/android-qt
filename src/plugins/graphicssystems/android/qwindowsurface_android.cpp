@@ -50,22 +50,22 @@ using namespace QtAndroid;
 QAndroidWindowSurface::QAndroidWindowSurface
         (QAndroidGraphicsSystemScreen *screen, QWidget *window)
     : QWindowSurface(window),
-      mScreen(screen)
+        mWindow(window),
+        mScreen(screen)
 {
-    qDebug()<<"QAndroidWindowSurface::QAndroidWindowSurface()";
-    mWindowId = createWindow();
+
     connect(screen, SIGNAL(screenResized(QSize)),SLOT(screenResized(QSize)));
-    QAndroidInput::androidInput()->registerWindow(mWindowId, window);
+    QAndroidInput::androidInput()->registerWindow(window);
 }
 
 QAndroidWindowSurface::~QAndroidWindowSurface()
 {
-    QAndroidInput::androidInput()->unregisterWindow(mWindowId);
+    QAndroidInput::androidInput()->unregisterWindow(mWindow);
 }
 
 void QAndroidWindowSurface::screenResized(const QSize & size)
 {
-    qDebug()<<"QAndroidWindowSurface::screenResized()";
+    qDebug()<<"QAndroidWindowSurface::screenResized()"<<size;
     QRect widgetRect=window()->geometry();
     if (widgetRect.width()>size.width())
         widgetRect.setWidth(size.width());
@@ -76,7 +76,7 @@ void QAndroidWindowSurface::screenResized(const QSize & size)
 
 void QAndroidWindowSurface::resize(const QSize & size)
 {
-    qDebug()<<"QAndroidWindowSurface::resize()";
+    qDebug()<<"QAndroidWindowSurface::resize()"<<size;
     QRect widgetRect=window()->geometry();
     widgetRect.setSize(size);
     window()->setGeometry(widgetRect);
@@ -85,27 +85,25 @@ void QAndroidWindowSurface::resize(const QSize & size)
 
 QPaintDevice *QAndroidWindowSurface::paintDevice()
 {
-    qDebug() << "QMinimalWindowSurface::paintDevice";
     return &mImage;
 }
 
 void QAndroidWindowSurface::flush(QWidget *widget, const QRegion &region, const QPoint &offset)
 {
-    Q_UNUSED(widget);
+//    Q_UNUSED(widget);
     Q_UNUSED(offset);
 
-    qDebug() << "QMinimalWindowSurface::flush()";
-/*    static int c = 0;
-    QString filename = QString("output%1.png").arg(c++, 4, 10, QLatin1Char('0'));
-    mImage.save(filename);
-    */
-    flushImage(mWindowId, mImage, region.boundingRect());
+//    qDebug() << "QMinimalWindowSurface::flush()";
+//    static int c = 0;
+//    QString filename = QString("/sdcard/output%1.png").arg(c++, 4, 10, QLatin1Char('0'));
+//    mImage.save(filename);
+    flushImage(widget->geometry().topLeft(), mImage, region.boundingRect());
 }
 
 void QAndroidWindowSurface::setGeometry(const QRect &rect)
 {
-    qDebug() << "QMinimalWindowSurface::setGeometry()";
-    setWindowGeometry(mWindowId, rect);
+    qDebug() << "QMinimalWindowSurface::setGeometry()"<<rect;
+//    setWindowGeometry(mWindowId, rect);
     QWindowSurface::setGeometry(rect);
     if (mImage.size() != rect.size())
         mImage = QImage(rect.size(), mScreen->format());
@@ -127,12 +125,6 @@ void QAndroidWindowSurface::endPaint(const QRegion &region)
 {
 //    qDebug() << "QMinimalWindowSurface::endPaint()";
     Q_UNUSED(region);
-}
-
-WId QAndroidWindowSurface::winId() const
-{
-    qDebug() << "QMinimalWindowSurface::winId()";
-    return mWindowId;
 }
 
 QT_END_NAMESPACE

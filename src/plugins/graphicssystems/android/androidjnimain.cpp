@@ -2,8 +2,13 @@
 #include <pthread.h>
 #include <qcoreapplication.h>
 #include <qimage.h>
+#include <qpoint.h>
 #include <qplugin.h>
+#include <qsemaphore.h>
+#include <qmutex.h>
+#include <qdebug.h>
 #include "androidjnimain.h"
+#include "qandroidinput.h"
 
 Q_IMPORT_PLUGIN (QtAndroid)
 
@@ -14,14 +19,16 @@ Q_IMPORT_PLUGIN (QtAndroid)
 
 static JavaVM *m_javaVM = NULL;
 static jobject m_object  = NULL;
-static jmethodID m_createWindowMethodID=0;
-static jmethodID m_destroyWindowMethodID=0;
 static jmethodID m_flushImageMethodID=0;
-static jmethodID m_setWindowGeomatryMethodID=0;
-#ifdef QT_USE_CUSTOM_NDK
+
+static QSemaphore m_quitAppSemaphore;
+static QSemaphore m_windowSemaphore;
+static QMutex m_windowMutex;
+
 static jfieldID  IDsurface;
-static QMap<long, android::Surface* > m_surfaces;
-#endif
+android::Surface* m_surface;
+
+
 namespace QtAndroid
 {
     JavaVM * getJavaVM()
@@ -34,62 +41,58 @@ namespace QtAndroid
         return m_object;
     }
 
-    long createWindow()
-    {
-        JNIEnv* env;
-        m_javaVM->AttachCurrentThread(&env, NULL);
-        long ret=env->CallLongMethod(m_object, m_createWindowMethodID);
-        m_javaVM->DetachCurrentThread();
-        return ret;
-    }
-
-    void destroyWindow(long winId)
-    {
-        JNIEnv* env;
-        m_javaVM->AttachCurrentThread(&env, NULL);
-        env->CallVoidMethod(m_object, m_destroyWindowMethodID, (jlong)winId);
-        m_javaVM->DetachCurrentThread();
-    }
-
-    void flushImage(long winId, const QImage & image, const QRect & destinationRect)
+    void flushImage(const QPoint & pos, const QImage & image, const QRect & destinationRect)
     {
 #ifdef QT_USE_CUSTOM_NDK
-        android::Surface *surface=m_surfaces.value(winId);
-        if (!surface)
+        if (!m_surface)
             return;
+//        qDebug()<<"flushImage"<<m_surface<<pos<<destinationRect<<image.size();
 
         android::Surface::SurfaceInfo info;
-        android::status_t err = surface->lock(&info);
+        android::status_t err = m_surface->lock(&info);
         if(err < 0)
         {
-            __android_log_print(ANDROID_LOG_ERROR,"Qt", "Unable to lock the surface");
+            qWarning()<<"Unable to lock the surface";
             return;
         }
-        if (info.w != (unsigned)image.size().width() || info.h != (unsigned)image.size().height())
+        if ((unsigned)pos.x()>=info.w|| (unsigned)pos.y()>=info.h)
         {
-            surface->unlockAndPost();
-            __android_log_print(ANDROID_LOG_ERROR,"Qt", "Screen surface size != internal buffer size");
+            qWarning()<<"Invalid coordonates";
+            m_surface->unlockAndPost();
             return;
         }
 
+        memcpy(info.bits, (const uchar*)image.bits(), info.s*2*info.h);
+
+/*
         unsigned char * screenBits=(unsigned char*)info.bits;
-        int bpl=image.bytesPerLine();
+        const unsigned char * imageBits=(const uchar*)image.bits();
         int bpp=2;
+        int ibpl=image.bytesPerLine();
+        int sbpl=info.s*bpp;
+        int sxpos=pos.x()+destinationRect.x();
+        int sypos=pos.y()+destinationRect.y();
+        int posx=destinationRect.x();
+        int posy=destinationRect.y();
 
-        for (int y=0;y<destinationRect.height();y++)
-        {
-            memcpy(screenBits+info.s*(y+destinationRect.y())+destinationRect.x()*bpp,
-                   ((const uchar*)image.bits())+bpl*(y+destinationRect.y())+destinationRect.x()*bpp,
-                   destinationRect.x()*bpp);
-        }
-        surface->unlockAndPost();
+        int width=sxpos+destinationRect.width()>info.w?info.w-sxpos:destinationRect.width();
+        int height=sypos+destinationRect.height()>info.h?info.h-sypos:destinationRect.height();
+        qDebug()<<ibpl<<sbpl<<sxpos<<sypos<<width<<height<<sxpos+width<<sypos+height;
+
+        for (int y=0;y<height;y++)
+            memcpy(screenBits+(y+sypos)*sbpl+sxpos*bpp,
+                   imageBits+(y+posy)*ibpl+posx*bpp,
+                   width*bpp);
+*/
+
+        m_surface->unlockAndPost();
 #else
         JNIEnv* env;
         m_javaVM->AttachCurrentThread(&env, NULL);
         QImage imag=image.copy(destinationRect);
         jshortArray img=env->NewShortArray(image.byteCount()/2);
         env->SetShortArrayRegion(img,0,imag.byteCount(), (const jshort*)(const uchar *)imag.bits());
-        env->CallVoidMethod(m_object, m_flushImageMethodID, (jlong)winId,
+        env->CallVoidMethod(m_object, m_flushImageMethodID,
                             (jint)img, (jint)image.bytesPerLine(),
                             (jint)destinationRect.x(), (jint)destinationRect.y(),
                             (jint)destinationRect.right(), (jint)destinationRect.bottom());
@@ -97,16 +100,6 @@ namespace QtAndroid
         m_javaVM->DetachCurrentThread();
 #endif
     }
-
-    void setWindowGeometry(long winId, const QRect &rect)
-    {
-        JNIEnv* env;
-        m_javaVM->AttachCurrentThread(&env, NULL);
-        env->CallVoidMethod(m_object, m_setWindowGeomatryMethodID, (jlong)winId,
-                            (jint)rect.x(), (jint)rect.y(),
-                            (jint)rect.right(), (jint)rect.bottom());
-        m_javaVM->DetachCurrentThread();
-   }
 
 }
 
@@ -128,6 +121,7 @@ static void * startMainMethod(void * /*data*/)
     free(params);
     Q_UNUSED(ret);
     pthread_exit(NULL);
+    m_quitAppSemaphore.release();
     return NULL;
 }
 
@@ -140,23 +134,58 @@ static jboolean startQtApp(JNIEnv* /*env*/, jobject /*object*/)
 static void quitQtApp(JNIEnv* /*env*/, jclass /*clazz*/)
 {
     qApp->quit();
+    m_quitAppSemaphore.acquire();
+    qDebug()<<"Application closed";
 }
 
-#ifdef QT_USE_CUSTOM_NDK
-static void setWindowSurface(JNIEnv *env, jobject /*thiz*/, jlong winId, jobject jSurface)
+static void setSurface(JNIEnv *env, jobject /*thiz*/, jobject jSurface)
 {
-    m_surfaces[winId]=reinterpret_cast<android::Surface*>(env->GetIntField(jSurface, IDsurface));;
+    qDebug()<<"Set surface"<<m_surface;
+    m_surface = reinterpret_cast<android::Surface*>(env->GetIntField(jSurface, IDsurface));;
 }
-#endif
+
+static void actionDown(JNIEnv */*env*/, jobject /*thiz*/, jint x, jint y)
+{
+    if (!QAndroidInput::androidInput())
+        return;
+    qDebug()<<"actionDown"<<x<<y;
+    QAndroidInput::androidInput()->addMouseEvent(new QMouseEvent(QEvent::MouseButtonPress,QPoint(x,y),QPoint(x,y),
+                                                             Qt::MouseButton(Qt::LeftButton),
+                                                             Qt::MouseButtons(Qt::LeftButton),
+                                                             Qt::NoModifier));
+}
+
+static void actionUp(JNIEnv */*env*/, jobject /*thiz*/, jint x, jint y)
+{
+    if (!QAndroidInput::androidInput())
+        return;
+    qDebug()<<"actionUp"<<x<<y;
+    QAndroidInput::androidInput()->addMouseEvent(new QMouseEvent(QEvent::MouseButtonRelease,QPoint(x,y),QPoint(x,y),
+                                                             Qt::MouseButton(Qt::LeftButton),
+                                                             Qt::MouseButtons(Qt::LeftButton),
+                                                             Qt::NoModifier));
+}
+
+static void actionMove(JNIEnv */*env*/, jobject /*thiz*/, jint x, jint y)
+{
+    if (!QAndroidInput::androidInput())
+        return;
+    qDebug()<<"actionMove"<<x<<y;
+    QAndroidInput::androidInput()->addMouseEvent(new QMouseEvent(QEvent::MouseMove,QPoint(x,y),QPoint(x,y),
+                                                             Qt::MouseButton(Qt::LeftButton),
+                                                             Qt::MouseButtons(Qt::LeftButton),
+                                                             Qt::NoModifier));
+}
 
 static const char *classPathName = "com/nokia/qt/QtApplication";
 
 static JNINativeMethod methods[] = {
     {"startQtApp", "()V", (void *)startQtApp},
     {"quitQtApp", "()V", (void *)quitQtApp},
-#ifdef QT_USE_CUSTOM_NDK
-    {"setWindowSurface", "(JLandroid/view/Surface;)V", (void *)setWindowSurface},
-#endif
+    {"setSurface", "(Landroid/view/Surface;)V", (void *)setSurface},
+    {"actionDown", "(II)V", (void *)actionDown},
+    {"actionUp", "(II)V", (void *)actionUp},
+    {"actionMove", "(II)V", (void *)actionMove}
 };
 
 /*
@@ -181,10 +210,7 @@ static int registerNativeMethods(JNIEnv* env, const char* className,
     }
     m_object = clazz;
 
-    m_createWindowMethodID = env->GetMethodID(clazz, "createWindow", "()J");
-    m_destroyWindowMethodID = env->GetMethodID((jclass)m_object, "destroyWindow", "(J)V");
-    //m_flushImageMethodID = env->GetMethodID((jclass)m_object, "flushImage", "(JSIIIII)V");
-    m_setWindowGeomatryMethodID = env->GetMethodID((jclass)m_object, "setWindowGeometry", "(JIIII)V");
+    m_flushImageMethodID = env->GetMethodID((jclass)m_object, "flushImage", "(Ljava/nio/ShortBuffer;IIIII)V");
 
     return JNI_TRUE;
 }

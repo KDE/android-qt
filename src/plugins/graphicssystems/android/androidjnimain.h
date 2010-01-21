@@ -4,14 +4,12 @@
 
 class QImage;
 class QRect;
+class QPoint;
 
 namespace QtAndroid
 {
     JavaVM* getJavaVM();
     jobject getJniObject();
-    long createWindow();
-    void destroyWindow(long winId);
-    void flushImage(long winId, const QImage & image, const QRect & rect);
-    void setWindowGeometry(long winId, const QRect &rect);
+    void flushImage(const QPoint & pos, const QImage & image, const QRect & rect);
 }
 #endif // ANDROID_APP_H

@@ -1,7 +1,7 @@
 #ifndef QDIRECTFBINPUT_H
 #define QDIRECTFBINPUT_H
 
-#include <QHash>
+#include <QVector>
 #include <QMouseEvent>
 #include <QEvent>
 #include <QPair>
@@ -16,11 +16,11 @@ class QAndroidInput : public QObject
     Q_OBJECT
 public:
     static QAndroidInput * androidInput(){return QAndroidInput::m_androidInput;}
-    void registerWindow(long mWindowId, QWidget * window);
-    void unregisterWindow(long mWindowId);
+    void registerWindow(QWidget * window);
+    void unregisterWindow(QWidget * window);
 
-    void addMouseEvent(long mWindowId, const QMouseEvent & event);
-    void addKeyEvent(long mWindowId, const QKeyEvent & event);
+    void addMouseEvent(QMouseEvent * event);
+    void addKeyEvent(QKeyEvent * event);
 
 private:
     QAndroidInput(QObject *parent = 0);
@@ -33,9 +33,9 @@ private:
     static QAndroidInput * m_androidInput;
     QMutex mMutex;
     QTimer mTimer;
-    QHash<long, QWidget*> mWindows;
-    QQueue< QPair<QWidget*, QMouseEvent> > mMouseEvents;
-    QQueue< QPair<QWidget*, QKeyEvent> > mKeyEvents;
+    QVector< QWidget* > mWindows;
+    QQueue< QMouseEvent * > mMouseEvents;
+    QQueue< QKeyEvent * > mKeyEvents;
 };
 
 

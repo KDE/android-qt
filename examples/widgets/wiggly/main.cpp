@@ -51,11 +51,6 @@ int main(int argc, char *argv[])
         if (QString(argv[i]) == "-small-screen")
             smallScreen = true;
     Dialog dialog(0,smallScreen);
-    if (!smallScreen){
-        dialog.show();
-    }
-    else{
-        dialog.showFullScreen();
-    }
+    dialog.showFullScreen();
     return app.exec();
 }

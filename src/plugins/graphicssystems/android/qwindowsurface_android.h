@@ -62,16 +62,15 @@ public:
     bool scroll(const QRegion &area, int dx, int dy);
     void beginPaint(const QRegion &region);
     void endPaint(const QRegion &region);
-    virtual WId winId() const;
 
 public slots:
     void screenResized(const QSize & size);
     void resize(const QSize & size);
 
 private:
+    QWidget * mWindow;
     QAndroidGraphicsSystemScreen *mScreen;
     QImage mImage;
-    WId mWindowId;
 };
 
 QT_END_NAMESPACE

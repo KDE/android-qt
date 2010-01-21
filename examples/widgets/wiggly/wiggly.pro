@@ -3,6 +3,7 @@ HEADERS       = wigglywidget.h \
 SOURCES       = wigglywidget.cpp \
                 dialog.cpp \
                 main.cpp
+CONFIG += dll
 
 # install
 target.path = $$[QT_INSTALL_EXAMPLES]/widgets/wiggly

@@ -12,60 +12,55 @@ QAndroidInput * QAndroidInput::m_androidInput=NULL;
 QAndroidInput::QAndroidInput(QObject *parent)
     : QObject(parent)
 {
-    connect(&mTimer, SIGNAL(timeout()), this, SLOT(consumeEvents()));
+    mTimer.setInterval(0);
     mTimer.setSingleShot(true);
-    mTimer.setInterval(1);
+    connect(&mTimer, SIGNAL(timeout()), this, SLOT(consumeEvents()));
 }
 
-void QAndroidInput::registerWindow(long mWindowId, QWidget * window)
+void QAndroidInput::registerWindow(QWidget * window)
 {
-    mMutex.lock();
-    mWindows[mWindowId]=window;
-    mMutex.unlock();
+    mWindows.push_front(window);
 }
 
-void QAndroidInput::unregisterWindow(long mWindowId)
+void QAndroidInput::unregisterWindow(QWidget * window)
 {
-    mMutex.lock();
-    mWindows.remove(mWindowId);
-    mMutex.unlock();
+    mWindows.remove(mWindows.indexOf(window));
 }
 
-void QAndroidInput::addMouseEvent(long mWindowId, const QMouseEvent & event)
+void QAndroidInput::addMouseEvent(QMouseEvent * event)
 {
-    QMutexLocker locker(&mMutex);
-    Q_UNUSED(locker);
-    QWidget* window=mWindows.value(mWindowId,0);
-    if (!window)
-        return;
-    mMouseEvents.enqueue(QPair<QWidget*, QMouseEvent>(window, event));
-    mTimer.start();
+//    QApplicationPrivate::handleMouseEvent(0, *event);
+    qDebug()<<"Add mouse Event"<<event->pos();
+    mMouseEvents.enqueue(event);
+    if (!mTimer.isActive())
+        mTimer.start();
+    QApplication::processEvents();
 }
 
-void QAndroidInput::addKeyEvent(long mWindowId, const QKeyEvent & event)
+void QAndroidInput::addKeyEvent(QKeyEvent * event)
 {
-    QMutexLocker locker(&mMutex);
-    Q_UNUSED(locker);
-    QWidget* window=mWindows.value(mWindowId,0);
-    if (!window)
-        return;
-    mKeyEvents.enqueue(QPair<QWidget*, QKeyEvent>(window, event));
-    mTimer.start();
+    mKeyEvents.enqueue(event);
+    if (!mTimer.isActive())
+        mTimer.start();
+    QApplication::processEvents();
 }
 
 void QAndroidInput::consumeEvents()
 {
-    QMutexLocker locker(&mMutex);
-    Q_UNUSED(locker);
-    while(!mMouseEvents.isEmpty())
-    {
-        QPair<QWidget*, QMouseEvent> event=mMouseEvents.dequeue();
-        QApplicationPrivate::handleMouseEvent(event.first,event.second);
-    }
-
+    qDebug()<<"consumeEvents";
     while(!mKeyEvents.isEmpty())
     {
-        QPair<QWidget*, QKeyEvent> event=mKeyEvents.dequeue();
-        QApplicationPrivate::handleKeyEvent(event.first,&event.second);
+        QKeyEvent * event=mKeyEvents.dequeue();
+        qDebug()<<"KeyEvents";
+        QApplicationPrivate::handleKeyEvent(0, event);
+        delete event;
+    }
+
+    while(!mMouseEvents.isEmpty())
+    {
+        QMouseEvent * event=mMouseEvents.dequeue();
+        qDebug()<<"MouseEvents!!!";
+        QApplicationPrivate::handleMouseEvent(0, *event);
+        delete event;
     }
 }

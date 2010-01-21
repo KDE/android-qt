@@ -59,7 +59,7 @@ Dialog::Dialog(QWidget *parent, bool smallScreen)
     connect(lineEdit, SIGNAL(textChanged(QString)),
             wigglyWidget, SLOT(setText(QString)));
     if (!smallScreen){
-        lineEdit->setText(tr("Hello world!"));
+        lineEdit->setText(tr("Hi Qt!"));
     }
     else{
         lineEdit->setText(tr("Hello!"));

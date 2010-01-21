@@ -42,6 +42,7 @@
 #include <QtGui>
 #include <QtCore/qstate.h>
 #include <QPluginLoader>
+#include <QPushButton>
 
 class Pixmap : public QObject, public QGraphicsPixmapItem
 {
@@ -131,6 +132,47 @@ protected:
     }
 };
 
+
+class MainWindow : public QWidget {
+    Q_OBJECT
+public:
+    MainWindow(QWidget *parent = 0);
+
+    void paintEvent(QPaintEvent* pe);
+private:
+    int grad;
+};
+
+MainWindow::MainWindow(QWidget *parent) :
+    QWidget(parent)
+{
+    grad=11;
+    QImage img( 500, 500, QImage::Format_RGB16 );
+    render(&img);
+    img.save( "/img.png" );
+    QTimer * timer = new QTimer(this);
+    connect(timer, SIGNAL(timeout()), this, SLOT(repaint()));
+    timer->start(20);
+}
+
+void MainWindow::paintEvent(QPaintEvent* pe)
+{
+    QPainter painter( this );
+    painter.setRenderHints( QPainter::Antialiasing, true );
+    painter.setRenderHints( QPainter::TextAntialiasing, true );
+    painter.setRenderHints( QPainter::SmoothPixmapTransform);
+    painter.setRenderHints( QPainter::HighQualityAntialiasing);
+    painter.setRenderHints( QPainter::NonCosmeticDefaultPen);
+    painter.translate(width()/2, height()/2);
+    painter.rotate( grad++ );
+    if (grad>360)
+        grad=0;
+    painter.setPen(Qt::black);// DejaVu Sans Mono
+    painter.setFont( QFont( "Arial", 4) );
+    painter.drawText( 0, 0, "Qt BMF !!!" );
+
+}
+
 int main(int argc, char **argv)
 {
     qDebug()<<"Static plugins "<<QPluginLoader::staticInstances().count();
@@ -141,7 +183,10 @@ int main(int argc, char **argv)
     Q_INIT_RESOURCE(animatedtiles);
 
     QApplication app(argc, argv);
-    qDebug()<<"app";
+//    MainWindow mw;
+//    mw.showMaximized();
+//    return app.exec();
+//    qDebug()<<"app";
     QPixmap kineticPix(":/images/kinetic.png");
     QPixmap bgPix(":/images/Time-For-Lunch-2.jpg");
 
@@ -253,6 +298,8 @@ int main(int argc, char **argv)
     trans->addAnimation(group);
 
     states.start();
+    QTimer keepAlive;
+    keepAlive.start(50);
 
 #ifdef QT_KEYPAD_NAVIGATION
     QApplication::setNavigationMode(Qt::NavigationModeCursorAuto);

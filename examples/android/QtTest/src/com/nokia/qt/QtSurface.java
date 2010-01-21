@@ -1,15 +1,20 @@
 package com.nokia.qt;
 
 import android.content.Context;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import com.nokia.qt.QtApplication;
 
 public class QtSurface extends SurfaceView implements SurfaceHolder.Callback
 {
+	private int oldx,oldy;
 	public QtSurface(Context context)
 	{
 		super(context);
+//		setId(QtApplication.getNextWindowId());
+		Log.i(QtApplication.QtTAG, "QtSurface constructor !!!");
 		getHolder().addCallback(this);
 		setFocusable(true);
 	}
@@ -20,11 +25,18 @@ public class QtSurface extends SurfaceView implements SurfaceHolder.Callback
 		switch(event.getAction())
 		{
 			case MotionEvent.ACTION_UP:
+				QtApplication.actionUp((int)event.getX(), (int)event.getY());
 				event.getPointerCount();
 				return true;
 			case MotionEvent.ACTION_DOWN:
+				QtApplication.actionDown((int)event.getX(), (int)event.getY());
+				oldx=(int)event.getX();
+				oldy=(int)event.getY();
 				return true;
 			case MotionEvent.ACTION_MOVE:
+				if (oldx==(int)event.getX()&&oldy==(int)event.getY())
+					return true;
+				QtApplication.actionMove((int)event.getX(), (int)event.getY());
 				return true;
 		}
 		// TODO Auto-generated method stub
@@ -39,22 +51,24 @@ public class QtSurface extends SurfaceView implements SurfaceHolder.Callback
 
 	@Override
 	public void surfaceCreated(SurfaceHolder holder) {
+		Log.i(QtApplication.QtTAG,"surfaceCreated"+getId());
 		try{
-			QtApplication.setWindowSurface(getId(), holder.getSurface());
+			QtApplication.setSurface(holder.getSurface());
 		}catch(Exception e){}
 	}
 
 	@Override
 	public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+		Log.i(QtApplication.QtTAG,"surfaceChanged: "+width+","+height);
 		try{
-			QtApplication.setWindowSurface(getId(), holder.getSurface());
+			QtApplication.setSurface(holder.getSurface());
 		}catch(Exception e){}
 	}
 
 	@Override
 	public void surfaceDestroyed(SurfaceHolder holder) {
 		try{
-			QtApplication.setWindowSurface(getId(), null);
+			QtApplication.setSurface(null);
 		}catch(Exception e){}
 	}
 }

@@ -50,7 +50,7 @@ QAndroidGraphicsSystem::QAndroidGraphicsSystem()
 {
     qDebug()<<"QAndroidGraphicsSystem::QAndroidGraphicsSystem()";
     mPrimaryScreen = new QAndroidGraphicsSystemScreen();
-    mPrimaryScreen->mGeometry = QRect(0, 0, 240, 320);
+    mPrimaryScreen->mGeometry = QRect(0, 0, 320, 480);
     mPrimaryScreen->mDepth = 16;
     mPrimaryScreen->mFormat = QImage::Format_RGB16;
     mPrimaryScreen->mPhysicalSize = QSize(40, 54);
@@ -60,12 +60,13 @@ QAndroidGraphicsSystem::QAndroidGraphicsSystem()
 
 QPixmapData *QAndroidGraphicsSystem::createPixmapData(QPixmapData::PixelType type) const
 {
-    qDebug()<<"QAndroidGraphicsSystem::createPixmapData()";
     return new QRasterPixmapData(type);
 }
 
 QWindowSurface *QAndroidGraphicsSystem::createWindowSurface(QWidget *widget) const
 {
+    if (widget->windowType() == Qt::Desktop)
+        return 0;   // Don't create an explicit window surface for the destkop.
     qDebug()<<"QAndroidGraphicsSystem::createWindowSurface()";
     return new QAndroidWindowSurface(mPrimaryScreen, widget);
 }
