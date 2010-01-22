@@ -11,6 +11,8 @@ SOURCES += \
 
 TARGET.EPOCHEAPSIZE = 0x200000 0xA00000
 
+CONFIG+=dll
+
 # install
 target.path = $$[QT_INSTALL_EXAMPLES]/graphicsview/elasticnodes
 sources.files = $$SOURCES $$HEADERS $$RESOURCES $$FORMS elasticnodes.pro 

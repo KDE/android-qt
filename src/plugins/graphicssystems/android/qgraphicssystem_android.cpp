@@ -50,10 +50,10 @@ QAndroidGraphicsSystem::QAndroidGraphicsSystem()
 {
     qDebug()<<"QAndroidGraphicsSystem::QAndroidGraphicsSystem()";
     mPrimaryScreen = new QAndroidGraphicsSystemScreen();
-    mPrimaryScreen->mGeometry = QRect(0, 0, 320, 480);
+    mPrimaryScreen->mGeometry = QRect(0, 0, 320, 455);
     mPrimaryScreen->mDepth = 16;
     mPrimaryScreen->mFormat = QImage::Format_RGB16;
-    mPrimaryScreen->mPhysicalSize = QSize(40, 54);
+    mPrimaryScreen->mPhysicalSize = QSize(100, 150);
     mScreens.append(mPrimaryScreen);
     QAndroidInput::m_androidInput= new QAndroidInput();
 }

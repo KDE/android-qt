@@ -40,15 +40,18 @@ public class QtMain extends Activity
     
     @Override
     public Object onRetainNonConfigurationInstance() {
+    	super.onRetainNonConfigurationInstance();
     	quitApp=false;
     	return true;
     }
     
     @Override
-	protected void onDestroy() {
+    protected void onDestroy()
+    {
+    	super.onDestroy();
     	if (quitApp)
     	{
     		QtApplication.quitQtApp();
     	}
-	}   
+    }   
 }

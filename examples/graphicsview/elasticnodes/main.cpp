@@ -49,6 +49,8 @@ int main(int argc, char **argv)
     qsrand(QTime(0,0,0).secsTo(QTime::currentTime()));
 
     GraphWidget widget;
-    widget.show();
+    widget.showFullScreen();
+    QTimer timer;
+    timer.start(50);
     return app.exec();
 }

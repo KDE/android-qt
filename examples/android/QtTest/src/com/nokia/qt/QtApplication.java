@@ -32,7 +32,8 @@ public class QtApplication {
 
 	static native void startQtApp();
 	public static native void quitQtApp();
-	static native void setSurface(Surface surface);
+	public static native void setSurface(Surface surface);
+	public static native void destroySurface();
 	public static native void actionDown(int x, int y);
 	public static native void actionUp(int x, int y);
 	public static native void actionMove(int x, int y);

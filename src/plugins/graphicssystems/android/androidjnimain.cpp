@@ -7,6 +7,7 @@
 #include <qsemaphore.h>
 #include <qmutex.h>
 #include <qdebug.h>
+#include <qglobal.h>
 #include "androidjnimain.h"
 #include "qandroidinput.h"
 
@@ -41,12 +42,11 @@ namespace QtAndroid
         return m_object;
     }
 
-    void flushImage(const QPoint & pos, const QImage & image, const QRect & destinationRect)
+    void flushImage(const QPoint & pos, const QImage & image, const QRect & /*destinationRect*/)
     {
 #ifdef QT_USE_CUSTOM_NDK
         if (!m_surface)
             return;
-//        qDebug()<<"flushImage"<<m_surface<<pos<<destinationRect<<image.size();
 
         android::Surface::SurfaceInfo info;
         android::status_t err = m_surface->lock(&info);
@@ -62,29 +62,61 @@ namespace QtAndroid
             return;
         }
 
-        memcpy(info.bits, (const uchar*)image.bits(), info.s*2*info.h);
-
-/*
-        unsigned char * screenBits=(unsigned char*)info.bits;
-        const unsigned char * imageBits=(const uchar*)image.bits();
         int bpp=2;
-        int ibpl=image.bytesPerLine();
+
+        if (pos.x()==0 && pos.y()==0 && info.w==image.size().width() && info.h==image.size().height()
+            && info.s*bpp==image.bytesPerLine())
+        {
+            memcpy(info.bits, (const uchar*)image.bits(), info.s*2*info.h);
+            m_surface->unlockAndPost();
+            return;
+        }
+
         int sbpl=info.s*bpp;
-        int sxpos=pos.x()+destinationRect.x();
-        int sypos=pos.y()+destinationRect.y();
-        int posx=destinationRect.x();
-        int posy=destinationRect.y();
+        unsigned sposx=pos.x();
+        unsigned sposy=pos.y();
 
-        int width=sxpos+destinationRect.width()>info.w?info.w-sxpos:destinationRect.width();
-        int height=sypos+destinationRect.height()>info.h?info.h-sypos:destinationRect.height();
-        qDebug()<<ibpl<<sbpl<<sxpos<<sypos<<width<<height<<sxpos+width<<sypos+height;
+        unsigned char * screenBits=(unsigned char*)info.bits;
+        screenBits+=sposy*sbpl;
 
-        for (int y=0;y<height;y++)
-            memcpy(screenBits+(y+sypos)*sbpl+sxpos*bpp,
-                   imageBits+(y+posy)*ibpl+posx*bpp,
+        unsigned ibpl=image.bytesPerLine();
+
+        unsigned char * imageBits=(unsigned char *)((const uchar*)image.bits());
+
+        unsigned width=info.w-sposx<(unsigned)image.size().width()?info.w-sposx:(unsigned)image.size().width();
+        unsigned height=info.h-sposy<(unsigned)image.size().height()?info.h-sposy:(unsigned)image.size().height();
+
+        for (unsigned y=0;y<height;y++)
+            memcpy(screenBits+y*sbpl+sposx*bpp,
+                    imageBits+y*ibpl,
                    width*bpp);
-*/
 
+#if 0
+        int bpp=2;
+        int sbpl=info.s*bpp;
+        unsigned sposx=pos.x()+destinationRect.x();
+        unsigned sposy=pos.y()+destinationRect.y();
+
+        unsigned char * screenBits=(unsigned char*)info.bits;
+        screenBits+=sposy*sbpl;
+
+        unsigned ibpl=image.bytesPerLine();
+        unsigned iposx=destinationRect.x();
+        unsigned iposy=destinationRect.y();
+
+        unsigned char * imageBits=(unsigned char *)((const uchar*)image.bits());
+        imageBits+=iposy*ibpl;
+
+        unsigned width=info.w-sposx<(unsigned)destinationRect.width()?info.w-sposx:destinationRect.width();
+        unsigned height=info.h-sposy<(unsigned)destinationRect.height()?info.h-sposy:destinationRect.height();
+
+//        qDebug()<<ibpl<<sbpl<<sxpos<<sypos<<width<<height<<sxpos+width<<sypos+height;
+
+        for (unsigned y=0;y<height;y++)
+            memcpy(screenBits+y*sbpl+sposx*bpp,
+                    imageBits+y*ibpl+iposx*bpp,
+                   width*bpp);
+#endif
         m_surface->unlockAndPost();
 #else
         JNIEnv* env;
@@ -106,7 +138,7 @@ namespace QtAndroid
 extern "C" int main(int, char **); //use the standard main method to start the application
 static void * startMainMethod(void * /*data*/)
 {
-    char ** params;//[2][50]={"qtApp","-graphicssystem=android"}; // default use raster as default graphics system
+    char ** params;
     params=(char**)malloc(sizeof(char*)*2);
     params[0]=(char*)malloc(20);
     strcpy(params[0],"QtApp");
@@ -121,7 +153,8 @@ static void * startMainMethod(void * /*data*/)
     free(params);
     Q_UNUSED(ret);
     pthread_exit(NULL);
-    m_quitAppSemaphore.release();
+//    m_quitAppSemaphore.release();
+    qDebug()<<"Thread application exited";
     return NULL;
 }
 
@@ -134,21 +167,37 @@ static jboolean startQtApp(JNIEnv* /*env*/, jobject /*object*/)
 static void quitQtApp(JNIEnv* /*env*/, jclass /*clazz*/)
 {
     qApp->quit();
-    m_quitAppSemaphore.acquire();
+//    m_quitAppSemaphore.acquire();
     qDebug()<<"Application closed";
 }
 
 static void setSurface(JNIEnv *env, jobject /*thiz*/, jobject jSurface)
 {
+    m_surface = reinterpret_cast<android::Surface*>(env->GetIntField(jSurface, IDsurface));
     qDebug()<<"Set surface"<<m_surface;
-    m_surface = reinterpret_cast<android::Surface*>(env->GetIntField(jSurface, IDsurface));;
+    if (!m_surface)
+        return;
+
+    android::Surface::SurfaceInfo info;
+    android::status_t err = m_surface->lock(&info);
+    if(err < 0)
+    {
+        qWarning()<<"Unable to lock the surface";
+        return;
+    }
+    qDebug()<<info.w<<info.h;
+    m_surface->unlockAndPost();
+}
+
+static void destroySurface(JNIEnv */*env*/, jobject /*thiz*/)
+{
+    m_surface = 0;
 }
 
 static void actionDown(JNIEnv */*env*/, jobject /*thiz*/, jint x, jint y)
 {
     if (!QAndroidInput::androidInput())
         return;
-    qDebug()<<"actionDown"<<x<<y;
     QAndroidInput::androidInput()->addMouseEvent(new QMouseEvent(QEvent::MouseButtonPress,QPoint(x,y),QPoint(x,y),
                                                              Qt::MouseButton(Qt::LeftButton),
                                                              Qt::MouseButtons(Qt::LeftButton),
@@ -159,7 +208,6 @@ static void actionUp(JNIEnv */*env*/, jobject /*thiz*/, jint x, jint y)
 {
     if (!QAndroidInput::androidInput())
         return;
-    qDebug()<<"actionUp"<<x<<y;
     QAndroidInput::androidInput()->addMouseEvent(new QMouseEvent(QEvent::MouseButtonRelease,QPoint(x,y),QPoint(x,y),
                                                              Qt::MouseButton(Qt::LeftButton),
                                                              Qt::MouseButtons(Qt::LeftButton),
@@ -170,7 +218,6 @@ static void actionMove(JNIEnv */*env*/, jobject /*thiz*/, jint x, jint y)
 {
     if (!QAndroidInput::androidInput())
         return;
-    qDebug()<<"actionMove"<<x<<y;
     QAndroidInput::androidInput()->addMouseEvent(new QMouseEvent(QEvent::MouseMove,QPoint(x,y),QPoint(x,y),
                                                              Qt::MouseButton(Qt::LeftButton),
                                                              Qt::MouseButtons(Qt::LeftButton),
@@ -183,6 +230,7 @@ static JNINativeMethod methods[] = {
     {"startQtApp", "()V", (void *)startQtApp},
     {"quitQtApp", "()V", (void *)quitQtApp},
     {"setSurface", "(Landroid/view/Surface;)V", (void *)setSurface},
+    {"destroySurface", "()V", (void *)destroySurface},
     {"actionDown", "(II)V", (void *)actionDown},
     {"actionUp", "(II)V", (void *)actionUp},
     {"actionMove", "(II)V", (void *)actionMove}

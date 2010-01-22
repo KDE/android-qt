@@ -5,6 +5,8 @@ SOURCES       = main.cpp \
                 sortingbox.cpp
 RESOURCES     = tooltips.qrc
 
+CONFIG +=dll
+
 # install
 target.path = $$[QT_INSTALL_EXAMPLES]/widgets/tooltips
 sources.files = $$SOURCES $$HEADERS $$RESOURCES $$FORMS tooltips.pro images

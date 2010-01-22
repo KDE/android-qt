@@ -28,21 +28,28 @@ public class QtSurface extends SurfaceView implements SurfaceHolder.Callback
 				QtApplication.actionUp((int)event.getX(), (int)event.getY());
 				event.getPointerCount();
 				return true;
+				
 			case MotionEvent.ACTION_DOWN:
 				QtApplication.actionDown((int)event.getX(), (int)event.getY());
 				oldx=(int)event.getX();
 				oldy=(int)event.getY();
 				return true;
+				
 			case MotionEvent.ACTION_MOVE:
-				if (oldx==(int)event.getX()&&oldy==(int)event.getY())
-					return true;
-				QtApplication.actionMove((int)event.getX(), (int)event.getY());
+				int dx = (int)(event.getX() - oldx);
+				int dy = (int)(event.getY() - oldy);
+				if (Math.abs(dx) > 5 || Math.abs(dy) > 5)
+				{
+					QtApplication.actionMove((int)event.getX(), (int)event.getY());
+					oldx = (int)event.getX();
+					oldy = (int)event.getY();
+				}
 				return true;
 		}
 		// TODO Auto-generated method stub
 		return super.onTouchEvent(event);
 	}
-	
+
 	@Override
 	public boolean onTrackballEvent(MotionEvent event) {
 		// TODO Auto-generated method stub
@@ -67,8 +74,9 @@ public class QtSurface extends SurfaceView implements SurfaceHolder.Callback
 
 	@Override
 	public void surfaceDestroyed(SurfaceHolder holder) {
+		Log.i(QtApplication.QtTAG,"surfaceDestroyed ");
 		try{
-			QtApplication.setSurface(null);
+			QtApplication.destroySurface();
 		}catch(Exception e){}
 	}
 }

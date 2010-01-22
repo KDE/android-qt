@@ -54,7 +54,7 @@ GraphWidget::GraphWidget()
 {
     QGraphicsScene *scene = new QGraphicsScene(this);
     scene->setItemIndexMethod(QGraphicsScene::NoIndex);
-    scene->setSceneRect(-200, -200, 400, 400);
+    scene->setSceneRect(-160, -200, 320, 400);
     setScene(scene);
     setCacheMode(CacheBackground);
     setViewportUpdateMode(BoundingRectViewportUpdate);
@@ -104,7 +104,7 @@ GraphWidget::GraphWidget()
     node9->setPos(50, 50);
 
     scale(qreal(0.8), qreal(0.8));
-    setMinimumSize(400, 400);
+    setMinimumSize(320, 400);
     setWindowTitle(tr("Elastic Nodes"));
 }
 
