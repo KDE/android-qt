@@ -1,0 +1,2 @@
+- Mouse hangs on graphics view (see animatedtiles).
+- Qt loop from qt thread is hanging if you don't use a permanent timer.
