@@ -1,2 +1,1 @@
-- Mouse hangs on graphics view (see animatedtiles).
-- Qt loop from qt thread is hanging if you don't use a permanent timer.
+Please see & use http://code.google.com/p/android-lighthouse/issues/list
