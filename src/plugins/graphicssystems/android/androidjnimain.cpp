@@ -194,7 +194,7 @@ static void destroySurface(JNIEnv */*env*/, jobject /*thiz*/)
     m_surface = 0;
 }
 
-static void actionDown(JNIEnv */*env*/, jobject /*thiz*/, jint x, jint y)
+static void mouseDown(JNIEnv */*env*/, jobject /*thiz*/, jint x, jint y)
 {
     if (!QAndroidInput::androidInput())
         return;
@@ -204,7 +204,7 @@ static void actionDown(JNIEnv */*env*/, jobject /*thiz*/, jint x, jint y)
                                                              Qt::NoModifier));
 }
 
-static void actionUp(JNIEnv */*env*/, jobject /*thiz*/, jint x, jint y)
+static void mouseUp(JNIEnv */*env*/, jobject /*thiz*/, jint x, jint y)
 {
     if (!QAndroidInput::androidInput())
         return;
@@ -214,7 +214,7 @@ static void actionUp(JNIEnv */*env*/, jobject /*thiz*/, jint x, jint y)
                                                              Qt::NoModifier));
 }
 
-static void actionMove(JNIEnv */*env*/, jobject /*thiz*/, jint x, jint y)
+static void mouseMove(JNIEnv */*env*/, jobject /*thiz*/, jint x, jint y)
 {
     if (!QAndroidInput::androidInput())
         return;
@@ -224,6 +224,186 @@ static void actionMove(JNIEnv */*env*/, jobject /*thiz*/, jint x, jint y)
                                                              Qt::NoModifier));
 }
 
+static int mapAndroidKey(int key)
+{
+    //0--9        0x00000007 -- 0x00000010
+    if (key>=0x00000007 && key<=0x00000010)
+        return Qt::Key_0+key-0x00000007;
+    //A--Z        0x0000001d -- 0x00000036
+    if (key>=0x0000001d && key<=0x00000036)
+        return Qt::Key_A+key-0x0000001d;
+    
+    switch(key)
+    {
+        case 0x00000039:
+        case 0x0000003a:
+            return Qt::Key_Alt;
+
+        case 0x0000004b:
+            return Qt::Key_Apostrophe;
+
+        case 0x00000004:
+            return Qt::Key_Back;
+            
+        case 0x00000049:
+            return Qt::Key_Backslash;
+            
+        case 0x00000005:
+            return Qt::Key_Call;
+            
+        case 0x0000001b:
+            return Qt::Key_WebCam;
+            
+        case 0x0000001c:
+            return Qt::Key_Clear;
+            
+        case 0x00000037:
+            return Qt::Key_Comma;
+            
+        case 0x00000043:
+            return Qt::Key_Delete;
+            
+        case 0x00000017: // KEYCODE_DPAD_CENTER
+            return Qt::Key_Enter;
+            
+        case 0x00000014: // KEYCODE_DPAD_DOWN
+            return Qt::Key_Down;
+            
+        case 0x00000015: //KEYCODE_DPAD_LEFT
+            return Qt::Key_Left;
+            
+        case 0x00000016: //KEYCODE_DPAD_RIGHT
+            return Qt::Key_Right;
+            
+        case 0x00000013: //KEYCODE_DPAD_UP
+            return Qt::Key_Up;
+            
+        case 0x00000006: //KEYCODE_ENDCALL
+            return Qt::Key_Hangup;
+            
+        case 0x00000042:
+            return Qt::Key_Return;
+            
+        case 0x00000041: //KEYCODE_ENVELOPE
+            return Qt::Key_LaunchMail;
+            
+        case 0x00000046:
+            return Qt::Key_Equal;
+            
+        case 0x00000040:
+            return Qt::Key_Explorer;
+
+        case 0x00000003:
+            return Qt::Key_Home;
+            
+        case 0x00000047:
+            return Qt::Key_BracketLeft;
+            
+        case 0x0000005a: // KEYCODE_MEDIA_FAST_FORWARD
+            return Qt::Key_Forward;
+        
+        case 0x00000057:
+            return Qt::Key_MediaNext;
+            
+        case 0x00000055:
+            return Qt::Key_MediaPlay;
+            
+        case 0x00000058:
+            return Qt::Key_MediaPrevious;
+            
+        case 0x00000059:
+            return Qt::Key_AudioRewind;
+        
+        case 0x00000056:
+            return Qt::Key_MediaStop;
+            
+        case 0x00000052: //KEYCODE_MENU
+            return Qt::Key_TopMenu;
+            
+        case 0x00000045:
+            return Qt::Key_Minus;
+            
+        case 0x0000005b:
+            return Qt::Key_VolumeMute;
+        
+        case 0x0000004e:
+            return Qt::Key_NumLock;
+            
+        case 0x00000038:
+            return Qt::Key_Period;
+            
+        case 0x00000051:
+            return Qt::Key_Plus;
+            
+        case 0x0000001a:
+            return Qt::Key_PowerOff;
+            
+        case 0x00000048:
+            return Qt::Key_BracketRight;
+            
+        case 0x00000054:
+            return Qt::Key_Search;
+            
+        case 0x0000004a:
+            return Qt::Key_Semicolon;
+            
+        case 0x0000003b:
+        case 0x0000003c:
+            return Qt::Key_Shift;
+            
+        case 0x0000004c:
+            return Qt::Key_Slash;
+            
+        case 0x00000001:
+            return Qt::Key_Left;
+            
+        case 0x00000002:
+            return Qt::Key_Right;
+            
+        case 0x0000003e:
+            return Qt::Key_Space;
+
+        case 0x0000003f: // KEYCODE_SYM
+            return Qt::Key_Meta;
+            
+        case 0x0000003d:
+            return Qt::Key_Tab;
+            
+        case 0x00000019:
+            return Qt::Key_VolumeDown;
+            
+        case 0x00000018:
+            return Qt::Key_VolumeUp;
+
+        case 0x00000000: // KEYCODE_UNKNOWN
+        case 0x00000011: // KEYCODE_STAR ?!?!?
+        case 0x00000012: // KEYCODE_POUND ?!?!?
+        case 0x00000053: //KEYCODE_NOTIFICATION ?!?!?
+        case 0x0000004f: // KEYCODE_HEADSETHOOK ?!?!?
+        case 0x00000044: // KEYCODE_GRAVE ?!?!?
+        case 0x00000050: // KEYCODE_FOCUS ?!?!?
+        default:
+            return Qt::Key_Any;
+            
+    }
+}
+
+
+static void keyDown(JNIEnv */*env*/, jobject /*thiz*/, jint key)
+{
+    if (!QAndroidInput::androidInput())
+        return;
+    QAndroidInput::androidInput()->addKeyEvent(new QKeyEvent(QEvent::KeyPress, mapAndroidKey(key), Qt::NoModifier));
+}
+
+static void keyUp(JNIEnv */*env*/, jobject /*thiz*/, jint key)
+{
+    if (!QAndroidInput::androidInput())
+        return;
+    QAndroidInput::androidInput()->addKeyEvent(new QKeyEvent(QEvent::KeyRelease, mapAndroidKey(key), Qt::NoModifier));
+}
+
+
 static const char *classPathName = "com/nokia/qt/QtApplication";
 
 static JNINativeMethod methods[] = {
@@ -231,9 +411,11 @@ static JNINativeMethod methods[] = {
     {"quitQtApp", "()V", (void *)quitQtApp},
     {"setSurface", "(Landroid/view/Surface;)V", (void *)setSurface},
     {"destroySurface", "()V", (void *)destroySurface},
-    {"actionDown", "(II)V", (void *)actionDown},
-    {"actionUp", "(II)V", (void *)actionUp},
-    {"actionMove", "(II)V", (void *)actionMove}
+    {"mouseDown", "(II)V", (void *)mouseDown},
+    {"mouseUp", "(II)V", (void *)mouseUp},
+    {"mouseMove", "(II)V", (void *)mouseMove},
+    {"keyDown", "(I)V", (void *)keyDown},
+    {"keyUp", "(I)V", (void *)keyUp}
 };
 
 /*

@@ -29,8 +29,6 @@ void QAndroidInput::unregisterWindow(QWidget * window)
 
 void QAndroidInput::addMouseEvent(QMouseEvent * event)
 {
-//    QApplicationPrivate::handleMouseEvent(0, *event);
-//    qDebug()<<"Add mouse Event"<<event->pos();
     mMouseEvents.enqueue(event);
     if (!mTimer.isActive())
         mTimer.start();
@@ -51,7 +49,7 @@ void QAndroidInput::consumeEvents()
     while(!mKeyEvents.isEmpty())
     {
         QKeyEvent * event=mKeyEvents.dequeue();
-//        qDebug()<<"KeyEvents";
+        qDebug()<<"KeyEvents";
         QApplicationPrivate::handleKeyEvent(0, event);
         delete event;
     }

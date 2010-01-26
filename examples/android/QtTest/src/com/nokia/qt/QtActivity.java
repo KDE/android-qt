@@ -2,27 +2,66 @@ package com.nokia.qt;
 
 import android.app.Activity;
 import android.os.Bundle;
+import android.util.Log;
+import android.view.KeyEvent;
+import android.view.Window;
 
 public class QtActivity extends Activity {
-	private QtSurface mSurface=null;
+	private boolean quitApp=true;
+	private String appName=""; 
 
-	long getId()
+	public void setApplication(String app)
 	{
-		if (mSurface!=null)
-			return mSurface.getId();
-		return -1;
+		appName=app;
 	}
 	
 	@Override
-	protected void onCreate(Bundle savedInstanceState) {
-		// TODO Auto-generated method stub
+	public boolean onKeyDown(int keyCode, KeyEvent event)
+	{
+		QtApplication.keyDown(keyCode); 
+		return true;
+	}
+	@Override
+	public boolean onKeyUp(int keyCode, KeyEvent event)
+	{
+		QtApplication.keyUp(keyCode); 
+		return super.onKeyUp(keyCode, event);
+	}
+	
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-		mSurface = new QtSurface(this);
-	}
-	
-	@Override
-	protected void onDestroy() {
-		// TODO Auto-generated method stub
-		super.onDestroy();
-	}
+		requestWindowFeature(Window.FEATURE_NO_TITLE);
+		try
+		{
+			if (null==getLastNonConfigurationInstance())
+			{
+				QtApplication.loadApplication(appName);
+			}
+			quitApp=true;
+			setContentView(new QtSurface(this));
+			Log.i(QtApplication.QtTAG,"Application started");
+		}
+		catch (Exception e)
+		{
+			Log.e(QtApplication.QtTAG, "Can't create main activity", e);
+		}
+    }
+    
+    @Override
+    public Object onRetainNonConfigurationInstance() {
+    	super.onRetainNonConfigurationInstance();
+    	quitApp=false;
+    	return true;
+    }
+    
+    @Override
+    protected void onDestroy()
+    {
+    	super.onDestroy();
+    	if (quitApp)
+    	{
+    		QtApplication.quitQtApp();
+    	}
+    }   
 }
