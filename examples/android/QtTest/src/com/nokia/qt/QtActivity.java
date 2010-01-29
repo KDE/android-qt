@@ -18,16 +18,21 @@ public class QtActivity extends Activity {
 	@Override
 	public boolean onKeyDown(int keyCode, KeyEvent event)
 	{
-		QtApplication.keyDown(keyCode); 
+		QtApplication.keyDown(keyCode, event.getUnicodeChar(), event.getMetaState());
+		if (keyCode==KeyEvent.KEYCODE_BACK)
+			return super.onKeyDown(keyCode, event);
 		return true;
 	}
+	
 	@Override
 	public boolean onKeyUp(int keyCode, KeyEvent event)
 	{
-		QtApplication.keyUp(keyCode); 
-		return super.onKeyUp(keyCode, event);
+		QtApplication.keyUp(keyCode, event.getUnicodeChar(), event.getMetaState());
+		if (keyCode==KeyEvent.KEYCODE_BACK)
+			return super.onKeyUp(keyCode, event);
+		return true;
 	}
-	
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);

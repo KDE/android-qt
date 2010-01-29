@@ -15,12 +15,10 @@ SOURCES = main.cpp \
     androidjnimain.cpp \
     qgraphicssystem_android.cpp \
     qwindowsurface_android.cpp \
-    android_egl.cpp \
-    qandroidinput.cpp
+    android_egl.cpp
 
 HEADERS = qgraphicssystem_android.h \
-    qwindowsurface_android.h \
-    qandroidinput.h
+    qwindowsurface_android.h
 
 target.path=$$[QT_INSTALL_LIBS]
 

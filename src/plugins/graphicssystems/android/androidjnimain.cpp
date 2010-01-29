@@ -10,21 +10,20 @@
 #include <qglobal.h>
 #include "androidjnimain.h"
 #include "qandroidinput.h"
-
-Q_IMPORT_PLUGIN (QtAndroid)
+#include <private/qapplication_p.h>
 
 #ifdef QT_USE_CUSTOM_NDK
     #include <ui/Surface.h>
     #include <qmap.h>
 #endif
 
+Q_IMPORT_PLUGIN (QtAndroid)
+
 static JavaVM *m_javaVM = NULL;
 static jobject m_object  = NULL;
 static jmethodID m_flushImageMethodID=0;
 
 static QSemaphore m_quitAppSemaphore;
-static QSemaphore m_windowSemaphore;
-static QMutex m_windowMutex;
 
 static jfieldID  IDsurface;
 android::Surface* m_surface;
@@ -64,8 +63,8 @@ namespace QtAndroid
 
         int bpp=2;
 
-        if (pos.x()==0 && pos.y()==0 && info.w==image.size().width() && info.h==image.size().height()
-            && info.s*bpp==image.bytesPerLine())
+        if (pos.x()==0 && pos.y()==0 && info.w==(unsigned)image.size().width() && info.h==(unsigned)image.size().height()
+            && info.s*bpp==(unsigned)image.bytesPerLine())
         {
             memcpy(info.bits, (const uchar*)image.bits(), info.s*2*info.h);
             m_surface->unlockAndPost();
@@ -198,30 +197,20 @@ static void mouseDown(JNIEnv */*env*/, jobject /*thiz*/, jint x, jint y)
 {
     if (!QAndroidInput::androidInput())
         return;
-    QAndroidInput::androidInput()->addMouseEvent(new QMouseEvent(QEvent::MouseButtonPress,QPoint(x,y),QPoint(x,y),
-                                                             Qt::MouseButton(Qt::LeftButton),
-                                                             Qt::MouseButtons(Qt::LeftButton),
-                                                             Qt::NoModifier));
+    QApplicationPrivate::handleMouseEvent(0, QEvent::MouseButtonRelease,QPoint(x,y),QPoint(x,y),
+                                                             Qt::MouseButtons(Qt::LeftButton));
 }
 
 static void mouseUp(JNIEnv */*env*/, jobject /*thiz*/, jint x, jint y)
 {
-    if (!QAndroidInput::androidInput())
-        return;
-    QAndroidInput::androidInput()->addMouseEvent(new QMouseEvent(QEvent::MouseButtonRelease,QPoint(x,y),QPoint(x,y),
-                                                             Qt::MouseButton(Qt::LeftButton),
-                                                             Qt::MouseButtons(Qt::LeftButton),
-                                                             Qt::NoModifier));
+    QApplicationPrivate::handleMouseEvent(0, QEvent::MouseButtonRelease,QPoint(x,y),QPoint(x,y),
+                                                             Qt::MouseButtons(Qt::NoButton));
 }
 
 static void mouseMove(JNIEnv */*env*/, jobject /*thiz*/, jint x, jint y)
 {
-    if (!QAndroidInput::androidInput())
-        return;
-    QAndroidInput::androidInput()->addMouseEvent(new QMouseEvent(QEvent::MouseMove,QPoint(x,y),QPoint(x,y),
-                                                             Qt::MouseButton(Qt::LeftButton),
-                                                             Qt::MouseButtons(Qt::LeftButton),
-                                                             Qt::NoModifier));
+    QApplicationPrivate::handleMouseEvent(0, QEvent::MouseButtonRelease,QPoint(x,y),QPoint(x,y),
+                                                             Qt::MouseButtons(Qt::LeftButton));
 }
 
 static int mapAndroidKey(int key)
@@ -242,8 +231,9 @@ static int mapAndroidKey(int key)
         case 0x0000004b:
             return Qt::Key_Apostrophe;
 
-        case 0x00000004:
-            return Qt::Key_Back;
+        case 0x00000004: //KEYCODE_BACK
+            qDebug()<<"Close event";
+            return Qt::Key_Close;
             
         case 0x00000049:
             return Qt::Key_Backslash;
@@ -261,7 +251,7 @@ static int mapAndroidKey(int key)
             return Qt::Key_Comma;
             
         case 0x00000043:
-            return Qt::Key_Delete;
+            return Qt::Key_Backspace;
             
         case 0x00000017: // KEYCODE_DPAD_CENTER
             return Qt::Key_Enter;
@@ -378,7 +368,7 @@ static int mapAndroidKey(int key)
         case 0x00000000: // KEYCODE_UNKNOWN
         case 0x00000011: // KEYCODE_STAR ?!?!?
         case 0x00000012: // KEYCODE_POUND ?!?!?
-        case 0x00000053: //KEYCODE_NOTIFICATION ?!?!?
+        case 0x00000053: // KEYCODE_NOTIFICATION ?!?!?
         case 0x0000004f: // KEYCODE_HEADSETHOOK ?!?!?
         case 0x00000044: // KEYCODE_GRAVE ?!?!?
         case 0x00000050: // KEYCODE_FOCUS ?!?!?
@@ -389,18 +379,39 @@ static int mapAndroidKey(int key)
 }
 
 
-static void keyDown(JNIEnv */*env*/, jobject /*thiz*/, jint key)
+static void keyDown(JNIEnv */*env*/, jobject /*thiz*/, jint key, jint unicode, jint modifier)
 {
     if (!QAndroidInput::androidInput())
         return;
-    QAndroidInput::androidInput()->addKeyEvent(new QKeyEvent(QEvent::KeyPress, mapAndroidKey(key), Qt::NoModifier));
+
+    Qt::KeyboardModifiers modifiers;
+    if (modifier & 1)
+        modifiers|=Qt::AltModifier;
+
+    if (modifier & 2)
+        modifiers|=Qt::ShiftModifier;
+
+    if (modifier & 4)
+        modifiers|=Qt::MetaModifier;
+    QApplicationPrivate::handleKeyEvent(0, QEvent::KeyPress, mapAndroidKey(key), modifiers, QChar(unicode),true);
 }
 
-static void keyUp(JNIEnv */*env*/, jobject /*thiz*/, jint key)
+static void keyUp(JNIEnv */*env*/, jobject /*thiz*/, jint key, jint unicode, jint modifier)
 {
     if (!QAndroidInput::androidInput())
         return;
-    QAndroidInput::androidInput()->addKeyEvent(new QKeyEvent(QEvent::KeyRelease, mapAndroidKey(key), Qt::NoModifier));
+
+    Qt::KeyboardModifiers modifiers;
+    if (modifier & 1)
+        modifiers|=Qt::AltModifier;
+
+    if (modifier & 2)
+        modifiers|=Qt::ShiftModifier;
+
+    if (modifier & 4)
+        modifiers|=Qt::MetaModifier;
+
+    QApplicationPrivate::handleKeyEvent(0, QEvent::KeyRelease, mapAndroidKey(key), modifiers, QChar(unicode),true);
 }
 
 
@@ -414,8 +425,8 @@ static JNINativeMethod methods[] = {
     {"mouseDown", "(II)V", (void *)mouseDown},
     {"mouseUp", "(II)V", (void *)mouseUp},
     {"mouseMove", "(II)V", (void *)mouseMove},
-    {"keyDown", "(I)V", (void *)keyDown},
-    {"keyUp", "(I)V", (void *)keyUp}
+    {"keyDown", "(III)V", (void *)keyDown},
+    {"keyUp", "(III)V", (void *)keyUp}
 };
 
 /*

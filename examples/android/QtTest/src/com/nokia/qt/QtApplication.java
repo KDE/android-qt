@@ -36,6 +36,6 @@ public class QtApplication {
 	public static native void mouseDown(int x, int y);
 	public static native void mouseUp(int x, int y);
 	public static native void mouseMove(int x, int y);
-	public static native void keyDown(int key);
-	public static native void keyUp(int key);
+	public static native void keyDown(int key, int unicode, int modifier);
+	public static native void keyUp(int key, int unicode, int modifier);
 }

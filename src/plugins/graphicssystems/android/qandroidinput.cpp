@@ -29,36 +29,37 @@ void QAndroidInput::unregisterWindow(QWidget * window)
 
 void QAndroidInput::addMouseEvent(QMouseEvent * event)
 {
+    QMutexLocker lock(&mMutex);
+    Q_UNUSED(lock);
     mMouseEvents.enqueue(event);
     if (!mTimer.isActive())
         mTimer.start();
-    QApplication::processEvents();
 }
 
 void QAndroidInput::addKeyEvent(QKeyEvent * event)
 {
+    QMutexLocker lock(&mMutex);
+    Q_UNUSED(lock);
     mKeyEvents.enqueue(event);
     if (!mTimer.isActive())
         mTimer.start();
-    QApplication::processEvents();
 }
 
 void QAndroidInput::consumeEvents()
 {
-//    qDebug()<<"consumeEvents";
+    QMutexLocker lock(&mMutex);
+    Q_UNUSED(lock);
     while(!mKeyEvents.isEmpty())
     {
         QKeyEvent * event=mKeyEvents.dequeue();
-        qDebug()<<"KeyEvents";
-        QApplicationPrivate::handleKeyEvent(0, event);
+        //QApplicationPrivate::handleKeyEvent(0, event);
         delete event;
     }
 
     while(!mMouseEvents.isEmpty())
     {
         QMouseEvent * event=mMouseEvents.dequeue();
-//        qDebug()<<"MouseEvents!!!";
-        QApplicationPrivate::handleMouseEvent(0, *event);
+        //QApplicationPrivate::handleMouseEvent(0, *event);
         delete event;
     }
 }
