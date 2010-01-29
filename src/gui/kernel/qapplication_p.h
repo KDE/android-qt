@@ -65,8 +65,10 @@
 #include "QtCore/qhash.h"
 #include "QtCore/qpointer.h"
 #include "private/qcoreapplication_p.h"
-#include "private/qshortcutmap_p.h"
+#include "QtGui/private/qshortcutmap_p.h"
 #include <private/qthread_p.h>
+#include "QtCore/qpoint.h"
+#include <QTime>
 #ifdef Q_WS_QWS
 #include "QtGui/qscreen_qws.h"
 #include <private/qgraphicssystem_qws_p.h>
@@ -564,11 +566,86 @@ public:
 #endif
 
 #ifdef Q_WS_LITE
-    static void handleMouseEvent(QWidget *tlw, const QMouseEvent &ev);
-    static void handleKeyEvent(QWidget *tlw, QKeyEvent *e);
+    static QTime time;
+
+    class UserEvent {
+    public:
+        UserEvent(QWidget *w, QEvent::Type t, ulong time) { tlw = w; type = t; timestamp = time; }
+        QWidget * tlw;
+        QEvent::Type type;
+        unsigned long timestamp;
+    };
+
+    class MouseEvent : public UserEvent {
+    public:
+        MouseEvent(QWidget *w, ulong time, const QPoint & local, const QPoint & global, Qt::MouseButtons b)
+            : UserEvent(w, QEvent::MouseMove, time){ localPos = local; globalPos = global; buttons = b; }
+        QPoint localPos;
+        QPoint globalPos;
+        Qt::MouseButtons buttons;
+    };
+
+    class WheelEvent : public UserEvent {
+    public:
+        WheelEvent(QWidget *w, ulong time, const QPoint & local, const QPoint & global, int d, Qt::Orientation o)
+            : UserEvent(w, QEvent::Wheel, time) { localPos = local; globalPos = global; delta = d; orient = o; }
+        int delta;
+        QPoint localPos;
+        QPoint globalPos;
+        Qt::Orientation orient;
+    };
+
+    class KeyEvent : public UserEvent {
+    public:
+        KeyEvent(QWidget *w, QEvent::Type t, ulong time, int k, Qt::KeyboardModifiers mods, const QString & text = QString(), bool autorep = false, ushort count = 1)
+            :UserEvent(w, t, time){ key = k; unicode = text; repeat = autorep; repeatCount = count; modifiers = mods; }
+        int key;
+        QString unicode;
+        bool repeat;
+        ushort repeatCount;
+        Qt::KeyboardModifiers modifiers;
+    };
+
+    static void handleMouseEvent(QWidget *w, const QPoint & local, const QPoint & global, Qt::MouseButtons b) {
+        handleMouseEvent(w, time.elapsed(), local, global, b);
+    }
+
+    static void handleMouseEvent(QWidget *w, ulong timestamp, const QPoint & local, const QPoint & global, Qt::MouseButtons b) {
+        MouseEvent * e = new MouseEvent(w, timestamp, local, global, b);
+        queueUserEvent(e);
+    }
+
+    static void handleKeyEvent(QWidget *w, QEvent::Type t, int k, Qt::KeyboardModifiers mods, const QString & text = QString(), bool autorep = false, ushort count = 1) {
+        handleKeyEvent(w, t, time.elapsed(), k, mods, text, autorep, count);
+    }
+
+    static void handleKeyEvent(QWidget *w, QEvent::Type t, ulong timestamp, int k, Qt::KeyboardModifiers mods, const QString & text = QString(), bool autorep = false, ushort count = 1) {
+        KeyEvent * e = new KeyEvent(w, t, timestamp, k, mods, text, autorep, count);
+        queueUserEvent(e);
+    }
+
+    static void handleWheelEvent(QWidget *w, const QPoint & local, const QPoint & global, int d, Qt::Orientation o) {
+        handleWheelEvent(w, time.elapsed(), local, global, d, o);
+    }
+
+    static void handleWheelEvent(QWidget *w, ulong timestamp, const QPoint & local, const QPoint & global, int d, Qt::Orientation o) {
+        WheelEvent *e = new WheelEvent(w, timestamp, local, global, d, o);
+        queueUserEvent(e);
+    }
+
+    static void queueUserEvent(UserEvent *ev) { userEventQueue.append(ev); }
+    static void processUserEvent(UserEvent *e);
+    static int userEventsQueued() { return userEventQueue.count(); }
+    static UserEvent * getUserEvent() { return userEventQueue.takeFirst(); }
+
+    // could be private, should only be used by deliverUserEvents()
+    static void processMouseEvent(MouseEvent *e);
+    static void processKeyEvent(KeyEvent *e);
+    static void processWheelEvent(WheelEvent *e);
+
+    // delivered directly by the plugin via spontaneous events
     static void handleGeometryChange(QWidget *tlw, const QRect &newRect);
     static void handleCloseEvent(QWidget *tlw);
-    static void handleWheelEvent(QWidget *tlw, QWheelEvent &e);
     static void handleEnterEvent(QWidget *tlw);
     static void handleLeaveEvent(QWidget *tlw);
 #endif
@@ -585,6 +662,10 @@ private:
 
 #ifdef Q_OS_SYMBIAN
     static QHash<TInt, TUint> scanCodeCache;
+#endif
+
+#ifdef Q_WS_LITE
+    static QList<UserEvent *> userEventQueue;
 #endif
 
     static QApplicationPrivate *self;
