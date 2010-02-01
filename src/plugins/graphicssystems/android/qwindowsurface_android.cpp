@@ -41,7 +41,6 @@
 #include "androidjnimain.h"
 #include "qwindowsurface_android.h"
 #include "qgraphicssystem_android.h"
-#include "qandroidinput.h"
 #include <QtCore/qdebug.h>
 
 QT_BEGIN_NAMESPACE
@@ -55,12 +54,10 @@ QAndroidWindowSurface::QAndroidWindowSurface
 {
 
     connect(screen, SIGNAL(screenResized(QSize)),SLOT(screenResized(QSize)));
-    QAndroidInput::androidInput()->registerWindow(window);
 }
 
 QAndroidWindowSurface::~QAndroidWindowSurface()
 {
-    QAndroidInput::androidInput()->unregisterWindow(mWindow);
 }
 
 void QAndroidWindowSurface::screenResized(const QSize & size)

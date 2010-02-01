@@ -9,7 +9,6 @@
 #include <qdebug.h>
 #include <qglobal.h>
 #include "androidjnimain.h"
-#include "qandroidinput.h"
 #include <private/qapplication_p.h>
 
 #ifdef QT_USE_CUSTOM_NDK
@@ -41,7 +40,7 @@ namespace QtAndroid
         return m_object;
     }
 
-    void flushImage(const QPoint & pos, const QImage & image, const QRect & /*destinationRect*/)
+    void flushImage(const QPoint & pos, const QImage & image, const QRect & destinationRect)
     {
 #ifdef QT_USE_CUSTOM_NDK
         if (!m_surface)
@@ -61,6 +60,8 @@ namespace QtAndroid
             return;
         }
 
+#if 1
+        Q_UNUSED(destinationRect)
         int bpp=2;
 
         if (pos.x()==0 && pos.y()==0 && info.w==(unsigned)image.size().width() && info.h==(unsigned)image.size().height()
@@ -70,7 +71,6 @@ namespace QtAndroid
             m_surface->unlockAndPost();
             return;
         }
-
         int sbpl=info.s*bpp;
         unsigned sposx=pos.x();
         unsigned sposy=pos.y();
@@ -89,8 +89,7 @@ namespace QtAndroid
             memcpy(screenBits+y*sbpl+sposx*bpp,
                     imageBits+y*ibpl,
                    width*bpp);
-
-#if 0
+#else
         int bpp=2;
         int sbpl=info.s*bpp;
         unsigned sposx=pos.x()+destinationRect.x();
@@ -151,9 +150,7 @@ static void * startMainMethod(void * /*data*/)
     free(params[0]);
     free(params);
     Q_UNUSED(ret);
-    pthread_exit(NULL);
-//    m_quitAppSemaphore.release();
-    qDebug()<<"Thread application exited";
+    m_quitAppSemaphore.release();
     return NULL;
 }
 
@@ -165,9 +162,8 @@ static jboolean startQtApp(JNIEnv* /*env*/, jobject /*object*/)
 
 static void quitQtApp(JNIEnv* /*env*/, jclass /*clazz*/)
 {
-    qApp->quit();
-//    m_quitAppSemaphore.acquire();
-    qDebug()<<"Application closed";
+    QApplication::postEvent(qApp, new QEvent(QEvent::Quit));
+    m_quitAppSemaphore.acquire();
 }
 
 static void setSurface(JNIEnv *env, jobject /*thiz*/, jobject jSurface)
@@ -195,8 +191,6 @@ static void destroySurface(JNIEnv */*env*/, jobject /*thiz*/)
 
 static void mouseDown(JNIEnv */*env*/, jobject /*thiz*/, jint x, jint y)
 {
-    if (!QAndroidInput::androidInput())
-        return;
     QApplicationPrivate::handleMouseEvent(0, QEvent::MouseButtonRelease,QPoint(x,y),QPoint(x,y),
                                                              Qt::MouseButtons(Qt::LeftButton));
 }
@@ -232,7 +226,6 @@ static int mapAndroidKey(int key)
             return Qt::Key_Apostrophe;
 
         case 0x00000004: //KEYCODE_BACK
-            qDebug()<<"Close event";
             return Qt::Key_Close;
             
         case 0x00000049:
@@ -381,9 +374,6 @@ static int mapAndroidKey(int key)
 
 static void keyDown(JNIEnv */*env*/, jobject /*thiz*/, jint key, jint unicode, jint modifier)
 {
-    if (!QAndroidInput::androidInput())
-        return;
-
     Qt::KeyboardModifiers modifiers;
     if (modifier & 1)
         modifiers|=Qt::AltModifier;
@@ -398,9 +388,6 @@ static void keyDown(JNIEnv */*env*/, jobject /*thiz*/, jint key, jint unicode, j
 
 static void keyUp(JNIEnv */*env*/, jobject /*thiz*/, jint key, jint unicode, jint modifier)
 {
-    if (!QAndroidInput::androidInput())
-        return;
-
     Qt::KeyboardModifiers modifiers;
     if (modifier & 1)
         modifiers|=Qt::AltModifier;

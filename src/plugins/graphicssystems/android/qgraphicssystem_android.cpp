@@ -41,7 +41,6 @@
 
 #include "qgraphicssystem_android.h"
 #include "qwindowsurface_android.h"
-#include "qandroidinput.h"
 #include <QtGui/private/qpixmap_raster_p.h>
 
 QT_BEGIN_NAMESPACE
@@ -55,7 +54,6 @@ QAndroidGraphicsSystem::QAndroidGraphicsSystem()
     mPrimaryScreen->mFormat = QImage::Format_RGB16;
     mPrimaryScreen->mPhysicalSize = QSize(100, 150);
     mScreens.append(mPrimaryScreen);
-    QAndroidInput::m_androidInput= new QAndroidInput();
 }
 
 QPixmapData *QAndroidGraphicsSystem::createPixmapData(QPixmapData::PixelType type) const
