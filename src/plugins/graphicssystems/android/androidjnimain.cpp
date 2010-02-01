@@ -193,18 +193,21 @@ static void mouseDown(JNIEnv */*env*/, jobject /*thiz*/, jint x, jint y)
 {
     QApplicationPrivate::handleMouseEvent(0, QEvent::MouseButtonRelease,QPoint(x,y),QPoint(x,y),
                                                              Qt::MouseButtons(Qt::LeftButton));
+    QApplication::postEvent(qApp, new QEvent(QEvent::None));
 }
 
 static void mouseUp(JNIEnv */*env*/, jobject /*thiz*/, jint x, jint y)
 {
     QApplicationPrivate::handleMouseEvent(0, QEvent::MouseButtonRelease,QPoint(x,y),QPoint(x,y),
                                                              Qt::MouseButtons(Qt::NoButton));
+    QApplication::postEvent(qApp, new QEvent(QEvent::None));
 }
 
 static void mouseMove(JNIEnv */*env*/, jobject /*thiz*/, jint x, jint y)
 {
     QApplicationPrivate::handleMouseEvent(0, QEvent::MouseButtonRelease,QPoint(x,y),QPoint(x,y),
                                                              Qt::MouseButtons(Qt::LeftButton));
+    QApplication::postEvent(qApp, new QEvent(QEvent::None));
 }
 
 static int mapAndroidKey(int key)
@@ -384,6 +387,7 @@ static void keyDown(JNIEnv */*env*/, jobject /*thiz*/, jint key, jint unicode, j
     if (modifier & 4)
         modifiers|=Qt::MetaModifier;
     QApplicationPrivate::handleKeyEvent(0, QEvent::KeyPress, mapAndroidKey(key), modifiers, QChar(unicode),true);
+    QApplication::postEvent(qApp, new QEvent(QEvent::None));
 }
 
 static void keyUp(JNIEnv */*env*/, jobject /*thiz*/, jint key, jint unicode, jint modifier)
@@ -399,6 +403,7 @@ static void keyUp(JNIEnv */*env*/, jobject /*thiz*/, jint key, jint unicode, jin
         modifiers|=Qt::MetaModifier;
 
     QApplicationPrivate::handleKeyEvent(0, QEvent::KeyRelease, mapAndroidKey(key), modifiers, QChar(unicode),true);
+    QApplication::postEvent(qApp, new QEvent(QEvent::None));
 }
 
 

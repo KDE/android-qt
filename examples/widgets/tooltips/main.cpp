@@ -51,7 +51,5 @@ int main(int argc, char *argv[])
     qsrand(QTime(0,0,0).secsTo(QTime::currentTime()));
     SortingBox sortingBox;
     sortingBox.showFullScreen();
-    QTimer timer;
-    timer.start(50);
     return app.exec();
 }
