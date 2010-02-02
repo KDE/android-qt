@@ -188,7 +188,6 @@ void QDirectFbWindowSurface::setVisible(bool visible)
 Qt::WindowFlags QDirectFbWindowSurface::setWindowFlags(Qt::WindowFlags flags)
 {
     switch (flags & Qt::WindowType_Mask) {
-    case Qt::Popup:
     case Qt::ToolTip: {
         DFBWindowOptions options;
         m_dfbWindow->GetOptions(m_dfbWindow,&options);
@@ -212,5 +211,13 @@ void QDirectFbWindowSurface::lower()
 {
     m_dfbWindow->LowerToBottom(m_dfbWindow);
 }
+
+WId QDirectFbWindowSurface::winId() const
+{
+    DFBWindowID id;
+    m_dfbWindow->GetID(m_dfbWindow, &id);
+    return WId(id);
+}
+
 
 QT_END_NAMESPACE

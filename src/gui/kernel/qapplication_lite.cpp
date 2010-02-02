@@ -555,20 +555,26 @@ void QApplicationPrivate::handleLeaveEvent(QWidget *tlw)
 void QApplicationPrivate::processMouseEvent(MouseEvent *e)
 {
     // qDebug() << "handleMouseEvent" << tlw << ev.pos() << ev.globalPos() << hex << ev.buttons();
-    static QPointer<QWidget> implicit_mouse_grabber;
+    static QWeakPointer<QWidget> implicit_mouse_grabber;
 
     QEvent::Type type;
     // move first
     Qt::MouseButtons stateChange = e->buttons ^ buttons;
     if (e->globalPos != QPoint(qt_last_x, qt_last_y) && (stateChange != Qt::NoButton)) {
-        MouseEvent * newMouseEvent = new MouseEvent(e->tlw, e->timestamp, e->localPos, e->globalPos, e->buttons);
+        MouseEvent * newMouseEvent = new MouseEvent(e->id, e->timestamp, e->localPos, e->globalPos, e->buttons);
         userEventQueue.prepend(newMouseEvent); // just in case the move triggers a new event loop
         stateChange = Qt::NoButton;
     }
 
+    QWidget * tlw;
+    if (e->id)
+        tlw = QWidget::find(e->id);
+    else
+        tlw = 0;
+
     QPoint localPoint = e->localPos;
     QPoint globalPoint = e->globalPos;
-    QWidget *mouseWindow = e->tlw;
+    QWidget *mouseWindow = tlw;
 
     Qt::MouseButton button = Qt::NoButton;
 
@@ -616,14 +622,14 @@ void QApplicationPrivate::processMouseEvent(MouseEvent *e)
         //popup mouse handling is magical...
         mouseWindow = qApp->activePopupWidget();
 
-        implicit_mouse_grabber = 0;
+        implicit_mouse_grabber.clear();
         //### how should popup mode and implicit mouse grab interact?
 
-    } else if (e->tlw && app_do_modal && !qt_try_modal(e->tlw, e->type) ) {
+    } else if (tlw && app_do_modal && !qt_try_modal(tlw, e->type) ) {
         //even if we're blocked by modality, we should deliver the mouse release event..
         //### this code is not completely correct: multiple buttons can be pressed simultaneously
         if (!(implicit_mouse_grabber && buttons == Qt::NoButton)) {
-            qDebug() << "modal blocked mouse event to" << e->tlw;
+            qDebug() << "modal blocked mouse event to" << tlw;
             return;
         }
     }
@@ -636,7 +642,7 @@ void QApplicationPrivate::processMouseEvent(MouseEvent *e)
     if (!mouseWindow && !implicit_mouse_grabber)
         mouseWindow = QApplication::desktop();
 
-    if (mouseWindow && mouseWindow != e->tlw) {
+    if (mouseWindow && mouseWindow != tlw) {
         //we did not get a sensible localPoint from the window system, so let's calculate it
         localPoint = mouseWindow->mapFromGlobal(globalPoint);
     }
@@ -657,9 +663,9 @@ void QApplicationPrivate::processMouseEvent(MouseEvent *e)
         Q_ASSERT(mouseWindow);
         mouseWindow->activateWindow(); //focus
     } else if (implicit_mouse_grabber) {
-        mouseWidget = implicit_mouse_grabber;
+        mouseWidget = implicit_mouse_grabber.data();
         mouseWindow = mouseWidget->window();
-        if (mouseWindow != e->tlw)
+        if (mouseWindow != tlw)
             localPoint = mouseWindow->mapFromGlobal(globalPoint);
     }
 
@@ -670,7 +676,7 @@ void QApplicationPrivate::processMouseEvent(MouseEvent *e)
 
     if (buttons == Qt::NoButton) {
         //qDebug() << "resetting mouse grabber";
-        implicit_mouse_grabber = 0;
+        implicit_mouse_grabber.clear();
     }
 
     if (mouseWidget != qt_last_mouse_receiver) {
@@ -705,7 +711,11 @@ void QApplicationPrivate::processWheelEvent(WheelEvent *e)
     qt_last_x = globalPoint.x();
     qt_last_y = globalPoint.y();
 
-     QWidget *mouseWindow = e->tlw;
+     QWidget *mouseWindow;
+     if (e->id)
+         mouseWindow = QWidget::find(e->id);
+     else
+         mouseWindow = 0;
 
      // find the tlw if we didn't get it from the plugin
      if (!mouseWindow) {
@@ -746,8 +756,9 @@ void QApplicationPrivate::processKeyEvent(KeyEvent *e)
     }
     if (!focusW)
         focusW = QApplication::focusWidget();
-    if (!focusW)
-        focusW = e->tlw;
+    if (!focusW && e->id) {
+        focusW = QWidget::find(e->id);
+    }
     if (!focusW)
         focusW = QApplication::activeWindow();
 
