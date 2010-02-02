@@ -31,6 +31,8 @@ public class QtApplication {
 
 	static native void startQtApp();
 	public static native void quitQtApp();
+	public static native void setDisplayMetrics(int widthPixels, int heightPixels,
+			float xdpi, float ydpi);
 	public static native void setSurface(Surface surface);
 	public static native void destroySurface();
 	public static native void mouseDown(int x, int y);

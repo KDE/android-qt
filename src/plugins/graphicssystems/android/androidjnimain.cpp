@@ -9,6 +9,7 @@
 #include <qdebug.h>
 #include <qglobal.h>
 #include "androidjnimain.h"
+#include "qgraphicssystem_android.h"
 #include <private/qapplication_p.h>
 
 #ifdef QT_USE_CUSTOM_NDK
@@ -24,9 +25,12 @@ static jmethodID m_flushImageMethodID=0;
 
 static QSemaphore m_quitAppSemaphore;
 
-static jfieldID  IDsurface;
-android::Surface* m_surface;
+#ifdef QT_USE_CUSTOM_NDK
+    static jfieldID  IDsurface;
+    static android::Surface* m_surface;
+#endif
 
+static QAndroidGraphicsSystem * mAndroidGraphicsSystem=0;
 
 namespace QtAndroid
 {
@@ -131,6 +135,10 @@ namespace QtAndroid
 #endif
     }
 
+    void setAndroidGraphicsSystem(QAndroidGraphicsSystem * androidGraphicsSystem)
+    {
+        mAndroidGraphicsSystem=androidGraphicsSystem;
+    }
 }
 
 extern "C" int main(int, char **); //use the standard main method to start the application
@@ -166,10 +174,26 @@ static void quitQtApp(JNIEnv* /*env*/, jclass /*clazz*/)
     m_quitAppSemaphore.acquire();
 }
 
+static void setDisplayMetrics(JNIEnv* /*env*/, jclass /*clazz*/,
+                              jint widthPixels, jint heightPixels,
+                              jfloat xdpi, jfloat ydpi)
+{
+    if (!mAndroidGraphicsSystem)
+    {
+        qWarning()<<"AndroidGraphicsSystem isn't created, can't set display metrics";
+        return;
+    }
+    QAndroidGraphicsSystemScreen * androidGraphicsSystemScreen=mAndroidGraphicsSystem->getPrimaryScreen();
+    androidGraphicsSystemScreen->mGeometry.setWidth(widthPixels);
+    androidGraphicsSystemScreen->mGeometry.setHeight(heightPixels);
+    const qreal inch = 25.4;
+    androidGraphicsSystemScreen->mPhysicalSize.setWidth(qRound(widthPixels * inch / xdpi));
+    androidGraphicsSystemScreen->mPhysicalSize.setHeight(qRound(heightPixels * inch / ydpi));
+}
+
 static void setSurface(JNIEnv *env, jobject /*thiz*/, jobject jSurface)
 {
     m_surface = reinterpret_cast<android::Surface*>(env->GetIntField(jSurface, IDsurface));
-    qDebug()<<"Set surface"<<m_surface;
     if (!m_surface)
         return;
 
@@ -180,7 +204,7 @@ static void setSurface(JNIEnv *env, jobject /*thiz*/, jobject jSurface)
         qWarning()<<"Unable to lock the surface";
         return;
     }
-    qDebug()<<info.w<<info.h;
+    mAndroidGraphicsSystem->setDesktopSize(info.w,info.h);
     m_surface->unlockAndPost();
 }
 
@@ -412,6 +436,7 @@ static const char *classPathName = "com/nokia/qt/QtApplication";
 static JNINativeMethod methods[] = {
     {"startQtApp", "()V", (void *)startQtApp},
     {"quitQtApp", "()V", (void *)quitQtApp},
+    {"setDisplayMetrics", "(IIFF)V", (void *)setDisplayMetrics},
     {"setSurface", "(Landroid/view/Surface;)V", (void *)setSurface},
     {"destroySurface", "()V", (void *)destroySurface},
     {"mouseDown", "(II)V", (void *)mouseDown},

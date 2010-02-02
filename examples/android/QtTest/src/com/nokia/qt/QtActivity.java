@@ -2,6 +2,7 @@ package com.nokia.qt;
 
 import android.app.Activity;
 import android.os.Bundle;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Window;
@@ -14,6 +15,7 @@ public class QtActivity extends Activity {
 	{
 		appName=app;
 	}
+	
 	
 	@Override
 	public boolean onKeyDown(int keyCode, KeyEvent event)
@@ -43,6 +45,9 @@ public class QtActivity extends Activity {
 			{
 				QtApplication.loadApplication(appName);
 			}
+			DisplayMetrics metrics = new DisplayMetrics();
+			getWindowManager().getDefaultDisplay().getMetrics(metrics);
+			QtApplication.setDisplayMetrics(metrics.widthPixels, metrics.heightPixels, metrics.xdpi, metrics.ydpi);
 			quitApp=true;
 			setContentView(new QtSurface(this));
 			Log.i(QtApplication.QtTAG,"Application started");

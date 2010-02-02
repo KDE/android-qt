@@ -58,7 +58,6 @@ QStringList QAndroidGraphicsSystemPlugin::keys() const
 
     QStringList list;
     list << "android"<< "androidGL";
-    qDebug()<<"QAndroidGraphicsSystemPlugin::keys"<<list;
     return list;
 }
 

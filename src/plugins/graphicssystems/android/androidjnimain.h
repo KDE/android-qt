@@ -5,11 +5,13 @@
 class QImage;
 class QRect;
 class QPoint;
+class QAndroidGraphicsSystem;
 
 namespace QtAndroid
 {
     JavaVM* getJavaVM();
     jobject getJniObject();
     void flushImage(const QPoint & pos, const QImage & image, const QRect & rect);
+    void setAndroidGraphicsSystem(QAndroidGraphicsSystem * androidGraphicsSystem);
 }
 #endif // ANDROID_APP_H
