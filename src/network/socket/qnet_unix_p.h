@@ -55,6 +55,7 @@
 
 #include "private/qcore_unix_p.h"
 
+extern "C" {
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -71,6 +72,7 @@
 #else
 #  include <resolv.h>
 #endif
+}
 
 QT_BEGIN_NAMESPACE
 

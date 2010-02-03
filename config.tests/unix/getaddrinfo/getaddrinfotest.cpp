@@ -42,9 +42,11 @@
 /* Sample program for configure to test for getaddrinfo on the unix
      platform. we check for all structures and functions required. */
 
+extern "C" {
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
+}
 
 int main()
 {

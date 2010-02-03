@@ -52,6 +52,7 @@
 #include <private/qmutexpool_p.h>
 #include <private/qnet_unix_p.h>
 
+extern "C" {
 #include <sys/types.h>
 #include <netdb.h>
 #include <arpa/inet.h>
@@ -60,6 +61,7 @@
 #else
 #  include <resolv.h>
 #endif
+}
 
 #if defined (QT_NO_GETADDRINFO)
 #include <qmutex.h>

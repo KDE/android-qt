@@ -44,6 +44,7 @@
 
 #ifndef QT_NO_QWS_MULTIPROCESS
 
+extern "C" {
 #include <fcntl.h>
 #include <netdb.h>
 #include <errno.h>
@@ -51,6 +52,7 @@
 #include <sys/file.h>
 #include <sys/time.h>
 #include <sys/un.h>
+}
 
 #ifdef __MIPSEL__
 # ifndef SOCK_DGRAM
