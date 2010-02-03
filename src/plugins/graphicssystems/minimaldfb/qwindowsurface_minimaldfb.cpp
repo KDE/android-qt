@@ -49,33 +49,51 @@
 
 QT_BEGIN_NAMESPACE
 
-QDirectFbWindowSurface::QDirectFbWindowSurface(QDirectFbGraphicsSystemScreen *screen, QWidget *window)
-    : QWindowSurface(window), m_screen(screen), m_pixmap(0), m_pmdata(0),
+QDirectFbWindowSurface::QDirectFbWindowSurface(QWidget *window)
+    : QWindowSurface(window), m_pixmap(0), m_pmdata(0),
       m_dfbWindow(0), m_dfbSurface(0)
 {
     window->setWindowSurface(this);
-    m_dfbWindow = m_screen->createWindow(window->rect(),window);
+
+    DFBWindowDescription description;
+    memset(&description,0,sizeof(DFBWindowDescription));
+    description.flags = DFBWindowDescriptionFlags(DWDESC_WIDTH|DWDESC_HEIGHT|DWDESC_POSX|DWDESC_POSY|DWDESC_SURFACE_CAPS
+#if DIRECTFB_MINOR_VERSION >= 1
+                                                  |DWDESC_OPTIONS
+#endif
+                                                  |DWDESC_CAPS);
+    description.width = window->rect().width();
+    description.height = window->rect().height();
+    description.posx = window->rect().x();
+    description.posy = window->rect().y();
+#if DIRECTFB_MINOR_VERSION >= 1
+    description.options = DFBWindowOptions(DWOP_ALPHACHANNEL);
+#endif
+    description.caps = DFBWindowCapabilities(DWCAPS_DOUBLEBUFFER|DWCAPS_ALPHACHANNEL);
+    description.surface_caps = DSCAPS_PREMULTIPLIED;
+
+    IDirectFBDisplayLayer *layer = QDirectFbConvenience::dfbDisplayLayer();
+    DFBResult result = layer->CreateWindow(layer,&description,&m_dfbWindow);
+    if (result != DFB_OK) {
+        DirectFBError("QDirectFbGraphicsSystemScreen: failed to create window",result);
+    }
+
+    DFBWindowID id;
+    m_dfbWindow->GetID(m_dfbWindow, &id);
+    QDirectFbInput::instance()->addWindow(id,window);
+
     m_dfbWindow->GetSurface(m_dfbWindow,&m_dfbSurface);
-
-    DFBSurfaceCapabilities caps;
-    m_dfbSurface->GetCapabilities(m_dfbSurface, &caps);
-    DFBSurfacePixelFormat format;
-    m_dfbSurface->GetPixelFormat(m_dfbSurface, &format);
-    qDebug() << QDirectFbConvenience::pixelFomatHasAlpha(format);
-    qDebug() << QDirectFbConvenience::colorDepthForSurface(format);
-    qDebug() << "WindowSurface format " << QDirectFbConvenience::imageFormatFromSurfaceFormat(format,caps);
-
 
     QDirectFbBlitter *blitter = new QDirectFbBlitter(window->rect(), m_dfbSurface);
     m_pmdata = new QBlittablePixmapData(QPixmapData::PixmapType);
     m_pmdata->setBlittable(blitter);
     m_pixmap = new QPixmap(m_pmdata);
-
-
 }
 
 QDirectFbWindowSurface::~QDirectFbWindowSurface()
 {
+    QDirectFbInput::instance()->removeWindow(this->window());
+    m_dfbWindow->Destroy(m_dfbWindow);
 }
 
 QPaintDevice *QDirectFbWindowSurface::paintDevice()
@@ -85,10 +103,8 @@ QPaintDevice *QDirectFbWindowSurface::paintDevice()
 
 void QDirectFbWindowSurface::flush(QWidget *widget, const QRegion &region, const QPoint &offset)
 {
-    Q_UNUSED(widget);
-    Q_UNUSED(offset);
+    m_pmdata->blittable()->unlock();
 
-    m_dfbSurface->Unlock(m_dfbSurface);
     const quint8 windowOpacity = quint8(widget->windowOpacity() * 0xff);
     m_dfbWindow->SetOpacity(m_dfbWindow,windowOpacity);
 
@@ -102,15 +118,16 @@ void QDirectFbWindowSurface::flush(QWidget *widget, const QRegion &region, const
 
 void QDirectFbWindowSurface::setGeometry(const QRect &rect)
 {
+    m_pmdata->blittable()->unlock();
+
     QWindowSurface::setGeometry(rect);
     m_dfbWindow->SetBounds(m_dfbWindow, rect.x(),rect.y(),
                            rect.width(), rect.height());
 
     //Have to add 1 ref ass it will be removed by deleting the old blitter in setBlittable
     m_dfbSurface->AddRef(m_dfbSurface);
-    QBlittable *blittabler = new QDirectFbBlitter(rect,m_dfbSurface);
-    m_pmdata->setBlittable(blittabler);
-
+    QDirectFbBlitter *blitter = new QDirectFbBlitter(rect,m_dfbSurface);
+    m_pmdata->setBlittable(blitter);
 }
 
 static inline void scrollSurface(IDirectFBSurface *surface, const QRect &r, int dx, int dy)
@@ -123,6 +140,8 @@ static inline void scrollSurface(IDirectFBSurface *surface, const QRect &r, int 
 
 bool QDirectFbWindowSurface::scroll(const QRegion &area, int dx, int dy)
 {
+    m_pmdata->blittable()->unlock();
+
     if (!m_dfbSurface || area.isEmpty())
         return false;
     m_dfbSurface->SetBlittingFlags(m_dfbSurface, DSBLIT_NOFX);
@@ -150,6 +169,8 @@ void QDirectFbWindowSurface::endPaint(const QRegion &region)
 
 void QDirectFbWindowSurface::setVisible(bool visible)
 {
+    m_pmdata->blittable()->unlock();
+
     if (visible) {
         int x = this->geometry().x();
         int y = this->geometry().y();
@@ -167,7 +188,6 @@ void QDirectFbWindowSurface::setVisible(bool visible)
 Qt::WindowFlags QDirectFbWindowSurface::setWindowFlags(Qt::WindowFlags flags)
 {
     switch (flags & Qt::WindowType_Mask) {
-    case Qt::Popup:
     case Qt::ToolTip: {
         DFBWindowOptions options;
         m_dfbWindow->GetOptions(m_dfbWindow,&options);
@@ -191,5 +211,13 @@ void QDirectFbWindowSurface::lower()
 {
     m_dfbWindow->LowerToBottom(m_dfbWindow);
 }
+
+WId QDirectFbWindowSurface::winId() const
+{
+    DFBWindowID id;
+    m_dfbWindow->GetID(m_dfbWindow, &id);
+    return WId(id);
+}
+
 
 QT_END_NAMESPACE

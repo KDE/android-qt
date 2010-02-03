@@ -56,6 +56,10 @@
 #  include <arpa/inet.h>
 #endif
 
+#ifdef Q_OS_ANDROID
+# include <sys/socket.h>
+# include <netinet/in.h>
+#endif
 QT_BEGIN_NAMESPACE
 
 #define QT_ENSURE_PARSED(a) \

@@ -54,8 +54,7 @@ class QDirectFbGraphicsSystemScreen;
 class QDirectFbWindowSurface : public QWindowSurface
 {
 public:
-    QDirectFbWindowSurface
-        (QDirectFbGraphicsSystemScreen *screen, QWidget *window);
+    QDirectFbWindowSurface(QWidget *window);
     ~QDirectFbWindowSurface();
 
     QPaintDevice *paintDevice();
@@ -71,10 +70,12 @@ public:
 
     void raise();
     void lower();
+
+    WId winId() const;
+
 private:
     void lockSurfaceToImage();
 
-    QDirectFbGraphicsSystemScreen *m_screen;
     QPixmap *m_pixmap;
     QBlittablePixmapData *m_pmdata;
 

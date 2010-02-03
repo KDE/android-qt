@@ -9,26 +9,28 @@
 #include <qdebug.h>
 #include <qglobal.h>
 #include "androidjnimain.h"
-#include "qandroidinput.h"
-
-Q_IMPORT_PLUGIN (QtAndroid)
+#include "qgraphicssystem_android.h"
+#include <private/qapplication_p.h>
 
 #ifdef QT_USE_CUSTOM_NDK
     #include <ui/Surface.h>
     #include <qmap.h>
 #endif
 
+Q_IMPORT_PLUGIN (QtAndroid)
+
 static JavaVM *m_javaVM = NULL;
 static jobject m_object  = NULL;
 static jmethodID m_flushImageMethodID=0;
 
 static QSemaphore m_quitAppSemaphore;
-static QSemaphore m_windowSemaphore;
-static QMutex m_windowMutex;
 
-static jfieldID  IDsurface;
-android::Surface* m_surface;
+#ifdef QT_USE_CUSTOM_NDK
+    static jfieldID  IDsurface;
+    static android::Surface* m_surface;
+#endif
 
+static QAndroidGraphicsSystem * mAndroidGraphicsSystem=0;
 
 namespace QtAndroid
 {
@@ -42,7 +44,7 @@ namespace QtAndroid
         return m_object;
     }
 
-    void flushImage(const QPoint & pos, const QImage & image, const QRect & /*destinationRect*/)
+    void flushImage(const QPoint & pos, const QImage & image, const QRect & destinationRect)
     {
 #ifdef QT_USE_CUSTOM_NDK
         if (!m_surface)
@@ -62,16 +64,17 @@ namespace QtAndroid
             return;
         }
 
+#if 1
+        Q_UNUSED(destinationRect)
         int bpp=2;
 
-        if (pos.x()==0 && pos.y()==0 && info.w==image.size().width() && info.h==image.size().height()
-            && info.s*bpp==image.bytesPerLine())
+        if (pos.x()==0 && pos.y()==0 && info.w==(unsigned)image.size().width() && info.h==(unsigned)image.size().height()
+            && info.s*bpp==(unsigned)image.bytesPerLine())
         {
             memcpy(info.bits, (const uchar*)image.bits(), info.s*2*info.h);
             m_surface->unlockAndPost();
             return;
         }
-
         int sbpl=info.s*bpp;
         unsigned sposx=pos.x();
         unsigned sposy=pos.y();
@@ -90,8 +93,7 @@ namespace QtAndroid
             memcpy(screenBits+y*sbpl+sposx*bpp,
                     imageBits+y*ibpl,
                    width*bpp);
-
-#if 0
+#else
         int bpp=2;
         int sbpl=info.s*bpp;
         unsigned sposx=pos.x()+destinationRect.x();
@@ -133,6 +135,10 @@ namespace QtAndroid
 #endif
     }
 
+    void setAndroidGraphicsSystem(QAndroidGraphicsSystem * androidGraphicsSystem)
+    {
+        mAndroidGraphicsSystem=androidGraphicsSystem;
+    }
 }
 
 extern "C" int main(int, char **); //use the standard main method to start the application
@@ -152,9 +158,7 @@ static void * startMainMethod(void * /*data*/)
     free(params[0]);
     free(params);
     Q_UNUSED(ret);
-    pthread_exit(NULL);
-//    m_quitAppSemaphore.release();
-    qDebug()<<"Thread application exited";
+    m_quitAppSemaphore.release();
     return NULL;
 }
 
@@ -166,15 +170,30 @@ static jboolean startQtApp(JNIEnv* /*env*/, jobject /*object*/)
 
 static void quitQtApp(JNIEnv* /*env*/, jclass /*clazz*/)
 {
-    qApp->quit();
-//    m_quitAppSemaphore.acquire();
-    qDebug()<<"Application closed";
+    QApplication::postEvent(qApp, new QEvent(QEvent::Quit));
+    m_quitAppSemaphore.acquire();
+}
+
+static void setDisplayMetrics(JNIEnv* /*env*/, jclass /*clazz*/,
+                              jint widthPixels, jint heightPixels,
+                              jfloat xdpi, jfloat ydpi)
+{
+    if (!mAndroidGraphicsSystem)
+    {
+        qWarning()<<"AndroidGraphicsSystem isn't created, can't set display metrics";
+        return;
+    }
+    QAndroidGraphicsSystemScreen * androidGraphicsSystemScreen=mAndroidGraphicsSystem->getPrimaryScreen();
+    androidGraphicsSystemScreen->mGeometry.setWidth(widthPixels);
+    androidGraphicsSystemScreen->mGeometry.setHeight(heightPixels);
+    const qreal inch = 25.4;
+    androidGraphicsSystemScreen->mPhysicalSize.setWidth(qRound(widthPixels * inch / xdpi));
+    androidGraphicsSystemScreen->mPhysicalSize.setHeight(qRound(heightPixels * inch / ydpi));
 }
 
 static void setSurface(JNIEnv *env, jobject /*thiz*/, jobject jSurface)
 {
     m_surface = reinterpret_cast<android::Surface*>(env->GetIntField(jSurface, IDsurface));
-    qDebug()<<"Set surface"<<m_surface;
     if (!m_surface)
         return;
 
@@ -185,7 +204,7 @@ static void setSurface(JNIEnv *env, jobject /*thiz*/, jobject jSurface)
         qWarning()<<"Unable to lock the surface";
         return;
     }
-    qDebug()<<info.w<<info.h;
+    mAndroidGraphicsSystem->setDesktopSize(info.w,info.h);
     m_surface->unlockAndPost();
 }
 
@@ -196,32 +215,23 @@ static void destroySurface(JNIEnv */*env*/, jobject /*thiz*/)
 
 static void mouseDown(JNIEnv */*env*/, jobject /*thiz*/, jint x, jint y)
 {
-    if (!QAndroidInput::androidInput())
-        return;
-    QAndroidInput::androidInput()->addMouseEvent(new QMouseEvent(QEvent::MouseButtonPress,QPoint(x,y),QPoint(x,y),
-                                                             Qt::MouseButton(Qt::LeftButton),
-                                                             Qt::MouseButtons(Qt::LeftButton),
-                                                             Qt::NoModifier));
+    QApplicationPrivate::handleMouseEvent(0, QEvent::MouseButtonRelease,QPoint(x,y),QPoint(x,y),
+                                                             Qt::MouseButtons(Qt::LeftButton));
+    QApplication::postEvent(qApp, new QEvent(QEvent::None));
 }
 
 static void mouseUp(JNIEnv */*env*/, jobject /*thiz*/, jint x, jint y)
 {
-    if (!QAndroidInput::androidInput())
-        return;
-    QAndroidInput::androidInput()->addMouseEvent(new QMouseEvent(QEvent::MouseButtonRelease,QPoint(x,y),QPoint(x,y),
-                                                             Qt::MouseButton(Qt::LeftButton),
-                                                             Qt::MouseButtons(Qt::LeftButton),
-                                                             Qt::NoModifier));
+    QApplicationPrivate::handleMouseEvent(0, QEvent::MouseButtonRelease,QPoint(x,y),QPoint(x,y),
+                                                             Qt::MouseButtons(Qt::NoButton));
+    QApplication::postEvent(qApp, new QEvent(QEvent::None));
 }
 
 static void mouseMove(JNIEnv */*env*/, jobject /*thiz*/, jint x, jint y)
 {
-    if (!QAndroidInput::androidInput())
-        return;
-    QAndroidInput::androidInput()->addMouseEvent(new QMouseEvent(QEvent::MouseMove,QPoint(x,y),QPoint(x,y),
-                                                             Qt::MouseButton(Qt::LeftButton),
-                                                             Qt::MouseButtons(Qt::LeftButton),
-                                                             Qt::NoModifier));
+    QApplicationPrivate::handleMouseEvent(0, QEvent::MouseButtonRelease,QPoint(x,y),QPoint(x,y),
+                                                             Qt::MouseButtons(Qt::LeftButton));
+    QApplication::postEvent(qApp, new QEvent(QEvent::None));
 }
 
 static int mapAndroidKey(int key)
@@ -242,8 +252,8 @@ static int mapAndroidKey(int key)
         case 0x0000004b:
             return Qt::Key_Apostrophe;
 
-        case 0x00000004:
-            return Qt::Key_Back;
+        case 0x00000004: //KEYCODE_BACK
+            return Qt::Key_Close;
             
         case 0x00000049:
             return Qt::Key_Backslash;
@@ -261,7 +271,7 @@ static int mapAndroidKey(int key)
             return Qt::Key_Comma;
             
         case 0x00000043:
-            return Qt::Key_Delete;
+            return Qt::Key_Backspace;
             
         case 0x00000017: // KEYCODE_DPAD_CENTER
             return Qt::Key_Enter;
@@ -378,7 +388,7 @@ static int mapAndroidKey(int key)
         case 0x00000000: // KEYCODE_UNKNOWN
         case 0x00000011: // KEYCODE_STAR ?!?!?
         case 0x00000012: // KEYCODE_POUND ?!?!?
-        case 0x00000053: //KEYCODE_NOTIFICATION ?!?!?
+        case 0x00000053: // KEYCODE_NOTIFICATION ?!?!?
         case 0x0000004f: // KEYCODE_HEADSETHOOK ?!?!?
         case 0x00000044: // KEYCODE_GRAVE ?!?!?
         case 0x00000050: // KEYCODE_FOCUS ?!?!?
@@ -389,18 +399,35 @@ static int mapAndroidKey(int key)
 }
 
 
-static void keyDown(JNIEnv */*env*/, jobject /*thiz*/, jint key)
+static void keyDown(JNIEnv */*env*/, jobject /*thiz*/, jint key, jint unicode, jint modifier)
 {
-    if (!QAndroidInput::androidInput())
-        return;
-    QAndroidInput::androidInput()->addKeyEvent(new QKeyEvent(QEvent::KeyPress, mapAndroidKey(key), Qt::NoModifier));
+    Qt::KeyboardModifiers modifiers;
+    if (modifier & 1)
+        modifiers|=Qt::AltModifier;
+
+    if (modifier & 2)
+        modifiers|=Qt::ShiftModifier;
+
+    if (modifier & 4)
+        modifiers|=Qt::MetaModifier;
+    QApplicationPrivate::handleKeyEvent(0, QEvent::KeyPress, mapAndroidKey(key), modifiers, QChar(unicode),true);
+    QApplication::postEvent(qApp, new QEvent(QEvent::None));
 }
 
-static void keyUp(JNIEnv */*env*/, jobject /*thiz*/, jint key)
+static void keyUp(JNIEnv */*env*/, jobject /*thiz*/, jint key, jint unicode, jint modifier)
 {
-    if (!QAndroidInput::androidInput())
-        return;
-    QAndroidInput::androidInput()->addKeyEvent(new QKeyEvent(QEvent::KeyRelease, mapAndroidKey(key), Qt::NoModifier));
+    Qt::KeyboardModifiers modifiers;
+    if (modifier & 1)
+        modifiers|=Qt::AltModifier;
+
+    if (modifier & 2)
+        modifiers|=Qt::ShiftModifier;
+
+    if (modifier & 4)
+        modifiers|=Qt::MetaModifier;
+
+    QApplicationPrivate::handleKeyEvent(0, QEvent::KeyRelease, mapAndroidKey(key), modifiers, QChar(unicode),true);
+    QApplication::postEvent(qApp, new QEvent(QEvent::None));
 }
 
 
@@ -409,13 +436,14 @@ static const char *classPathName = "com/nokia/qt/QtApplication";
 static JNINativeMethod methods[] = {
     {"startQtApp", "()V", (void *)startQtApp},
     {"quitQtApp", "()V", (void *)quitQtApp},
+    {"setDisplayMetrics", "(IIFF)V", (void *)setDisplayMetrics},
     {"setSurface", "(Landroid/view/Surface;)V", (void *)setSurface},
     {"destroySurface", "()V", (void *)destroySurface},
     {"mouseDown", "(II)V", (void *)mouseDown},
     {"mouseUp", "(II)V", (void *)mouseUp},
     {"mouseMove", "(II)V", (void *)mouseMove},
-    {"keyDown", "(I)V", (void *)keyDown},
-    {"keyUp", "(I)V", (void *)keyUp}
+    {"keyDown", "(III)V", (void *)keyDown},
+    {"keyUp", "(III)V", (void *)keyUp}
 };
 
 /*

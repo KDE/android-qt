@@ -41,21 +41,23 @@
 
 #include "qgraphicssystem_android.h"
 #include "qwindowsurface_android.h"
-#include "qandroidinput.h"
+#include "androidjnimain.h"
 #include <QtGui/private/qpixmap_raster_p.h>
+#include <private/qapplication_p.h>
+#include "qdesktopwidget.h"
 
 QT_BEGIN_NAMESPACE
 
 QAndroidGraphicsSystem::QAndroidGraphicsSystem()
 {
-    qDebug()<<"QAndroidGraphicsSystem::QAndroidGraphicsSystem()";
+    mDesktopWidget=0;
     mPrimaryScreen = new QAndroidGraphicsSystemScreen();
     mPrimaryScreen->mGeometry = QRect(0, 0, 320, 455);
     mPrimaryScreen->mDepth = 16;
     mPrimaryScreen->mFormat = QImage::Format_RGB16;
     mPrimaryScreen->mPhysicalSize = QSize(100, 150);
     mScreens.append(mPrimaryScreen);
-    QAndroidInput::m_androidInput= new QAndroidInput();
+    QtAndroid::setAndroidGraphicsSystem(this);
 }
 
 QPixmapData *QAndroidGraphicsSystem::createPixmapData(QPixmapData::PixelType type) const
@@ -66,9 +68,20 @@ QPixmapData *QAndroidGraphicsSystem::createPixmapData(QPixmapData::PixelType typ
 QWindowSurface *QAndroidGraphicsSystem::createWindowSurface(QWidget *widget) const
 {
     if (widget->windowType() == Qt::Desktop)
+    {
+        mDesktopWidget = qobject_cast<QDesktopWidget*>(widget);
+        qDebug()<<"DesktopWidget="<<mDesktopWidget;
         return 0;   // Don't create an explicit window surface for the destkop.
-    qDebug()<<"QAndroidGraphicsSystem::createWindowSurface()";
+    }
     return new QAndroidWindowSurface(mPrimaryScreen, widget);
+}
+
+void QAndroidGraphicsSystem::setDesktopSize(int width, int height)
+{
+    if (mDesktopWidget)
+        mDesktopWidget->resize(width,height);
+    else
+        qWarning()<<"DesktopWidget isn't created, can't set desktop size";
 }
 
 QT_END_NAMESPACE

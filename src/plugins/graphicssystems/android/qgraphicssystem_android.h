@@ -45,7 +45,9 @@
 #include <QtGui/private/qgraphicssystem_p.h>
 
 QT_BEGIN_NAMESPACE
-class QAndroidWindowSurface;
+
+class QDesktopWidget;
+
 class QAndroidGraphicsSystemScreen : public QGraphicsSystemScreen
 {
     Q_OBJECT
@@ -58,7 +60,6 @@ public:
     int depth() const { return mDepth; }
     QImage::Format format() const { return mFormat; }
     QSize physicalSize() const { return mPhysicalSize; }
-    void resize(const QSize & size){ emit(screenResized(size)); }
 
 signals:
     void screenResized(const QSize & size);
@@ -80,7 +81,12 @@ public:
 
     QList<QGraphicsSystemScreen *> screens() const { return mScreens; }
 
+    QAndroidGraphicsSystemScreen * getPrimaryScreen(){return mPrimaryScreen;}
+
+    virtual void setDesktopSize(int width, int height);
+
 private:
+    mutable QDesktopWidget * mDesktopWidget;
     QAndroidGraphicsSystemScreen *mPrimaryScreen;
     QList<QGraphicsSystemScreen *> mScreens;
 };

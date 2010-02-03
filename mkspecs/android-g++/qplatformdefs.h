@@ -110,11 +110,9 @@
 #include <sys/ioctl.h>
 #include <sys/ipc.h>
 #include <sys/time.h>
-#include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 
-#include <netinet/in.h>
 #ifndef QT_NO_IPV6IFNAME
 #include <net/if.h>
 #endif

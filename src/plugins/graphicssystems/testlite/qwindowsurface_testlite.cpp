@@ -90,24 +90,13 @@ void QTestLiteWindowSurface::flush(QWidget *widget, const QRegion &region, const
 }
 
 
-void QTestLiteWindowSurface::geometryChanged(const QRect &rect)
-{
-    bool resize = rect.size() != geometry().size();
-    QWindowSurface::setGeometry(rect);
-
-    if (resize) {
-        window()->update(); //### this is the wrong place for this...
-    }
-}
-
-
 void QTestLiteWindowSurface::setGeometry(const QRect &rect)
 {
     QRect oldRect = geometry();
     if (rect == oldRect)
         return;
 
-    QTestLiteWindowSurface::geometryChanged(rect);
+    QWindowSurface::setGeometry(rect);
 
     //if unchanged ###
 //    xw->setSize(rect.width(), rect.height());
@@ -254,9 +243,10 @@ void QTestLiteWindowSurface::handleMouseEvent(QEvent::Type type, void *ev)
                 bool hor = (((e->button == Button4 || e->button == Button5)
                              && (modifiers & Qt::AltModifier))
                             || (e->button == 6 || e->button == 7));
-                QWheelEvent we(QPoint(e->x, e->y), QPoint(e->x_root, e->y_root), delta,
-                               buttons, modifiers, hor ? Qt::Horizontal : Qt::Vertical);
-                QApplicationPrivate::handleWheelEvent(window(),we);
+                QApplicationPrivate::handleWheelEvent(winId(), e->time,
+                                                      QPoint(e->x, e->y),
+                                                      QPoint(e->x_root, e->y_root),
+                                                      delta, hor ? Qt::Horizontal : Qt::Vertical);
             }
             return;
         }
@@ -264,24 +254,17 @@ void QTestLiteWindowSurface::handleMouseEvent(QEvent::Type type, void *ev)
         }
     }
 
-    if (type == QEvent::MouseButtonPress && mousePoint != QPoint(e->x_root, e->y_root)) {
-        //we've missed a mouse move event somewhere (maybe because we
-        //haven't implemented mouse tracking yet); let's synthesize it.
-        QMouseEvent me(QEvent::MouseMove, QPoint(e->x, e->y), QPoint(e->x_root, e->y_root),
-                       Qt::NoButton, buttons, modifiers);
-        QApplicationPrivate::handleMouseEvent(window(), me);
-    }
-
     buttons ^= button; // X event uses state *before*, Qt uses state *after*
 
-    QMouseEvent me(type, QPoint(e->x, e->y), QPoint(e->x_root, e->y_root), button, buttons, modifiers);
-    QApplicationPrivate::handleMouseEvent(window(), me);
+    QApplicationPrivate::handleMouseEvent(winId(), e->time, QPoint(e->x, e->y),
+                                          QPoint(e->x_root, e->y_root),
+                                          buttons);
+
     mousePoint = QPoint(e->x_root, e->y_root);
 }
 
 void QTestLiteWindowSurface::handleGeometryChange(int x, int y, int w, int h)
 {
-    geometryChanged(QRect(x,y,w,h));
     QApplicationPrivate::handleGeometryChange(window(), QRect(x,y,w,h));
 }
 
@@ -567,6 +550,22 @@ static int lookupCode(unsigned int xkeycode)
 }
 
 
+static Qt::KeyboardModifiers modifierFromKeyCode(int qtcode)
+{
+    switch (qtcode) {
+    case Qt::Key_Control:
+        return Qt::ControlModifier;
+    case Qt::Key_Alt:
+        return Qt::AltModifier;
+    case Qt::Key_Shift:
+        return Qt::ShiftModifier;
+    case Qt::Key_Meta:
+        return Qt::MetaModifier;
+    default:
+        return Qt::NoModifier;
+    }
+}
+
 void QTestLiteWindowSurface::handleKeyEvent(QEvent::Type type, void *ev)
 {
     XKeyEvent *e = static_cast<XKeyEvent*>(ev);
@@ -586,15 +585,17 @@ void QTestLiteWindowSurface::handleKeyEvent(QEvent::Type type, void *ev)
     int qtcode = lookupCode(keySym);
 //    qDebug() << "lookup: " << hex << keySym << qtcode << "mod" << modifiers;
 
+    //X11 specifies state *before*, Qt expects state *after* the event
+
+    modifiers ^= modifierFromKeyCode(qtcode);
+
     if (qtcode) {
-        QKeyEvent keyEvent(type, qtcode, modifiers);
-        QApplicationPrivate::handleKeyEvent(window(), &keyEvent);
+        QApplicationPrivate::handleKeyEvent(winId(), e->time, type, qtcode, modifiers);
     } else if (chars[0]) {
         int qtcode = chars.toUpper()[0]; //Not exactly right...
 	if (modifiers & Qt::ControlModifier && qtcode < ' ')
 	  qtcode = chars[0] + '@';
-        QKeyEvent keyEvent(type, qtcode, modifiers, QString::fromLatin1(chars));
-        QApplicationPrivate::handleKeyEvent(window(), &keyEvent);
+        QApplicationPrivate::handleKeyEvent(winId(), e->time, type, qtcode, modifiers, QString::fromLatin1(chars));
     } else {
         qWarning() << "unknown X keycode" << hex << e->keycode << keySym;
     }

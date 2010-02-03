@@ -298,8 +298,6 @@ int main(int argc, char **argv)
     trans->addAnimation(group);
 
     states.start();
-    QTimer keepAlive;
-    keepAlive.start(50);
 
 #ifdef QT_KEYPAD_NAVIGATION
     QApplication::setNavigationMode(Qt::NavigationModeCursorAuto);

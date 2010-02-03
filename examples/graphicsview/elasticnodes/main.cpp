@@ -50,7 +50,5 @@ int main(int argc, char **argv)
 
     GraphWidget widget;
     widget.showFullScreen();
-    QTimer timer;
-    timer.start(50);
     return app.exec();
 }

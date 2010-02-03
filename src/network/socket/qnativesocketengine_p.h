@@ -60,6 +60,11 @@
 #  include <winsock2.h>
 #endif
 
+#ifdef Q_OS_ANDROID
+# include <sys/socket.h>
+# include <netinet/in.h>
+#endif
+
 #ifdef Q_OS_SYMBIAN
 #include <private/qeventdispatcher_symbian_p.h>
 #include <unistd.h>
