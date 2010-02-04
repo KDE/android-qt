@@ -1,7 +1,6 @@
 package com.nokia.qt;
 
 import android.content.Context;
-import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
@@ -15,7 +14,7 @@ public class QtSurface extends SurfaceView implements SurfaceHolder.Callback
 		super(context);
 		setFocusable(true);
 		getHolder().addCallback(this);
-		Log.i(QtApplication.QtTAG, "QtSurface constructor !!!");
+		getHolder().setType(SurfaceHolder.SURFACE_TYPE_GPU);
 	}
 	
 	@Override
@@ -77,17 +76,17 @@ public class QtSurface extends SurfaceView implements SurfaceHolder.Callback
 
 	@Override
 	public void surfaceCreated(SurfaceHolder holder) {
-		Log.i(QtApplication.QtTAG,"surfaceCreated"+getId());
-		try{
-			QtApplication.setSurface(holder.getSurface());
-		}catch(Exception e){}
+//		Log.i(QtApplication.QtTAG,"surfaceCreated ");
+//		try{
+//			QtApplication.setSurface(holder.getSurface(),getWidth(),getHeight());
+//		}catch(Exception e){}
 	}
 
 	@Override
 	public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
 		Log.i(QtApplication.QtTAG,"surfaceChanged: "+width+","+height);
 		try{
-			QtApplication.setSurface(holder.getSurface());
+			QtApplication.setSurface(holder.getSurface(),width,height);
 		}catch(Exception e){}
 	}
 

@@ -50,14 +50,27 @@ public class QtActivity extends Activity {
 			QtApplication.setDisplayMetrics(metrics.widthPixels, metrics.heightPixels, metrics.xdpi, metrics.ydpi);
 			quitApp=true;
 			setContentView(new QtSurface(this));
-			Log.i(QtApplication.QtTAG,"Application started");
 		}
 		catch (Exception e)
 		{
 			Log.e(QtApplication.QtTAG, "Can't create main activity", e);
 		}
     }
-    
+
+    @Override
+    protected void onPause() {
+    	QtApplication.pauseQtApp();
+		Log.i(QtApplication.QtTAG,"onPause");
+		super.onPause();
+    }
+
+    @Override
+	protected void onResume() {
+    	QtApplication.resumeQtApp();
+    	Log.i(QtApplication.QtTAG,"onResume");
+    	super.onRestart();
+	}
+
     @Override
     public Object onRetainNonConfigurationInstance() {
     	super.onRetainNonConfigurationInstance();

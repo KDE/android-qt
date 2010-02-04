@@ -41,6 +41,7 @@
 
 #include "qgraphicssystem_android.h"
 #include "qwindowsurface_android.h"
+#include "qabstracteventdispatcher.h"
 #include "androidjnimain.h"
 #include <QtGui/private/qpixmap_raster_p.h>
 #include <private/qapplication_p.h>
@@ -48,16 +49,38 @@
 
 QT_BEGIN_NAMESPACE
 
+int QAndroidGraphicsSystem::mDefaultGeometryWidth=320;
+int QAndroidGraphicsSystem::mDefaultGeometryHeight=455;
+int QAndroidGraphicsSystem::mDefaultPhysicalSizeWidth=50;
+int QAndroidGraphicsSystem::mDefaultPhysicalSizeHeight=71;
+
 QAndroidGraphicsSystem::QAndroidGraphicsSystem()
 {
     mDesktopWidget=0;
     mPrimaryScreen = new QAndroidGraphicsSystemScreen();
-    mPrimaryScreen->mGeometry = QRect(0, 0, 320, 455);
+    mPrimaryScreen->mGeometry = QRect(0, 0, mDefaultGeometryWidth, mDefaultGeometryHeight);
     mPrimaryScreen->mDepth = 16;
     mPrimaryScreen->mFormat = QImage::Format_RGB16;
-    mPrimaryScreen->mPhysicalSize = QSize(100, 150);
+    mPrimaryScreen->mPhysicalSize = QSize(mDefaultPhysicalSizeWidth, mDefaultPhysicalSizeHeight);
     mScreens.append(mPrimaryScreen);
+    m_mainThread=QThread::currentThread();
+    QtAndroid::setQtThread(m_mainThread);
     QtAndroid::setAndroidGraphicsSystem(this);
+
+}
+
+void QAndroidGraphicsSystem::setDefaultDisplayMetrics(int gw, int gh, int sw, int sh)
+{
+    mDefaultGeometryWidth=gw;
+    mDefaultGeometryHeight=gh;
+    mDefaultPhysicalSizeWidth=sw;
+    mDefaultPhysicalSizeHeight=sh;
+}
+
+void QAndroidGraphicsSystem::setDefaultDesktopSize(int gw, int gh)
+{
+    mDefaultGeometryWidth=gw;
+    mDefaultGeometryHeight=gh;
 }
 
 QPixmapData *QAndroidGraphicsSystem::createPixmapData(QPixmapData::PixelType type) const
@@ -67,21 +90,37 @@ QPixmapData *QAndroidGraphicsSystem::createPixmapData(QPixmapData::PixelType typ
 
 QWindowSurface *QAndroidGraphicsSystem::createWindowSurface(QWidget *widget) const
 {
+    qDebug()<<"createWindowSurface"<<widget;
     if (widget->windowType() == Qt::Desktop)
     {
-        mDesktopWidget = qobject_cast<QDesktopWidget*>(widget);
+        mDesktopWidget = widget;
         qDebug()<<"DesktopWidget="<<mDesktopWidget;
         return 0;   // Don't create an explicit window surface for the destkop.
     }
+    else
+        if (!mDesktopWidget)
+            mDesktopWidget = widget;
     return new QAndroidWindowSurface(mPrimaryScreen, widget);
+}
+
+void QAndroidGraphicsSystem::updateScreen()
+{
+    if (mDesktopWidget)
+    {
+        mDesktopWidget->update();
+        if (QAbstractEventDispatcher::instance(m_mainThread))
+                QAbstractEventDispatcher::instance(m_mainThread)->wakeUp();
+    }
 }
 
 void QAndroidGraphicsSystem::setDesktopSize(int width, int height)
 {
     if (mDesktopWidget)
-        mDesktopWidget->resize(width,height);
-    else
-        qWarning()<<"DesktopWidget isn't created, can't set desktop size";
+    {
+        QApplicationPrivate::handleGeometryChange(mDesktopWidget,QRect(0,0,width,height));
+        if (QAbstractEventDispatcher::instance(m_mainThread))
+                QAbstractEventDispatcher::instance(m_mainThread)->wakeUp();
+    }
 }
 
 QT_END_NAMESPACE

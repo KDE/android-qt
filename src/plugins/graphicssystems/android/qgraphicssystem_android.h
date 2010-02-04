@@ -84,11 +84,17 @@ public:
     QAndroidGraphicsSystemScreen * getPrimaryScreen(){return mPrimaryScreen;}
 
     virtual void setDesktopSize(int width, int height);
+    virtual void updateScreen();
+
+    static void setDefaultDisplayMetrics(int gw, int gh, int sw, int sh);
+    static void setDefaultDesktopSize(int gw, int gh);
 
 private:
-    mutable QDesktopWidget * mDesktopWidget;
+    QThread * m_mainThread;
+    mutable QWidget * mDesktopWidget;
     QAndroidGraphicsSystemScreen *mPrimaryScreen;
     QList<QGraphicsSystemScreen *> mScreens;
+    static int mDefaultGeometryWidth,mDefaultGeometryHeight,mDefaultPhysicalSizeWidth,mDefaultPhysicalSizeHeight;
 };
 
 QT_END_NAMESPACE
