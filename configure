@@ -6444,7 +6444,7 @@ fi
 # supported and on which compilers.
 #
 canBuildQtXmlPatterns="yes"
-canBuildWebKit="$HAVE_STL"
+canBuildWebKit="yes"
 canBuildQtConcurrent="yes"
 
 # WebKit requires stdint.h

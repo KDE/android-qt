@@ -46,7 +46,7 @@ int main(int argc, char **argv)
 {
     Q_INIT_RESOURCE(context2d);
 
-    bool smallScreen = false;
+    bool smallScreen = true;
     for (int i = 0; i < argc; i++)
         if (QString(argv[i]) == "-small-screen")
             smallScreen = true;

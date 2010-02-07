@@ -1,5 +1,5 @@
 QT += script
-CONFIG += uitools
+CONFIG += uitools dll
 RESOURCES += calculator.qrc
 SOURCES += main.cpp
 

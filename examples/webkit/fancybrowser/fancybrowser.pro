@@ -4,6 +4,8 @@ SOURCES =   main.cpp \
             mainwindow.cpp
 RESOURCES = jquery.qrc
 
+CONFIG += dll
+
 # install
 target.path = $$[QT_INSTALL_EXAMPLES]/webkit/fancybrowser
 sources.files = $$SOURCES $$HEADERS $$RESOURCES *.pro

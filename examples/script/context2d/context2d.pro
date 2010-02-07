@@ -1,4 +1,4 @@
-TEMPLATE = app
+#TEMPLATE = app
 QT += script
 # Input
 HEADERS += qcontext2dcanvas.h \
@@ -13,6 +13,8 @@ SOURCES += qcontext2dcanvas.cpp \
 	   window.cpp \
 	   main.cpp
 RESOURCES += context2d.qrc
+
+CONFIG += dll
 
 contains(QT_CONFIG, scripttools): QT += scripttools
 

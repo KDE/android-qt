@@ -127,7 +127,8 @@
    || defined(__unix__)    \
    || defined(_AIX)        \
    || defined(__HAIKU__)   \
-   || defined(__QNXNTO__)
+   || defined(__QNXNTO__)  \
+   || defined(ANDROID)
 #define WTF_PLATFORM_UNIX 1
 #endif
 
@@ -567,8 +568,10 @@
     && !PLATFORM(SYMBIAN) && !PLATFORM(HAIKU) && !COMPILER(RVCT)
 #define HAVE_TM_GMTOFF 1
 #define HAVE_TM_ZONE 1
+#ifndef ANDROID
 #define HAVE_TIMEGM 1
 #endif     
+#endif
 
 #if PLATFORM(DARWIN)
 
@@ -630,7 +633,7 @@
 
 #define HAVE_ERRNO_H 1
 /* As long as Haiku doesn't have a complete support of locale this will be disabled. */
-#if !PLATFORM(HAIKU)
+#if !PLATFORM(HAIKU) && !defined(ANDROID)
 #define HAVE_LANGINFO_H 1
 #endif
 #define HAVE_MMAP 1
