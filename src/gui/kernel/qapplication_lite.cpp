@@ -59,6 +59,7 @@
 #include "private/qgraphicssystem_p.h"
 #include "qgraphicssystemcursor.h"
 #include <qdebug.h>
+#include <QWindowSystemInterface>
 
 
 QT_BEGIN_NAMESPACE
@@ -75,7 +76,6 @@ int qt_last_x = 0;
 int qt_last_y = 0;
 QPointer<QWidget> qt_last_mouse_receiver = 0;
 
-QList<QApplicationPrivate::UserEvent *> QApplicationPrivate::userEventQueue;
 static Qt::KeyboardModifiers modifiers = Qt::NoModifier;
 static Qt::MouseButtons buttons = Qt::NoButton;
 static ulong mousePressTime;
@@ -83,23 +83,22 @@ static Qt::MouseButton mousePressButton = Qt::NoButton;
 static int mousePressX;
 static int mousePressY;
 static int mouse_double_click_distance = 5;
-QTime QApplicationPrivate::time;
 
-void QApplicationPrivate::processUserEvent(UserEvent *e)
+void QApplicationPrivate::processUserEvent(QWindowSystemInterface::UserEvent *e)
 {
     switch(e->type) {
     case QEvent::MouseButtonDblClick: // if mouse event, calculate appropriate widget and local coordinates
     case QEvent::MouseButtonPress:
     case QEvent::MouseButtonRelease:
     case QEvent::MouseMove:
-        QApplicationPrivate::processMouseEvent(static_cast<MouseEvent *>(e));
+        QApplicationPrivate::processMouseEvent(static_cast<QWindowSystemInterface::MouseEvent *>(e));
         break;
     case QEvent::Wheel:
-        QApplicationPrivate::processWheelEvent(static_cast<WheelEvent *>(e));
+        QApplicationPrivate::processWheelEvent(static_cast<QWindowSystemInterface::WheelEvent *>(e));
         break;
     case QEvent::KeyPress:
     case QEvent::KeyRelease:
-        QApplicationPrivate::processKeyEvent(static_cast<KeyEvent *>(e));
+        QApplicationPrivate::processKeyEvent(static_cast<QWindowSystemInterface::KeyEvent *>(e));
         break;
     default:
         qWarning() << "Unknown user input event type:" << e->type;
@@ -524,35 +523,7 @@ void QApplication::setMainWidget(QWidget *mainWidget)
 }
 #endif
 
-
-//------------------------------------------------------------
-//
-// Callback functions for plugins:
-//
-
-/*!
-
-\a tlw == 0 means that \a ev is in global coords only
-
-
-*/
-
-
-void QApplicationPrivate::handleEnterEvent(QWidget *tlw)
-{
-    dispatchEnterLeave(tlw, 0);
-    qt_last_mouse_receiver = tlw;
-}
-
-void QApplicationPrivate::handleLeaveEvent(QWidget *tlw)
-{
-    dispatchEnterLeave(0, qt_last_mouse_receiver);
-    if (!tlw->isAncestorOf(qt_last_mouse_receiver)) //(???) this should not happen
-        dispatchEnterLeave(0, tlw);
-    qt_last_mouse_receiver = 0;
-}
-
-void QApplicationPrivate::processMouseEvent(MouseEvent *e)
+void QApplicationPrivate::processMouseEvent(QWindowSystemInterface::MouseEvent *e)
 {
     // qDebug() << "handleMouseEvent" << tlw << ev.pos() << ev.globalPos() << hex << ev.buttons();
     static QWeakPointer<QWidget> implicit_mouse_grabber;
@@ -561,16 +532,12 @@ void QApplicationPrivate::processMouseEvent(MouseEvent *e)
     // move first
     Qt::MouseButtons stateChange = e->buttons ^ buttons;
     if (e->globalPos != QPoint(qt_last_x, qt_last_y) && (stateChange != Qt::NoButton)) {
-        MouseEvent * newMouseEvent = new MouseEvent(e->id, e->timestamp, e->localPos, e->globalPos, e->buttons);
-        userEventQueue.prepend(newMouseEvent); // just in case the move triggers a new event loop
+        QWindowSystemInterface::MouseEvent * newMouseEvent = new QWindowSystemInterface::MouseEvent(e->widget.data(), e->timestamp, e->localPos, e->globalPos, e->buttons);
+        QWindowSystemInterfacePrivate::userEventQueue.prepend(newMouseEvent); // just in case the move triggers a new event loop
         stateChange = Qt::NoButton;
     }
 
-    QWidget * tlw;
-    if (e->id)
-        tlw = QWidget::find(e->id);
-    else
-        tlw = 0;
+    QWidget * tlw = e->widget.data();
 
     QPoint localPoint = e->localPos;
     QPoint globalPoint = e->globalPos;
@@ -701,7 +668,7 @@ void QApplicationPrivate::processMouseEvent(MouseEvent *e)
 
 //### there's a lot of duplicated logic here -- refactoring required!
 
-void QApplicationPrivate::processWheelEvent(WheelEvent *e)
+void QApplicationPrivate::processWheelEvent(QWindowSystemInterface::WheelEvent *e)
 {
 //    QPoint localPoint = ev.pos();
     QPoint globalPoint = e->globalPos;
@@ -711,11 +678,7 @@ void QApplicationPrivate::processWheelEvent(WheelEvent *e)
     qt_last_x = globalPoint.x();
     qt_last_y = globalPoint.y();
 
-     QWidget *mouseWindow;
-     if (e->id)
-         mouseWindow = QWidget::find(e->id);
-     else
-         mouseWindow = 0;
+     QWidget *mouseWindow = e->widget.data();
 
      // find the tlw if we didn't get it from the plugin
      if (!mouseWindow) {
@@ -747,7 +710,7 @@ void QApplicationPrivate::processWheelEvent(WheelEvent *e)
 
 // Remember, Qt convention is:  keyboard state is state *before*
 
-void QApplicationPrivate::processKeyEvent(KeyEvent *e)
+void QApplicationPrivate::processKeyEvent(QWindowSystemInterface::KeyEvent *e)
 {
     QWidget *focusW = 0;
     if (self->inPopupMode()) {
@@ -756,8 +719,8 @@ void QApplicationPrivate::processKeyEvent(KeyEvent *e)
     }
     if (!focusW)
         focusW = QApplication::focusWidget();
-    if (!focusW && e->id) {
-        focusW = QWidget::find(e->id);
+    if (!focusW) {
+        focusW = e->widget.data();
     }
     if (!focusW)
         focusW = QApplication::activeWindow();
@@ -774,8 +737,7 @@ void QApplicationPrivate::processKeyEvent(KeyEvent *e)
     QApplication::sendSpontaneousEvent(focusW, &ev);
 }
 
-
-void QApplicationPrivate::handleGeometryChange(QWidget *tlw, const QRect &newRect)
+void QApplicationPrivate::processGeometryChange(QWidget *tlw, const QRect &newRect)
 {
     QRect cr(tlw->geometry());
 
@@ -794,11 +756,9 @@ void QApplicationPrivate::handleGeometryChange(QWidget *tlw, const QRect &newRec
     }
 }
 
-
-void QApplicationPrivate::handleCloseEvent(QWidget *tlw)
+void QApplicationPrivate::processCloseEvent(QWidget *tlw)
 {
     tlw->d_func()->close_helper(QWidgetPrivate::CloseWithSpontaneousEvent);
 }
-
 
 QT_END_NAMESPACE
