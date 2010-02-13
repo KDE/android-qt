@@ -44,7 +44,8 @@
 #include "qabstracteventdispatcher.h"
 #include "androidjnimain.h"
 #include <QtGui/private/qpixmap_raster_p.h>
-#include <private/qapplication_p.h>
+#include <QWindowSystemInterface>
+#include <QThread>
 #include "qdesktopwidget.h"
 
 QT_BEGIN_NAMESPACE
@@ -117,7 +118,7 @@ void QAndroidGraphicsSystem::setDesktopSize(int width, int height)
 {
     if (mDesktopWidget)
     {
-        QApplicationPrivate::handleGeometryChange(mDesktopWidget,QRect(0,0,width,height));
+        QWindowSystemInterface::handleGeometryChange(mDesktopWidget,QRect(0,0,width,height));
         if (QAbstractEventDispatcher::instance(m_mainThread))
                 QAbstractEventDispatcher::instance(m_mainThread)->wakeUp();
     }

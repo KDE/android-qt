@@ -10,7 +10,8 @@
 #include <qglobal.h>
 #include "androidjnimain.h"
 #include "qgraphicssystem_android.h"
-#include <private/qapplication_p.h>
+#include <QWindowSystemInterface>
+#include <QApplication>
 #include <qabstracteventdispatcher.h>
 
 #ifdef QT_USE_CUSTOM_NDK
@@ -238,7 +239,7 @@ static void destroySurface(JNIEnv */*env*/, jobject /*thiz*/)
 
 static void mouseDown(JNIEnv */*env*/, jobject /*thiz*/, jint x, jint y)
 {
-    QApplicationPrivate::handleMouseEvent(0, QEvent::MouseButtonRelease,QPoint(x,y),QPoint(x,y),
+    QWindowSystemInterface::handleMouseEvent(0, QEvent::MouseButtonRelease,QPoint(x,y),QPoint(x,y),
                                                              Qt::MouseButtons(Qt::LeftButton));
     if (QAbstractEventDispatcher::instance(m_qtThread))
             QAbstractEventDispatcher::instance(m_qtThread)->wakeUp();
@@ -246,7 +247,7 @@ static void mouseDown(JNIEnv */*env*/, jobject /*thiz*/, jint x, jint y)
 
 static void mouseUp(JNIEnv */*env*/, jobject /*thiz*/, jint x, jint y)
 {
-    QApplicationPrivate::handleMouseEvent(0, QEvent::MouseButtonRelease,QPoint(x,y),QPoint(x,y),
+    QWindowSystemInterface::handleMouseEvent(0, QEvent::MouseButtonRelease,QPoint(x,y),QPoint(x,y),
                                                              Qt::MouseButtons(Qt::NoButton));
     if (QAbstractEventDispatcher::instance(m_qtThread))
             QAbstractEventDispatcher::instance(m_qtThread)->wakeUp();
@@ -254,7 +255,7 @@ static void mouseUp(JNIEnv */*env*/, jobject /*thiz*/, jint x, jint y)
 
 static void mouseMove(JNIEnv */*env*/, jobject /*thiz*/, jint x, jint y)
 {
-    QApplicationPrivate::handleMouseEvent(0, QEvent::MouseButtonRelease,QPoint(x,y),QPoint(x,y),
+    QWindowSystemInterface::handleMouseEvent(0, QEvent::MouseButtonRelease,QPoint(x,y),QPoint(x,y),
                                                              Qt::MouseButtons(Qt::LeftButton));
     if (QAbstractEventDispatcher::instance(m_qtThread))
             QAbstractEventDispatcher::instance(m_qtThread)->wakeUp();
@@ -436,7 +437,7 @@ static void keyDown(JNIEnv */*env*/, jobject /*thiz*/, jint key, jint unicode, j
 
     if (modifier & 4)
         modifiers|=Qt::MetaModifier;
-    QApplicationPrivate::handleKeyEvent(0, QEvent::KeyPress, mapAndroidKey(key), modifiers, QChar(unicode),true);
+    QWindowSystemInterface::handleKeyEvent(0, QEvent::KeyPress, mapAndroidKey(key), modifiers, QChar(unicode),true);
     if (QAbstractEventDispatcher::instance(m_qtThread))
             QAbstractEventDispatcher::instance(m_qtThread)->wakeUp();
 }
@@ -453,7 +454,7 @@ static void keyUp(JNIEnv */*env*/, jobject /*thiz*/, jint key, jint unicode, jin
     if (modifier & 4)
         modifiers|=Qt::MetaModifier;
 
-    QApplicationPrivate::handleKeyEvent(0, QEvent::KeyRelease, mapAndroidKey(key), modifiers, QChar(unicode),true);
+    QWindowSystemInterface::handleKeyEvent(0, QEvent::KeyRelease, mapAndroidKey(key), modifiers, QChar(unicode),true);
     if (QAbstractEventDispatcher::instance(m_qtThread))
             QAbstractEventDispatcher::instance(m_qtThread)->wakeUp();
 }
