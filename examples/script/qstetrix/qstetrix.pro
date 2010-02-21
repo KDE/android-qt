@@ -1,5 +1,5 @@
 QT += script
-CONFIG += uitools
+CONFIG += uitools dll
 
 HEADERS = tetrixboard.h
 SOURCES = main.cpp \

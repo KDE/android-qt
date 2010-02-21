@@ -56,12 +56,16 @@ namespace QtAndroid
             return;
 
         android::Surface::SurfaceInfo info;
-        android::status_t err = m_surface->lock(&info);
+        android::Region r(android::Rect(pos.x()+destinationRect.x(), pos.y()+destinationRect.y(), pos.x()+destinationRect.right(), pos.y()+destinationRect.bottom() ));
+        android::status_t err = m_surface->lock(&info, &r);
         if(err < 0)
         {
             qWarning()<<"Unable to lock the surface";
             return;
         }
+
+        qDebug()<<pos<<destinationRect<<info.w<<info.h;
+
         if ((unsigned)pos.x()>=info.w|| (unsigned)pos.y()>=info.h)
         {
             qWarning()<<"Invalid coordonates";
@@ -69,18 +73,31 @@ namespace QtAndroid
             return;
         }
 
-#if 1
+#if 0
         Q_UNUSED(destinationRect)
         int bpp=2;
 
         if (pos.x()==0 && pos.y()==0 && info.w==(unsigned)image.size().width() && info.h==(unsigned)image.size().height()
-            && info.s*bpp==(unsigned)image.bytesPerLine())
+#if ANDROID_PLATFORM<5
+            && info.bpr==(unsigned)image.bytesPerLine()
+#else
+            && info.s*bpp==(unsigned)image.bytesPerLine()
+#endif
+            )
         {
+#if ANDROID_PLATFORM<5
+            memcpy(info.bits, (const uchar*)image.bits(), info.bpr*info.h);
+#else
             memcpy(info.bits, (const uchar*)image.bits(), info.s*2*info.h);
+#endif
             m_surface->unlockAndPost();
             return;
         }
+#if ANDROID_PLATFORM<5
+        int sbpl=info.bpr;
+#else
         int sbpl=info.s*bpp;
+#endif
         unsigned sposx=pos.x();
         unsigned sposy=pos.y();
 
@@ -100,7 +117,11 @@ namespace QtAndroid
                    width*bpp);
 #else
         int bpp=2;
+#if ANDROID_PLATFORM<5
+        int sbpl=info.bpr;
+#else
         int sbpl=info.s*bpp;
+#endif
         unsigned sposx=pos.x()+destinationRect.x();
         unsigned sposy=pos.y()+destinationRect.y();
 

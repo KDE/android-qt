@@ -1,10 +1,1 @@
-Steps to compile:
-
-1. Download and untar android custom ndk from
-    http://android-lighthouse.googlecode.com/files/ndk.tar.lzma
-
-2. Change in mkspecs/android-g++/qmake.conf "NDK_ROOT" variable to point where
-    you untar the ndk.
-
-$ ./androidconfig.sh
-$ make
+See: http://code.google.com/p/android-lighthouse/wiki/Compile
