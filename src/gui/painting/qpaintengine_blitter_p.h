@@ -4,6 +4,8 @@
 #include "private/qpaintengineex_p.h"
 #include "private/qpaintengine_raster_p.h"
 
+#ifndef QT_NO_BLITTABLE
+
 class QBlittablePrivate;
 class QBlitterPaintEnginePrivate;
 class QBlittablePixmapData;
@@ -84,6 +86,7 @@ public:
     virtual void drawImage(const QRectF &r, const QImage &pm, const QRectF &sr, Qt::ImageConversionFlags flags);
 
     virtual void drawTextItem(const QPointF &pos, const QTextItem &ti);
+    virtual void drawStaticTextItem(QStaticTextItem *);
 
     virtual void drawEllipse(const QRectF &r);
 
@@ -98,4 +101,5 @@ private:
 
 };
 
+#endif //QT_NO_BLITTABLE
 #endif // QPAINTENGINE_BLITTER_P_H

@@ -4,6 +4,8 @@
 #include "private/qapplication_p.h"
 #include "private/qpixmap_blitter_p.h"
 
+#ifndef QT_NO_BLITTABLE
+
 #define STATE_XFORM_SCALE       0x00000001
 #define STATE_XFORM_COMPLEX     0x00000002
 
@@ -569,6 +571,18 @@ void QBlitterPaintEngine::drawTextItem(const QPointF &pos, const QTextItem &ti)
     d->pmData->markRasterOverlay(pos,ti);
 }
 
+void QBlitterPaintEngine::drawStaticTextItem(QStaticTextItem *sti)
+{
+    Q_D(QBlitterPaintEngine);
+    d->lock();
+    d->raster->drawStaticTextItem(sti);
+
+//#### d->pmData->markRasterOverlay(sti);
+    qWarning("not implemented: markRasterOverlay for QStaticTextItem");
+
+}
+
+
 void QBlitterPaintEngine::drawEllipse(const QRectF &r)
 {
     Q_D(QBlitterPaintEngine);
@@ -658,3 +672,5 @@ void QBlittable::unlock()
         d->locked = false;
     }
 }
+
+#endif //QT_NO_BLITTABLE
