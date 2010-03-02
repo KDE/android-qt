@@ -1058,7 +1058,9 @@ QScriptValue QDeclarativeEnginePrivate::playSound(QScriptContext *ctxt, QScriptE
 
     if (url.scheme() == QLatin1String("file")) {
 
+#ifndef QT_NO_SOUND
         QSound::play(url.toLocalFile());
+#endif
 
     }
     return engine->undefinedValue();

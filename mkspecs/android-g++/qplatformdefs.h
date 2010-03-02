@@ -186,6 +186,29 @@
 #define QT_OPEN_TRUNC		O_TRUNC
 #define QT_OPEN_APPEND		O_APPEND
 
+// Directory iteration
+#define QT_DIR                  DIR
+
+
+#define QT_OPENDIR              ::opendir
+#define QT_CLOSEDIR             ::closedir
+
+#if defined(QT_LARGEFILE_SUPPORT) \
+        && defined(QT_USE_XOPEN_LFS_EXTENSIONS) \
+        && !defined(QT_NO_READDIR64)
+#define QT_DIRENT               struct dirent64
+#define QT_READDIR              ::readdir64
+#define QT_READDIR_R            ::readdir64_r
+#else
+#define QT_DIRENT               struct dirent
+#define QT_READDIR              ::readdir
+#define QT_READDIR_R            ::readdir_r
+#endif
+
+#define QT_SOCKET_CONNECT       ::connect
+#define QT_SOCKET_BIND          ::bind
+
+
 #define QT_SIGNAL_RETTYPE	void
 #define QT_SIGNAL_ARGS		int
 #define QT_SIGNAL_IGNORE	SIG_IGN

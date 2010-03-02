@@ -126,6 +126,7 @@ bool QFSFileEngineIterator::hasNext() const
 #else
 	    long maxPathName = FILENAME_MAX;
 #endif
+            maxPathName += sizeof(QT_DIRENT) + 1;
 
 #if defined(_POSIX_THREAD_SAFE_FUNCTIONS) && !defined(Q_OS_CYGWIN) && !defined(Q_OS_SYMBIAN)
             if (that->platform->mt_file)
