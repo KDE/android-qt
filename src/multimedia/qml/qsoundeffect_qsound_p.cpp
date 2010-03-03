@@ -123,6 +123,7 @@ QMediaPlayer::MediaStatus QSoundEffectPrivate::mediaStatus() const
 
 void QSoundEffectPrivate::play()
 {
+#ifndef QT_NO_SOUND
     if (m_sound && !m_muted) {
         m_queued = false;
         m_timer->start(20);
@@ -131,16 +132,19 @@ void QSoundEffectPrivate::play()
         emit stateChanged(m_state = QMediaPlayer::PlayingState);
     } else if (m_status == QMediaPlayer::LoadingMedia)
         m_queued = true;
+#endif
 }
 
 void QSoundEffectPrivate::stop()
 {
+#ifndef QT_NO_SOUND
     m_timer->stop();
 
     if (m_sound) {
         m_sound->stop();
         emit stateChanged(m_state = QMediaPlayer::StoppedState);
     }
+#endif
 }
 
 void QSoundEffectPrivate::setVolume(int volume)
@@ -176,12 +180,14 @@ void QSoundEffectPrivate::setMedia(const QMediaContent &media)
 
 void QSoundEffectPrivate::decoderReady()
 {
+#ifndef QT_NO_SOUND
     m_file->close();
     m_sound = new QSound(m_media.canonicalUrl().toLocalFile());
     emit mediaStatusChanged(m_status = QMediaPlayer::LoadedMedia);
 
     if (m_queued)
         play();
+#endif
 }
 
 void QSoundEffectPrivate::decoderError()
@@ -192,11 +198,13 @@ void QSoundEffectPrivate::decoderError()
 
 void QSoundEffectPrivate::checkPlayTime()
 {
+#ifndef QT_NO_SOUND
     if (m_sound->isFinished()) {
         m_timer->stop();
         m_state = QMediaPlayer::StoppedState;
         emit stateChanged(m_state);
     }
+#endif
 }
 
 void QSoundEffectPrivate::loadSample()
