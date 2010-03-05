@@ -63,6 +63,10 @@ extern "C" {
 #endif
 }
 
+#ifdef Q_OS_ANDROID
+# undef QT_NO_GETADDRINFO
+#endif
+
 #if defined (QT_NO_GETADDRINFO)
 #include <qmutex.h>
 QT_BEGIN_NAMESPACE

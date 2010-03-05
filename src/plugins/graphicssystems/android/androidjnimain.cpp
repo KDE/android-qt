@@ -64,7 +64,7 @@ namespace QtAndroid
             return;
         }
 
-        qDebug()<<pos<<destinationRect<<info.w<<info.h;
+//        qDebug()<<pos<<destinationRect<<info.w<<info.h;
 
         if ((unsigned)pos.x()>=info.w|| (unsigned)pos.y()>=info.h)
         {
@@ -195,6 +195,11 @@ static void * startMainMethod(void * /*data*/)
 
 static jboolean startQtApp(JNIEnv* /*env*/, jobject /*object*/)
 {
+    m_qtThread=0;
+   #ifdef QT_USE_CUSTOM_NDK
+        m_surface=0;
+    #endif
+    mAndroidGraphicsSystem=0;
     pthread_t appThread;
     return pthread_create(&appThread, NULL, startMainMethod, NULL)==0;
 }
@@ -226,27 +231,32 @@ static void setDisplayMetrics(JNIEnv* /*env*/, jclass /*clazz*/,
                               jint widthPixels, jint heightPixels,
                               jfloat xdpi, jfloat ydpi)
 {
+    qDebug()<<"***** setDisplayMetrics ****"<<widthPixels << heightPixels;
     if (!mAndroidGraphicsSystem)
     {
-        QAndroidGraphicsSystem::setDefaultDisplayMetrics(widthPixels,heightPixels,
+        QAndroidGraphicsSystem::setDefaultDisplayMetrics(widthPixels-25,heightPixels-25,
                                                          qRound((double)widthPixels   / xdpi * 100 / 2.54 ),
                                                          qRound((double)heightPixels / ydpi *100  / 2.54 ));
         return;
     }
     QAndroidGraphicsSystemScreen * androidGraphicsSystemScreen=mAndroidGraphicsSystem->getPrimaryScreen();
-    androidGraphicsSystemScreen->mGeometry.setWidth(widthPixels);
-    androidGraphicsSystemScreen->mGeometry.setHeight(heightPixels);
+    androidGraphicsSystemScreen->mGeometry.setWidth(widthPixels-25);
+    androidGraphicsSystemScreen->mGeometry.setHeight(heightPixels-25);
     androidGraphicsSystemScreen->mPhysicalSize.setWidth(qRound((double)widthPixels   / xdpi * 100 / 2.54 ));
     androidGraphicsSystemScreen->mPhysicalSize.setHeight(qRound((double)heightPixels / ydpi *100  / 2.54 ));
 }
 
 static void setSurface(JNIEnv *env, jobject /*thiz*/, jobject jSurface, jint w, jint h)
 {
+    qDebug()<<"***** setSurface ****"<<w << h;
     m_surfaceMutex.lock();
     m_surface = reinterpret_cast<android::Surface*>(env->GetIntField(jSurface, IDsurface));
     m_surfaceMutex.unlock();
     if (mAndroidGraphicsSystem)
+    {
         mAndroidGraphicsSystem->setDesktopSize(w, h);
+        mAndroidGraphicsSystem->updateScreen();
+    }
     else
         QAndroidGraphicsSystem::setDefaultDesktopSize(w,h);
 }
