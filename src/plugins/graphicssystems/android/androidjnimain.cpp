@@ -234,13 +234,13 @@ static void setDisplayMetrics(JNIEnv* /*env*/, jclass /*clazz*/,
     qDebug()<<"***** setDisplayMetrics ****"<<widthPixels << heightPixels;
     if (!mAndroidGraphicsSystem)
     {
-        QAndroidGraphicsSystem::setDefaultDisplayMetrics(widthPixels-25,heightPixels-25,
+        QAndroidGraphicsSystem::setDefaultDisplayMetrics(widthPixels,heightPixels-25,
                                                          qRound((double)widthPixels   / xdpi * 100 / 2.54 ),
                                                          qRound((double)heightPixels / ydpi *100  / 2.54 ));
         return;
     }
     QAndroidGraphicsSystemScreen * androidGraphicsSystemScreen=mAndroidGraphicsSystem->getPrimaryScreen();
-    androidGraphicsSystemScreen->mGeometry.setWidth(widthPixels-25);
+    androidGraphicsSystemScreen->mGeometry.setWidth(widthPixels);
     androidGraphicsSystemScreen->mGeometry.setHeight(heightPixels-25);
     androidGraphicsSystemScreen->mPhysicalSize.setWidth(qRound((double)widthPixels   / xdpi * 100 / 2.54 ));
     androidGraphicsSystemScreen->mPhysicalSize.setHeight(qRound((double)heightPixels / ydpi *100  / 2.54 ));
