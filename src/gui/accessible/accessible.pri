@@ -1,6 +1,6 @@
 # Qt accessibility module
 
-contains(QT_CONFIG, accessibility) {
+#contains(QT_CONFIG, accessibility) {
       HEADERS += accessible/qaccessible.h \
                  accessible/qaccessible2.h \
 		 accessible/qaccessibleobject.h \
@@ -22,4 +22,4 @@ contains(QT_CONFIG, accessibility) {
         HEADERS += accessible/qaccessiblebridge.h
         SOURCES += accessible/qaccessible_unix.cpp accessible/qaccessiblebridge.cpp
       }
-}
+#}

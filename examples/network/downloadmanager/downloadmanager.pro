@@ -6,8 +6,11 @@ TEMPLATE = app
 TARGET = 
 DEPENDPATH += .
 INCLUDEPATH += .
-QT = core network
-CONFIG += console
+
+QT -= gui
+QT += network
+
+CONFIG += release
 
 # Input
 HEADERS += downloadmanager.h textprogressbar.h

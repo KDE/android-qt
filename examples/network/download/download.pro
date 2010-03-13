@@ -7,7 +7,8 @@ TARGET =
 DEPENDPATH += .
 INCLUDEPATH += .
 QT = core network
-CONFIG += console
+QT -= gui
+#CONFIG += console
 
 # Input
 SOURCES += main.cpp

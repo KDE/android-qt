@@ -4,6 +4,7 @@ contains(CONFIG, android):INCLUDEPATH += ../plugins/graphicssystems/android
 
 HEADERS += \
     egl/qegl_p.h \
+    egl/qeglcontext_p.h \
     egl/qeglproperties_p.h
 
 SOURCES += \
