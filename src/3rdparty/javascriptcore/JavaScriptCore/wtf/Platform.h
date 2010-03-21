@@ -632,7 +632,7 @@
 #endif
 
 #if PLATFORM(ANDROID)
-#define WTF_USE_PTHREADS 1
+#define WTF_USE_PTHREADS 0
 #define WTF_PLATFORM_SGL 1
 #define USE_SYSTEM_MALLOC 1
 #define ENABLE_MAC_JAVA_BRIDGE 1
@@ -688,7 +688,7 @@
 #ifndef ANDROID
 #define HAVE_TIMEGM 1
 #endif
-#endif     
+#endif
 
 #if OS(DARWIN)
 
