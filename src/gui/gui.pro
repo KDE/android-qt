@@ -40,7 +40,7 @@ include(statemachine/statemachine.pri)
 include(math3d/math3d.pri)
 include(effects/effects.pri)
 
-contains(QT_CONFIG, egl): include(egl/egl.pri)
+contains(QT_CONFIG, egl): !contains(QT_CONFIG, android): include(egl/egl.pri)
 
 embedded: QT += network
 

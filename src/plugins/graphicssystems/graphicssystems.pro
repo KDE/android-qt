@@ -13,6 +13,3 @@ contains(QT_CONFIG, shivavg) {
     # Only works under X11 at present
     !win32:!embedded:!mac:SUBDIRS += shivavg
 }
-
-
-CONFIG(android): SUBDIRS += android

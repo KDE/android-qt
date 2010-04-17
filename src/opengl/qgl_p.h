@@ -64,16 +64,12 @@
 #include "qcache.h"
 #include "qglpaintdevice_p.h"
 
-#if defined(QT_OPENGL_ES) || defined(QT_OPENGL_ES_2)
-#include <QtGui/private/qegl_p.h>
-#ifdef Q_OS_ANDROID
-#include <EGL/egl.h>
-#else
-#endif // Q_OS_ANDROID
-#endif
-
 #if defined(Q_WS_LITE)
-#include <qglplatformintegration_lite.h>
+# include <qglplatformintegration_lite.h>
+#else
+# if defined(QT_OPENGL_ES) || defined(QT_OPENGL_ES_2)
+#  include <QtGui/private/qegl_p.h>
+# endif
 #endif
 
 QT_BEGIN_NAMESPACE

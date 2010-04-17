@@ -39,15 +39,15 @@
 **
 ****************************************************************************/
 #include "androidjnimain.h"
-#include "qwindowsurface_android.h"
-#include "qgraphicssystem_android.h"
+#include "qandroidwindowsurface.h"
+#include "qandroidplatformintegration.h"
 #include <QtCore/qdebug.h>
 
 QT_BEGIN_NAMESPACE
 using namespace QtAndroid;
 
 QAndroidWindowSurface::QAndroidWindowSurface
-        (QAndroidGraphicsSystemScreen *screen, QWidget *window)
+        (QAndroidPlatformScreen *screen, QWidget *window)
     : QWindowSurface(window),
         mWindow(window),
         mScreen(screen)

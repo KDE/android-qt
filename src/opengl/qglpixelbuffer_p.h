@@ -127,11 +127,9 @@ struct GLXFBConfig {
 
 #elif defined(Q_WS_WIN)
 DECLARE_HANDLE(HPBUFFERARB);
-#elif defined(Q_OS_ANDROID)
+#elif defined(QT_OPENGL_ES_2) && !defined(Q_WS_LITE)
 #include <EGL/egl.h>
-#elif defined(QT_OPENGL_ES_2)
-#include <EGL/egl.h>
-#elif defined(QT_OPENGL_ES)
+#elif defined(QT_OPENGL_ES) && !defined(Q_WS_LITE)
 #include <GLES/egl.h>
 #endif
 QT_END_INCLUDE_NAMESPACE
@@ -197,16 +195,16 @@ public:
     AGLContext share_ctx;
 #  endif
 #endif
-#if defined(QT_OPENGL_ES)
-    EGLSurface pbuf;
-    QEglContext *ctx;
-    int textureFormat;
-#endif
 #if defined(Q_WS_LITE)
     // Stubs
     int pbuf;
     int ctx;
+#elif defined(QT_OPENGL_ES)
+    EGLSurface pbuf;
+    QEglContext *ctx;
+    int textureFormat;
 #endif
+
 };
 
 QT_END_NAMESPACE

@@ -9,7 +9,7 @@
 #include <qdebug.h>
 #include <qglobal.h>
 #include "androidjnimain.h"
-#include "qgraphicssystem_android.h"
+#include "qandroidplatformintegration.h"
 #include <QWindowSystemInterface>
 #include <QApplication>
 #include <qabstracteventdispatcher.h>
@@ -34,7 +34,7 @@ static QThread * m_qtThread=0;
     static android::Surface* m_surface;
 #endif
 
-static QAndroidGraphicsSystem * mAndroidGraphicsSystem=0;
+static QAndroidPlatformIntegration * mAndroidGraphicsSystem=0;
 namespace QtAndroid
 {
     JavaVM * getJavaVM()
@@ -161,7 +161,7 @@ namespace QtAndroid
 #endif
     }
 
-    void setAndroidGraphicsSystem(QAndroidGraphicsSystem * androidGraphicsSystem)
+    void setAndroidGraphicsSystem(QAndroidPlatformIntegration * androidGraphicsSystem)
     {
         mAndroidGraphicsSystem=androidGraphicsSystem;
     }
@@ -180,7 +180,7 @@ static void * startMainMethod(void * /*data*/)
     params[0]=(char*)malloc(20);
     strcpy(params[0],"QtApp");
     params[1]=(char*)malloc(20);
-    strcpy(params[1],"-graphicssystem");
+    strcpy(params[1],"-platform");
     params[2]=(char*)malloc(20);
     strcpy(params[2],"android");
     int ret = main(3, params);
@@ -234,12 +234,12 @@ static void setDisplayMetrics(JNIEnv* /*env*/, jclass /*clazz*/,
     qDebug()<<"***** setDisplayMetrics ****"<<widthPixels << heightPixels;
     if (!mAndroidGraphicsSystem)
     {
-        QAndroidGraphicsSystem::setDefaultDisplayMetrics(widthPixels,heightPixels-25,
+        QAndroidPlatformIntegration::setDefaultDisplayMetrics(widthPixels,heightPixels-25,
                                                          qRound((double)widthPixels   / xdpi * 100 / 2.54 ),
                                                          qRound((double)heightPixels / ydpi *100  / 2.54 ));
         return;
     }
-    QAndroidGraphicsSystemScreen * androidGraphicsSystemScreen=mAndroidGraphicsSystem->getPrimaryScreen();
+    QAndroidPlatformScreen * androidGraphicsSystemScreen=mAndroidGraphicsSystem->getPrimaryScreen();
     androidGraphicsSystemScreen->mGeometry.setWidth(widthPixels);
     androidGraphicsSystemScreen->mGeometry.setHeight(heightPixels-25);
     androidGraphicsSystemScreen->mPhysicalSize.setWidth(qRound((double)widthPixels   / xdpi * 100 / 2.54 ));
@@ -258,7 +258,7 @@ static void setSurface(JNIEnv *env, jobject /*thiz*/, jobject jSurface, jint w, 
         mAndroidGraphicsSystem->updateScreen();
     }
     else
-        QAndroidGraphicsSystem::setDefaultDesktopSize(w,h);
+        QAndroidPlatformIntegration::setDefaultDesktopSize(w,h);
 }
 
 static void destroySurface(JNIEnv */*env*/, jobject /*thiz*/)

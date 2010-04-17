@@ -82,7 +82,7 @@
 #define GLX_SAMPLES_ARB         100001
 #endif
 
-#ifdef QT_OPENGL_ES
+#if defined(QT_OPENGL_ES) && !defined(Q_WS_LITE)
 #include <private/qeglcontext_p.h>
 #endif
 

@@ -39,8 +39,8 @@
 **
 ****************************************************************************/
 
-#include "qgraphicssystem_android.h"
-#include "qwindowsurface_android.h"
+#include "qandroidplatformintegration.h"
+#include "qandroidwindowsurface.h"
 #include "qabstracteventdispatcher.h"
 #include "androidjnimain.h"
 #include <QtGui/private/qpixmap_raster_p.h>
@@ -50,15 +50,15 @@
 
 QT_BEGIN_NAMESPACE
 
-int QAndroidGraphicsSystem::mDefaultGeometryWidth=320;
-int QAndroidGraphicsSystem::mDefaultGeometryHeight=455;
-int QAndroidGraphicsSystem::mDefaultPhysicalSizeWidth=50;
-int QAndroidGraphicsSystem::mDefaultPhysicalSizeHeight=71;
+int QAndroidPlatformIntegration::mDefaultGeometryWidth=320;
+int QAndroidPlatformIntegration::mDefaultGeometryHeight=455;
+int QAndroidPlatformIntegration::mDefaultPhysicalSizeWidth=50;
+int QAndroidPlatformIntegration::mDefaultPhysicalSizeHeight=71;
 
-QAndroidGraphicsSystem::QAndroidGraphicsSystem()
+QAndroidPlatformIntegration::QAndroidPlatformIntegration()
 {
     mDesktopWidget=0;
-    mPrimaryScreen = new QAndroidGraphicsSystemScreen();
+    mPrimaryScreen = new QAndroidPlatformScreen();
     mPrimaryScreen->mGeometry = QRect(0, 0, mDefaultGeometryWidth, mDefaultGeometryHeight);
     mPrimaryScreen->mDepth = 16;
     mPrimaryScreen->mFormat = QImage::Format_RGB16;
@@ -70,7 +70,7 @@ QAndroidGraphicsSystem::QAndroidGraphicsSystem()
 
 }
 
-void QAndroidGraphicsSystem::setDefaultDisplayMetrics(int gw, int gh, int sw, int sh)
+void QAndroidPlatformIntegration::setDefaultDisplayMetrics(int gw, int gh, int sw, int sh)
 {
     mDefaultGeometryWidth=gw;
     mDefaultGeometryHeight=gh;
@@ -78,18 +78,18 @@ void QAndroidGraphicsSystem::setDefaultDisplayMetrics(int gw, int gh, int sw, in
     mDefaultPhysicalSizeHeight=sh;
 }
 
-void QAndroidGraphicsSystem::setDefaultDesktopSize(int gw, int gh)
+void QAndroidPlatformIntegration::setDefaultDesktopSize(int gw, int gh)
 {
     mDefaultGeometryWidth=gw;
     mDefaultGeometryHeight=gh;
 }
 
-QPixmapData *QAndroidGraphicsSystem::createPixmapData(QPixmapData::PixelType type) const
+QPixmapData *QAndroidPlatformIntegration::createPixmapData(QPixmapData::PixelType type) const
 {
     return new QRasterPixmapData(type);
 }
 
-QWindowSurface *QAndroidGraphicsSystem::createWindowSurface(QWidget *widget) const
+QWindowSurface *QAndroidPlatformIntegration::createWindowSurface(QWidget *widget) const
 {
     qDebug()<<"createWindowSurface"<<widget;
     if (widget->windowType() == Qt::Desktop)
@@ -104,7 +104,7 @@ QWindowSurface *QAndroidGraphicsSystem::createWindowSurface(QWidget *widget) con
     return new QAndroidWindowSurface(mPrimaryScreen, widget);
 }
 
-void QAndroidGraphicsSystem::updateScreen()
+void QAndroidPlatformIntegration::updateScreen()
 {
     if (mDesktopWidget)
     {
@@ -114,7 +114,7 @@ void QAndroidGraphicsSystem::updateScreen()
     }
 }
 
-void QAndroidGraphicsSystem::setDesktopSize(int width, int height)
+void QAndroidPlatformIntegration::setDesktopSize(int width, int height)
 {
     if (mDesktopWidget)
     {

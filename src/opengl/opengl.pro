@@ -16,8 +16,6 @@ contains(QT_CONFIG, opengles1):CONFIG += opengles1
 contains(QT_CONFIG, opengles2):CONFIG += opengles2
 contains(QT_CONFIG, egl):CONFIG += egl
 
-CONFIG(android):INCLUDEPATH += ../plugins/graphicssystems/android
-
 HEADERS += qgl.h \
 	   qgl_p.h \
 	   qglcolormap.h \
@@ -38,11 +36,11 @@ SOURCES	+= qgl.cpp \
            qglpaintdevice.cpp \
            qglbuffer.cpp \
 
-
 !contains(QT_CONFIG, opengles2) {
     HEADERS += qpaintengine_opengl_p.h
     SOURCES += qpaintengine_opengl.cpp
 }
+
 
 !contains(QT_CONFIG, opengles1) {
     HEADERS +=  qglshaderprogram.h \

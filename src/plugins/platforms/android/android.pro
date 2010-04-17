@@ -16,12 +16,11 @@ QT += opengl
 
 SOURCES = main.cpp \
     androidjnimain.cpp \
-    qgraphicssystem_android.cpp \
-    qwindowsurface_android.cpp \
-    android_egl.cpp
+    qandroidplatformintegration.cpp \
+    qandroidwindowsurface.cpp
 
-HEADERS = qgraphicssystem_android.h \
-    qwindowsurface_android.h
+HEADERS = qandroidplatformintegration.h \
+    qandroidwindowsurface.h
 
 target.path=$$[QT_INSTALL_LIBS]
 

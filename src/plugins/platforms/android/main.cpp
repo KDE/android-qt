@@ -39,18 +39,16 @@
 **
 ****************************************************************************/
 
-#include <private/qgraphicssystemplugin_p.h>
-//#include <private/qgraphicssystem_gl_p.h>
-//#include <qgl.h>
-#include "qgraphicssystem_android.h"
+#include <QPlatformIntegrationPlugin>
+#include "qandroidplatformintegration.h"
 
 QT_BEGIN_NAMESPACE
 
-class QAndroidGraphicsSystemPlugin : public QGraphicsSystemPlugin
+class QAndroidGraphicsSystemPlugin : public QPlatformIntegrationPlugin
 {
 public:
     QStringList keys() const;
-    QGraphicsSystem *create(const QString&);
+    QPlatformIntegration *create(const QString&);
 };
 
 QStringList QAndroidGraphicsSystemPlugin::keys() const
@@ -61,11 +59,11 @@ QStringList QAndroidGraphicsSystemPlugin::keys() const
     return list;
 }
 
-QGraphicsSystem* QAndroidGraphicsSystemPlugin::create(const QString& system)
+QPlatformIntegration* QAndroidGraphicsSystemPlugin::create(const QString& system)
 {
     qDebug()<<"QAndroidGraphicsSystemPlugin::create"<<system;
     if (system.toLower() == "android")
-        return new QAndroidGraphicsSystem;
+        return new QAndroidPlatformIntegration;
 /*
     if (system.toLower() == "androidgl")
     {

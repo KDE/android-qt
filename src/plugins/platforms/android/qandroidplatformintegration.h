@@ -42,27 +42,25 @@
 #ifndef QGRAPHICSSYSTEM_MINIMAL_H
 #define QGRAPHICSSYSTEM_MINIMAL_H
 
-#include <QtGui/private/qgraphicssystem_p.h>
+#include <QPlatformScreen>
+#include <QPlatformIntegration>
 
 QT_BEGIN_NAMESPACE
 
 class QDesktopWidget;
 
-class QAndroidGraphicsSystemScreen : public QGraphicsSystemScreen
+class QAndroidPlatformScreen : public QPlatformScreen
 {
     Q_OBJECT
 public:
-    QAndroidGraphicsSystemScreen()
+    QAndroidPlatformScreen()
         : mDepth(16), mFormat(QImage::Format_RGB16) {}
-    ~QAndroidGraphicsSystemScreen() {}
+    ~QAndroidPlatformScreen() {}
 
     QRect geometry() const { return mGeometry; }
     int depth() const { return mDepth; }
     QImage::Format format() const { return mFormat; }
     QSize physicalSize() const { return mPhysicalSize; }
-
-signals:
-    void screenResized(const QSize & size);
 
 public:
     QRect mGeometry;
@@ -71,17 +69,17 @@ public:
     QSize mPhysicalSize;
 };
 
-class QAndroidGraphicsSystem : public QGraphicsSystem
+class QAndroidPlatformIntegration : public QPlatformIntegration
 {
 public:
-    QAndroidGraphicsSystem();
+    QAndroidPlatformIntegration();
 
     QPixmapData *createPixmapData(QPixmapData::PixelType type) const;
     QWindowSurface *createWindowSurface(QWidget *widget) const;
 
-    QList<QGraphicsSystemScreen *> screens() const { return mScreens; }
+    QList<QPlatformScreen *> screens() const { return mScreens; }
 
-    QAndroidGraphicsSystemScreen * getPrimaryScreen(){return mPrimaryScreen;}
+    QAndroidPlatformScreen * getPrimaryScreen(){return mPrimaryScreen;}
 
     virtual void setDesktopSize(int width, int height);
     virtual void updateScreen();
@@ -92,8 +90,8 @@ public:
 private:
     QThread * m_mainThread;
     mutable QWidget * mDesktopWidget;
-    QAndroidGraphicsSystemScreen *mPrimaryScreen;
-    QList<QGraphicsSystemScreen *> mScreens;
+    QAndroidPlatformScreen *mPrimaryScreen;
+    QList<QPlatformScreen *> mScreens;
     static int mDefaultGeometryWidth,mDefaultGeometryHeight,mDefaultPhysicalSizeWidth,mDefaultPhysicalSizeHeight;
 };
 

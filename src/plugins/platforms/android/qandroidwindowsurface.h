@@ -46,14 +46,13 @@
 
 QT_BEGIN_NAMESPACE
 
-class QAndroidGraphicsSystemScreen;
+class QAndroidPlatformScreen;
 
 class QAndroidWindowSurface : public QObject, public QWindowSurface
 {
     Q_OBJECT
 public:
-    QAndroidWindowSurface
-        (QAndroidGraphicsSystemScreen *screen, QWidget *window);
+    QAndroidWindowSurface(QAndroidPlatformScreen *screen, QWidget *window);
     ~QAndroidWindowSurface();
 
     QPaintDevice *paintDevice();
@@ -69,7 +68,7 @@ public slots:
 
 private:
     QWidget * mWindow;
-    QAndroidGraphicsSystemScreen *mScreen;
+    QAndroidPlatformScreen *mScreen;
     QImage mImage;
 };
 

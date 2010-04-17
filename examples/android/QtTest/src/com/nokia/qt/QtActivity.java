@@ -10,12 +10,20 @@ import android.view.Window;
 public class QtActivity extends Activity {
 	private boolean quitApp=true;
 	private String appName=""; 
-
+	private String[] libraries={"QtCore", "QtNetwork", "QtXml", 
+								"QtScript", "QtSql", "QtGui",
+								"QtOpenGL","QtSvg", "QtScriptTools", 
+								"QtDeclarative", "QtWebKit"}; // Be default try to load all Qt libraries
+	
 	public void setApplication(String app)
 	{
 		appName=app;
 	}
 	
+	public void setLibraries(String[] libs)
+	{
+		libraries=libs;
+	}
 	
 	@Override
 	public boolean onKeyDown(int keyCode, KeyEvent event)
@@ -43,6 +51,7 @@ public class QtActivity extends Activity {
 		{
 			if (null==getLastNonConfigurationInstance())
 			{
+				QtApplication.loadLibraries(libraries);
 				QtApplication.loadApplication(appName);
 			}
 			DisplayMetrics metrics = new DisplayMetrics();

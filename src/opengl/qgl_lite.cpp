@@ -49,7 +49,6 @@
 #include "qgl_p.h"
 #include "qglplatformintegration_lite.h"
 
-
 QT_BEGIN_NAMESPACE
 
 QPlatformGLContext::QPlatformGLContext()

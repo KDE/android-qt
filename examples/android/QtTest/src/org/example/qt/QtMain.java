@@ -6,6 +6,7 @@ public class QtMain extends QtActivity
 {
 	public QtMain()
 	{
+		//setLibraries(libraries);
 		setApplication("animatedtiles");
 	}
 }

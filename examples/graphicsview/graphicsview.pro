@@ -12,7 +12,7 @@ SUBDIRS       = \
               simpleanchorlayout \
               weatheranchorlayout
 
-!symbian: !CONFIG(android) : SUBDIRS += flowlayout
+!symbian : SUBDIRS += flowlayout
 
 contains(QT_CONFIG, qt3support):SUBDIRS += portedcanvas portedasteroids
 contains(DEFINES, QT_NO_CURSOR)|contains(DEFINES, QT_NO_DRAGANDDROP): SUBDIRS -= dragdroprobot
