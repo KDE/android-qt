@@ -45,5 +45,5 @@
 
 QPixmap QPixmap::grabWindow(WId window, int x, int y, int w, int h)
 {
-    return QApplicationPrivate::graphicsSystem()->grabWindow(window, x, y, w, h);
+    return QApplicationPrivate::platformIntegration()->grabWindow(window, x, y, w, h);
 }

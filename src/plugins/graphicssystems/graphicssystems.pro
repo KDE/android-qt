@@ -14,12 +14,5 @@ contains(QT_CONFIG, shivavg) {
     !win32:!embedded:!mac:SUBDIRS += shivavg
 }
 
-embedded_lite:  {
-    SUBDIRS += minimal
-}
-
-embedded_lite:x11 {
-    SUBDIRS += linuxfb
-}
 
 CONFIG(android): SUBDIRS += android

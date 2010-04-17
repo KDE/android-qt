@@ -17,7 +17,6 @@ HEADERS += \
 		painting/qpaintengine_p.h \
         painting/qpaintengine_alpha_p.h \
         painting/qpaintengine_preview_p.h \
-        painting/qpaintengine_blitter_p.h \
         painting/qpaintengineex_p.h \
         painting/qpainter.h \
         painting/qpainter_p.h \
@@ -64,7 +63,6 @@ SOURCES += \
         painting/qpaintengine.cpp \
         painting/qpaintengine_alpha.cpp \
         painting/qpaintengine_preview.cpp \
-        painting/qpaintengine_blitter.cpp \
         painting/qpaintengineex.cpp \
         painting/qpainter.cpp \
         painting/qpainterpath.cpp \
@@ -89,12 +87,16 @@ SOURCES += \
                 painting/qpaintengine_raster.cpp        \
                 painting/qdrawhelper.cpp                \
                 painting/qimagescale.cpp                \
-                painting/qgrayraster.c
+                painting/qgrayraster.c                  \
+                painting/qpaintengine_blitter.cpp       \
+                painting/qblittable.cpp                 \
 
         HEADERS +=                                      \
                 painting/qpaintengine_raster_p.h        \
                 painting/qrasterdefs_p.h                \
-                painting/qgrayraster_p.h
+                painting/qgrayraster_p.h                \
+                painting/qpaintengine_blitter_p.h       \
+                painting/qblittable_p.h                 \
 
 win32 {
         HEADERS += painting/qprintengine_win_p.h
@@ -121,12 +123,14 @@ embedded {
         painting/qgraphicssystemfactory_p.h \
         painting/qgraphicssystemplugin_p.h \
         painting/qwindowsurface_raster_p.h \
+        painting/qwindowsurface_rasterblittable_p.h \
 
     SOURCES += \
         painting/qgraphicssystem_raster.cpp \
         painting/qgraphicssystemfactory.cpp \
         painting/qgraphicssystemplugin.cpp \
         painting/qwindowsurface_raster.cpp \
+        painting/qwindowsurface_rasterblittable.cpp \
 }
 
 unix:x11 {
@@ -183,9 +187,11 @@ embedded_lite {
         SOURCES += \
                 painting/qcolormap_lite.cpp \
                 painting/qpaintdevice_lite.cpp \
-                painting/qgraphicssystemcursor_lite.cpp
+                painting/qgraphicssystemcursor_lite.cpp \
+                painting/qgraphicssystem_lite.cpp
         HEADERS += \
-                painting/qgraphicssystemcursor_lite.h
+                painting/qgraphicssystemcursor_lite.h \
+                painting/qgraphicssystem_lite_p.h
 }
 
 symbian {

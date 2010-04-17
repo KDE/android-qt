@@ -47,6 +47,7 @@
 #include <QPointer>
 #include <QObject>
 #include "qgraphicssystem_p.h"
+#include <QPlatformScreen>
 
 QT_BEGIN_NAMESPACE
 
@@ -68,7 +69,7 @@ private:
 
 class Q_GUI_EXPORT QGraphicsSystemCursor : public QObject {
 public:
-    QGraphicsSystemCursor(QGraphicsSystemScreen *);
+    QGraphicsSystemCursor(QPlatformScreen *);
 
     // input methods
     virtual void pointerEvent(const QMouseEvent & event) { Q_UNUSED(event); }
@@ -79,7 +80,7 @@ public:
 protected:
     static QPointer<QGraphicsSystemCursor> instance;    // limit 1 cursor at a time
 
-    QGraphicsSystemScreen * screen;  // Where to request an update
+    QPlatformScreen* screen;  // Where to request an update
 };
 
 QT_END_NAMESPACE
