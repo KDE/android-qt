@@ -278,7 +278,7 @@ bool QWidgetBackingStore::bltRect(const QRect &rect, int dx, int dy, QWidget *wi
 {
     const QPoint pos(tlwOffset + widget->mapTo(tlw, rect.topLeft()));
     const QRect tlwRect(QRect(pos, rect.size()));
-    if (dirty.intersects(tlwRect))
+    if (fullUpdatePending || dirty.intersects(tlwRect))
         return false; // We don't want to scroll junk.
     return windowSurface->scroll(tlwRect, dx, dy);
 }
@@ -286,7 +286,11 @@ bool QWidgetBackingStore::bltRect(const QRect &rect, int dx, int dy, QWidget *wi
 void QWidgetBackingStore::releaseBuffer()
 {
     if (windowSurface)
+#if defined(Q_WS_LITE)
+        windowSurface->resize(QSize());
+#else
         windowSurface->setGeometry(QRect());
+#endif
 #ifdef Q_BACKINGSTORE_SUBSURFACES
     for (int i = 0; i < subSurfaces.size(); ++i)
         subSurfaces.at(i)->setGeometry(QRect());
@@ -416,8 +420,12 @@ QRegion QWidgetBackingStore::dirtyRegion(QWidget *widget) const
 {
     const bool widgetDirty = widget && widget != tlw;
     const QRect tlwRect(topLevelRect());
+#if defined(Q_WS_LITE)
+    const QRect surfaceGeometry(tlwRect.topLeft(), windowSurface->size());
+#else
     const QRect surfaceGeometry(windowSurface->geometry());
-    if (surfaceGeometry != tlwRect && surfaceGeometry.size() != tlwRect.size()) {
+#endif
+    if (fullUpdatePending || (surfaceGeometry != tlwRect && surfaceGeometry.size() != tlwRect.size())) {
         if (widgetDirty) {
             const QRect dirtyTlwRect = QRect(QPoint(), tlwRect.size());
             const QPoint offset(widget->mapTo(tlw, QPoint()));
@@ -467,7 +475,11 @@ QRegion QWidgetBackingStore::dirtyRegion(QWidget *widget) const
 QRegion QWidgetBackingStore::staticContents(QWidget *parent, const QRect &withinClipRect) const
 {
     if (!parent && tlw->testAttribute(Qt::WA_StaticContents)) {
+#if defined(Q_WS_LITE)
+        const QSize surfaceGeometry(windowSurface->size());
+#else
         const QRect surfaceGeometry(windowSurface->geometry());
+#endif
         QRect surfaceRect(0, 0, surfaceGeometry.width(), surfaceGeometry.height());
         if (!withinClipRect.isEmpty())
             surfaceRect &= withinClipRect;
@@ -570,6 +582,18 @@ void QWidgetBackingStore::markDirty(const QRegion &rgn, QWidget *widget, bool up
         return;
     }
 
+    if (fullUpdatePending) {
+        if (updateImmediately)
+            sendUpdateRequest(tlw, updateImmediately);
+        return;
+    }
+
+    if (!windowSurface->hasPartialUpdateSupport()) {
+        fullUpdatePending = true;
+        sendUpdateRequest(tlw, updateImmediately);
+        return;
+    }
+
     const QPoint offset = widget->mapTo(tlw, QPoint());
     const QRect widgetRect = widget->d_func()->effectiveRectFor(widget->rect());
     if (qt_region_strictContains(dirty, widgetRect.translated(offset))) {
@@ -650,6 +674,18 @@ void QWidgetBackingStore::markDirty(const QRect &rect, QWidget *widget, bool upd
         widget->d_func()->dirty += rect;
         if (!eventAlreadyPosted || updateImmediately)
             sendUpdateRequest(widget, updateImmediately);
+        return;
+    }
+
+    if (fullUpdatePending) {
+        if (updateImmediately)
+            sendUpdateRequest(tlw, updateImmediately);
+        return;
+    }
+
+    if (!windowSurface->hasPartialUpdateSupport()) {
+        fullUpdatePending = true;
+        sendUpdateRequest(tlw, updateImmediately);
         return;
     }
 
@@ -851,6 +887,7 @@ void QWidgetBackingStore::updateLists(QWidget *cur)
 
 QWidgetBackingStore::QWidgetBackingStore(QWidget *topLevel)
     : tlw(topLevel), dirtyOnScreenWidgets(0), hasDirtyFromPreviousSync(false)
+    , fullUpdatePending(0)
 {
     windowSurface = tlw->windowSurface();
     if (!windowSurface)
@@ -1140,37 +1177,47 @@ void QWidgetBackingStore::sync()
             for (int i = 0; i < dirtyWidgets.size(); ++i)
                 resetWidget(dirtyWidgets.at(i));
             dirtyWidgets.clear();
+            fullUpdatePending = false;
         }
         return;
     }
 
-    const bool inTopLevelResize = tlwExtra->inTopLevelResize;
     const bool updatesDisabled = !tlw->updatesEnabled();
-    const QRect tlwRect(topLevelRect());
-    const QRect surfaceGeometry(windowSurface->geometry());
     bool repaintAllWidgets = false;
 
-    if (inTopLevelResize || surfaceGeometry != tlwRect) {
-        if ((inTopLevelResize || surfaceGeometry.size() != tlwRect.size()) && !updatesDisabled) {
-            if (hasStaticContents()) {
-                // Repaint existing dirty area and newly visible area.
-                const QRect clipRect(0, 0, surfaceGeometry.width(), surfaceGeometry.height());
-                const QRegion staticRegion(staticContents(0, clipRect));
-                QRegion newVisible(0, 0, tlwRect.width(), tlwRect.height());
-                newVisible -= staticRegion;
-                dirty += newVisible;
-                windowSurface->setStaticContents(staticRegion);
-            } else {
-                // Repaint everything.
-                dirty = QRegion(0, 0, tlwRect.width(), tlwRect.height());
-                for (int i = 0; i < dirtyWidgets.size(); ++i)
-                    resetWidget(dirtyWidgets.at(i));
-                dirtyWidgets.clear();
-                repaintAllWidgets = true;
-            }
+    const bool inTopLevelResize = tlwExtra->inTopLevelResize;
+    const QRect tlwRect(topLevelRect());
+#ifdef  Q_WS_LITE
+    const QRect surfaceGeometry(tlwRect.topLeft(), windowSurface->size());
+#else
+    const QRect surfaceGeometry(windowSurface->geometry());
+#endif
+    if ((fullUpdatePending || inTopLevelResize || surfaceGeometry.size() != tlwRect.size()) && !updatesDisabled) {
+        if (hasStaticContents()) {
+            // Repaint existing dirty area and newly visible area.
+            const QRect clipRect(0, 0, surfaceGeometry.width(), surfaceGeometry.height());
+            const QRegion staticRegion(staticContents(0, clipRect));
+            QRegion newVisible(0, 0, tlwRect.width(), tlwRect.height());
+            newVisible -= staticRegion;
+            dirty += newVisible;
+            windowSurface->setStaticContents(staticRegion);
+        } else {
+            // Repaint everything.
+            dirty = QRegion(0, 0, tlwRect.width(), tlwRect.height());
+            for (int i = 0; i < dirtyWidgets.size(); ++i)
+                resetWidget(dirtyWidgets.at(i));
+            dirtyWidgets.clear();
+            repaintAllWidgets = true;
         }
-        windowSurface->setGeometry(tlwRect);
     }
+
+#ifdef Q_WS_LITE
+    if (inTopLevelResize || surfaceGeometry.size() != tlwRect.size())
+        windowSurface->resize(tlwRect.size());
+#else
+    if (inTopLevelResize || surfaceGeometry != tlwRect)
+        windowSurface->setGeometry(tlwRect);
+#endif
 
     if (updatesDisabled)
         return;
@@ -1229,6 +1276,8 @@ void QWidgetBackingStore::sync()
         }
     }
     dirtyWidgets.clear();
+
+    fullUpdatePending = false;
 
     if (toClean.isEmpty()) {
         // Nothing to repaint. However, we might have newly exposed areas on the

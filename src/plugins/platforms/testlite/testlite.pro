@@ -3,12 +3,8 @@ include(../../qpluginbase.pri)
 
 QTDIR_build:DESTDIR = $$QT_BUILD_TREE/plugins/platforms
 
-SOURCES = main.cpp qplatformintegration_testlite.cpp qwindowsurface_testlite.cpp
-HEADERS = qplatformintegration_testlite.h qwindowsurface_testlite.h
-
-
-HEADERS += x11util.h
-SOURCES += x11util.cpp
+SOURCES = main.cpp qtestliteintegration.cpp qtestlitewindowsurface.cpp qtestlitewindow.cpp
+HEADERS = qtestliteintegration.h qtestlitewindowsurface.h qtestlitewindow.h
 
 LIBS += -lX11 -lXext
 

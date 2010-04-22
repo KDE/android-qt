@@ -49,11 +49,11 @@
 
 #include "qvnccursor.h"
 #include "qvncserver.h"
-#include "qgraphicssystem_vnc.h"
+#include "qvncintegration.h"
 
 QT_BEGIN_NAMESPACE
 
-QVNCCursor::QVNCCursor(QVNCServer * srvr, QVNCPlatformScreen *scr )
+QVNCCursor::QVNCCursor(QVNCServer * srvr, QVNCScreen *scr )
         :QGraphicsSystemSoftwareCursor(scr), useVncCursor(false), server(srvr)
 {
 }

@@ -74,6 +74,9 @@
 # include "qpaintengine.h" // for PorterDuff
 # include "private/qwindowsurface_qws_p.h"
 #endif
+#if defined(Q_WS_LITE)
+#include "qplatformwindow_lite.h"
+#endif
 #include "qpainter.h"
 #include "qtooltip.h"
 #include "qwhatsthis.h"
@@ -1478,7 +1481,7 @@ QWidget::~QWidget()
     QObjectPrivate::clearGuards(this);
 
     if (d->declarativeData) {
-        d->declarativeData->destroyed(this);
+        QAbstractDeclarativeData::destroyed(d->declarativeData, this);
         d->declarativeData = 0;                 // don't activate again in ~QObject
     }
 
@@ -1506,8 +1509,12 @@ QWidget::~QWidget()
     if (QWidgetPrivate::allWidgets) // might have been deleted by ~QApplication
         QWidgetPrivate::allWidgets->remove(this);
 
-    QEvent e(QEvent::Destroy);
-    QCoreApplication::sendEvent(this, &e);
+    QT_TRY {
+        QEvent e(QEvent::Destroy);
+        QCoreApplication::sendEvent(this, &e);
+    } QT_CATCH(const std::exception&) {
+        // if this fails we can't do anything about it but at least we are not allowed to throw.
+    }
 }
 
 int QWidgetPrivate::instanceCounter = 0;  // Current number of widget instances
@@ -1573,6 +1580,9 @@ void QWidgetPrivate::createTLExtra()
 #ifdef QWIDGET_EXTRA_DEBUG
         static int count = 0;
         qDebug() << "tlextra" << ++count;
+#endif
+#if defined(Q_WS_LITE)
+        x->platformWindow = 0;
 #endif
     }
 }
@@ -6177,6 +6187,8 @@ void QWidget::setFocus(Qt::FocusReason reason)
             previousProxyFocus = topData->proxyWidget->widget()->focusWidget();
             if (previousProxyFocus && previousProxyFocus->focusProxy())
                 previousProxyFocus = previousProxyFocus->focusProxy();
+            if (previousProxyFocus == this && !topData->proxyWidget->d_func()->proxyIsGivingFocus)
+                return;
         }
     }
 #endif
@@ -10559,6 +10571,10 @@ void QWidget::setAttribute(Qt::WidgetAttribute attribute, bool on)
     case Qt::WA_X11OpenGLOverlay:
         d->updateIsOpaque();
         break;
+    case Qt::WA_X11DoNotAcceptFocus:
+        if (testAttribute(Qt::WA_WState_Created))
+            d->updateX11AcceptFocus();
+        break;
 #endif
     case Qt::WA_DontShowOnScreen: {
         if (on && isVisible()) {
@@ -11835,6 +11851,46 @@ QWindowSurface *QWidget::windowSurface() const
 
     return bs ? bs->windowSurface : 0;
 }
+
+#if defined(Q_WS_LITE)
+/*!
+    \preliminary
+
+    Sets the window to be the \a window specified.
+    The QWidget takes ownership of the \a surface.
+*/
+void QWidget::setPlatformWindow(QPlatformWindow *window)
+{
+#ifndef Q_BACKINGSTORE_SUBSURFACES
+    if (!isTopLevel())
+        return;
+#endif
+
+    Q_D(QWidget);
+
+    QTLWExtra *topData = d->topData();
+    if (topData->platformWindow == window)
+        return;
+
+    delete topData->platformWindow;
+    topData->platformWindow = window;
+}
+
+/*!
+    \preliminary
+
+    Returns the QPlatformWindow this widget will be drawn into.
+*/
+QPlatformWindow *QWidget::platformWindow() const
+{
+    Q_D(const QWidget);
+    QTLWExtra *extra = d->maybeTopData();
+    if (extra && extra->platformWindow)
+        return extra->platformWindow;
+
+    return 0;
+}
+#endif //defined(Q_WS_LITE)
 
 void QWidgetPrivate::getLayoutItemMargins(int *left, int *top, int *right, int *bottom) const
 {

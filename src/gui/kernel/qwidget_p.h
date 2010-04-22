@@ -102,6 +102,9 @@ class QWSManager;
 #if defined(Q_WS_MAC)
 class QCoreGraphicsPaintEnginePrivate;
 #endif
+#if defined(Q_WS_LITE)
+class QPlatformWindow;
+#endif
 class QPaintEngine;
 class QPixmap;
 class QWidgetBackingStore;
@@ -176,6 +179,8 @@ struct QTLWExtra {
 #endif
 #elif defined(Q_OS_SYMBIAN)
     uint inExpose : 1; // Prevents drawing recursion
+#elif defined(Q_WS_LITE)
+    QPlatformWindow *platformWindow;
 #endif
 };
 
@@ -234,6 +239,15 @@ struct QWExtra {
     uint activated : 1; // RWindowBase::Activated has been called
 
     /**
+     * If this bit is set, each native widget receives the signals from the
+     * Symbian control immediately before and immediately after draw ops are
+     * sent to the window server for this control:
+     *      void beginNativePaintEvent(const QRect &paintRect);
+     *      void endNativePaintEvent(const QRect &paintRect);
+     */
+    uint receiveNativePaintEvents : 1;
+
+    /**
      * Defines the behaviour of QSymbianControl::Draw.
      */
     enum NativePaintMode {
@@ -258,16 +272,7 @@ struct QWExtra {
         Default = Blit
     };
 
-    NativePaintMode nativePaintMode : 2;
-
-    /**
-     * If this bit is set, each native widget receives the signals from the
-     * Symbian control immediately before and immediately after draw ops are
-     * sent to the window server for this control:
-     *      void beginNativePaintEvent(const QRect &paintRect);
-     *      void endNativePaintEvent(const QRect &paintRect);
-     */
-    uint receiveNativePaintEvents : 1;
+    NativePaintMode nativePaintMode;
 
 #endif
 };
@@ -680,7 +685,7 @@ public:
     QMap<Qt::GestureType, Qt::GestureFlags> gestureContext;
 
     // Bit fields.
-    uint high_attributes[3]; // the low ones are in QWidget::widget_attributes
+    uint high_attributes[4]; // the low ones are in QWidget::widget_attributes
     QPalette::ColorRole fg_role : 8;
     QPalette::ColorRole bg_role : 8;
     uint dirtyOpaqueChildren : 1;
@@ -703,6 +708,7 @@ public:
     void setNetWmWindowTypes();
     void x11UpdateIsOpaque();
     bool isBackgroundInherited() const;
+    void updateX11AcceptFocus();
 #elif defined(Q_WS_WIN) // <--------------------------------------------------------- WIN
     uint noPaintOnScreen : 1; // see qwidget_win.cpp ::paintEngine()
     uint nativeGesturePanEnabled : 1;
