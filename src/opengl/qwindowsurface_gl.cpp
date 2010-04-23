@@ -414,7 +414,11 @@ void QGLWindowSurface::flush(QWidget *widget, const QRegion &rgn, const QPoint &
     QWidget *parent = widget->internalWinId() ? widget : widget->nativeParentWidget();
     Q_ASSERT(parent);
 
+#if !defined(Q_WS_LITE)
     if (!geometry().isValid())
+#else
+        if (!size().isValid())
+#endif
         return;
 
     // Needed to support native child-widgets...
@@ -638,20 +642,31 @@ void QGLWindowSurface::flush(QWidget *widget, const QRegion &rgn, const QPoint &
 }
 
 
+#if !defined(Q_WS_LITE)
 void QGLWindowSurface::setGeometry(const QRect &rect)
 {
     QWindowSurface::setGeometry(rect);
     d_ptr->geometry_updated = true;
 }
-
+#else
+void QGLWindowSurface::resize(const QSize &size)
+{
+    QWindowSurface::resize(size);
+    d_ptr->geometry_updated = true;
+}
+#endif
 
 void QGLWindowSurface::updateGeometry() {
     if (!d_ptr->geometry_updated)
         return;
     d_ptr->geometry_updated = false;
 
-
-    QRect rect = geometry();
+    QSize sz;
+#if !defined(Q_WS_LITE)
+    sz = geometry().size();
+#else
+    sz=size();
+#endif
     hijackWindow(window());
     QGLContext *ctx = reinterpret_cast<QGLContext *>(window()->d_func()->extraData()->glContext);
 
@@ -661,13 +676,13 @@ void QGLWindowSurface::updateGeometry() {
 
     const GLenum target = GL_TEXTURE_2D;
 
-    if (rect.width() <= 0 || rect.height() <= 0)
+    if (sz.width() <= 0 || sz.height() <= 0)
         return;
 
-    if (d_ptr->size == rect.size())
+    if (d_ptr->size == sz)
         return;
 
-    d_ptr->size = rect.size();
+    d_ptr->size = sz;
 
     if (d_ptr->ctx) {
 #ifndef QT_OPENGL_ES_2
@@ -698,10 +713,10 @@ void QGLWindowSurface::updateGeometry() {
         if (QGLExtensions::glExtensions() & QGLExtensions::FramebufferBlit)
             format.setSamples(8);
 
-        d_ptr->fbo = new QGLFramebufferObject(rect.size(), format);
+        d_ptr->fbo = new QGLFramebufferObject(sz, format);
 
         if (d_ptr->fbo->isValid()) {
-            qDebug() << "Created Window Surface FBO" << rect.size()
+            qDebug() << "Created Window Surface FBO" << sz
                      << "with samples" << d_ptr->fbo->format().samples();
             return;
         } else {

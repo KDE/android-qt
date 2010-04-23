@@ -16,11 +16,11 @@ QT += opengl
 
 SOURCES = main.cpp \
     androidjnimain.cpp \
-    qandroidplatformintegration.cpp \
-    qandroidwindowsurface.cpp
+    qandroidplatformintegration.cpp
 
-HEADERS = qandroidplatformintegration.h \
-    qandroidwindowsurface.h
+HEADERS = qandroidplatformintegration.h
+
+include(../fb_base/fb_base.pri)
 
 target.path=$$[QT_INSTALL_LIBS]
 

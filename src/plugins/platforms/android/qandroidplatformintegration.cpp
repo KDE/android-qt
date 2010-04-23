@@ -46,6 +46,7 @@
 #include <QtGui/private/qpixmap_raster_p.h>
 #include <QWindowSystemInterface>
 #include <QThread>
+#include <QPlatformWindow>
 #include "qdesktopwidget.h"
 
 QT_BEGIN_NAMESPACE
@@ -55,19 +56,54 @@ int QAndroidPlatformIntegration::mDefaultGeometryHeight=455;
 int QAndroidPlatformIntegration::mDefaultPhysicalSizeWidth=50;
 int QAndroidPlatformIntegration::mDefaultPhysicalSizeHeight=71;
 
+QAndroidPlatformScreen::QAndroidPlatformScreen()
+{
+    mGeometry = QRect(0, 0, QAndroidPlatformIntegration::mDefaultGeometryWidth, QAndroidPlatformIntegration::mDefaultGeometryHeight);
+    mFormat = QImage::Format_RGB16;
+    mDepth = 16;
+
+    mScreenImage = new QImage(mGeometry.width(), mGeometry.height(),
+                              mFormat);
+}
+
+void QAndroidPlatformScreen::setGeometry(QRect rect)
+{
+    mGeometry = rect;
+
+    delete mScreenImage;
+    mScreenImage = new QImage(mGeometry.width(), mGeometry.height(),
+                              mFormat);
+}
+
+void QAndroidPlatformScreen::setFormat(QImage::Format format)
+{
+    mFormat = format;
+
+    delete mScreenImage;
+    mScreenImage = new QImage(mGeometry.width(), mGeometry.height(),
+                              mFormat);
+}
+
+QRegion QAndroidPlatformScreen::doRedraw()
+{
+    QRegion touched;
+    touched = QFbScreen::doRedraw();
+
+    QVector<QRect> rects = touched.rects();
+    for (int i = 0; i < rects.size(); i++)
+        QtAndroid::flushImage(mGeometry.topLeft(), *mScreenImage, rects[i]);
+    return touched;
+}
+
+
+
 QAndroidPlatformIntegration::QAndroidPlatformIntegration()
 {
-    mDesktopWidget=0;
     mPrimaryScreen = new QAndroidPlatformScreen();
-    mPrimaryScreen->mGeometry = QRect(0, 0, mDefaultGeometryWidth, mDefaultGeometryHeight);
-    mPrimaryScreen->mDepth = 16;
-    mPrimaryScreen->mFormat = QImage::Format_RGB16;
-    mPrimaryScreen->mPhysicalSize = QSize(mDefaultPhysicalSizeWidth, mDefaultPhysicalSizeHeight);
     mScreens.append(mPrimaryScreen);
     m_mainThread=QThread::currentThread();
     QtAndroid::setQtThread(m_mainThread);
     QtAndroid::setAndroidGraphicsSystem(this);
-
 }
 
 void QAndroidPlatformIntegration::setDefaultDisplayMetrics(int gw, int gh, int sw, int sh)
@@ -86,29 +122,26 @@ void QAndroidPlatformIntegration::setDefaultDesktopSize(int gw, int gh)
 
 QPixmapData *QAndroidPlatformIntegration::createPixmapData(QPixmapData::PixelType type) const
 {
-    return new QRasterPixmapData(type);
+     return new QRasterPixmapData(type);
 }
 
-QWindowSurface *QAndroidPlatformIntegration::createWindowSurface(QWidget *widget) const
+QWindowSurface *QAndroidPlatformIntegration::createWindowSurface(QWidget *widget, WId /*winId*/) const
 {
-    qDebug()<<"createWindowSurface"<<widget;
-    if (widget->windowType() == Qt::Desktop)
-    {
-        mDesktopWidget = widget;
-        qDebug()<<"DesktopWidget="<<mDesktopWidget;
-        return 0;   // Don't create an explicit window surface for the destkop.
-    }
-    else
-        if (!mDesktopWidget)
-            mDesktopWidget = widget;
-    return new QAndroidWindowSurface(mPrimaryScreen, widget);
+    return new QFbWindowSurface(mPrimaryScreen, widget);
+}
+
+QPlatformWindow *QAndroidPlatformIntegration::createPlatformWindow(QWidget *widget, WId /*winId*/) const
+{
+    QFbWindow *w = new QFbWindow(mPrimaryScreen, widget);
+    mPrimaryScreen->addWindow(w);
+    return w;
 }
 
 void QAndroidPlatformIntegration::updateScreen()
 {
-    if (mDesktopWidget)
+    if (mPrimaryScreen)
     {
-        mDesktopWidget->update();
+        mPrimaryScreen->setDirty(QRect());
         if (QAbstractEventDispatcher::instance(m_mainThread))
                 QAbstractEventDispatcher::instance(m_mainThread)->wakeUp();
     }
@@ -116,9 +149,19 @@ void QAndroidPlatformIntegration::updateScreen()
 
 void QAndroidPlatformIntegration::setDesktopSize(int width, int height)
 {
-    if (mDesktopWidget)
+    if (mPrimaryScreen)
     {
-        QWindowSystemInterface::handleGeometryChange(mDesktopWidget,QRect(0,0,width,height));
+        mPrimaryScreen->setGeometry(QRect(0,0,width, height));
+        if (QAbstractEventDispatcher::instance(m_mainThread))
+                QAbstractEventDispatcher::instance(m_mainThread)->wakeUp();
+    }
+}
+
+void QAndroidPlatformIntegration::setDisplayMetrics(int width, int height)
+{
+    if (mPrimaryScreen)
+    {
+        mPrimaryScreen->setPhysicalSize(QSize(width, height));
         if (QAbstractEventDispatcher::instance(m_mainThread))
                 QAbstractEventDispatcher::instance(m_mainThread)->wakeUp();
     }

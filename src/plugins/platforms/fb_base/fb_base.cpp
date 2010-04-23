@@ -54,9 +54,9 @@ void QGraphicsSystemSoftwareCursor::setCursor(Qt::CursorShape shape)
     graphic->set(shape);
 }
 
-void QGraphicsSystemSoftwareCursor::setCursor(const QImage * image, int hotx, int hoty)
+void QGraphicsSystemSoftwareCursor::setCursor(const QImage & image, int hotx, int hoty)
 {
-    graphic->set(image, hotx, hoty);
+    graphic->set(&image, hotx, hoty);
 }
 
 void QGraphicsSystemSoftwareCursor::setCursor(const uchar *data, const uchar *mask, int width, int height, int hotX, int hotY)
@@ -72,7 +72,7 @@ void QGraphicsSystemSoftwareCursor::changeCursor(QCursor * widgetCursor, QWidget
     if (shape == Qt::BitmapCursor) {
         // application supplied cursor
         QPoint spot = widgetCursor->hotSpot();
-        setCursor(&widgetCursor->pixmap().toImage(), spot.x(), spot.y());
+        setCursor(widgetCursor->pixmap().toImage(), spot.x(), spot.y());
     } else {
         // system cursor
         setCursor(shape);

@@ -42,31 +42,26 @@
 #ifndef QGRAPHICSSYSTEM_MINIMAL_H
 #define QGRAPHICSSYSTEM_MINIMAL_H
 
-#include <QPlatformScreen>
 #include <QPlatformIntegration>
+#include "../fb_base/fb_base.h"
+#include <jni.h>
 
 QT_BEGIN_NAMESPACE
 
 class QDesktopWidget;
 
-class QAndroidPlatformScreen : public QPlatformScreen
+class QAndroidPlatformScreen : public QFbScreen
 {
     Q_OBJECT
 public:
-    QAndroidPlatformScreen()
-        : mDepth(16), mFormat(QImage::Format_RGB16) {}
-    ~QAndroidPlatformScreen() {}
+    QAndroidPlatformScreen();
 
-    QRect geometry() const { return mGeometry; }
-    int depth() const { return mDepth; }
-    QImage::Format format() const { return mFormat; }
-    QSize physicalSize() const { return mPhysicalSize; }
+    void setGeometry(QRect rect);
+    void setFormat(QImage::Format format);
 
-public:
-    QRect mGeometry;
-    int mDepth;
-    QImage::Format mFormat;
-    QSize mPhysicalSize;
+public slots:
+    QRegion doRedraw();
+
 };
 
 class QAndroidPlatformIntegration : public QPlatformIntegration
@@ -75,13 +70,15 @@ public:
     QAndroidPlatformIntegration();
 
     QPixmapData *createPixmapData(QPixmapData::PixelType type) const;
-    QWindowSurface *createWindowSurface(QWidget *widget) const;
+    QWindowSurface *createWindowSurface(QWidget *widget, WId winId) const;
+    QPlatformWindow *createPlatformWindow(QWidget *widget, WId winId = 0) const;
 
     QList<QPlatformScreen *> screens() const { return mScreens; }
 
     QAndroidPlatformScreen * getPrimaryScreen(){return mPrimaryScreen;}
 
     virtual void setDesktopSize(int width, int height);
+    virtual void setDisplayMetrics(int width, int height);
     virtual void updateScreen();
 
     static void setDefaultDisplayMetrics(int gw, int gh, int sw, int sh);
@@ -89,10 +86,10 @@ public:
 
 private:
     QThread * m_mainThread;
-    mutable QWidget * mDesktopWidget;
     QAndroidPlatformScreen *mPrimaryScreen;
     QList<QPlatformScreen *> mScreens;
     static int mDefaultGeometryWidth,mDefaultGeometryHeight,mDefaultPhysicalSizeWidth,mDefaultPhysicalSizeHeight;
+    friend class QAndroidPlatformScreen;
 };
 
 QT_END_NAMESPACE
