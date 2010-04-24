@@ -285,12 +285,24 @@ int WebSocketHandshake::readServerHandshake(const char* header, size_t len)
         }
         p += sizeof(webSocketConnectionHeader) - 1;
     }
-
+#if PLATFORM(ANDROID) && PLATFORM(QT)
+    char * temp=(char *)p;
+    char tmpc=p[end - p];
+    temp[end - p]=0;
+    if (!strstr(p, "\r\n\r\n")) {
+        // Just hasn't been received fully yet.
+        m_mode = Incomplete;
+        temp[end - p]=tmpc;
+        return -1;
+    }
+    temp[end - p]=tmpc;
+#else
     if (!strnstr(p, "\r\n\r\n", end - p)) {
         // Just hasn't been received fully yet.
         m_mode = Incomplete;
         return -1;
     }
+#endif
     HTTPHeaderMap headers;
     p = readHTTPHeaders(p, end, &headers);
     if (!p) {

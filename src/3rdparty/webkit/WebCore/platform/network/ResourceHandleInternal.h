@@ -68,7 +68,7 @@ class NSURLConnection;
 #endif
 #endif
 
-#if PLATFORM(ANDROID)
+#if PLATFORM(ANDROID) && !PLATFORM(QT)
 #include "ResourceLoaderAndroid.h"
 #endif
 
@@ -215,7 +215,7 @@ namespace WebCore {
         // It is almost identical to m_currentWebChallenge.nsURLAuthenticationChallenge(), but has a different sender.
         NSURLAuthenticationChallenge *m_currentMacChallenge;
 #endif
-#if PLATFORM(ANDROID)
+#if PLATFORM(ANDROID) && !PLATFORM(QT)
         RefPtr<ResourceLoaderAndroid> m_loader;
 #endif
         AuthenticationChallenge m_currentWebChallenge;

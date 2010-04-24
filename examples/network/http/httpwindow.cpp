@@ -113,9 +113,11 @@ void HttpWindow::downloadFile()
     url = urlLineEdit->text();
 
     QFileInfo fileInfo(url.path());
-    QString fileName = fileInfo.fileName();
-    if (fileName.isEmpty())
-        fileName = "index.html";
+    QString fileName("/sdcard/");
+    if (fileInfo.fileName().isEmpty())
+        fileName += "index.html";
+    else
+        fileName+=fileInfo.fileName();
 
     if (QFile::exists(fileName)) {
         if (QMessageBox::question(this, tr("HTTP"), 

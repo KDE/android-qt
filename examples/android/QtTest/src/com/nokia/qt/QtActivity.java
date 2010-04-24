@@ -1,6 +1,7 @@
 package com.nokia.qt;
 
 import android.app.Activity;
+import android.graphics.Rect;
 import android.os.Bundle;
 import android.util.DisplayMetrics;
 import android.util.Log;
@@ -13,7 +14,7 @@ public class QtActivity extends Activity {
 	private String[] libraries={"QtCore", "QtNetwork", "QtXml", 
 								"QtScript", "QtSql", "QtGui",
 								"QtOpenGL","QtSvg", "QtScriptTools", 
-								"QtDeclarative", "QtWebKit"}; // Be default try to load all Qt libraries
+								"QtDeclarative", "QtMultimedia", "QtWebKit"}; // Be default try to load all Qt libraries
 	
 	public void setApplication(String app)
 	{
@@ -56,6 +57,10 @@ public class QtActivity extends Activity {
 			}
 			DisplayMetrics metrics = new DisplayMetrics();
 			getWindowManager().getDefaultDisplay().getMetrics(metrics);
+			Rect rect= new Rect();
+			Window window= getWindow();
+			window.getDecorView().getWindowVisibleDisplayFrame(rect);
+			int statusBarHeight= rect.top;
 			QtApplication.setDisplayMetrics(metrics.widthPixels, metrics.heightPixels, metrics.xdpi, metrics.ydpi);
 			quitApp=true;
 			setContentView(new QtSurface(this));

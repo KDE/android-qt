@@ -47,6 +47,6 @@ int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
     HttpWindow httpWin;
-    httpWin.show();
+    httpWin.showFullScreen();
     return httpWin.exec();
 }

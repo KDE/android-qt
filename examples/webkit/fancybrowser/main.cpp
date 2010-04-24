@@ -51,6 +51,6 @@ int main(int argc, char * argv[])
     else
         url = QUrl("http://www.google.com/ncr");
     MainWindow *browser = new MainWindow(url);
-    browser->show();
+    browser->showFullScreen();
     return app.exec();
 }

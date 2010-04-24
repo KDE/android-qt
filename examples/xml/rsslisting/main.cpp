@@ -60,6 +60,6 @@ int main(int argc, char **argv)
     QApplication app(argc, argv);
     qWarning("The usage of QHttp is not recommended anymore, please use QNetworkAccessManager.");
     RSSListing *rsslisting = new RSSListing;
-    rsslisting->show();
+    rsslisting->showFullScreen();
     return app.exec();
 }

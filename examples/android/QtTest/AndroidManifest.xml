@@ -15,4 +15,7 @@
     	<activity android:name="com.nokia.qt.QtActivity"></activity>
 </application>
 
+
+
+<uses-permission android:name="android.permission.INTERNET"></uses-permission>
 </manifest> 

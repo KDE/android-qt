@@ -110,7 +110,7 @@ HistoryItem::~HistoryItem()
 {
     ASSERT(!m_cachedPage);
     iconDatabase()->releaseIconForPageURL(m_urlString);
-#if PLATFORM(ANDROID)
+#if PLATFORM(ANDROID) && !PLATFORM(QT)
     if (m_bridge)
         m_bridge->detachHistoryItem();
 #endif

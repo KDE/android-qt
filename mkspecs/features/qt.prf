@@ -158,17 +158,6 @@ for(QTLIB, $$list($$lower($$unique(QT)))) {
    else:isEqual(QTLIB, scripttools):qlib = QtScriptTools
    else:isEqual(QTLIB, testlib):qlib = QtTest
    else:isEqual(QTLIB, dbus):qlib = QtDBus
-   else:isEqual(QTLIB, android) {
-        contains(TEMPLATE, ".*app"):{
-            QMAKE_LFLAGS += $$ANDROID_TOOLCHAIN_ROOT/lib/crtbegin_dynamic.o
-            QMAKE_LIBS = $$ANDROID_TOOLCHAIN_ROOT/lib/crtend_android.o $$QMAKE_LIBS
-        }
-        else:contains(TEMPLATE, ".*lib"):!CONFIG(plugin):{
-            QMAKE_LFLAGS += -Wl,--whole-archive \
-                            $$QMAKE_LIBDIR_QT/libQtAndroid.a \
-                            -Wl,--no-whole-archive
-        }
-   }
    else:isEqual(QTLIB, phonon) {
        qlib = phonon
        INCLUDEPATH += $$QMAKE_INCDIR_QT/phonon_compat
@@ -186,6 +175,17 @@ for(QTLIB, $$list($$lower($$unique(QT)))) {
        }
    } else:isEqual(QTLIB, declarative):qlib = QtDeclarative
    else:isEqual(QTLIB, multimedia):qlib = QtMultimedia
+   else:isEqual(QTLIB, android) {
+        contains(TEMPLATE, ".*app"):{
+            QMAKE_LFLAGS += $$ANDROID_TOOLCHAIN_ROOT/lib/crtbegin_dynamic.o
+            QMAKE_LIBS = $$ANDROID_TOOLCHAIN_ROOT/lib/crtend_android.o $$QMAKE_LIBS
+        }
+        else:contains(TEMPLATE, ".*lib"):!CONFIG(plugin):!CONFIG(building-libs){
+            QMAKE_LFLAGS += -Wl,--whole-archive \
+                            $$QMAKE_LIBDIR_QT/libQtAndroid.a \
+                            -Wl,--no-whole-archive
+        }
+   }
    else:message("Unknown QT: $$QTLIB"):qlib =
    !isEmpty(qlib) {
       target_qt:isEqual(TARGET, qlib) {

@@ -89,7 +89,7 @@ private:
 #elif PLATFORM(CHROMIUM)
     NetworkStateNotifierPrivate p;
 
-#elif PLATFORM(ANDROID)
+#elif PLATFORM(ANDROID) && !PLATFORM(QT)
 public:
     void networkStateChange(bool online);
 

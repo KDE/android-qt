@@ -61,7 +61,8 @@ QAndroidPlatformScreen::QAndroidPlatformScreen()
     mGeometry = QRect(0, 0, QAndroidPlatformIntegration::mDefaultGeometryWidth, QAndroidPlatformIntegration::mDefaultGeometryHeight);
     mFormat = QImage::Format_RGB16;
     mDepth = 16;
-
+    setPhysicalSize(QSize(QAndroidPlatformIntegration::mDefaultPhysicalSizeWidth,
+                          QAndroidPlatformIntegration::mDefaultPhysicalSizeHeight));
     mScreenImage = new QImage(mGeometry.width(), mGeometry.height(),
                               mFormat);
 }
