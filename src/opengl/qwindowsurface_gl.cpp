@@ -416,10 +416,11 @@ void QGLWindowSurface::flush(QWidget *widget, const QRegion &rgn, const QPoint &
 
 #if !defined(Q_WS_LITE)
     if (!geometry().isValid())
-#else
-        if (!size().isValid())
-#endif
         return;
+#else
+    if (!size().isValid())
+        return;
+#endif
 
     // Needed to support native child-widgets...
     hijackWindow(parent);
@@ -661,12 +662,12 @@ void QGLWindowSurface::updateGeometry() {
         return;
     d_ptr->geometry_updated = false;
 
-    QSize sz;
-#if !defined(Q_WS_LITE)
-    sz = geometry().size();
+#ifdef Q_WS_LITE
+    QSize surfSize = size();
 #else
-    sz=size();
+    QSize surfSize = geometry().size();
 #endif
+
     hijackWindow(window());
     QGLContext *ctx = reinterpret_cast<QGLContext *>(window()->d_func()->extraData()->glContext);
 
@@ -676,19 +677,19 @@ void QGLWindowSurface::updateGeometry() {
 
     const GLenum target = GL_TEXTURE_2D;
 
-    if (sz.width() <= 0 || sz.height() <= 0)
+    if (surfSize.width() <= 0 || surfSize.height() <= 0)
         return;
 
-    if (d_ptr->size == sz)
+    if (d_ptr->size == surfSize)
         return;
 
-    d_ptr->size = sz;
+    d_ptr->size = surfSize;
 
     if (d_ptr->ctx) {
 #ifndef QT_OPENGL_ES_2
         if (d_ptr->destructive_swap_buffers) {
             glBindTexture(target, d_ptr->tex_id);
-            glTexImage2D(target, 0, GL_RGBA, rect.width(), rect.height(), 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+            glTexImage2D(target, 0, GL_RGBA, surfSize.width(), surfSize.height(), 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
             glBindTexture(target, 0);
         }
 #endif
@@ -713,10 +714,10 @@ void QGLWindowSurface::updateGeometry() {
         if (QGLExtensions::glExtensions() & QGLExtensions::FramebufferBlit)
             format.setSamples(8);
 
-        d_ptr->fbo = new QGLFramebufferObject(sz, format);
+        d_ptr->fbo = new QGLFramebufferObject(surfSize, format);
 
         if (d_ptr->fbo->isValid()) {
-            qDebug() << "Created Window Surface FBO" << sz
+            qDebug() << "Created Window Surface FBO" << surfSize
                      << "with samples" << d_ptr->fbo->format().samples();
             return;
         } else {
@@ -737,7 +738,7 @@ void QGLWindowSurface::updateGeometry() {
 
         delete d_ptr->pb;
 
-        d_ptr->pb = new QGLPixelBuffer(rect.width(), rect.height(),
+        d_ptr->pb = new QGLPixelBuffer(surfSize.width(), surfSize.height(),
                                         QGLFormat(QGL::SampleBuffers | QGL::StencilBuffer | QGL::DepthBuffer),
                                         qt_gl_share_widget());
 
@@ -747,7 +748,7 @@ void QGLWindowSurface::updateGeometry() {
 
             glGenTextures(1, &d_ptr->pb_tex_id);
             glBindTexture(target, d_ptr->pb_tex_id);
-            glTexImage2D(target, 0, GL_RGBA, rect.width(), rect.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+            glTexImage2D(target, 0, GL_RGBA, surfSize.width(), surfSize.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
 
             glTexParameterf(target, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
             glTexParameterf(target, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -773,7 +774,7 @@ void QGLWindowSurface::updateGeometry() {
     if (d_ptr->destructive_swap_buffers) {
         glGenTextures(1, &d_ptr->tex_id);
         glBindTexture(target, d_ptr->tex_id);
-        glTexImage2D(target, 0, GL_RGBA, rect.width(), rect.height(), 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+        glTexImage2D(target, 0, GL_RGBA, surfSize.width(), surfSize.height(), 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
 
         glTexParameterf(target, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexParameterf(target, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
