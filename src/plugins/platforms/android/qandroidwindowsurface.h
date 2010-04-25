@@ -48,28 +48,19 @@ QT_BEGIN_NAMESPACE
 
 class QAndroidPlatformScreen;
 
-class QAndroidWindowSurface : public QObject, public QWindowSurface
+class QAndroidWindowSurface : public QWindowSurface
 {
-    Q_OBJECT
 public:
-    QAndroidWindowSurface(QAndroidPlatformScreen *screen, QWidget *window);
+    QAndroidWindowSurface(QWidget *window);
     ~QAndroidWindowSurface();
 
-    QPaintDevice *paintDevice();
-    void flush(QWidget *widget, const QRegion &region, const QPoint &offset);
-    void setGeometry(const QRect &rect);
-    bool scroll(const QRegion &area, int dx, int dy);
-    void beginPaint(const QRegion &region);
-    void endPaint(const QRegion &region);
-
-public slots:
-    void screenResized(const QSize & size);
-    void resize(const QSize & size);
+    virtual QPaintDevice *paintDevice();
+    virtual void flush(QWidget *widget, const QRegion &region, const QPoint &offset);
+    virtual void resize(const QSize & size);
 
 private:
-    QWidget * mWindow;
-    QAndroidPlatformScreen *mScreen;
     QImage mImage;
+    int m_surfaceId;
 };
 
 QT_END_NAMESPACE

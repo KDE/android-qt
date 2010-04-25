@@ -43,27 +43,11 @@
 #define QGRAPHICSSYSTEM_MINIMAL_H
 
 #include <QPlatformIntegration>
-#include "../fb_base/fb_base.h"
 #include <jni.h>
 
 QT_BEGIN_NAMESPACE
 
-class QDesktopWidget;
-
-class QAndroidPlatformScreen : public QFbScreen
-{
-    Q_OBJECT
-public:
-    QAndroidPlatformScreen();
-
-    void setGeometry(QRect rect);
-    void setFormat(QImage::Format format);
-
-public slots:
-    QRegion doRedraw();
-
-};
-
+class QAndroidPlatformScreen;
 class QAndroidPlatformIntegration : public QPlatformIntegration
 {
 public:
@@ -80,6 +64,11 @@ public:
     virtual void setDesktopSize(int width, int height);
     virtual void setDisplayMetrics(int width, int height);
     virtual void updateScreen();
+
+#ifndef QT_NO_OPENGL
+    bool hasOpenGL() const;
+    QPlatformGLContext * createGLContext();
+#endif
 
     static void setDefaultDisplayMetrics(int gw, int gh, int sw, int sh);
     static void setDefaultDesktopSize(int gw, int gh);

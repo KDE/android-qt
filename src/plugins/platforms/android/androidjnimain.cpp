@@ -23,37 +23,52 @@ Q_IMPORT_PLUGIN (QtAndroid)
 
 static JavaVM *m_javaVM = NULL;
 static jobject m_object  = NULL;
-static jmethodID m_flushImageMethodID=0;
 
+// Application semaphore
 static QSemaphore m_quitAppSemaphore;
-static QMutex m_surfaceMutex;
-static QThread * m_qtThread=0;
 
-#ifdef QT_USE_CUSTOM_NDK
-    static jfieldID  IDsurface;
-    static android::Surface* m_surface;
+// Surface semaphores
+static QSemaphore m_createSurfaceSemaphore;
+static QSemaphore m_resizeSurfaceSemaphore;
+static QSemaphore m_destroySurfaceSemaphore;
+// Surface semaphores
+
+// Java methods
+static jmethodID m_createSurfaceMethodID=0;
+static jmethodID m_resizeSurfaceMethodID=0;
+static jmethodID m_destroySurfaceMethodID=0;
+static jmethodID m_setSurfaceVisiblityMethodID=0;
+static jmethodID m_setSurfaceOpacityMethodID=0;
+static jmethodID m_setWindowTitleMethodID=0;
+static jmethodID m_raiseSurfaceMethodID=0;
+// Java methods
+
+#ifndef QT_USE_CUSTOM_NDK
+// Java methods
+static jmethodID m_flushImageMethodID=0;
+// Java methods
+#else
+static jfieldID  IDsurface;
+static QMutex m_surfaceMutex;
+static QMap<int,android::Surface*> m_surfaces;
 #endif
+
+
+static QThread * m_qtThread=0;
 
 static QAndroidPlatformIntegration * mAndroidGraphicsSystem=0;
 namespace QtAndroid
 {
-    JavaVM * getJavaVM()
+    void flushImage(int surfaceId, const QPoint & pos, const QImage & image, const QRect & destinationRect)
     {
-        return m_javaVM;
-    }
 
-    jobject getJniObject()
-    {
-        return m_object;
-    }
-
-    void flushImage(const QPoint & pos, const QImage & image, const QRect & destinationRect)
-    {
 #ifdef QT_USE_CUSTOM_NDK
         QMutexLocker locker(&m_surfaceMutex);
-
-        if (!m_surface)
+        if (!m_surfaces.contains(surfaceId))
             return;
+
+        android::Surface* m_surface=m_surfaces[surfaceId];
+
         //qDebug()<<"flushImage"<<pos<<destinationRect;
         android::Surface::SurfaceInfo info;
         android::Region r(android::Rect(pos.x()+destinationRect.x(), pos.y()+destinationRect.y(), pos.x()+destinationRect.right(), pos.y()+destinationRect.bottom() ));
@@ -170,6 +185,84 @@ namespace QtAndroid
         m_qtThread=thread;
     }
 
+    void quitApplication()
+    {
+    }
+
+    bool createSurface(int surfaceId, int l, int t, int r, int b)
+    {
+        JNIEnv* env;
+        m_javaVM->AttachCurrentThread(&env, NULL);
+        bool res=env->CallBooleanMethod(m_object, m_createSurfaceMethodID,
+                            (jint)surfaceId, (jint)l, (jint)t, (jint)r, (jint)b);
+        m_javaVM->DetachCurrentThread();
+        if (!res)
+            return false;
+        m_createSurfaceSemaphore.acquire(); //wait until surface is created
+        return m_surfaces.contains(surfaceId);
+    }
+
+    bool resizeSurface(int surfaceId, int l, int t, int r, int b)
+    {
+        JNIEnv* env;
+        m_javaVM->AttachCurrentThread(&env, NULL);
+        bool res=env->CallBooleanMethod(m_object, m_resizeSurfaceMethodID,
+                            (jint)surfaceId, (jint)l, (jint)t, (jint)r, (jint)b);
+        m_javaVM->DetachCurrentThread();
+        if (!res)
+            return false;
+        m_resizeSurfaceSemaphore.acquire(); //wait until surface is resized
+        return m_surfaces.contains(surfaceId);
+    }
+
+    bool destroySurface(int surfaceId)
+    {
+        JNIEnv* env;
+        m_javaVM->AttachCurrentThread(&env, NULL);
+        bool res=env->CallBooleanMethod(m_object, m_destroySurfaceMethodID, (jint)surfaceId);
+        m_javaVM->DetachCurrentThread();
+        if (!res)
+            return false;
+        m_destroySurfaceSemaphore.acquire(); //wait until surface is destroyed
+        return !m_surfaces.contains(surfaceId);
+    }
+
+    void setSurfaceVisiblity(int surfaceId, bool visible)
+    {
+        JNIEnv* env;
+        m_javaVM->AttachCurrentThread(&env, NULL);
+        env->CallVoidMethod(m_object, m_setSurfaceVisiblityMethodID, (jint)surfaceId, (jboolean)visible);
+        m_javaVM->DetachCurrentThread();
+    }
+
+    void setSurfaceOpacity(int surfaceId, double level)
+    {
+        JNIEnv* env;
+        m_javaVM->AttachCurrentThread(&env, NULL);
+        env->CallVoidMethod(m_object, m_setSurfaceOpacityMethodID, (jint)surfaceId, (jdouble)level);
+        m_javaVM->DetachCurrentThread();
+    }
+
+    void setWindowTitle(int surfaceId, const QString & title)
+    {
+        if (!title.length())
+            return;
+        JNIEnv* env;
+        m_javaVM->AttachCurrentThread(&env, NULL);
+        jstring jtitle = env->NewStringUTF(title.toUtf8().data());
+        env->CallVoidMethod(m_object, m_setWindowTitleMethodID, (jint)surfaceId, (jstring)jtitle);
+        env->DeleteLocalRef(jtitle);
+        m_javaVM->DetachCurrentThread();
+    }
+
+    void raiseSurface(int surfaceId)
+    {
+        JNIEnv* env;
+        m_javaVM->AttachCurrentThread(&env, NULL);
+        env->CallVoidMethod(m_object, m_raiseSurfaceMethodID, (jint)surfaceId);
+        m_javaVM->DetachCurrentThread();
+    }
+
 }
 
 extern "C" int main(int, char **); //use the standard main method to start the application
@@ -196,9 +289,9 @@ static void * startMainMethod(void * /*data*/)
 static jboolean startQtApp(JNIEnv* /*env*/, jobject /*object*/)
 {
     m_qtThread=0;
-   #ifdef QT_USE_CUSTOM_NDK
-        m_surface=0;
-    #endif
+#ifdef QT_USE_CUSTOM_NDK
+    m_surfaces.clear();
+#endif
     mAndroidGraphicsSystem=0;
     pthread_t appThread;
     return pthread_create(&appThread, NULL, startMainMethod, NULL)==0;
@@ -223,15 +316,12 @@ static void quitQtApp(JNIEnv* /*env*/, jclass /*clazz*/)
 {
     QApplication::postEvent(qApp, new QEvent(QEvent::Quit));
     m_quitAppSemaphore.acquire();
-    qDebug()<<"***** quitQtApp *****";
-
 }
 
 static void setDisplayMetrics(JNIEnv* /*env*/, jclass /*clazz*/,
                               jint widthPixels, jint heightPixels,
                               jfloat xdpi, jfloat ydpi)
 {
-    qDebug()<<"***** setDisplayMetrics ****"<<widthPixels << heightPixels;
     if (!mAndroidGraphicsSystem)
         QAndroidPlatformIntegration::setDefaultDisplayMetrics(widthPixels,heightPixels-25,
                                                          qRound((double)widthPixels   / xdpi * 100 / 2.54 ),
@@ -244,27 +334,6 @@ static void setDisplayMetrics(JNIEnv* /*env*/, jclass /*clazz*/,
     }
 }
 
-static void setSurface(JNIEnv *env, jobject /*thiz*/, jobject jSurface, jint w, jint h)
-{
-    qDebug()<<"***** setSurface ****"<<w << h;
-    m_surfaceMutex.lock();
-    m_surface = reinterpret_cast<android::Surface*>(env->GetIntField(jSurface, IDsurface));
-    m_surfaceMutex.unlock();
-    if (mAndroidGraphicsSystem)
-    {
-        mAndroidGraphicsSystem->setDesktopSize(w, h);
-        mAndroidGraphicsSystem->updateScreen();
-    }
-    else
-        QAndroidPlatformIntegration::setDefaultDesktopSize(w,h);
-}
-
-static void destroySurface(JNIEnv */*env*/, jobject /*thiz*/)
-{
-    m_surfaceMutex.lock();
-    m_surface = 0;
-    m_surfaceMutex.unlock();
-}
 
 static void mouseDown(JNIEnv */*env*/, jobject /*thiz*/, jint x, jint y)
 {
@@ -298,7 +367,7 @@ static int mapAndroidKey(int key)
     //A--Z        0x0000001d -- 0x00000036
     if (key>=0x0000001d && key<=0x00000036)
         return Qt::Key_A+key-0x0000001d;
-    
+
     switch(key)
     {
         case 0x00000039:
@@ -310,134 +379,134 @@ static int mapAndroidKey(int key)
 
         case 0x00000004: //KEYCODE_BACK
             return Qt::Key_Close;
-            
+
         case 0x00000049:
             return Qt::Key_Backslash;
-            
+
         case 0x00000005:
             return Qt::Key_Call;
-            
+
         case 0x0000001b:
             return Qt::Key_WebCam;
-            
+
         case 0x0000001c:
             return Qt::Key_Clear;
-            
+
         case 0x00000037:
             return Qt::Key_Comma;
-            
+
         case 0x00000043:
             return Qt::Key_Backspace;
-            
+
         case 0x00000017: // KEYCODE_DPAD_CENTER
             return Qt::Key_Enter;
-            
+
         case 0x00000014: // KEYCODE_DPAD_DOWN
             return Qt::Key_Down;
-            
+
         case 0x00000015: //KEYCODE_DPAD_LEFT
             return Qt::Key_Left;
-            
+
         case 0x00000016: //KEYCODE_DPAD_RIGHT
             return Qt::Key_Right;
-            
+
         case 0x00000013: //KEYCODE_DPAD_UP
             return Qt::Key_Up;
-            
+
         case 0x00000006: //KEYCODE_ENDCALL
             return Qt::Key_Hangup;
-            
+
         case 0x00000042:
             return Qt::Key_Return;
-            
+
         case 0x00000041: //KEYCODE_ENVELOPE
             return Qt::Key_LaunchMail;
-            
+
         case 0x00000046:
             return Qt::Key_Equal;
-            
+
         case 0x00000040:
             return Qt::Key_Explorer;
 
         case 0x00000003:
             return Qt::Key_Home;
-            
+
         case 0x00000047:
             return Qt::Key_BracketLeft;
-            
+
         case 0x0000005a: // KEYCODE_MEDIA_FAST_FORWARD
             return Qt::Key_Forward;
-        
+
         case 0x00000057:
             return Qt::Key_MediaNext;
-            
+
         case 0x00000055:
             return Qt::Key_MediaPlay;
-            
+
         case 0x00000058:
             return Qt::Key_MediaPrevious;
-            
+
         case 0x00000059:
             return Qt::Key_AudioRewind;
-        
+
         case 0x00000056:
             return Qt::Key_MediaStop;
-            
+
         case 0x00000052: //KEYCODE_MENU
             return Qt::Key_TopMenu;
-            
+
         case 0x00000045:
             return Qt::Key_Minus;
-            
+
         case 0x0000005b:
             return Qt::Key_VolumeMute;
-        
+
         case 0x0000004e:
             return Qt::Key_NumLock;
-            
+
         case 0x00000038:
             return Qt::Key_Period;
-            
+
         case 0x00000051:
             return Qt::Key_Plus;
-            
+
         case 0x0000001a:
             return Qt::Key_PowerOff;
-            
+
         case 0x00000048:
             return Qt::Key_BracketRight;
-            
+
         case 0x00000054:
             return Qt::Key_Search;
-            
+
         case 0x0000004a:
             return Qt::Key_Semicolon;
-            
+
         case 0x0000003b:
         case 0x0000003c:
             return Qt::Key_Shift;
-            
+
         case 0x0000004c:
             return Qt::Key_Slash;
-            
+
         case 0x00000001:
             return Qt::Key_Left;
-            
+
         case 0x00000002:
             return Qt::Key_Right;
-            
+
         case 0x0000003e:
             return Qt::Key_Space;
 
         case 0x0000003f: // KEYCODE_SYM
             return Qt::Key_Meta;
-            
+
         case 0x0000003d:
             return Qt::Key_Tab;
-            
+
         case 0x00000019:
             return Qt::Key_VolumeDown;
-            
+
         case 0x00000018:
             return Qt::Key_VolumeUp;
 
@@ -450,7 +519,7 @@ static int mapAndroidKey(int key)
         case 0x00000050: // KEYCODE_FOCUS ?!?!?
         default:
             return Qt::Key_Any;
-            
+
     }
 }
 
@@ -488,6 +557,33 @@ static void keyUp(JNIEnv */*env*/, jobject /*thiz*/, jint key, jint unicode, jin
             QAbstractEventDispatcher::instance(m_qtThread)->wakeUp();
 }
 
+static void surfaceCreated(JNIEnv *env, jobject /*thiz*/, jobject jSurface, jint surfaceId)
+{
+    qDebug()<<"surfaceCreated"<<surfaceId;
+    m_surfaceMutex.lock();
+    m_surfaces[surfaceId] = reinterpret_cast<android::Surface*>(env->GetIntField(jSurface, IDsurface));
+    m_surfaceMutex.unlock();
+    m_createSurfaceSemaphore.release();
+}
+
+static void surfaceChanged(JNIEnv *env, jobject /*thiz*/, jobject jSurface, jint surfaceId)
+{
+    qDebug()<<"surfaceChanged"<<surfaceId;
+    m_surfaceMutex.lock();
+    m_surfaces[surfaceId] = reinterpret_cast<android::Surface*>(env->GetIntField(jSurface, IDsurface));
+    m_surfaceMutex.unlock();
+    m_resizeSurfaceSemaphore.release();
+}
+
+static void surfaceDestroyed(JNIEnv */*env*/, jobject /*thiz*/, jint surfaceId)
+{
+    qDebug()<<"surfaceDestroyed"<<surfaceId;
+    m_surfaceMutex.lock();
+    m_surfaces.remove(surfaceId);
+    m_surfaceMutex.unlock();
+    m_destroySurfaceSemaphore.release();
+}
+
 
 static const char *classPathName = "com/nokia/qt/QtApplication";
 
@@ -497,8 +593,9 @@ static JNINativeMethod methods[] = {
     {"resumeQtApp", "()V", (void *)resumeQtApp},
     {"quitQtApp", "()V", (void *)quitQtApp},
     {"setDisplayMetrics", "(IIFF)V", (void *)setDisplayMetrics},
-    {"setSurface", "(Landroid/view/Surface;II)V", (void *)setSurface},
-    {"destroySurface", "()V", (void *)destroySurface},
+    {"surfaceCreated", "(Landroid/view/Surface;I)V", (void *)surfaceCreated},
+    {"surfaceChanged", "(Landroid/view/Surface;I)V", (void *)surfaceChanged},
+    {"surfaceDestroyed", "(I)V", (void *)surfaceDestroyed},
     {"mouseDown", "(II)V", (void *)mouseDown},
     {"mouseUp", "(II)V", (void *)mouseUp},
     {"mouseMove", "(II)V", (void *)mouseMove},
@@ -527,9 +624,16 @@ static int registerNativeMethods(JNIEnv* env, const char* className,
         return JNI_FALSE;
     }
     m_object = clazz;
-
+#ifndef QT_USE_CUSTOM_NDK
     m_flushImageMethodID = env->GetMethodID((jclass)m_object, "flushImage", "(Ljava/nio/ShortBuffer;IIIII)V");
-
+#endif
+    m_createSurfaceMethodID = env->GetMethodID((jclass)m_object, "createSurface", "(IIIII)Z");
+    m_resizeSurfaceMethodID = env->GetMethodID((jclass)m_object, "resizeSurface", "(IIIII)Z");
+    m_destroySurfaceMethodID = env->GetMethodID((jclass)m_object, "destroySurface", "(I)Z");
+    m_setSurfaceVisiblityMethodID = env->GetMethodID((jclass)m_object, "setSurfaceVisiblity", "(IZ)V");
+    m_setSurfaceOpacityMethodID = env->GetMethodID((jclass)m_object, "setSurfaceOpacity", "(ID)V");
+    m_setWindowTitleMethodID = env->GetMethodID((jclass)m_object, "setWindowTitle", "(ILjava/lang/String;)V");
+    m_raiseSurfaceMethodID = env->GetMethodID((jclass)m_object, "raiseSurface", "(I)V");
     return JNI_TRUE;
 }
 

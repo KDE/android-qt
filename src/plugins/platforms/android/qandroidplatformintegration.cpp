@@ -40,14 +40,18 @@
 ****************************************************************************/
 
 #include "qandroidplatformintegration.h"
+#include "qandroidplatformscreen.h"
+#include "qandroidplatformwindow.h"
 #include "qandroidwindowsurface.h"
-#include "qabstracteventdispatcher.h"
 #include "androidjnimain.h"
+#include "qabstracteventdispatcher.h"
 #include <QtGui/private/qpixmap_raster_p.h>
-#include <QWindowSystemInterface>
 #include <QThread>
-#include <QPlatformWindow>
-#include "qdesktopwidget.h"
+#include <QDebug>
+
+#ifndef QT_NO_OPENGL
+#include "qandroidcontext.h"
+#endif
 
 QT_BEGIN_NAMESPACE
 
@@ -55,47 +59,6 @@ int QAndroidPlatformIntegration::mDefaultGeometryWidth=320;
 int QAndroidPlatformIntegration::mDefaultGeometryHeight=455;
 int QAndroidPlatformIntegration::mDefaultPhysicalSizeWidth=50;
 int QAndroidPlatformIntegration::mDefaultPhysicalSizeHeight=71;
-
-QAndroidPlatformScreen::QAndroidPlatformScreen()
-{
-    mGeometry = QRect(0, 0, QAndroidPlatformIntegration::mDefaultGeometryWidth, QAndroidPlatformIntegration::mDefaultGeometryHeight);
-    mFormat = QImage::Format_RGB16;
-    mDepth = 16;
-    setPhysicalSize(QSize(QAndroidPlatformIntegration::mDefaultPhysicalSizeWidth,
-                          QAndroidPlatformIntegration::mDefaultPhysicalSizeHeight));
-    mScreenImage = new QImage(mGeometry.width(), mGeometry.height(),
-                              mFormat);
-}
-
-void QAndroidPlatformScreen::setGeometry(QRect rect)
-{
-    mGeometry = rect;
-
-    delete mScreenImage;
-    mScreenImage = new QImage(mGeometry.width(), mGeometry.height(),
-                              mFormat);
-}
-
-void QAndroidPlatformScreen::setFormat(QImage::Format format)
-{
-    mFormat = format;
-
-    delete mScreenImage;
-    mScreenImage = new QImage(mGeometry.width(), mGeometry.height(),
-                              mFormat);
-}
-
-QRegion QAndroidPlatformScreen::doRedraw()
-{
-    QRegion touched;
-    touched = QFbScreen::doRedraw();
-
-    QVector<QRect> rects = touched.rects();
-    for (int i = 0; i < rects.size(); i++)
-        QtAndroid::flushImage(mGeometry.topLeft(), *mScreenImage, rects[i]);
-    return touched;
-}
-
 
 
 QAndroidPlatformIntegration::QAndroidPlatformIntegration()
@@ -126,23 +89,23 @@ QPixmapData *QAndroidPlatformIntegration::createPixmapData(QPixmapData::PixelTyp
      return new QRasterPixmapData(type);
 }
 
-QWindowSurface *QAndroidPlatformIntegration::createWindowSurface(QWidget *widget, WId /*winId*/) const
+QWindowSurface *QAndroidPlatformIntegration::createWindowSurface(QWidget *widget, WId winId) const
 {
-    return new QFbWindowSurface(mPrimaryScreen, widget);
+    qDebug()<<"QAndroidPlatformIntegration::createWindowSurface"<<widget<<widget->winId()<<winId;
+    return new QAndroidWindowSurface(widget);
 }
 
-QPlatformWindow *QAndroidPlatformIntegration::createPlatformWindow(QWidget *widget, WId /*winId*/) const
+QPlatformWindow *QAndroidPlatformIntegration::createPlatformWindow(QWidget *widget, WId winId) const
 {
-    QFbWindow *w = new QFbWindow(mPrimaryScreen, widget);
-    mPrimaryScreen->addWindow(w);
-    return w;
+    qDebug()<<"QAndroidPlatformIntegration::createPlatformWindow"<<widget<<widget->winId()<<winId;
+    return new QAndroidPlatformWindow(widget, mPrimaryScreen);
 }
 
 void QAndroidPlatformIntegration::updateScreen()
 {
     if (mPrimaryScreen)
     {
-        mPrimaryScreen->setDirty(QRect());
+        mPrimaryScreen->redrawScreen();
         if (QAbstractEventDispatcher::instance(m_mainThread))
                 QAbstractEventDispatcher::instance(m_mainThread)->wakeUp();
     }
@@ -167,5 +130,17 @@ void QAndroidPlatformIntegration::setDisplayMetrics(int width, int height)
                 QAbstractEventDispatcher::instance(m_mainThread)->wakeUp();
     }
 }
+
+#ifndef QT_NO_OPENGL
+bool QAndroidPlatformIntegration::hasOpenGL() const
+{
+    return false;
+}
+
+QPlatformGLContext * QAndroidPlatformIntegration::createGLContext()
+{
+    return new QAndroidContext();
+}
+#endif // QT_NO_OPENGL
 
 QT_END_NAMESPACE

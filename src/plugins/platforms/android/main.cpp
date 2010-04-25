@@ -44,40 +44,28 @@
 
 QT_BEGIN_NAMESPACE
 
-class QAndroidGraphicsSystemPlugin : public QPlatformIntegrationPlugin
+class QAndroidPlatformIntegrationPlugin : public QPlatformIntegrationPlugin
 {
 public:
     QStringList keys() const;
     QPlatformIntegration *create(const QString&);
 };
 
-QStringList QAndroidGraphicsSystemPlugin::keys() const
+QStringList QAndroidPlatformIntegrationPlugin::keys() const
 {
-
     QStringList list;
-    list << "android"<< "androidGL";
+    list << "android";
     return list;
 }
 
-QPlatformIntegration* QAndroidGraphicsSystemPlugin::create(const QString& system)
+QPlatformIntegration* QAndroidPlatformIntegrationPlugin::create(const QString& system)
 {
-    qDebug()<<"QAndroidGraphicsSystemPlugin::create"<<system;
+    qDebug()<<"QAndroidPlatformIntegrationPlugin::create"<<system;
     if (system.toLower() == "android")
         return new QAndroidPlatformIntegration;
-/*
-    if (system.toLower() == "androidgl")
-    {
-#if !defined(QT_OPENGL_ES_1) && !defined(QT_OPENGL_ES_1_CL)
-        QGL::setPreferredPaintEngine(QPaintEngine::OpenGL2);
-#else
-        QGL::setPreferredPaintEngine(QPaintEngine::OpenGL);
-#endif
-        return new QGLGraphicsSystem;
-    }
-*/
     return 0;
 }
 
-Q_EXPORT_PLUGIN2(QtAndroid, QAndroidGraphicsSystemPlugin)
+Q_EXPORT_PLUGIN2(QtAndroid, QAndroidPlatformIntegrationPlugin)
 
 QT_END_NAMESPACE
