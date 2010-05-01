@@ -50,7 +50,8 @@
 #include <QDebug>
 
 #ifndef QT_NO_OPENGL
-#include "qandroidcontext.h"
+#include "qandroidplatformglcontext.h"
+#include "qandroidplatformglwidgetsurface.h"
 #endif
 
 QT_BEGIN_NAMESPACE
@@ -98,7 +99,7 @@ QWindowSurface *QAndroidPlatformIntegration::createWindowSurface(QWidget *widget
 QPlatformWindow *QAndroidPlatformIntegration::createPlatformWindow(QWidget *widget, WId winId) const
 {
     qDebug()<<"QAndroidPlatformIntegration::createPlatformWindow"<<widget<<widget->winId()<<winId;
-    return new QAndroidPlatformWindow(widget, mPrimaryScreen);
+    return new QAndroidPlatformWindow(widget);
 }
 
 void QAndroidPlatformIntegration::updateScreen()
@@ -134,13 +135,22 @@ void QAndroidPlatformIntegration::setDisplayMetrics(int width, int height)
 #ifndef QT_NO_OPENGL
 bool QAndroidPlatformIntegration::hasOpenGL() const
 {
+    qDebug()<<"QAndroidPlatformIntegration::hasOpenGL()";
     return false;
 }
 
 QPlatformGLContext * QAndroidPlatformIntegration::createGLContext()
 {
-    return new QAndroidContext();
+    qDebug()<<"QAndroidPlatformIntegration::createGLContext()";
+    return new QAndroidPlatformGLContext();
 }
+
+QPlatformGLWidgetSurface * QAndroidPlatformIntegration::createGLWidgetSurface()
+{
+    qDebug()<<"QAndroidPlatformIntegration::createGLWidgetSurface()";
+    return new QAndroidPlatformGLWidgetSurface();
+}
+
 #endif // QT_NO_OPENGL
 
 QT_END_NAMESPACE

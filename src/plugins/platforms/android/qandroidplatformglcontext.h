@@ -3,17 +3,17 @@
 
 #include <QPlatformGLContext>
 
-class QAndroidContext : public QPlatformGLContext
+class QAndroidPlatformGLContext : public QPlatformGLContext
 {
 public:
-    QAndroidContext();
-    ~QAndroidContext();
-    virtual bool create(QPaintDevice* device, const QGLFormat& format, QPlatformGLContext* shareContext);
+    virtual bool create(QPaintDevice* device, QGLFormat& format, QPlatformGLContext* shareContext);
 
     virtual void makeCurrent();
     virtual void doneCurrent();
     virtual void swapBuffers();
     virtual void* getProcAddress(const QString& procName);
+private:
+    WId     m_surfaceId;
 };
 
 #endif // QANDROIDCONTEXT_H

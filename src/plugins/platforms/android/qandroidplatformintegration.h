@@ -68,6 +68,7 @@ public:
 #ifndef QT_NO_OPENGL
     bool hasOpenGL() const;
     QPlatformGLContext * createGLContext();
+    QPlatformGLWidgetSurface * createGLWidgetSurface();
 #endif
 
     static void setDefaultDisplayMetrics(int gw, int gh, int sw, int sh);

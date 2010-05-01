@@ -12,18 +12,17 @@ class QAndroidPlatformWindow : public QObject, public QPlatformWindow
     Q_OBJECT
 
 public:
-    QAndroidPlatformWindow(QWidget *tlw, QAndroidPlatformScreen * screen);
+    QAndroidPlatformWindow(QWidget *tlw);
 
     virtual void setVisible(bool visible);
     virtual void setOpacity(qreal level);
 
-//    virtual Qt::WindowFlags setWindowFlags(Qt::WindowFlags flags);
+    virtual Qt::WindowFlags setWindowFlags(Qt::WindowFlags flags);
     virtual void setWindowTitle(const QString &title);
     virtual void raise();
 
     WId winId() const { return m_windowId; }
-private slots:
-    void screenResized(const QRect & rect);
+
 
 private:
     QWidget *m_window;

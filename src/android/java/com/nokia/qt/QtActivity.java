@@ -12,11 +12,12 @@ import android.widget.RelativeLayout;
 
 public class QtActivity extends Activity {
 	private boolean quitApp=true;
-	private String appName=""; 
+	private String appName="";
+	private Object jniProxyObject = null;
 	private String[] libraries={"QtCore", "QtNetwork", "QtXml", 
-								"QtScript", "QtSql", "QtGui",
-								"QtOpenGL","QtSvg", "QtScriptTools", 
-								"QtDeclarative","QtMultimedia", "QtWebKit"}; // Be default try to load all Qt libraries
+								/*"QtScript", "QtSql", */"QtGui",
+								"QtOpenGL","QtSvg"/*, "QtScriptTools", 
+								"QtDeclarative","QtMultimedia", "QtWebKit"*/}; // Be default try to load all Qt libraries
 	
 	public QtActivity() {
 		QtApplication.setActivity(this);
@@ -25,6 +26,11 @@ public class QtActivity extends Activity {
 	public void setApplication(String app)
 	{
 		appName=app;
+	}
+	
+	public void setJniProxyObject(Object jniProxyObject)
+	{
+        this.jniProxyObject = jniProxyObject;
 	}
 	
 	public void setLibraries(String[] libs)
@@ -60,6 +66,7 @@ public class QtActivity extends Activity {
 			{
 				QtApplication.loadLibraries(libraries);
 				QtApplication.loadApplication(appName);
+				//QtApplication.
 			}
 			ViewGroup view=new RelativeLayout(this);
 			QtApplication.setView(view);

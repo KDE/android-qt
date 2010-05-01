@@ -25,5 +25,10 @@ namespace QtAndroid
     void setWindowTitle(int surfaceId, const QString & title);
     void raiseSurface(int surfaceId);
 
+    bool makeCurrent(int surfaceId);
+    bool doneCurrent(int surfaceId);
+    bool swapBuffers(int surfaceId);
+    void* getProcAddress(int surfaceId, const QString& procName);
+
 }
 #endif // ANDROID_APP_H

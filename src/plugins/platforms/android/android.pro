@@ -26,8 +26,8 @@ HEADERS =   qandroidplatformintegration.h \
 
 contains(QT_CONFIG, opengl) {
     QT += opengl
-    HEADERS += qandroidcontext.h
-    SOURCES += qandroidcontext.cpp
+    HEADERS += qandroidplatformglcontext.h qandroidplatformglwidgetsurface.h
+    SOURCES += qandroidplatformglcontext.cpp qandroidplatformglwidgetsurface.cpp
 }
 
 target.path=$$[QT_INSTALL_LIBS]

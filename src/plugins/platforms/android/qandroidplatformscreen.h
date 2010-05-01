@@ -23,10 +23,6 @@ public:
 
     virtual void redrawScreen();
 
-signals:
-    void screenResized(const QRect &);
-    void update();
-
 private:
     QRect m_geometry;
     int   m_depth;
