@@ -9,17 +9,20 @@ import android.view.Surface;
 import android.view.View;
 import android.view.ViewGroup;
 
-public class QtApplication {
+public class QtApplication
+{
 	public static final String QtTAG = "Qt JAVA";
 	private static Activity m_activity = null;
 	private static ViewGroup m_view = null;
 	private static QtEgl mEgl = null;
 
-	public static void setActivity(Activity mActivity) {
+	public static void setActivity(Activity mActivity)
+	{
 		m_activity = mActivity;
 	}
 
-	public static void setView(ViewGroup view) {
+	public static void setView(ViewGroup view)
+	{
 		m_view = view;
 	}
 
@@ -28,48 +31,58 @@ public class QtApplication {
 	// // System.load("/data/local/qt/lib/libAndroidSetQtEnv.so");
 	// }
 	//	
-	public static void loadLibraries(String[] libraries) {
-		for (int i = 0; i < libraries.length; i++) {
-			try {
-				String library = "/data/local/qt/lib/lib" + libraries[i]
-						+ ".so";
+	public static void loadLibraries(String[] libraries)
+	{
+		for (int i = 0; i < libraries.length; i++)
+		{
+			try
+			{
+				String library = "/data/local/qt/lib/lib" + libraries[i] + ".so";
 				File f = new File(library);
 				if (f.exists())
 					System.load(library);
-			} catch (Exception e) {
+			}
+			catch (Exception e)
+			{
 				Log.i(QtTAG, "Can't load '/data/local/qt/lib/lib"
 						+ libraries[i] + ".so'", e);
 			}
 		}
 	}
 
-	public static void loadApplication(String lib) {
-		try {
+	public static void loadApplication(String lib)
+	{
+		try
+		{
 			File f = new File("/data/local/lib/lib" + lib + ".so");
 			if (f.exists())
 				System.load("/data/local/lib/lib" + lib + ".so");
 			else
 				System.loadLibrary(lib);
-			startQtApp(mEgl != null);
-		} catch (Exception e) {
+			// InitializeOpenGL(false);
+			startQtApp();
+		}
+		catch (Exception e)
+		{
 			Log.i(QtTAG, "Can't load 'lib" + lib + ".so'", e);
 		}
 	}
 
-	public void InitializeOpenGL(boolean useAA) {
+	public static void InitializeOpenGL(boolean useAA)
+	{
 		mEgl = new QtEgl();
 		if (!mEgl.initialize(useAA))
 			mEgl = null;
 	}
 
 	@SuppressWarnings("unused")
-	private void flushImage(ShortBuffer image, int bytesPerRow, int x, int y,
-			int r, int b) {
+	private void flushImage(ShortBuffer image, int bytesPerRow, int x, int y, int r, int b)
+	{
 	}
 
 	@SuppressWarnings("unused")
-	private boolean createSurface(final int id, final int l, final int t,
-			final int r, final int b) {
+	private boolean createSurface(final int id, final int l, final int t, final int r, final int b)
+	{
 		if (m_activity == null)
 			return false;
 		m_activity.runOnUiThread(new Runnable() {
@@ -83,8 +96,8 @@ public class QtApplication {
 	}
 
 	@SuppressWarnings("unused")
-	private boolean resizeSurface(final int id, final int l, final int t,
-			final int r, final int b) {
+	private boolean resizeSurface(final int id, final int l, final int t, final int r, final int b)
+	{
 		if (m_activity == null)
 			return false;
 
@@ -102,7 +115,8 @@ public class QtApplication {
 	}
 
 	@SuppressWarnings("unused")
-	private boolean destroySurface(final int id) {
+	private boolean destroySurface(final int id)
+	{
 		if (m_activity == null)
 			return false;
 
@@ -120,7 +134,8 @@ public class QtApplication {
 	}
 
 	@SuppressWarnings("unused")
-	private void setSurfaceVisiblity(final int id, final boolean visible) {
+	private void setSurfaceVisiblity(final int id, final boolean visible)
+	{
 		if (m_activity == null)
 			return;
 
@@ -137,7 +152,8 @@ public class QtApplication {
 	}
 
 	@SuppressWarnings("unused")
-	private void setSurfaceOpacity(final int id, final double alpha) {
+	private void setSurfaceOpacity(final int id, final double alpha)
+	{
 		if (m_activity == null)
 			return;
 
@@ -154,7 +170,8 @@ public class QtApplication {
 	}
 
 	@SuppressWarnings("unused")
-	private void setWindowTitle(final int id, final String title) {
+	private void setWindowTitle(final int id, final String title)
+	{
 		if (m_activity == null)
 			return;
 
@@ -167,7 +184,8 @@ public class QtApplication {
 	}
 
 	@SuppressWarnings("unused")
-	private void raiseSurface(final int id) {
+	private void raiseSurface(final int id)
+	{
 		if (m_activity == null)
 			return;
 
@@ -184,44 +202,33 @@ public class QtApplication {
 	}
 
 	// application methods
-	public static native void startQtApp(boolean useOpenGL);
-
+	public static native void startQtApp();
 	public static native void pauseQtApp();
-
 	public static native void resumeQtApp();
-
 	public static native void quitQtApp();
-
+	public static native void setEglObject(Object eglObject);
 	// application methods
 
 	// screen methods
 	public static native void setDisplayMetrics(int widthPixels,
 			int heightPixels, float xdpi, float ydpi);
-
 	// screen methods
 
 	// pointer methods
 	public static native void mouseDown(int x, int y);
-
 	public static native void mouseUp(int x, int y);
-
 	public static native void mouseMove(int x, int y);
 
 	// pointer methods
 
 	// keyboard methods
 	public static native void keyDown(int key, int unicode, int modifier);
-
 	public static native void keyUp(int key, int unicode, int modifier);
-
 	// keyboard methods
 
 	// surface methods
 	public static native void surfaceCreated(Surface surface, int id);
-
 	public static native void surfaceChanged(Surface surface, int id);
-
 	public static native void surfaceDestroyed(int id);
 	// surface methods
-
 }

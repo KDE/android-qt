@@ -5,7 +5,7 @@
 #include <QPlatformGLContext>
 #include "androidjnimain.h"
 
-bool QAndroidPlatformGLContext::create(QPaintDevice* device, QGLFormat& /*format*/, QPlatformGLContext* shareContext)
+bool QAndroidPlatformGLContext::create(QPaintDevice* device, QGLFormat& /*format*/, QPlatformGLContext* /*shareContext*/)
 {
     if (device->devType() != QInternal::Widget) {
         qWarning("Creating a GL context is only supported on QWidgets");
@@ -19,24 +19,26 @@ bool QAndroidPlatformGLContext::create(QPaintDevice* device, QGLFormat& /*format
         return false;
     }
     m_surfaceId=m_widget->winId();
-    qDebug()<<"AndroidContext::create"<<device<</*format<<*/shareContext;
-    return false;
+    qDebug()<<"Surface ID="<<m_surfaceId;
+    return true;
 }
 
 void QAndroidPlatformGLContext::makeCurrent()
 {
+    QtAndroid::makeCurrent(m_surfaceId);
 }
 
 void QAndroidPlatformGLContext::doneCurrent()
 {
+    QtAndroid::doneCurrent();
 }
 
 void QAndroidPlatformGLContext::swapBuffers()
 {
-
+    QtAndroid::swapBuffers(m_surfaceId);
 }
 
-void* QAndroidPlatformGLContext::getProcAddress(const QString& /*procName*/)
+void* QAndroidPlatformGLContext::getProcAddress(const QString& procName)
 {
-    return NULL;
+    return QtAndroid::getProcAddress(m_surfaceId, procName);
 }

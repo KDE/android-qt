@@ -8,7 +8,6 @@ QT_BEGIN_NAMESPACE
 class QAndroidPlatformGLWidgetSurface : public QPlatformGLWidgetSurface
 {
 public:
-    QAndroidPlatformGLWidgetSurface();
     virtual bool create(QGLWidget* widget, QGLFormat& format);
     virtual void setGeometry(const QRect& rect);
     virtual bool filterEvent(QEvent* event);

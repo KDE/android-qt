@@ -1,13 +1,11 @@
 #include "qandroidplatformglwidgetsurface.h"
 #include "androidjnimain.h"
-
-QAndroidPlatformGLWidgetSurface::QAndroidPlatformGLWidgetSurface()
-{
-}
+#include <QDebug>
 
 bool QAndroidPlatformGLWidgetSurface::create(QGLWidget* widget, QGLFormat&)
 {
     m_surfaceId=widget->winId();
+    qDebug()<<"surfaceId="<<m_surfaceId;
     return QtAndroid::createSurface(m_surfaceId, widget->geometry().left(), widget->geometry().top(),
                                             widget->geometry().right(), widget->geometry().bottom());
 }

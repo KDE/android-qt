@@ -50,6 +50,8 @@
 #include <QDebug>
 
 #ifndef QT_NO_OPENGL
+#include <private/qpixmapdata_gl_p.h>
+#include <private/qwindowsurface_gl_p.h>
 #include "qandroidplatformglcontext.h"
 #include "qandroidplatformglwidgetsurface.h"
 #endif
@@ -87,12 +89,20 @@ void QAndroidPlatformIntegration::setDefaultDesktopSize(int gw, int gh)
 
 QPixmapData *QAndroidPlatformIntegration::createPixmapData(QPixmapData::PixelType type) const
 {
+#ifndef QT_NO_OPENGL
+    if (QtAndroid::hasOpenGL())
+        return new QGLPixmapData(type);
+#endif
      return new QRasterPixmapData(type);
 }
 
 QWindowSurface *QAndroidPlatformIntegration::createWindowSurface(QWidget *widget, WId winId) const
 {
     qDebug()<<"QAndroidPlatformIntegration::createWindowSurface"<<widget<<widget->winId()<<winId;
+#ifndef QT_NO_OPENGL
+    if (QtAndroid::hasOpenGL())
+        return new QGLWindowSurface(widget);
+#endif
     return new QAndroidWindowSurface(widget);
 }
 
@@ -136,7 +146,7 @@ void QAndroidPlatformIntegration::setDisplayMetrics(int width, int height)
 bool QAndroidPlatformIntegration::hasOpenGL() const
 {
     qDebug()<<"QAndroidPlatformIntegration::hasOpenGL()";
-    return false;
+    return QtAndroid::hasOpenGL();
 }
 
 QPlatformGLContext * QAndroidPlatformIntegration::createGLContext()
