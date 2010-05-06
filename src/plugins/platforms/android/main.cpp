@@ -48,7 +48,7 @@ class QAndroidPlatformIntegrationPlugin : public QPlatformIntegrationPlugin
 {
 public:
     QStringList keys() const;
-    QPlatformIntegration *create(const QString&);
+    QPlatformIntegration *create(const QString &key, const QStringList &paramList);
 };
 
 QStringList QAndroidPlatformIntegrationPlugin::keys() const
@@ -58,10 +58,11 @@ QStringList QAndroidPlatformIntegrationPlugin::keys() const
     return list;
 }
 
-QPlatformIntegration* QAndroidPlatformIntegrationPlugin::create(const QString& system)
+QPlatformIntegration* QAndroidPlatformIntegrationPlugin::create(const QString &key, const QStringList &paramList)
 {
-    qDebug()<<"QAndroidPlatformIntegrationPlugin::create"<<system;
-    if (system.toLower() == "android")
+    Q_UNUSED(paramList);
+    qDebug()<<"QAndroidPlatformIntegrationPlugin::create"<<key;
+    if (key.toLower() == "android")
         return new QAndroidPlatformIntegration;
     return 0;
 }

@@ -16,6 +16,11 @@ public class QtApplication
 	private static ViewGroup m_view = null;
 	private static QtEgl mEgl = null;
 
+	public static QtEgl getEgl()
+    {
+        return mEgl;
+    }
+	
 	public static void setActivity(Activity mActivity)
 	{
 		m_activity = mActivity;
@@ -59,7 +64,7 @@ public class QtApplication
 				System.load("/data/local/lib/lib" + lib + ".so");
 			else
 				System.loadLibrary(lib);
-			// InitializeOpenGL(false);
+			//InitializeOpenGL(false);
 			startQtApp();
 		}
 		catch (Exception e)
