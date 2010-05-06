@@ -44,10 +44,10 @@
 #include <QList>
 #include <QImage>
 #include <QMouseEvent>
-#include <QPointer>
+#include <QWeakPointer>
 #include <QObject>
-#include "qgraphicssystem_p.h"
 #include <QPlatformScreen>
+#include <QCursor>
 
 QT_BEGIN_NAMESPACE
 
@@ -67,6 +67,14 @@ private:
     QPoint hot;
 };
 
+class QGraphicsSystemCursor;
+
+class QGraphicsSystemCursorPrivate {
+public:
+    static QList<QWeakPointer<QGraphicsSystemCursor> > getInstances() { return instances; }
+    static QList<QWeakPointer<QGraphicsSystemCursor> > instances;
+};
+
 class Q_GUI_EXPORT QGraphicsSystemCursor : public QObject {
 public:
     QGraphicsSystemCursor(QPlatformScreen *);
@@ -75,13 +83,11 @@ public:
     virtual void pointerEvent(const QMouseEvent & event) { Q_UNUSED(event); }
     virtual void changeCursor(QCursor * widgetCursor, QWidget * widget) = 0;
 
-    static QPointer<QGraphicsSystemCursor> getInstance() { return instance; }
-
 protected:
     QPlatformScreen* screen;  // Where to request an update
 
 private:
-    static QPointer<QGraphicsSystemCursor> instance;    // limit 1 cursor at a time
+    Q_DECLARE_PRIVATE(QGraphicsSystemCursor);
     friend void qt_lite_set_cursor(QWidget * w, bool force);
     friend class QApplicationPrivate;
 };
