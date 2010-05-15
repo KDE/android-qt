@@ -115,7 +115,7 @@ bool QEventDispatcherLite::processEvents(QEventLoop::ProcessEventsFlags flags)
 bool QEventDispatcherLite::hasPendingEvents()
 {
     extern uint qGlobalPostedEventsCount(); // from qapplication.cpp
-    return qGlobalPostedEventsCount() || QWindowSystemInterfacePrivate::userEventsQueued();;
+    return qGlobalPostedEventsCount() || QWindowSystemInterfacePrivate::userEventsQueued();
 }
 
 void QEventDispatcherLite::startingUp()
