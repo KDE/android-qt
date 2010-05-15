@@ -50,7 +50,11 @@
 #include <private/qdrawhelper_p.h>
 #include <private/qimage_p.h>
 
-#include <private/qpaintengineex_opengl2_p.h>
+#ifdef QT_OPENGL_ES_2
+  #include <private/qpaintengineex_opengl2_p.h>
+#else
+  #include "qpaintengine_opengl_p.h"
+#endif
 
 #include <qdesktopwidget.h>
 #include <qfile.h>
@@ -199,7 +203,12 @@ void QGLPixmapGLPaintDevice::beginPaint()
 
         glMatrixMode(GL_PROJECTION);
         glLoadIdentity();
+#ifndef QT_OPENGL_ES
         glOrtho(0, data->width(), data->height(), 0, -999999, 999999);
+#else
+        glOrthof(0, data->width(), data->height(), 0, -999999, 999999);
+#endif
+
 #endif
 
         glViewport(0, 0, data->width(), data->height());
@@ -570,7 +579,11 @@ QImage QGLPixmapData::toImage() const
 struct TextureBuffer
 {
     QGLFramebufferObject *fbo;
+#ifdef QT_OPENGL_ES_2
     QGL2PaintEngineEx *engine;
+#else
+    QOpenGLPaintEngine *engine;
+#endif
 };
 
 Q_GLOBAL_STATIC(QGLFramebufferObjectPool, _qgl_fbo_pool)
@@ -652,7 +665,11 @@ QPaintEngine* QGLPixmapData::paintEngine() const
 
         if (m_renderFbo) {
             if (!m_engine)
+#ifdef QT_OPENGL_ES_2
                 m_engine = new QGL2PaintEngineEx;
+#else
+                m_engine = new QOpenGLPaintEngine;
+#endif
             return m_engine;
         }
 

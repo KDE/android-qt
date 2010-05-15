@@ -23,8 +23,11 @@ HEADERS += qgl.h \
            qglpixelbuffer_p.h \
 	   qglframebufferobject.h  \
            qglframebufferobject_p.h  \
+           qwindowsurface_gl_p.h \
            qglextensions_p.h \
            qglpaintdevice_p.h \
+           qgraphicssystem_gl_p.h \
+           qpixmapdata_gl_p.h \
            qglbuffer.h \
 
 
@@ -32,8 +35,11 @@ SOURCES	+= qgl.cpp \
 	   qglcolormap.cpp \
 	   qglpixelbuffer.cpp \
 	   qglframebufferobject.cpp \
+           qwindowsurface_gl.cpp \
            qglextensions.cpp \
            qglpaintdevice.cpp \
+           qgraphicssystem_gl.cpp \
+           qpixmapdata_gl.cpp \
            qglbuffer.cpp \
 
 !contains(QT_CONFIG, opengles2) {
@@ -46,9 +52,6 @@ SOURCES	+= qgl.cpp \
     HEADERS +=  qglshaderprogram.h \
                 qglpixmapfilter_p.h  \
                 qgraphicsshadereffect_p.h \
-                qgraphicssystem_gl_p.h \
-                qwindowsurface_gl_p.h \
-                qpixmapdata_gl_p.h \
                 gl2paintengineex/qglgradientcache_p.h \
                 gl2paintengineex/qglengineshadermanager_p.h \
                 gl2paintengineex/qgl2pexvertexarray_p.h \
@@ -62,9 +65,6 @@ SOURCES	+= qgl.cpp \
     SOURCES +=  qglshaderprogram.cpp \
                 qglpixmapfilter.cpp \
                 qgraphicsshadereffect.cpp \
-                qgraphicssystem_gl.cpp \
-                qwindowsurface_gl.cpp \
-                qpixmapdata_gl.cpp \
                 gl2paintengineex/qglgradientcache.cpp \
                 gl2paintengineex/qglengineshadermanager.cpp \
                 gl2paintengineex/qgl2pexvertexarray.cpp \
