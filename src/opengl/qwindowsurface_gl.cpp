@@ -70,7 +70,9 @@
 #include <private/qglpixelbuffer_p.h>
 #include <private/qgraphicssystem_gl_p.h>
 
+#ifdef QT_OPENGL_ES_2
 #include <private/qpaintengineex_opengl2_p.h>
+#endif
 #include <private/qpixmapdata_gl_p.h>
 
 #ifndef QT_OPENGL_ES_2
@@ -761,7 +763,11 @@ void QGLWindowSurface::updateGeometry() {
 
             glMatrixMode(GL_PROJECTION);
             glLoadIdentity();
+#ifndef QT_OPENGL_ES
             glOrtho(0, d_ptr->pb->width(), d_ptr->pb->height(), 0, -999999, 999999);
+#else
+            glOrthof(0, d_ptr->pb->width(), d_ptr->pb->height(), 0, -999999, 999999);
+#endif
 
             d_ptr->pb->d_ptr->qctx->d_func()->internal_context = true;
             return;
