@@ -64,7 +64,7 @@ public class QtApplication
 				System.load("/data/local/lib/lib" + lib + ".so");
 			else
 				System.loadLibrary(lib);
-			//InitializeOpenGL(false);
+			//InitializeOpenGL();
 			startQtApp();
 		}
 		catch (Exception e)
@@ -73,10 +73,10 @@ public class QtApplication
 		}
 	}
 
-	public static void InitializeOpenGL(boolean useAA)
+	public static void InitializeOpenGL()
 	{
 		mEgl = new QtEgl();
-		if (!mEgl.initialize(useAA))
+		if (!mEgl.initialize())
 			mEgl = null;
 	}
 

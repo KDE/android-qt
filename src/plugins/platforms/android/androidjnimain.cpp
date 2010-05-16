@@ -52,14 +52,14 @@ static jmethodID m_swapBuffersMethodID=0;
 // Java EGL methods
 
 #ifndef QT_USE_CUSTOM_NDK
-// Java methods
 static jmethodID m_flushImageMethodID=0;
-// Java methods
 #else
 static jfieldID  IDsurface;
-static QMutex m_surfaceMutex;
-static QMap<int,android::Surface*> m_surfaces;
 #endif
+
+static QMutex m_surfaceMutex;
+
+static QMap<int,android::Surface*> m_surfaces;
 
 static QMutex m_resizeMutex;
 static bool   m_requestResize=false;
@@ -342,9 +342,9 @@ namespace QtAndroid
             qCritical()<<"AttachCurrentThread failed";
             return false;
         }
-        env->CallVoidMethod(m_EglObject, m_makeCurrentMethodID, (jint)surfaceId);
+        jboolean res=env->CallBooleanMethod(m_EglObject, m_makeCurrentMethodID, (jint)surfaceId);
         m_javaVM->DetachCurrentThread();
-        return false;
+        return res;
     }
 
     bool doneCurrent()
@@ -369,9 +369,9 @@ namespace QtAndroid
             qCritical()<<"AttachCurrentThread failed";
             return false;
         }
-        env->CallVoidMethod(m_EglObject, m_swapBuffersMethodID, (jint)surfaceId);
+        jboolean res=env->CallBooleanMethod(m_EglObject, m_swapBuffersMethodID, (jint)surfaceId);
         m_javaVM->DetachCurrentThread();
-        return false;
+        return res;
     }
 
     void * getProcAddress(int surfaceId, const QString& procName)
