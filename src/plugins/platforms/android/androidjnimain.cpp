@@ -64,7 +64,6 @@ static QMap<int,android::Surface*> m_surfaces;
 static QMutex m_resizeMutex;
 static bool   m_requestResize=false;
 
-static QThread * m_qtThread=0;
 static QAndroidPlatformIntegration * mAndroidGraphicsSystem=0;
 
 
@@ -200,11 +199,6 @@ namespace QtAndroid
     void setAndroidGraphicsSystem(QAndroidPlatformIntegration * androidGraphicsSystem)
     {
         mAndroidGraphicsSystem=androidGraphicsSystem;
-    }
-
-    void setQtThread(QThread * thread)
-    {
-        m_qtThread=thread;
     }
 
     void quitApplication()
@@ -421,7 +415,6 @@ static void * startMainMethod(void * /*data*/)
 
 static jboolean startQtApp(JNIEnv* /*env*/, jobject /*object*/)
 {
-    m_qtThread=0;
 #ifdef QT_USE_CUSTOM_NDK
     m_surfaces.clear();
 #endif
@@ -433,17 +426,14 @@ static jboolean startQtApp(JNIEnv* /*env*/, jobject /*object*/)
 
 static void pauseQtApp(JNIEnv */*env*/, jobject /*thiz*/)
 {
-
-    if (QAbstractEventDispatcher::instance(m_qtThread))
-            QAbstractEventDispatcher::instance(m_qtThread)->interrupt();
+    if (mAndroidGraphicsSystem)
+        mAndroidGraphicsSystem->pauseApp();
 }
 
 static void resumeQtApp(JNIEnv */*env*/, jobject /*thiz*/)
 {
     if (mAndroidGraphicsSystem)
-        mAndroidGraphicsSystem->updateScreen();
-    if (QAbstractEventDispatcher::instance(m_qtThread))
-            QAbstractEventDispatcher::instance(m_qtThread)->wakeUp();
+        mAndroidGraphicsSystem->resumeApp();
 }
 
 static void quitQtApp(JNIEnv* /*env*/, jclass /*clazz*/)
@@ -466,8 +456,6 @@ static void setDisplayMetrics(JNIEnv* /*env*/, jclass /*clazz*/,
         mAndroidGraphicsSystem->setDisplayMetrics(qRound((double)widthPixels   / xdpi * 100 / 2.54 ),
                                                   qRound((double)heightPixels / ydpi *100  / 2.54 ));
     }
-    if (QAbstractEventDispatcher::instance(m_qtThread))
-            QAbstractEventDispatcher::instance(m_qtThread)->wakeUp();
 }
 
 
@@ -475,24 +463,18 @@ static void mouseDown(JNIEnv */*env*/, jobject /*thiz*/, jint x, jint y)
 {
     QWindowSystemInterface::handleMouseEvent(0, QEvent::MouseButtonRelease,QPoint(x,y),QPoint(x,y),
                                                              Qt::MouseButtons(Qt::LeftButton));
-    if (QAbstractEventDispatcher::instance(m_qtThread))
-            QAbstractEventDispatcher::instance(m_qtThread)->wakeUp();
 }
 
 static void mouseUp(JNIEnv */*env*/, jobject /*thiz*/, jint x, jint y)
 {
     QWindowSystemInterface::handleMouseEvent(0, QEvent::MouseButtonRelease,QPoint(x,y),QPoint(x,y),
                                                              Qt::MouseButtons(Qt::NoButton));
-    if (QAbstractEventDispatcher::instance(m_qtThread))
-            QAbstractEventDispatcher::instance(m_qtThread)->wakeUp();
 }
 
 static void mouseMove(JNIEnv */*env*/, jobject /*thiz*/, jint x, jint y)
 {
     QWindowSystemInterface::handleMouseEvent(0, QEvent::MouseButtonRelease,QPoint(x,y),QPoint(x,y),
                                                              Qt::MouseButtons(Qt::LeftButton));
-    if (QAbstractEventDispatcher::instance(m_qtThread))
-            QAbstractEventDispatcher::instance(m_qtThread)->wakeUp();
 }
 
 static int mapAndroidKey(int key)
@@ -671,8 +653,6 @@ static void keyDown(JNIEnv */*env*/, jobject /*thiz*/, jint key, jint unicode, j
     if (modifier & 4)
         modifiers|=Qt::MetaModifier;
     QWindowSystemInterface::handleKeyEvent(0, QEvent::KeyPress, mapAndroidKey(key), modifiers, QChar(unicode),true);
-    if (QAbstractEventDispatcher::instance(m_qtThread))
-            QAbstractEventDispatcher::instance(m_qtThread)->wakeUp();
 }
 
 static void keyUp(JNIEnv */*env*/, jobject /*thiz*/, jint key, jint unicode, jint modifier)
@@ -688,8 +668,6 @@ static void keyUp(JNIEnv */*env*/, jobject /*thiz*/, jint key, jint unicode, jin
         modifiers|=Qt::MetaModifier;
 
     QWindowSystemInterface::handleKeyEvent(0, QEvent::KeyRelease, mapAndroidKey(key), modifiers, QChar(unicode),true);
-    if (QAbstractEventDispatcher::instance(m_qtThread))
-            QAbstractEventDispatcher::instance(m_qtThread)->wakeUp();
 }
 
 static void surfaceCreated(JNIEnv *env, jobject /*thiz*/, jobject jSurface, jint surfaceId)

@@ -69,7 +69,6 @@ QAndroidPlatformIntegration::QAndroidPlatformIntegration()
     mPrimaryScreen = new QAndroidPlatformScreen();
     mScreens.append(mPrimaryScreen);
     m_mainThread=QThread::currentThread();
-    QtAndroid::setQtThread(m_mainThread);
     QtAndroid::setAndroidGraphicsSystem(this);
 }
 
@@ -112,23 +111,13 @@ QPlatformWindow *QAndroidPlatformIntegration::createPlatformWindow(QWidget *widg
     return new QAndroidPlatformWindow(widget);
 }
 
-void QAndroidPlatformIntegration::updateScreen()
-{
-    if (mPrimaryScreen)
-    {
-        mPrimaryScreen->redrawScreen();
-        if (QAbstractEventDispatcher::instance(m_mainThread))
-                QAbstractEventDispatcher::instance(m_mainThread)->wakeUp();
-    }
-}
-
 void QAndroidPlatformIntegration::setDesktopSize(int width, int height)
 {
     if (mPrimaryScreen)
     {
         mPrimaryScreen->setGeometry(QRect(0,0,width, height));
         if (QAbstractEventDispatcher::instance(m_mainThread))
-                QAbstractEventDispatcher::instance(m_mainThread)->wakeUp();
+            QAbstractEventDispatcher::instance(m_mainThread)->wakeUp();
     }
 }
 
@@ -138,7 +127,23 @@ void QAndroidPlatformIntegration::setDisplayMetrics(int width, int height)
     {
         mPrimaryScreen->setPhysicalSize(QSize(width, height));
         if (QAbstractEventDispatcher::instance(m_mainThread))
-                QAbstractEventDispatcher::instance(m_mainThread)->wakeUp();
+            QAbstractEventDispatcher::instance(m_mainThread)->wakeUp();
+    }
+}
+
+void QAndroidPlatformIntegration::pauseApp()
+{
+    if (QAbstractEventDispatcher::instance(m_mainThread))
+        QAbstractEventDispatcher::instance(m_mainThread)->interrupt();
+}
+
+void QAndroidPlatformIntegration::resumeApp()
+{
+    if (mPrimaryScreen)
+    {
+        mPrimaryScreen->redrawScreen();
+        if (QAbstractEventDispatcher::instance(m_mainThread))
+            QAbstractEventDispatcher::instance(m_mainThread)->wakeUp();
     }
 }
 

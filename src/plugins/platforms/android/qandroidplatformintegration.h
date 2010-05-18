@@ -63,7 +63,8 @@ public:
 
     virtual void setDesktopSize(int width, int height);
     virtual void setDisplayMetrics(int width, int height);
-    virtual void updateScreen();
+    void pauseApp();
+    void resumeApp();
 
 #ifndef QT_NO_OPENGL
     bool hasOpenGL() const;
