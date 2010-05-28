@@ -40,11 +40,6 @@ public class QtApplication
 		m_view = view;
 	}
 
-	// static
-	// {
-	// // System.load("/data/local/qt/lib/libAndroidSetQtEnv.so");
-	// }
-	//	
 	public static void loadLibraries(String[] libraries)
 	{
 		for (int i = 0; i < libraries.length; i++)

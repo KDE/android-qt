@@ -134,17 +134,6 @@ void QWindowSystemInterfacePrivate::queueUserEvent(QWindowSystemInterface::UserE
         dispatcher->wakeUp();
 }
 
-void QWindowSystemInterfacePrivate::queueUserEvent(QWindowSystemInterface::UserEvent *ev)
-{
-    queueMutex.lock();
-    userEventQueue.append(ev);
-    queueMutex.unlock();
-
-    QAbstractEventDispatcher *dispatcher = QApplicationPrivate::qt_lite_core_dispatcher();
-    if (dispatcher)
-        dispatcher->wakeUp();
-}
-
 void QWindowSystemInterface::handleTouchEvent(QWidget *tlw, ulong timestamp, QEvent::Type type, QTouchEvent::DeviceType devType, QList<struct TouchPoint> points)
 {
     if (!points.size()) // Touch events must have at least one point
