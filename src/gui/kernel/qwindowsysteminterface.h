@@ -47,6 +47,7 @@
 #include <QtGui/QWidget>
 #include <QtCore/QWeakPointer>
 #include <QtCore/QMutex>
+#include <QtGui/QTouchEvent>
 
 QT_BEGIN_HEADER
 
@@ -74,6 +75,21 @@ public:
     }
 
     static void handleWheelEvent(QWidget *w, ulong timestamp, const QPoint & local, const QPoint & global, int d, Qt::Orientation o);
+
+    struct TouchPoint {
+        int id;                 // for application use
+        bool isPrimary;         // for application use
+        QPointF normalPosition; // touch device coordinates, (0 to 1, 0 to 1)
+        QRectF area;            // the touched area, centered at position in screen coordinates
+        qreal pressure;         // 0 to 1
+        Qt::TouchPointStates state; //Qt::TouchPoint{Pressed|Moved|Stationary|Released}
+    };
+
+    static void handleTouchEvent(QWidget *w, QEvent::Type type, QTouchEvent::DeviceType devType, QList<struct TouchPoint> points) {
+        handleTouchEvent(w, eventTime.elapsed(), type, devType, points);
+    }
+
+    static void handleTouchEvent(QWidget *w, ulong timestamp, QEvent::Type type, QTouchEvent::DeviceType devType, QList<struct TouchPoint> points);
 
     // delivered directly by the plugin via spontaneous events
     static void handleGeometryChange(QWidget *w, const QRect &newRect);
@@ -119,6 +135,14 @@ public:
         bool repeat;
         ushort repeatCount;
         Qt::KeyboardModifiers modifiers;
+    };
+
+    class TouchEvent : public UserEvent {
+    public:
+        TouchEvent(QWidget *w, ulong time, QEvent::Type t, QTouchEvent::DeviceType d, QList<struct TouchPoint> p)
+            :UserEvent(w, time, t) { devType = d; points = p; }
+        QTouchEvent::DeviceType devType;
+        QList<struct TouchPoint> points;
     };
 
 private:
