@@ -2,10 +2,13 @@ package com.nokia.qt;
 
 import java.io.File;
 import java.nio.ShortBuffer;
+import java.util.HashMap;
+import java.util.Map;
 
 import android.app.Activity;
+import android.graphics.Bitmap;
+import android.graphics.Rect;
 import android.util.Log;
-import android.view.Surface;
 import android.view.View;
 import android.view.ViewGroup;
 
@@ -15,7 +18,13 @@ public class QtApplication
 	private static Activity m_activity = null;
 	private static ViewGroup m_view = null;
 	private static QtEgl mEgl = null;
+	private static Map<Integer, Bitmap> m_surfaces = new HashMap<Integer, Bitmap>();
 
+	public static void setSurface(int id, Bitmap bmp)
+	{
+		m_surfaces.put(id, bmp);
+	}
+	
 	public static QtEgl getEgl()
     {
         return mEgl;
@@ -126,9 +135,9 @@ public class QtApplication
 			return false;
 
 		final QtSurface surface = (QtSurface) m_view.findViewById(id);
-		if (surface == null)
+		if (surface == null || surface.drawRequest)
 			return false;
-
+		surface.drawRequest=true;
 		m_activity.runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
@@ -206,6 +215,23 @@ public class QtApplication
 		});
 	}
 
+	@SuppressWarnings("unused")
+	private void redrawSurface(final int id, final int left, final int top, final int right, final int bottom )
+	{
+		if (m_activity == null)
+			return;
+
+		final QtSurface surface = (QtSurface) m_view.findViewById(id);
+		if (surface == null)
+			return;
+
+		m_activity.runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				surface.drawBitmap(new Rect(left, top, right, bottom));
+			}
+		});
+	}
 	// application methods
 	public static native void startQtApp();
 	public static native void pauseQtApp();
@@ -232,8 +258,10 @@ public class QtApplication
 	// keyboard methods
 
 	// surface methods
-	public static native void surfaceCreated(Surface surface, int id);
-	public static native void surfaceChanged(Surface surface, int id);
+	public static native void surfaceCreated(Object surface, int id);
+	public static native void surfaceChanged(Object surface, int id);
 	public static native void surfaceDestroyed(int id);
+	public static native void lockSurface();
+	public static native void unlockSurface();
 	// surface methods
 }

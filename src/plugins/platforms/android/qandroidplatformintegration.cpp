@@ -51,9 +51,9 @@
 
 #ifndef QT_NO_OPENGL
 #include <private/qpixmapdata_gl_p.h>
-#include <private/qwindowsurface_gl_p.h>
 #include "qandroidplatformglcontext.h"
 #include "qandroidplatformglwidgetsurface.h"
+#include "qandroidglwindowsurface.h"
 #endif
 
 QT_BEGIN_NAMESPACE
@@ -100,7 +100,7 @@ QWindowSurface *QAndroidPlatformIntegration::createWindowSurface(QWidget *widget
     qDebug()<<"QAndroidPlatformIntegration::createWindowSurface"<<widget<<widget->winId()<<winId;
 #ifndef QT_NO_OPENGL
     if (QtAndroid::hasOpenGL())
-        return new QGLWindowSurface(widget);
+        return new QAndroidGLWindowSurface(widget);
 #endif
     return new QAndroidWindowSurface(widget);
 }

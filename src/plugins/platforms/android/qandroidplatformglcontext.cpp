@@ -12,15 +12,16 @@ bool QAndroidPlatformGLContext::create(QPaintDevice* device, QGLFormat& /*format
         return false;
     }
 
-    QWidget* m_widget = static_cast<QWidget*>(device);
+    QWidget* widget = static_cast<QWidget*>(device);
 
-    if (!m_widget->isTopLevel()) {
+    if (!widget->isTopLevel()) {
         qWarning("Creating a GL context is only supported on top-level QWidgets");
         return false;
     }
-    m_surfaceId=m_widget->winId();
+    m_surfaceId=widget->winId();
     qDebug()<<"Surface ID="<<m_surfaceId;
-    return true;
+    return QtAndroid::createSurface(m_surfaceId, widget->geometry().left(), widget->geometry().top(),
+                                            widget->geometry().right(), widget->geometry().bottom());
 }
 
 void QAndroidPlatformGLContext::makeCurrent()

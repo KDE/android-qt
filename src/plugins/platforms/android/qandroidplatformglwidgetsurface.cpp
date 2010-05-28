@@ -5,9 +5,7 @@
 bool QAndroidPlatformGLWidgetSurface::create(QGLWidget* widget, QGLFormat&)
 {
     m_surfaceId=widget->winId();
-    qDebug()<<"surfaceId="<<m_surfaceId;
-    return QtAndroid::createSurface(m_surfaceId, widget->geometry().left(), widget->geometry().top(),
-                                            widget->geometry().right(), widget->geometry().bottom());
+    return true;
 }
 
 void QAndroidPlatformGLWidgetSurface::setGeometry(const QRect& rect)

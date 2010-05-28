@@ -1,6 +1,5 @@
 #ifndef ANDROID_APP_H
 #define ANDROID_APP_H
-#include <jni.h>
 
 class QImage;
 class QRect;
@@ -31,6 +30,8 @@ namespace QtAndroid
     bool doneCurrent();
     bool swapBuffers(int surfaceId);
     void* getProcAddress(int surfaceId, const QString& procName);
+    void lockSurface();
+    void unlockSurface();
     // Egl methods
 
     bool hasOpenGL();

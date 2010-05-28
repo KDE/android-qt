@@ -120,10 +120,14 @@ public class QtEgl {
 
 	public boolean createSurface(SurfaceHolder holder, int surfaceId)
 	{
+		QtApplication.lockSurface();
 		synchronized (this)
 		{
 			if (mEgl == null)
+			{
+				QtApplication.unlockSurface();
 				return false;
+			}
 
 			if (mEglSurfaces.containsKey(surfaceId) && mEglSurfaces.get(surfaceId) == mCurrentEglSurface)
 				mEgl.eglMakeCurrent(mEglDisplay, EGL10.EGL_NO_SURFACE, EGL10.EGL_NO_SURFACE, EGL10.EGL_NO_CONTEXT);
@@ -134,12 +138,16 @@ public class QtEgl {
 			EGLSurface eglSurface = mEgl.eglCreateWindowSurface(mEglDisplay, mEglConfig, holder, null);
 
 			if (eglSurface == EGL10.EGL_NO_SURFACE)
+			{
+				QtApplication.unlockSurface();
 				throw new RuntimeException("createWindowSurface failed");
+			}
 
 //			if (!mEgl.eglMakeCurrent(mEglDisplay, eglSurface, eglSurface, mEglContext))
 //				throw new RuntimeException("eglMakeCurrent failed.");
 
 			mEglSurfaces.put(surfaceId, eglSurface);
+			QtApplication.unlockSurface();
 			return true;
 		}
 	}
@@ -166,6 +174,11 @@ public class QtEgl {
 						return false;
 					}
 				}
+				else
+				{
+					if (!mEglSurfaces.containsKey(surfaceId))
+							Log.e(QtApplication.QtTAG,"Can't find surface "+surfaceId);
+				}
 				return true;
 			}
 			catch (Exception e)
@@ -189,7 +202,11 @@ public class QtEgl {
 		synchronized (this)
 		{
 			if (mEgl == null || !mEglSurfaces.containsKey(surfaceId) || mEglSurfaces.get(surfaceId) == EGL10.EGL_NO_SURFACE)
+			{
+				if (!mEglSurfaces.containsKey(surfaceId))
+						Log.e(QtApplication.QtTAG,"Can't find surface "+surfaceId);
 				return false;
+			}
 			boolean ret = mEgl.eglSwapBuffers(mEglDisplay, mEglSurfaces.get(surfaceId));
 			if (!ret)
 				mCurrentEglSurface = EGL10.EGL_NO_SURFACE;
