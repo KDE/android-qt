@@ -152,7 +152,7 @@ static void registerFont(QFontDatabasePrivate::ApplicationFont *fnt);
 
 extern QString qws_fontCacheDir();
 
-#ifndef QT_FONTS_ARE_RESOURCES
+#if !defined(QT_FONTS_ARE_RESOURCES) && !defined(Q_OS_ANDROID)
 bool QFontDatabasePrivate::loadFromCache(const QString &fontPath)
 {
 #ifdef Q_WS_QWS
@@ -164,7 +164,6 @@ bool QFontDatabasePrivate::loadFromCache(const QString &fontPath)
     QString fontDirFile = fontPath + QLatin1String("/fontdir");
 
     QFile binaryDb(qws_fontCacheDir() + QLatin1String("/fontdb"));
-
     if (weAreTheServer) {
         QDateTime dbTimeStamp = QFileInfo(binaryDb.fileName()).lastModified();
 
@@ -250,6 +249,8 @@ static QString qwsFontPath()
     if (fontpath.isEmpty()) {
 #ifdef QT_FONTS_ARE_RESOURCES
         fontpath = QLatin1String(":/qt/fonts");
+#elif defined(Q_OS_ANDROID)
+        fontpath = QLatin1String("/system/fonts");
 #else
 #ifndef QT_NO_SETTINGS
         fontpath = QLibraryInfo::location(QLibraryInfo::LibrariesPath);
@@ -259,7 +260,6 @@ static QString qwsFontPath()
 #endif
 #endif //QT_FONTS_ARE_RESOURCES
     }
-
     return fontpath;
 }
 
@@ -289,7 +289,7 @@ static void initializeDb()
         qFatal("QFontDatabase: Cannot find font directory %s - is Qt installed correctly?",
                fontpath.toLocal8Bit().constData());
     }
-
+#ifndef Q_OS_ANDROID
     const bool loaded = db->loadFromCache(fontpath);
 
     if (db->reregisterAppFonts) {
@@ -356,7 +356,6 @@ static void initializeDb()
         db->addFont(familyname, /*foundry*/ "qt", weight, italic, pixelSize, QFile::encodeName(dir.absoluteFilePath(dir[i])),
                     /*fileIndex*/ 0, /*antialiased*/ true);
     }
-
 #ifndef QT_NO_FREETYPE
     dir.setNameFilters(QStringList() << QLatin1String("*.ttf")
                        << QLatin1String("*.ttc") << QLatin1String("*.pfa")
@@ -367,6 +366,16 @@ static void initializeDb()
 //        qDebug() << "looking at" << file;
         db->addTTFile(file);
     }
+#endif
+#else // !defined( Q_OS_ANDROID )
+# ifndef QT_NO_FREETYPE
+    QDir dir(fontpath, QLatin1String("Droid*.ttf"));
+    for (int i = 0; i < int(dir.count()); ++i) {
+        const QByteArray file = QFile::encodeName(dir.absoluteFilePath(dir[i]));
+//        qDebug() << "looking at" << file;
+        db->addTTFile(file);
+    }
+# endif
 #endif
 
 #ifndef QT_NO_QWS_QPF2
@@ -438,7 +447,6 @@ static void initializeDb()
         }
     }
 #endif // QFONTDATABASE_DEBUG
-
 #ifndef QT_NO_LIBRARY
     QStringList pluginFoundries = loader()->keys();
 //    qDebug() << "plugin foundries:" << pluginFoundries;
@@ -468,7 +476,7 @@ static void initializeDb()
     }
 #endif
 
-#ifndef QT_FONTS_ARE_RESOURCES
+#if !defined(QT_FONTS_ARE_RESOURCES) && !defined(Q_OS_ANDROID)
     // the empty string/familyname signifies the end of the font list.
     *db->stream << QString();
 #endif
@@ -496,11 +504,11 @@ static void initializeDb()
                 db->fallbackFamilies << family->name;
         }
         //qDebug() << "fallbacks on the server:" << db->fallbackFamilies;
-#ifndef QT_FONTS_ARE_RESOURCES
+#if !defined(QT_FONTS_ARE_RESOURCES) && !defined(Q_OS_ANDROID)
         *db->stream << db->fallbackFamilies;
 #endif
     }
-#ifndef QT_FONTS_ARE_RESOURCES
+#if !defined(QT_FONTS_ARE_RESOURCES) && !defined(Q_OS_ANDROID)
     delete db->stream;
     db->stream = 0;
     QFile::remove(dbFileName);

@@ -661,7 +661,9 @@ public:
     void invalidate();
 
 #if defined(Q_WS_QWS) || defined(Q_WS_LITE)
+#ifndef Q_OS_ANDROID
     bool loadFromCache(const QString &fontPath);
+#endif
     void addQPF2File(const QByteArray &file);
 #endif // Q_WS_QWS
 #if defined(Q_WS_QWS) || defined(Q_WS_LITE) || defined(Q_OS_SYMBIAN) && !defined(QT_NO_FREETYPE)

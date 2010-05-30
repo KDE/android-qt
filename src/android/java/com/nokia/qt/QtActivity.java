@@ -1,6 +1,7 @@
 package com.nokia.qt;
 
 import android.app.Activity;
+import android.graphics.Rect;
 import android.os.Bundle;
 import android.util.DisplayMetrics;
 import android.util.Log;
@@ -31,6 +32,21 @@ public class QtActivity extends Activity
 	public void setLibraries(String[] libs)
 	{
 		libraries = libs;
+	}
+
+	private void setScreenSize()
+	{
+		Rect rect= new Rect();
+		Window window= getWindow();
+		window.getDecorView().getWindowVisibleDisplayFrame(rect);
+//		int statusBarHeight= rect.top;
+//		window.findViewById(Window.ID_ANDROID_CONTENT).getTop();
+//		int titleBarHeight= contentViewTop - statusBarHeight;
+
+		DisplayMetrics metrics = new DisplayMetrics();
+		getWindowManager().getDefaultDisplay().getMetrics(metrics);
+		QtApplication.setDisplayMetrics(metrics.widthPixels,
+				metrics.heightPixels-rect.top, metrics.xdpi, metrics.ydpi);
 	}
 
 	@Override
@@ -68,21 +84,9 @@ public class QtActivity extends Activity
 			{
 				QtApplication.loadLibraries(libraries);
 				QtApplication.loadApplication(appName);
-				// QtApplication.
+				setScreenSize();
+				Log.i(QtApplication.QtTAG, "onCreate");
 			}
-
-			// Rect rect= new Rect();
-			// Window window= getWindow();
-			// window.getDecorView().getWindowVisibleDisplayFrame(rect);
-			// int statusBarHeight= rect.top;
-			// int contentViewTop=
-			// window.findViewById(Window.ID_ANDROID_CONTENT).getTop();
-			// int titleBarHeight= contentViewTop - statusBarHeight;
-
-			DisplayMetrics metrics = new DisplayMetrics();
-			getWindowManager().getDefaultDisplay().getMetrics(metrics);
-			QtApplication.setDisplayMetrics(metrics.widthPixels,
-					metrics.heightPixels, metrics.xdpi, metrics.ydpi);
 			quitApp = true;
 		}
 		catch (Exception e)
@@ -103,6 +107,7 @@ public class QtActivity extends Activity
 	protected void onResume()
 	{
 		QtApplication.resumeQtApp();
+		setScreenSize();
 		Log.i(QtApplication.QtTAG, "onResume");
 		super.onRestart();
 	}
@@ -120,6 +125,39 @@ public class QtActivity extends Activity
 	{
 		super.onDestroy();
 		if (quitApp)
+		{
+			Log.i(QtApplication.QtTAG, "onDestroy");
+			QtApplication.resumeQtApp();
+			QtApplication.unlockSurface();
 			QtApplication.quitQtApp();
+		}
+	}
+
+	@Override
+	protected void onSaveInstanceState(Bundle outState) {
+		super.onSaveInstanceState(outState);
+		Log.i(QtApplication.QtTAG, "onSaveInstanceState");
+		ViewGroup view = QtApplication.getView();
+		outState.putInt("Surfaces", view.getChildCount());
+		for (int i=0;i<view.getChildCount();i++)
+		{
+			QtSurface surface=(QtSurface) view.getChildAt(i);
+			int surfaceInfo[]={surface.getId(), surface.getLeft(), surface.getTop(), surface.getRight(), surface.getBottom()};
+			outState.putIntArray("Surface_"+i, surfaceInfo);
+		}
+	}
+
+	@Override
+	protected void onRestoreInstanceState(Bundle savedInstanceState) {
+		super.onRestoreInstanceState(savedInstanceState);
+		Log.i(QtApplication.QtTAG, "onRestoreInstanceState");
+		ViewGroup view = QtApplication.getView();
+		int surfaces=savedInstanceState.getInt("Surfaces");
+		for (int i=0;i<surfaces;i++)
+		{
+			int surfaceInfo[]= {0,0,0,0,0};
+			surfaceInfo=savedInstanceState.getIntArray("Surface_"+i);
+			view.addView(new QtSurface(this, surfaceInfo[0], surfaceInfo[1], surfaceInfo[2], surfaceInfo[3], surfaceInfo[4]),i);
+		}		
 	}
 }

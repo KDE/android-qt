@@ -35,6 +35,11 @@ public class QtApplication
 		m_activity = mActivity;
 	}
 
+	public static ViewGroup getView()
+	{
+		return m_view;
+	}
+	
 	public static void setView(ViewGroup view)
 	{
 		m_view = view;
