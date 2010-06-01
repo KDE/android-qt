@@ -86,8 +86,12 @@ static inline void checkPauseApplication()
         m_requestResize=true;
         m_applicationControl->m_resizeMutex.unlock();
 
-        m_applicationControl->m_createSurfaceSemaphore.acquire(m_surfaces.size()); //wait until all surfaces are created
-        m_applicationControl->m_resizeSurfaceSemaphore.acquire(m_surfaces.size()); //wait until all surfaces are resized
+        int surfaces=m_surfaces.size();
+        for (int i=0;i<surfaces;i++) //wait until all surfaces are created && resized
+        {
+            m_applicationControl->m_createSurfaceSemaphore.acquire();
+            m_applicationControl->m_resizeSurfaceSemaphore.acquire();
+        }
 
         m_applicationControl->m_resizeMutex.lock();
         m_requestResize=false;
@@ -96,6 +100,8 @@ static inline void checkPauseApplication()
         m_applicationControl->m_pauseApplicationMutex.lock();
         m_pauseApplication=false;
         m_applicationControl->m_pauseApplicationMutex.unlock();
+        QWindowSystemInterface::handleScreenAvailableGeometryChange(0);
+        QWindowSystemInterface::handleScreenGeometryChange(0);
     }
     else
         m_applicationControl->m_pauseApplicationMutex.unlock();
@@ -435,16 +441,19 @@ static jboolean startQtApp(JNIEnv* /*env*/, jobject /*object*/)
 
 static void pauseQtApp(JNIEnv */*env*/, jobject /*thiz*/)
 {
+    m_applicationControl->m_surfaceMutex.lock();
     m_applicationControl->m_pauseApplicationMutex.lock();
     if (mAndroidGraphicsSystem)
         mAndroidGraphicsSystem->pauseApp();
     m_pauseApplication=true;
     m_applicationControl->m_pauseApplicationMutex.unlock();
+    m_applicationControl->m_surfaceMutex.unlock();
 }
 
 static void resumeQtApp(JNIEnv */*env*/, jobject /*thiz*/)
 {
     qDebug()<<"resumeQtApp";
+    m_applicationControl->m_surfaceMutex.lock();
     m_applicationControl->m_pauseApplicationMutex.lock();
     if (mAndroidGraphicsSystem)
         mAndroidGraphicsSystem->resumeApp();
@@ -453,6 +462,7 @@ static void resumeQtApp(JNIEnv */*env*/, jobject /*thiz*/)
         m_applicationControl->m_pauseApplicationSemaphore.release();
 
     m_applicationControl->m_pauseApplicationMutex.unlock();
+    m_applicationControl->m_surfaceMutex.unlock();
 }
 
 static void quitQtApp(JNIEnv* /*env*/, jclass /*clazz*/)
@@ -466,17 +476,23 @@ static void quitQtApp(JNIEnv* /*env*/, jclass /*clazz*/)
 
 static void setDisplayMetrics(JNIEnv* /*env*/, jclass /*clazz*/,
                               jint widthPixels, jint heightPixels,
+                              jint desktopWidthPixels, jint desktopHeightPixels,
                               jfloat xdpi, jfloat ydpi)
 {
     if (!mAndroidGraphicsSystem)
-        QAndroidPlatformIntegration::setDefaultDisplayMetrics(widthPixels,heightPixels-25,
-                                                         qRound((double)widthPixels   / xdpi * 100 / 2.54 ),
-                                                         qRound((double)heightPixels / ydpi *100  / 2.54 ));
+        QAndroidPlatformIntegration::setDefaultDisplayMetrics(desktopWidthPixels,desktopHeightPixels,
+                                                     qRound((double)widthPixels   / xdpi * 100 / 2.54 ),
+                                                     qRound((double)heightPixels / ydpi *100  / 2.54 ));
     else
     {
-        mAndroidGraphicsSystem->setDesktopSize(widthPixels, heightPixels);
+        mAndroidGraphicsSystem->setDesktopSize(desktopWidthPixels,desktopHeightPixels);
         mAndroidGraphicsSystem->setDisplayMetrics(qRound((double)widthPixels   / xdpi * 100 / 2.54 ),
                                                   qRound((double)heightPixels / ydpi *100  / 2.54 ));
+        if (!m_surfaces.size())
+        {
+            QWindowSystemInterface::handleScreenAvailableGeometryChange(0);
+            QWindowSystemInterface::handleScreenGeometryChange(0);
+        }
     }
 }
 
@@ -757,7 +773,7 @@ static JNINativeMethod methods[] = {
     {"resumeQtApp", "()V", (void *)resumeQtApp},
     {"quitQtApp", "()V", (void *)quitQtApp},
     {"setEglObject", "(Ljava/lang/Object;)V", (void *)setEglObject},
-    {"setDisplayMetrics", "(IIFF)V", (void *)setDisplayMetrics},
+    {"setDisplayMetrics", "(IIIIFF)V", (void *)setDisplayMetrics},
     {"surfaceCreated", "(Ljava/lang/Object;I)V", (void *)surfaceCreated},
     {"surfaceChanged", "(Ljava/lang/Object;I)V", (void *)surfaceChanged},
     {"surfaceDestroyed", "(I)V", (void *)surfaceDestroyed},

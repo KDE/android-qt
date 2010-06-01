@@ -4,6 +4,7 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Rect;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -59,11 +60,13 @@ public class QtSurface extends SurfaceView implements SurfaceHolder.Callback {
     public void surfaceDestroyed(SurfaceHolder holder)
     {
     	QtApplication.lockSurface();
+		drawRequest=true;
+        mBitmap=null;
         // Log.i(QtApplication.QtTAG,"surfaceDestroyed ");
         if (QtApplication.getEgl()!=null)
             QtApplication.getEgl().destroySurface(getId());
         else
-        	QtApplication.setSurface(getId(), null);
+        	QtApplication.setSurface(getId(), mBitmap);
         QtApplication.surfaceDestroyed(getId());
         QtApplication.unlockSurface();
     }
@@ -128,11 +131,22 @@ public class QtSurface extends SurfaceView implements SurfaceHolder.Callback {
 	
 	public void drawBitmap(Rect rect)
 	{
-    	QtApplication.lockSurface();
-		Canvas cv=getHolder().lockCanvas(rect);
-		cv.drawBitmap(mBitmap, rect, rect, null);
-		getHolder().unlockCanvasAndPost(cv);
-		drawRequest=false;
+		QtApplication.lockSurface();
+		if (null!=mBitmap)
+		{
+			try
+			{
+			
+				Canvas cv=getHolder().lockCanvas(rect);
+				cv.drawBitmap(mBitmap, rect, rect, null);
+				getHolder().unlockCanvasAndPost(cv);
+				drawRequest=false;
+			}
+			catch (Exception e)
+			{
+				Log.e(QtApplication.QtTAG, "Can't create main activity", e);
+			}
+		}
     	QtApplication.unlockSurface();
-	}
+    	}
 }

@@ -18,9 +18,6 @@ QAndroidPlatformScreen::QAndroidPlatformScreen()
 void QAndroidPlatformScreen::setGeometry(QRect rect)
 {
     m_geometry = rect;
-    qDebug()<<"Resizig desktop"<<QApplication::desktop()<<rect;
-    if (QApplication::desktop())
-        QWindowSystemInterface::handleGeometryChange(QApplication::desktop(),m_geometry);
 }
 QRect QAndroidPlatformScreen::geometry() const
 {
@@ -52,13 +49,6 @@ void QAndroidPlatformScreen::setPhysicalSize(const QSize & size)
 QSize QAndroidPlatformScreen::physicalSize() const
 {
     return m_size;
-}
-
-void QAndroidPlatformScreen::redrawScreen()
-{
-    qDebug()<<"Redraw desktop"<<QApplication::desktop();
-    if (QApplication::desktop())
-        QApplication::desktop()->update();
 }
 
 QT_END_NAMESPACE

@@ -135,9 +135,6 @@ public class QtApplication
 			return false;
 
 		final QtSurface surface = (QtSurface) m_view.findViewById(id);
-		if (surface == null || surface.drawRequest)
-			return false;
-		surface.drawRequest=true;
 		m_activity.runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
@@ -222,8 +219,11 @@ public class QtApplication
 			return;
 
 		final QtSurface surface = (QtSurface) m_view.findViewById(id);
-		if (surface == null)
+		
+		if (surface == null || surface.drawRequest)
 			return;
+
+		surface.drawRequest=true;
 
 		m_activity.runOnUiThread(new Runnable() {
 			@Override
@@ -241,8 +241,9 @@ public class QtApplication
 	// application methods
 
 	// screen methods
-	public static native void setDisplayMetrics(int widthPixels,
-			int heightPixels, float xdpi, float ydpi);
+	public static native void setDisplayMetrics(int screenWidthPixels,
+			int screenHeightPixels, int desktopWidthPixels,
+			int desktopHeightPixels, float xdpi, float ydpi);
 	// screen methods
 
 	// pointer methods

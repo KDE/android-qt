@@ -114,21 +114,13 @@ QPlatformWindow *QAndroidPlatformIntegration::createPlatformWindow(QWidget *widg
 void QAndroidPlatformIntegration::setDesktopSize(int width, int height)
 {
     if (mPrimaryScreen)
-    {
         mPrimaryScreen->setGeometry(QRect(0,0,width, height));
-        if (QAbstractEventDispatcher::instance(m_mainThread))
-            QAbstractEventDispatcher::instance(m_mainThread)->wakeUp();
-    }
 }
 
 void QAndroidPlatformIntegration::setDisplayMetrics(int width, int height)
 {
     if (mPrimaryScreen)
-    {
         mPrimaryScreen->setPhysicalSize(QSize(width, height));
-        if (QAbstractEventDispatcher::instance(m_mainThread))
-            QAbstractEventDispatcher::instance(m_mainThread)->wakeUp();
-    }
 }
 
 void QAndroidPlatformIntegration::pauseApp()
@@ -139,12 +131,8 @@ void QAndroidPlatformIntegration::pauseApp()
 
 void QAndroidPlatformIntegration::resumeApp()
 {
-    if (mPrimaryScreen)
-    {
-        mPrimaryScreen->redrawScreen();
-        if (QAbstractEventDispatcher::instance(m_mainThread))
-            QAbstractEventDispatcher::instance(m_mainThread)->wakeUp();
-    }
+    if (QAbstractEventDispatcher::instance(m_mainThread))
+        QAbstractEventDispatcher::instance(m_mainThread)->wakeUp();
 }
 
 #ifndef QT_NO_OPENGL

@@ -1,14 +1,11 @@
 package com.nokia.qt;
 
 import android.app.Activity;
-import android.graphics.Rect;
 import android.os.Bundle;
-import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.ViewGroup;
 import android.view.Window;
-import android.widget.RelativeLayout;
 
 public class QtActivity extends Activity
 {
@@ -32,21 +29,6 @@ public class QtActivity extends Activity
 	public void setLibraries(String[] libs)
 	{
 		libraries = libs;
-	}
-
-	private void setScreenSize()
-	{
-		Rect rect= new Rect();
-		Window window= getWindow();
-		window.getDecorView().getWindowVisibleDisplayFrame(rect);
-//		int statusBarHeight= rect.top;
-//		window.findViewById(Window.ID_ANDROID_CONTENT).getTop();
-//		int titleBarHeight= contentViewTop - statusBarHeight;
-
-		DisplayMetrics metrics = new DisplayMetrics();
-		getWindowManager().getDefaultDisplay().getMetrics(metrics);
-		QtApplication.setDisplayMetrics(metrics.widthPixels,
-				metrics.heightPixels-rect.top, metrics.xdpi, metrics.ydpi);
 	}
 
 	@Override
@@ -76,7 +58,7 @@ public class QtActivity extends Activity
 		requestWindowFeature(Window.FEATURE_NO_TITLE);
 		try
 		{
-			ViewGroup view = new RelativeLayout(this);
+			ViewGroup view = new QtMainView(this);
 			QtApplication.setView(view);
 			setContentView(view);
 
@@ -84,7 +66,6 @@ public class QtActivity extends Activity
 			{
 				QtApplication.loadLibraries(libraries);
 				QtApplication.loadApplication(appName);
-				setScreenSize();
 				Log.i(QtApplication.QtTAG, "onCreate");
 			}
 			quitApp = true;
@@ -107,7 +88,6 @@ public class QtActivity extends Activity
 	protected void onResume()
 	{
 		QtApplication.resumeQtApp();
-		setScreenSize();
 		Log.i(QtApplication.QtTAG, "onResume");
 		super.onRestart();
 	}

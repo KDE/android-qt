@@ -21,8 +21,6 @@ public:
     virtual void setPhysicalSize(const QSize & size);
     virtual QSize physicalSize() const;
 
-    virtual void redrawScreen();
-
 private:
     QRect m_geometry;
     int   m_depth;
