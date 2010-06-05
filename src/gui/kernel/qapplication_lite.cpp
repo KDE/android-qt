@@ -86,8 +86,6 @@ static int mousePressX;
 static int mousePressY;
 static int mouse_double_click_distance = 5;
 
-bool QApplicationPrivate::qapp_constructed = false; // QApplication::QApplication completed?
-
 void QApplicationPrivate::processUserEvent(QWindowSystemInterface::UserEvent *e)
 {
     switch(e->type) {
@@ -806,34 +804,13 @@ void QApplicationPrivate::processCloseEvent(QWidget *tlw)
 
 void QApplicationPrivate::processTouchEvent(QWindowSystemInterface::TouchEvent *e)
 {
-    QList<QTouchEvent::TouchPoint> touchPoints;
-    Qt::TouchPointStates states;
-
-    int primaryPoint = -1;
-    foreach(struct QWindowSystemInterface::TouchPoint point, e->points) {
-        QTouchEvent::TouchPoint p;
-        p.setId(point.id);
-        p.setPressure(point.pressure);
-        states |= point.state;
-        if (point.isPrimary) {
-            point.state |= Qt::TouchPointPrimary;
-            primaryPoint = point.id;
-        }
-        p.setState(point.state);
-        p.setRect(point.area);
-        p.setScreenPos(point.area.center());
-        p.setNormalizedPos(point.normalPosition);
-
-        touchPoints.append(p);
-    }
-
-    translateRawTouchEvent(e->widget.data(), e->devType, touchPoints);
+    translateRawTouchEvent(e->widget.data(), e->devType, e->points);
 }
 
 void QApplicationPrivate::reportScreenCount(int count)
 {
     // This operation only makes sense after the QApplication constructor runs
-    if (!QApplicationPrivate::qapp_constructed)
+    if (QCoreApplication::startingUp())
         return;
 
     // signal anything listening for creation or deletion of screens
@@ -844,7 +821,7 @@ void QApplicationPrivate::reportScreenCount(int count)
 void QApplicationPrivate::reportGeometryChange(int screenIndex)
 {
     // This operation only makes sense after the QApplication constructor runs
-    if (!QApplicationPrivate::qapp_constructed)
+    if (QCoreApplication::startingUp())
         return;
 
     // signal anything listening for screen geometry changes
@@ -865,7 +842,7 @@ void QApplicationPrivate::reportGeometryChange(int screenIndex)
 void QApplicationPrivate::reportAvailableGeometryChange(int screenIndex)
 {
     // This operation only makes sense after the QApplication constructor runs
-    if (!QApplicationPrivate::qapp_constructed)
+    if (QCoreApplication::startingUp())
         return;
 
     // signal anything listening for screen geometry changes
