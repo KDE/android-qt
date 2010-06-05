@@ -7,16 +7,16 @@ import java.util.Map;
 
 import android.app.Activity;
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.graphics.Rect;
 import android.util.Log;
 import android.view.View;
-import android.view.ViewGroup;
 
 public class QtApplication
 {
 	public static final String QtTAG = "Qt JAVA";
 	private static Activity m_activity = null;
-	private static ViewGroup m_view = null;
+	private static QtMainView m_view = null;
 	private static QtEgl mEgl = null;
 	private static Map<Integer, Bitmap> m_surfaces = new HashMap<Integer, Bitmap>();
 
@@ -35,12 +35,12 @@ public class QtApplication
 		m_activity = mActivity;
 	}
 
-	public static ViewGroup getView()
+	public static QtMainView getView()
 	{
 		return m_view;
 	}
 	
-	public static void setView(ViewGroup view)
+	public static void setView(QtMainView view)
 	{
 		m_view = view;
 	}
@@ -90,8 +90,27 @@ public class QtApplication
 	}
 
 	@SuppressWarnings("unused")
-	private void flushImage(ShortBuffer image, int bytesPerRow, int x, int y, int r, int b)
+	private void flushImage(short[] img, final int id, final int left, final int top, final int right, final int bottom)
 	{
+		if (m_activity == null)
+			return;
+
+		final QtSurface surface = (QtSurface) m_view.findViewById(id);
+		
+		if (surface == null)
+			return;
+
+		ShortBuffer image=ShortBuffer.wrap(img);
+		final Bitmap bmp=Bitmap.createBitmap(right-left+1, bottom-top+1, Bitmap.Config.RGB_565);
+		bmp.copyPixelsFromBuffer(image);
+		m_activity.runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				Rect rect = new Rect(left, top, right, bottom);
+				Canvas cv=surface.getHolder().lockCanvas(rect);
+				cv.drawBitmap(bmp, new Rect(0, 0, right-left, bottom-top), new Rect(left, top, right, bottom), null);
+				surface.getHolder().unlockCanvasAndPost(cv);			}
+		});
 	}
 
 	@SuppressWarnings("unused")
@@ -250,7 +269,9 @@ public class QtApplication
 	public static native void mouseDown(int x, int y);
 	public static native void mouseUp(int x, int y);
 	public static native void mouseMove(int x, int y);
-
+	public static native void touchBegin();
+	public static native void touchAdd(int action, int pointerId, int x, int y, float size, float pressure);
+	public static native void touchEnd(int action);
 	// pointer methods
 
 	// keyboard methods

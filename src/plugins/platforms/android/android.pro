@@ -6,9 +6,7 @@ CONFIG -= dll
 CONFIG += staticlib static
 DESTDIR	 = $$QMAKE_LIBDIR_QT
 
-CONFIG(android-4) : DEFINES += ANDROID_PLATFORM=4
-CONFIG(android-5) : DEFINES += ANDROID_PLATFORM=5
-CONFIG(android-8) : DEFINES += ANDROID_PLATFORM=8
+CONFIG(jnigraphics) : DEFINES += JNIGRPAHICS
 
 SOURCES =   main.cpp \
             androidjnimain.cpp \

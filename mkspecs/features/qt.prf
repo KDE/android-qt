@@ -186,6 +186,7 @@ for(QTLIB, $$list($$lower($$unique(QT)))) {
                             $$QMAKE_LIBDIR_QT/libQtAndroid.a \
                             -Wl,--no-whole-archive
         }
+        CONFIG(jnigraphics): QMAKE_LIBS += -ljnigraphics
    }
    else:message("Unknown QT: $$QTLIB"):qlib =
    !isEmpty(qlib) {

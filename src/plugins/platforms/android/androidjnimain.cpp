@@ -16,7 +16,11 @@
 #include <QApplication>
 #include <qabstracteventdispatcher.h>
 
+#ifdef JNIGRPAHICS
 #include <android/bitmap.h>
+#else
+static jmethodID m_flushImageMethodID=0;
+#endif
 
 #include <qmap.h>
 
@@ -26,6 +30,7 @@ static JavaVM *m_javaVM = NULL;
 static JNIEnv *m_env = NULL;
 static jobject m_applicationObject  = NULL;
 static jobject m_EglObject  = NULL;
+static QList<QWindowSystemInterface::TouchPoint> m_touchPoints;
 
 struct ApplicationControl
 {
@@ -124,6 +129,7 @@ namespace QtAndroid
             return;
         }
         int bpp=2;
+#ifdef JNIGRPAHICS
         AndroidBitmapInfo  info;
         int ret;
 
@@ -154,10 +160,12 @@ namespace QtAndroid
         int sbpl=info.stride;
         int swidth=info.width;
         int sheight=info.height;
+
         unsigned sposx=pos.x()+destinationRect.x();
         unsigned sposy=pos.y()+destinationRect.y();
 
         screenBits+=sposy*sbpl;
+#endif
 
         unsigned ibpl=image.bytesPerLine();
         unsigned iposx=destinationRect.x();
@@ -166,21 +174,44 @@ namespace QtAndroid
         unsigned char * imageBits=(unsigned char *)((const uchar*)image.bits());
         imageBits+=iposy*ibpl;
 
+#ifdef JNIGRPAHICS
         unsigned width=swidth-sposx<(unsigned)destinationRect.width()?swidth-sposx:destinationRect.width();
         unsigned height=sheight-sposy<(unsigned)destinationRect.height()?sheight-sposy:destinationRect.height();
+#else
+        Q_UNUSED(pos)
+        unsigned width=destinationRect.width();
+        unsigned height=destinationRect.height();
+#endif
 
         //qDebug()<<ibpl<<sbpl<<sxpos<<sypos<<width<<height<<sxpos+width<<sypos+height;
 
+        jclass object=env->GetObjectClass(m_applicationObject);
+#ifdef JNIGRPAHICS
         for (unsigned y=0;y<height;y++)
             memcpy(screenBits+y*sbpl+sposx*bpp,
                     imageBits+y*ibpl+iposx*bpp,
                    width*bpp);
-
         AndroidBitmap_unlockPixels(env, m_surfaces[surfaceId]);
-
-        jclass object=env->GetObjectClass(m_applicationObject);
-        env->CallVoidMethod(object, m_redrawSurfaceMethodID, (jint)surfaceId, destinationRect.left(), destinationRect.top(), destinationRect.right(), destinationRect.bottom());
-
+        env->CallVoidMethod(object, m_redrawSurfaceMethodID, (jint)surfaceId,
+                            (jint)destinationRect.left(),
+                            (jint)destinationRect.top(),
+                            (jint)destinationRect.right(),
+                            (jint)destinationRect.bottom());
+#else
+        jshort* screenBits=(jshort*)malloc(width*height*sizeof(jshort));
+        for (unsigned y=0;y<height;y++)
+            memcpy(screenBits+y*width,imageBits+y*ibpl+iposx*bpp,width*bpp);
+        jshortArray img=env->NewShortArray(width*height);
+        env->SetShortArrayRegion(img,0,width*height, screenBits);
+        env->CallVoidMethod(object, m_flushImageMethodID,
+                             img, (jint)surfaceId,
+                             (jint)destinationRect.left(),
+                             (jint)destinationRect.top(),
+                             (jint)destinationRect.right(),
+                             (jint)destinationRect.bottom());
+        env->DeleteLocalRef(img);
+        free(screenBits);
+#endif
         m_javaVM->DetachCurrentThread();
     }
 
@@ -515,6 +546,21 @@ static void mouseMove(JNIEnv */*env*/, jobject /*thiz*/, jint x, jint y)
                                                              Qt::MouseButtons(Qt::LeftButton));
 }
 
+static void touchBegin(JNIEnv */*env*/, jobject /*thiz*/)
+{
+    m_touchPoints.clear();
+}
+static void touchAdd(JNIEnv */*env*/, jobject /*thiz*/, jint action, jint id, jint x, jint y, jfloat size, jfloat pressure)
+{
+    QWindowSystemInterface::TouchPoint touchPoint;
+    touchPoint.id=id;
+    touchPoint.pressure=pressure;
+
+}
+static void touchEnd(JNIEnv */*env*/, jobject /*thiz*/, jint action)
+{
+}
+
 static int mapAndroidKey(int key)
 {
     //0--9        0x00000007 -- 0x00000010
@@ -779,6 +825,9 @@ static JNINativeMethod methods[] = {
     {"surfaceDestroyed", "(I)V", (void *)surfaceDestroyed},
     {"lockSurface", "()V", (void *)lockSurface},
     {"unlockSurface", "()V", (void *)unlockSurface},
+    {"touchBegin","()V",(void*)touchBegin},
+    {"touchAdd","(IIIIFF)V",(void*)touchAdd},
+    {"touchEnd","(I)V",(void*)touchEnd},
     {"mouseDown", "(II)V", (void *)mouseDown},
     {"mouseUp", "(II)V", (void *)mouseUp},
     {"mouseMove", "(II)V", (void *)mouseMove},
@@ -816,6 +865,7 @@ static int registerNativeMethods(JNIEnv* env, const char* className,
     m_setWindowTitleMethodID = env->GetMethodID((jclass)m_applicationObject, "setWindowTitle", "(ILjava/lang/String;)V");
     m_raiseSurfaceMethodID = env->GetMethodID((jclass)m_applicationObject, "raiseSurface", "(I)V");
     m_redrawSurfaceMethodID = env->GetMethodID((jclass)m_applicationObject, "redrawSurface", "(IIIII)V");
+    m_flushImageMethodID = env->GetMethodID((jclass)m_applicationObject, "flushImage", "([SIIIII)V");
     return JNI_TRUE;
 }
 

@@ -4,7 +4,6 @@ import android.app.Activity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.KeyEvent;
-import android.view.ViewGroup;
 import android.view.Window;
 
 public class QtActivity extends Activity
@@ -58,7 +57,7 @@ public class QtActivity extends Activity
 		requestWindowFeature(Window.FEATURE_NO_TITLE);
 		try
 		{
-			ViewGroup view = new QtMainView(this);
+			QtMainView view = new QtMainView(this);
 			QtApplication.setView(view);
 			setContentView(view);
 
@@ -117,7 +116,7 @@ public class QtActivity extends Activity
 	protected void onSaveInstanceState(Bundle outState) {
 		super.onSaveInstanceState(outState);
 		Log.i(QtApplication.QtTAG, "onSaveInstanceState");
-		ViewGroup view = QtApplication.getView();
+		QtMainView view = QtApplication.getView();
 		outState.putInt("Surfaces", view.getChildCount());
 		for (int i=0;i<view.getChildCount();i++)
 		{
@@ -131,7 +130,7 @@ public class QtActivity extends Activity
 	protected void onRestoreInstanceState(Bundle savedInstanceState) {
 		super.onRestoreInstanceState(savedInstanceState);
 		Log.i(QtApplication.QtTAG, "onRestoreInstanceState");
-		ViewGroup view = QtApplication.getView();
+		QtMainView view = QtApplication.getView();
 		int surfaces=savedInstanceState.getInt("Surfaces");
 		for (int i=0;i<surfaces;i++)
 		{

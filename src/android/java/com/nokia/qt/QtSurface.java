@@ -70,20 +70,32 @@ public class QtSurface extends SurfaceView implements SurfaceHolder.Callback {
         QtApplication.surfaceDestroyed(getId());
         QtApplication.unlockSurface();
     }
-
+    
+    public void sendTouchEvents(MotionEvent event)
+    {
+		QtApplication.touchBegin();
+		for (int i=0;i<event.getPointerCount();i++)
+			QtApplication.touchAdd(event.getAction(), event.getPointerId(i),
+					(int)event.getX(i), (int)event.getY(i), event.getSize(i),
+					event.getPressure(i));				
+		QtApplication.touchEnd(event.getAction());
+    }
 	@Override
 	public boolean onTouchEvent(MotionEvent event)
 	{
+		Log.i("Duda",event.toString());
 		switch (event.getAction())
 		{
 		case MotionEvent.ACTION_UP:
 			QtApplication.mouseUp((int) event.getX(), (int) event.getY());
+			sendTouchEvents(event);
 			return true;
 
 		case MotionEvent.ACTION_DOWN:
 			QtApplication.mouseDown((int) event.getX(), (int) event.getY());
 			oldx = (int) event.getX();
 			oldy = (int) event.getY();
+			sendTouchEvents(event);
 			return true;
 
 		case MotionEvent.ACTION_MOVE:
@@ -92,6 +104,7 @@ public class QtSurface extends SurfaceView implements SurfaceHolder.Callback {
 			if (Math.abs(dx) > 5 || Math.abs(dy) > 5)
 			{
 				QtApplication.mouseMove((int) event.getX(), (int) event.getY());
+				sendTouchEvents(event);
 				oldx = (int) event.getX();
 				oldy = (int) event.getY();
 			}
