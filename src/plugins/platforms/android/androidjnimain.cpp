@@ -14,6 +14,8 @@
 #include "qandroidplatformintegration.h"
 #include <QWindowSystemInterface>
 #include <QApplication>
+#include <QTouchEvent>
+
 #include <qabstracteventdispatcher.h>
 
 #ifdef JNIGRPAHICS
@@ -77,6 +79,7 @@ static QAndroidPlatformIntegration * mAndroidGraphicsSystem=0;
 
 static const char *QtApplicationClassPathName = "com/nokia/qt/QtApplication";
 static const char *QtEglClassPathName = "com/nokia/qt/QtEgl";
+static int m_desktopWidthPixels, m_desktopHeightPixels;
 
 static inline void checkPauseApplication()
 {
@@ -510,6 +513,8 @@ static void setDisplayMetrics(JNIEnv* /*env*/, jclass /*clazz*/,
                               jint desktopWidthPixels, jint desktopHeightPixels,
                               jfloat xdpi, jfloat ydpi)
 {
+    m_desktopWidthPixels=desktopWidthPixels;
+    m_desktopHeightPixels=desktopHeightPixels;
     if (!mAndroidGraphicsSystem)
         QAndroidPlatformIntegration::setDefaultDisplayMetrics(desktopWidthPixels,desktopHeightPixels,
                                                      qRound((double)widthPixels   / xdpi * 100 / 2.54 ),
@@ -550,15 +555,58 @@ static void touchBegin(JNIEnv */*env*/, jobject /*thiz*/)
 {
     m_touchPoints.clear();
 }
-static void touchAdd(JNIEnv */*env*/, jobject /*thiz*/, jint action, jint id, jint x, jint y, jfloat size, jfloat pressure)
+
+static void touchAdd(JNIEnv */*env*/, jobject /*thiz*/, jint id, jint action, jboolean primary, jint x, jint y, jfloat size, jfloat pressure)
 {
+    Qt::TouchPointStates state=Qt::TouchPointStationary;
+    switch(action)
+    {
+    case 0:
+        state=Qt::TouchPointPressed;
+        break;
+    case 1:
+        state=Qt::TouchPointMoved;
+        break;
+    case 2:
+        state=Qt::TouchPointStationary;
+        break;
+    case 3:
+        state=Qt::TouchPointReleased;
+        break;
+    }
     QWindowSystemInterface::TouchPoint touchPoint;
     touchPoint.id=id;
     touchPoint.pressure=pressure;
-
+    touchPoint.normalPosition=QPointF((double)x/m_desktopWidthPixels, (double)y/m_desktopHeightPixels);
+    touchPoint.isPrimary=primary;
+    touchPoint.state=state;
+    touchPoint.area=QRectF(x-((double)m_desktopWidthPixels*size)/2,
+                           y-((double)m_desktopHeightPixels*size)/2,
+                           (double)m_desktopWidthPixels*size,
+                           (double)m_desktopHeightPixels*size);
+    m_touchPoints.push_back(touchPoint);
+//    if (id==1)
+//        qDebug()<<"Duda"<<x<<y<<touchPoint.normalPosition;
+//        qDebug()<<"Duda"<<id<<action<<primary<<x<<y<<size<<pressure
+//                <<touchPoint.area<<touchPoint.normalPosition
+//                <<m_desktopWidthPixels<<m_desktopHeightPixels;
 }
 static void touchEnd(JNIEnv */*env*/, jobject /*thiz*/, jint action)
 {
+    QEvent::Type eventType=QEvent::None;
+    switch (action)
+    {
+        case 0:
+            eventType=QEvent::TouchBegin;
+            break;
+        case 1:
+            eventType=QEvent::TouchUpdate;
+            break;
+        case 2:
+            eventType=QEvent::TouchEnd;
+            break;
+    }
+    QWindowSystemInterface::handleTouchEvent(0, eventType, QTouchEvent::TouchScreen, m_touchPoints);
 }
 
 static int mapAndroidKey(int key)
@@ -826,7 +874,7 @@ static JNINativeMethod methods[] = {
     {"lockSurface", "()V", (void *)lockSurface},
     {"unlockSurface", "()V", (void *)unlockSurface},
     {"touchBegin","()V",(void*)touchBegin},
-    {"touchAdd","(IIIIFF)V",(void*)touchAdd},
+    {"touchAdd","(IIZIIFF)V",(void*)touchAdd},
     {"touchEnd","(I)V",(void*)touchEnd},
     {"mouseDown", "(II)V", (void *)mouseDown},
     {"mouseUp", "(II)V", (void *)mouseUp},

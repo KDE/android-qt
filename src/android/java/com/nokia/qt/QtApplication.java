@@ -108,8 +108,9 @@ public class QtApplication
 			public void run() {
 				Rect rect = new Rect(left, top, right, bottom);
 				Canvas cv=surface.getHolder().lockCanvas(rect);
-				cv.drawBitmap(bmp, new Rect(0, 0, right-left, bottom-top), new Rect(left, top, right, bottom), null);
-				surface.getHolder().unlockCanvasAndPost(cv);			}
+				cv.drawBitmap(bmp, new Rect(0, 0, right-left+1, bottom-top+1), rect, null);
+				surface.getHolder().unlockCanvasAndPost(cv);			
+				}
 		});
 	}
 
@@ -270,7 +271,7 @@ public class QtApplication
 	public static native void mouseUp(int x, int y);
 	public static native void mouseMove(int x, int y);
 	public static native void touchBegin();
-	public static native void touchAdd(int action, int pointerId, int x, int y, float size, float pressure);
+	public static native void touchAdd(int pointerId, int action, boolean primary, int x, int y, float size, float pressure);
 	public static native void touchEnd(int action);
 	// pointer methods
 

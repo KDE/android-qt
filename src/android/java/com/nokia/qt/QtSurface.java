@@ -70,32 +70,106 @@ public class QtSurface extends SurfaceView implements SurfaceHolder.Callback {
         QtApplication.surfaceDestroyed(getId());
         QtApplication.unlockSurface();
     }
-    
+
+    private int getAction(int index, MotionEvent event)
+    {
+    	int action=event.getAction();
+/*
+        case 0:
+           state=Qt::TouchPointPressed;
+           break;
+       case 1:
+           state=Qt::TouchPointMoved;
+           break;
+       case 2:
+           state=Qt::TouchPointStationary;
+           break;
+       case 3:
+           state=Qt::TouchPointReleased;
+           break;
+
+    */	
+		if (action == MotionEvent.ACTION_MOVE)
+		{
+			int hsz=event.getHistorySize();
+			if (hsz>0)
+			{
+				if (Math.abs(event.getX(index)-event.getHistoricalX(index, hsz-1))>1||
+						Math.abs(event.getY(index)-event.getHistoricalY(index, hsz-1))>1)
+					return 1;
+				else
+					return 2;
+			}
+			return 1;
+		}
+
+    	switch(index)
+		{
+		case 0:
+			if (action == MotionEvent.ACTION_DOWN || 
+					action == MotionEvent.ACTION_POINTER_1_DOWN)
+				return 0;
+			if (action == MotionEvent.ACTION_UP || 
+					action == MotionEvent.ACTION_POINTER_1_UP)
+				return 3;
+			break;
+		case 1:
+			if (action == MotionEvent.ACTION_POINTER_2_DOWN ||
+					action == MotionEvent.ACTION_POINTER_DOWN)
+				return 0;
+			if (action == MotionEvent.ACTION_POINTER_2_UP ||
+					action == MotionEvent.ACTION_POINTER_UP)
+				return 3;
+			break;
+		case 2:
+			if (action == MotionEvent.ACTION_POINTER_3_DOWN ||
+					action == MotionEvent.ACTION_POINTER_DOWN)
+				return 0;
+			if (action == MotionEvent.ACTION_POINTER_3_UP ||
+					action == MotionEvent.ACTION_POINTER_UP)
+				return 3;
+			break;
+		}
+		return 2;
+    }
+
     public void sendTouchEvents(MotionEvent event)
     {
 		QtApplication.touchBegin();
+
 		for (int i=0;i<event.getPointerCount();i++)
-			QtApplication.touchAdd(event.getAction(), event.getPointerId(i),
+			QtApplication.touchAdd(event.getPointerId(i), getAction(i, event), i==0,
 					(int)event.getX(i), (int)event.getY(i), event.getSize(i),
-					event.getPressure(i));				
-		QtApplication.touchEnd(event.getAction());
+					event.getPressure(i));
+
+		switch(event.getAction())
+		{
+		case MotionEvent.ACTION_DOWN:
+			QtApplication.touchEnd(0);
+			break;
+		case MotionEvent.ACTION_UP:
+			QtApplication.touchEnd(2);
+			break;
+		default:
+			QtApplication.touchEnd(1);
+		}
     }
+
 	@Override
 	public boolean onTouchEvent(MotionEvent event)
 	{
-		Log.i("Duda",event.toString());
+//		Log.i("Duda",event.toString());
+		sendTouchEvents(event);
 		switch (event.getAction())
 		{
 		case MotionEvent.ACTION_UP:
 			QtApplication.mouseUp((int) event.getX(), (int) event.getY());
-			sendTouchEvents(event);
 			return true;
 
 		case MotionEvent.ACTION_DOWN:
 			QtApplication.mouseDown((int) event.getX(), (int) event.getY());
 			oldx = (int) event.getX();
 			oldy = (int) event.getY();
-			sendTouchEvents(event);
 			return true;
 
 		case MotionEvent.ACTION_MOVE:
@@ -104,13 +178,12 @@ public class QtSurface extends SurfaceView implements SurfaceHolder.Callback {
 			if (Math.abs(dx) > 5 || Math.abs(dy) > 5)
 			{
 				QtApplication.mouseMove((int) event.getX(), (int) event.getY());
-				sendTouchEvents(event);
 				oldx = (int) event.getX();
 				oldy = (int) event.getY();
 			}
 			return true;
 		}
-		return super.onTouchEvent(event);
+		return true;
 	}
 
 	@Override
@@ -149,7 +222,6 @@ public class QtSurface extends SurfaceView implements SurfaceHolder.Callback {
 		{
 			try
 			{
-			
 				Canvas cv=getHolder().lockCanvas(rect);
 				cv.drawBitmap(mBitmap, rect, rect, null);
 				getHolder().unlockCanvasAndPost(cv);
