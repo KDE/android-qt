@@ -182,9 +182,10 @@ for(QTLIB, $$list($$lower($$unique(QT)))) {
             QMAKE_LIBS = $$ANDROID_TOOLCHAIN_ROOT/lib/crtend_android.o $$QMAKE_LIBS
         }
         else:contains(TEMPLATE, ".*lib"):!CONFIG(plugin):!CONFIG(building-libs){
-            QMAKE_LFLAGS += -Wl,--whole-archive \
-                            $$QMAKE_LIBDIR_QT/libQtAndroid.a \
-                            -Wl,--no-whole-archive
+            QMAKE_LFLAGS += -Wl,--whole-archive
+            CONFIG(android_sw): QMAKE_LFLAGS += $$QMAKE_LIBDIR_QT/libQtAndroid_sw.a
+                         else : QMAKE_LFLAGS += $$QMAKE_LIBDIR_QT/libQtAndroid.a
+            QMAKE_LFLAGS += -Wl,--no-whole-archive
         }
         CONFIG(jnigraphics): QMAKE_LIBS += -ljnigraphics
    }

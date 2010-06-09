@@ -13,4 +13,5 @@ embedded_lite:x11 {
     SUBDIRS += testlite
 }
 
-embedded_lite:CONFIG(android): SUBDIRS += android
+embedded_lite:CONFIG(android): SUBDIRS += android android_sw
+

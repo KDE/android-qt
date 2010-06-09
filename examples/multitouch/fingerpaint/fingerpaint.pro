@@ -1,3 +1,5 @@
+CONFIG += android_sw
+
 HEADERS       = mainwindow.h \
                 scribblearea.h
 SOURCES       = main.cpp \
