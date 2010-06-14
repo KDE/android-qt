@@ -39,7 +39,7 @@ static QSemaphore m_pauseApplicationSemaphore;
 static QMutex m_pauseApplicationMutex;
 
 static QAndroidPlatformIntegration * mAndroidGraphicsSystem=0;
-static int m_desktopWidthPixels, m_desktopHeightPixels;
+static int m_desktopWidthPixels=0, m_desktopHeightPixels=0;
 static const char *QtApplicationClassPathName = "com/nokia/qt/QtApplication";
 
 static volatile bool m_pauseApplication;
@@ -550,7 +550,6 @@ static void unlockSurface(JNIEnv */*env*/, jobject /*thiz*/)
 {
     m_surfaceMutex.unlock();
 }
-
 
 static JNINativeMethod methods[] = {
     {"startQtApp", "()V", (void *)startQtApp},

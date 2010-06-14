@@ -4,6 +4,8 @@ import java.io.File;
 import java.nio.ShortBuffer;
 
 import android.app.Activity;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.graphics.Rect;
 import android.util.Log;
 
@@ -51,10 +53,25 @@ public class QtApplication {
 	}
 
 	@SuppressWarnings("unused")
-	private void flushImage(ShortBuffer image, int bytesPerRow,int x, int y, int r, int b)
+	private void flushImage(short[] img, final int left, final int top, final int right, final int bottom)
 	{
+		if (m_activity == null || m_surface == null)
+			return;
+
+		ShortBuffer image=ShortBuffer.wrap(img);
+		final Bitmap bmp=Bitmap.createBitmap(right-left+1, bottom-top+1, Bitmap.Config.RGB_565);
+		bmp.copyPixelsFromBuffer(image);
+		m_activity.runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+					Rect rect = new Rect(left, top, right, bottom);
+					Canvas cv=m_surface.getHolder().lockCanvas(rect);
+					cv.drawBitmap(bmp, new Rect(0, 0, right-left+1, bottom-top+1), rect, null);
+					m_surface.getHolder().unlockCanvasAndPost(cv);			
+				}
+		});
 	}
-	
+
 	@SuppressWarnings("unused")
 	private void redrawSurface(final int left, final int top, final int right, final int bottom )
 	{
