@@ -44,6 +44,8 @@
 
 #include <QPlatformIntegration>
 #include <jni.h>
+#include <QtOpenGL/private/qpixmapdata_gl_p.h>
+#include <QtOpenGL/private/qwindowsurface_gl_p.h>
 
 QT_BEGIN_NAMESPACE
 
@@ -69,7 +71,6 @@ public:
 #ifndef QT_NO_OPENGL
     bool hasOpenGL() const;
     QPlatformGLContext * createGLContext();
-    QPlatformGLWidgetSurface * createGLWidgetSurface();
 #endif
 
     static void setDefaultDisplayMetrics(int gw, int gh, int sw, int sh);

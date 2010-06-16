@@ -52,7 +52,6 @@
 #ifndef QT_NO_OPENGL
 #include <private/qpixmapdata_gl_p.h>
 #include "qandroidplatformglcontext.h"
-#include "qandroidplatformglwidgetsurface.h"
 #include "qandroidglwindowsurface.h"
 #endif
 
@@ -146,12 +145,6 @@ QPlatformGLContext * QAndroidPlatformIntegration::createGLContext()
 {
     qDebug()<<"QAndroidPlatformIntegration::createGLContext()";
     return new QAndroidPlatformGLContext();
-}
-
-QPlatformGLWidgetSurface * QAndroidPlatformIntegration::createGLWidgetSurface()
-{
-    qDebug()<<"QAndroidPlatformIntegration::createGLWidgetSurface()";
-    return new QAndroidPlatformGLWidgetSurface();
 }
 
 #endif // QT_NO_OPENGL

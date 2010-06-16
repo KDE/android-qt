@@ -24,8 +24,8 @@ HEADERS =   androidjnimain.h \
 
 contains(QT_CONFIG, opengl) {
     QT += opengl
-    HEADERS += qandroidplatformglcontext.h   qandroidplatformglwidgetsurface.h   qandroidglwindowsurface.h
-    SOURCES += qandroidplatformglcontext.cpp qandroidplatformglwidgetsurface.cpp qandroidglwindowsurface.cpp
+    HEADERS += qandroidplatformglcontext.h   qandroidglwindowsurface.h
+    SOURCES += qandroidplatformglcontext.cpp qandroidglwindowsurface.cpp
 }
 
 target.path=$$[QT_INSTALL_LIBS]
