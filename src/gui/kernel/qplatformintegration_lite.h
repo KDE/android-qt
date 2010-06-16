@@ -51,11 +51,6 @@ QT_BEGIN_NAMESPACE
 
 QT_MODULE(Gui)
 
-#ifndef QT_NO_OPENGL
-class QPlatformGLContext;
-class QPlatformGLWidgetSurface;
-#endif
-
 class Q_GUI_EXPORT QPlatformIntegration
 {
 public:
@@ -66,17 +61,14 @@ public:
     virtual QPlatformWindow *createPlatformWindow(QWidget *widget, WId winId = 0) const = 0;
     virtual QWindowSurface *createWindowSurface(QWidget *widget, WId winId) const = 0;
     virtual QBlittable *createBlittable(const QSize &size) const;
+    virtual void moveToScreen(QWidget *window, int screen) {Q_UNUSED(window); Q_UNUSED(screen);}
 
 // Window System functions
     virtual QList<QPlatformScreen *> screens() const = 0;
+    virtual bool isVirtualDesktop() { return false; }
     virtual QPixmap grabWindow(WId window, int x, int y, int width, int height) const;
 
-// OpenGL Integration functions
-#ifndef QT_NO_OPENGL
     virtual bool hasOpenGL() const;
-    virtual QPlatformGLContext       * createGLContext();
-    virtual QPlatformGLWidgetSurface * createGLWidgetSurface();
-#endif
 };
 
 QT_END_NAMESPACE

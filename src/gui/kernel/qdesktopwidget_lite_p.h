@@ -4,7 +4,7 @@
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
-** This file is part of the QtOpenGL module of the Qt Toolkit.
+** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
 ** No Commercial Usage
@@ -39,50 +39,38 @@
 **
 ****************************************************************************/
 
-#ifndef QPLATFORM_GL_CONTEXT_H
-#define QPLATFORM_GL_CONTEXT_H
+//
+//  W A R N I N G
+//  -------------
+//
+// This file is not part of the Qt API.  It exists for the convenience
+// of other Qt classes.  This header file may change from version to
+// version without notice, or even be removed.
+//
+// We mean it.
+//
 
-#include <QtOpenGL/qgl.h>
+#ifndef QDESKTOPWIDGET_LITE_P_H
+#define QDESKTOPWIDGET_LITE_P_H
 
-QT_BEGIN_HEADER
+#include "QDesktopWidget"
+#include "private/qwidget_p.h"
 
-QT_BEGIN_NAMESPACE
-
-// QGLPlatformWidgetSurface does _not_ inherit from QWindowSurface
-// - The backing store may be totally unaware of it's existance.
-class Q_OPENGL_EXPORT QPlatformGLWidgetSurface
-{
+class QDesktopScreenWidget : public QWidget {
+    Q_OBJECT
 public:
-    QPlatformGLWidgetSurface();
-    virtual ~QPlatformGLWidgetSurface();
-
-    virtual bool create(QGLWidget*, QGLFormat&) = 0;
-
-    virtual void setGeometry(const QRect&) = 0;
-    virtual bool filterEvent(QEvent*);
+    QDesktopScreenWidget(int screenNumber = -1) { setWindowFlags(Qt::Desktop); setVisible(false); d_func()->screenNumber = screenNumber; }
 };
 
+class QDesktopWidgetPrivate : public QWidgetPrivate {
+    Q_DECLARE_PUBLIC(QDesktopWidget)
 
-class Q_OPENGL_EXPORT QPlatformGLContext
-{
 public:
-    QPlatformGLContext();
-    virtual ~QPlatformGLContext();
+    ~QDesktopWidgetPrivate() {foreach(QDesktopScreenWidget *s, screens) delete s; }
+    void updateScreenList();
 
-    virtual bool create(QPaintDevice* device, QGLFormat& format, QPlatformGLContext* shareContext) = 0;
-
-    virtual void makeCurrent() = 0;
-    virtual void doneCurrent() = 0;
-    virtual void swapBuffers() = 0;
-    virtual void* getProcAddress(const QString& procName) = 0;
-
+    QList<QDesktopScreenWidget *> screens;
+    QDesktopScreenWidget virtualScreen;
 };
 
-
-
-QT_END_NAMESPACE
-
-QT_END_HEADER
-
-
-#endif // QPLATFORM_GL_INTEGRATION_P_H
+#endif // QDESKTOPWIDGET_LITE_P_H

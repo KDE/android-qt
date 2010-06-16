@@ -50,7 +50,8 @@ HEADERS += \
 	kernel/qgesturemanager_p.h \
 	kernel/qsoftkeymanager_p.h \
     kernel/qsoftkeymanager_common_p.h \
-	kernel/qguiplatformplugin_p.h
+	kernel/qguiplatformplugin_p.h \
+        kernel/qdesktopwidget_lite_p.h
 
 SOURCES += \
 	kernel/qaction.cpp \
@@ -207,7 +208,8 @@ embedded_lite {
                 kernel/qplatformscreen_lite.h \
                 kernel/qplatformintegrationfactory_lite_p.h \
                 kernel/qplatformintegrationplugin_lite.h \
-                kernel/qplatformwindow_lite.h
+                kernel/qplatformwindow_lite.h \
+                kernel/qplatformglcontext_lite.h
 		
 	SOURCES += \
 		kernel/qapplication_lite.cpp \

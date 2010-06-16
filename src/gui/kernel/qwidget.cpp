@@ -211,6 +211,8 @@ QWidgetPrivate::QWidgetPrivate(int version)
       , hasAlienChildren(0)
       , window_event(0)
       , qd_hd(0)
+#elif defined (Q_WS_LITE)
+      , screenNumber(0)
 #endif
 {
     if (!qApp) {
@@ -1153,6 +1155,12 @@ void QWidgetPrivate::init(QWidget *parentWidget, Qt::WindowFlags f)
         // make sure the widget is created on the same screen as the
         // programmer specified desktop widget
         xinfo = desktopWidget->d_func()->xinfo;
+    }
+#elif defined(Q_WS_LITE)
+    if (desktopWidget) {
+        int screen = desktopWidget->d_func()->screenNumber;
+        QPlatformIntegration *platform = QApplicationPrivate::platformIntegration();
+        platform->moveToScreen(q, screen);
     }
 #else
     Q_UNUSED(desktopWidget);
@@ -2421,10 +2429,7 @@ WId QWidget::effectiveWinId() const
         return id;
     QWidget *realParent = nativeParentWidget();
     Q_ASSERT(realParent);
-#ifndef Q_WS_LITE
-    //### we really need to implement winId functionality
     Q_ASSERT(realParent->internalWinId());
-#endif
     return realParent->internalWinId();
 }
 
@@ -4113,9 +4118,6 @@ QWidget *QWidget::window() const
 */
 QWidget *QWidget::nativeParentWidget() const
 {
-#ifdef Q_WS_LITE
-    return window(); //### we don't have native child widgets yet
-#endif
     QWidget *parent = parentWidget();
     while (parent && !parent->internalWinId())
         parent = parent->parentWidget();

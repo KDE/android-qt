@@ -1,10 +1,10 @@
 /****************************************************************************
 **
-** Copyright (C) 2009 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
-** This file is part of the plugins of the Qt Toolkit.
+** This file is part of the QtOpenGL module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
 ** No Commercial Usage
@@ -39,58 +39,33 @@
 **
 ****************************************************************************/
 
-#ifndef QGRAPHICSSYSTEM_TESTLITE_H
-#define QGRAPHICSSYSTEM_TESTLITE_H
+#ifndef QPLATFORM_GL_CONTEXT_H
+#define QPLATFORM_GL_CONTEXT_H
 
-#include <QtGui/QPlatformIntegration>
-#include <QtGui/QPlatformScreen>
+#include <QtOpenGL/qgl.h>
+
+QT_BEGIN_HEADER
 
 QT_BEGIN_NAMESPACE
 
-class MyDisplay;
-
-class QTestLiteScreen : public QPlatformScreen
+class Q_OPENGL_EXPORT QPlatformGLContext
 {
 public:
-    QTestLiteScreen()
-        : mDepth(16), mFormat(QImage::Format_RGB16) {}
-    ~QTestLiteScreen() {}
+    //QPlatformGLContext();
+    //virtual ~QPlatformGLContext();
 
-    QRect geometry() const { return mGeometry; }
-    int depth() const { return mDepth; }
-    QImage::Format format() const { return mFormat; }
-    QSize physicalSize() const { return mPhysicalSize; }
+    //virtual bool create(QPaintDevice* device, QPlatformGLContext* shareContext) = 0;
 
-public:
-    QRect mGeometry;
-    int mDepth;
-    QImage::Format mFormat;
-    QSize mPhysicalSize;
-};
+    virtual void makeCurrent() = 0;
+    virtual void doneCurrent() = 0;
+    virtual void swapBuffers() = 0;
+    virtual void* getProcAddress(const QString& procName) = 0;
 
-class QTestLiteIntegration : public QPlatformIntegration
-{
-public:
-    QTestLiteIntegration(bool useOpenGL = false);
-
-    QPixmapData *createPixmapData(QPixmapData::PixelType type) const;
-    QPlatformWindow *createPlatformWindow(QWidget *widget, WId winId) const;
-    QWindowSurface *createWindowSurface(QWidget *widget, WId winId) const;
-
-    QPixmap grabWindow(WId window, int x, int y, int width, int height) const;
-
-    QList<QPlatformScreen *> screens() const { return mScreens; }
-
-    bool hasOpenGL() const;
-
-    MyDisplay *xd;
-
-private:
-    bool mUseOpenGL;
-    QTestLiteScreen *mPrimaryScreen;
-    QList<QPlatformScreen *> mScreens;
 };
 
 QT_END_NAMESPACE
 
-#endif
+QT_END_HEADER
+
+
+#endif // QPLATFORM_GL_INTEGRATION_P_H

@@ -32,6 +32,7 @@ public:
     virtual void setDirty() { dirty = true; screen->setDirty(QRect()); }
     virtual bool isDirty() { return dirty; }
     virtual bool isOnScreen() { return onScreen; }
+    virtual QRect lastPainted() { return prevRect; }
 
 protected:
     QGraphicsSystemCursorImage * graphic;
@@ -79,7 +80,7 @@ class QFbWindow : public QPlatformWindow
 {
 public:
 
-    QFbWindow(QFbScreen *screen, QWidget *window);
+    QFbWindow(QWidget *window);
     ~QFbWindow();
 
 
@@ -102,11 +103,10 @@ protected:
     friend class QFbWindowSurface;
     friend class QFbScreen;
     QFbWindowSurface *surface;
-    QFbScreen *mScreen;
+    QList<QFbScreen *> mScreens;
     QRect oldGeometry;
     bool visibleFlag;
     Qt::WindowFlags flags;
-
 
     WId windowId;
 };
@@ -131,8 +131,7 @@ public:
     virtual void setDirty(const QRect &rect);
 
     virtual void removeWindow(QFbWindow * surface);
-    virtual void addWindow(QFbWindow * surface) {
-        windowStack.prepend(surface); invalidateRectCache(); }
+    virtual void addWindow(QFbWindow * surface);
     virtual void raise(QPlatformWindow * surface);
     virtual void lower(QPlatformWindow * surface);
     virtual QWidget * topLevelAt(const QPoint & p) const;

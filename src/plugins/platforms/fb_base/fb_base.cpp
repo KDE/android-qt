@@ -18,6 +18,8 @@ QRect QGraphicsSystemSoftwareCursor::getCurrentRect()
     QRect rect = graphic->image()->rect().translated(-graphic->hotspot().x(),
                                                      -graphic->hotspot().y());
     rect.translate(QCursor::pos());
+    QPoint screenOffset = screen->geometry().topLeft();
+    rect.translate(-screenOffset);  // global to local translation
     return rect;
 }
 
@@ -25,8 +27,12 @@ QRect QGraphicsSystemSoftwareCursor::getCurrentRect()
 void QGraphicsSystemSoftwareCursor::pointerEvent(const QMouseEvent & e)
 {
     Q_UNUSED(e);
+    QPoint screenOffset = screen->geometry().topLeft();
     currentRect = getCurrentRect();
-    setDirty();
+    // global to local translation
+    if (onScreen || screen->geometry().intersects(currentRect.translated(screenOffset))) {
+        setDirty();
+    }
 }
 
 QRect QGraphicsSystemSoftwareCursor::drawCursor(QPainter & painter)
@@ -35,7 +41,10 @@ QRect QGraphicsSystemSoftwareCursor::drawCursor(QPainter & painter)
     if (currentRect.isNull())
         return QRect();
 
-    if (!currentRect.intersects(screen->geometry()))
+    // We need this because the cursor might be dirty due to moving off screen
+    QPoint screenOffset = screen->geometry().topLeft();
+    // global to local translation
+    if (!currentRect.translated(screenOffset).intersects(screen->geometry()))
         return QRect();
 
     prevRect = currentRect;
@@ -82,7 +91,9 @@ void QGraphicsSystemSoftwareCursor::changeCursor(QCursor * widgetCursor, QWidget
         setCursor(shape);
     }
     currentRect = getCurrentRect();
-    setDirty();
+    QPoint screenOffset = screen->geometry().topLeft(); // global to local translation
+    if (onScreen || screen->geometry().intersects(currentRect.translated(screenOffset)))
+        setDirty();
 }
 
 QFbScreen::QFbScreen() : cursor(0), mGeometry(), mDepth(16), mFormat(QImage::Format_RGB16), mScreenImage(0), compositePainter(0), isUpToDate(false)
@@ -130,7 +141,9 @@ QFbScreen::~QFbScreen()
 
 void QFbScreen::setDirty(const QRect &rect)
 {
-    repaintRegion += rect;
+    QRect intersection = rect.intersected(mGeometry);
+    QPoint screenOffset = mGeometry.topLeft();
+    repaintRegion += intersection.translated(-screenOffset);    // global to local translation
     if (!redrawTimer.isActive()) {
         redrawTimer.start();
     }
@@ -139,17 +152,21 @@ void QFbScreen::setDirty(const QRect &rect)
 void QFbScreen::generateRects()
 {
     cachedRects.clear();
-    QRegion remainingScreen(mGeometry);
+    QPoint screenOffset = mGeometry.topLeft();
+    QRegion remainingScreen(mGeometry.translated(-screenOffset)); // global to local translation
 
     for (int i = 0; i < windowStack.length(); i++) {
         if (remainingScreen.isEmpty())
             break;
         if (!windowStack[i]->visible())
             continue;
+        if (windowStack[i]->widget()->isMinimized())
+            continue;
 
         if (!windowStack[i]->widget()->testAttribute(Qt::WA_TranslucentBackground)) {
-            remainingScreen -= windowStack[i]->geometry();
-            QRegion windowRegion(windowStack[i]->geometry());
+            QRect localGeometry = windowStack.at(i)->geometry().translated(-screenOffset); // global to local translation
+            remainingScreen -= localGeometry;
+            QRegion windowRegion(localGeometry);
             windowRegion -= remainingScreen;
             foreach(QRect rect, windowRegion.rects()) {
                 cachedRects += QPair<QRect, int>(rect, i);
@@ -166,11 +183,16 @@ void QFbScreen::generateRects()
 
 QRegion QFbScreen::doRedraw()
 {
+    QPoint screenOffset = mGeometry.topLeft();
+
     QRegion touchedRegion;
-    if (cursor && cursor->isDirty() && cursor->isOnScreen())
-        repaintRegion += cursor->dirtyRect();
-    if (repaintRegion.isEmpty() && !cursor->isDirty())
+    if (cursor && cursor->isDirty() && cursor->isOnScreen()) {
+        QRect lastCursor = cursor->dirtyRect();
+        repaintRegion += lastCursor;
+    }
+    if (repaintRegion.isEmpty() && (!cursor || !cursor->isDirty())) {
         return touchedRegion;
+    }
 
     QVector<QRect> rects = repaintRegion.rects();
 
@@ -206,10 +228,9 @@ QRegion QFbScreen::doRedraw()
                         continue;
                     if (windowStack[layerIndex]->widget()->isMinimized())
                         continue;
-                    QRect windowRect = windowStack[layerIndex]->geometry();
+                    QRect windowRect = windowStack[layerIndex]->geometry().translated(-screenOffset);
                     QRect windowIntersect = rect.translated(-windowRect.left(),
-                                                                 -windowRect.top());
-//                    qDebug() << "      compositing" << layerIndex << windowStack[layerIndex]->surface->image().size();
+                                                            -windowRect.top());
                     compositePainter->drawImage(rect, windowStack[layerIndex]->surface->image(),
                                                 windowIntersect);
                     if (firstLayer) {
@@ -218,14 +239,10 @@ QRegion QFbScreen::doRedraw()
                 }
             }
         }
-        if (!rectRegion.isEmpty())
-            qWarning() << "non-empty region!" << rectRegion;
-        // Everything on screen should be mapped to a sub-rectangle
-        // unless it's off the screen...
     }
 
     QRect cursorRect;
-    if (cursor && cursor->isDirty()) {
+    if (cursor && (cursor->isDirty() || repaintRegion.intersects(cursor->lastPainted()))) {
         cursorRect = cursor->drawCursor(*compositePainter);
         touchedRegion += cursorRect;
     }
@@ -240,16 +257,30 @@ QRegion QFbScreen::doRedraw()
     return touchedRegion;
 }
 
+void QFbScreen::addWindow(QFbWindow *surface)
+{
+    windowStack.prepend(surface);
+    surface->mScreens.append(this);
+    invalidateRectCache();
+    setDirty(surface->geometry());
+}
+
 void QFbScreen::removeWindow(QFbWindow * surface)
 {
     windowStack.removeOne(surface);
+    surface->mScreens.removeOne(this);
     invalidateRectCache();
     setDirty(surface->geometry());
 }
 
 void QFbWindow::raise()
 {
-    mScreen->raise(this);
+    QList<QFbScreen *>::const_iterator i = mScreens.constBegin();
+    QList<QFbScreen *>::const_iterator end = mScreens.constEnd();
+    while (i != end) {
+        (*i)->raise(this);
+        ++i;
+    }
 }
 
 void QFbScreen::raise(QPlatformWindow * surface)
@@ -265,7 +296,12 @@ void QFbScreen::raise(QPlatformWindow * surface)
 
 void QFbWindow::lower()
 {
-    mScreen->lower(this);
+    QList<QFbScreen *>::const_iterator i = mScreens.constBegin();
+    QList<QFbScreen *>::const_iterator end = mScreens.constEnd();
+    while (i != end) {
+        (*i)->lower(this);
+        ++i;
+    }
 }
 
 void QFbScreen::lower(QPlatformWindow * surface)
@@ -291,9 +327,8 @@ QWidget * QFbScreen::topLevelAt(const QPoint & p) const
     return 0;
 }
 
-QFbWindow::QFbWindow(QFbScreen *screen, QWidget *window)
+QFbWindow::QFbWindow(QWidget *window)
     :QPlatformWindow(window),
-      mScreen(screen),
       visibleFlag(false)
 {
     static QAtomicInt winIdGenerator(1);
@@ -303,7 +338,12 @@ QFbWindow::QFbWindow(QFbScreen *screen, QWidget *window)
 
 QFbWindow::~QFbWindow()
 {
-    mScreen->removeWindow(this);
+    QList<QFbScreen *>::const_iterator i = mScreens.constBegin();
+    QList<QFbScreen *>::const_iterator end = mScreens.constEnd();
+    while (i != end) {
+        (*i)->removeWindow(this);
+        ++i;
+    }
 }
 
 
@@ -337,18 +377,24 @@ void QFbWindowSurface::flush(QWidget *widget, const QRegion &region, const QPoin
 void QFbWindow::repaint(const QRegion &region)
 {
     QRect currentGeometry = geometry();
-    // If this is a move, redraw the previous location
-    if (oldGeometry != currentGeometry) {
-        mScreen->setDirty(oldGeometry);
-        oldGeometry = currentGeometry;
-    }
 
     QRect dirtyClient = region.boundingRect();
     QRect dirtyRegion(currentGeometry.left() + dirtyClient.left(),
                       currentGeometry.top() + dirtyClient.top(),
                       dirtyClient.width(),
                       dirtyClient.height());
-    mScreen->setDirty(dirtyRegion);
+    QList<QFbScreen *>::const_iterator i = mScreens.constBegin();
+    QList<QFbScreen *>::const_iterator end = mScreens.constEnd();
+    QRect oldGeometryLocal = oldGeometry;
+    oldGeometry = currentGeometry;
+    while (i != end) {
+        // If this is a move, redraw the previous location
+        if (oldGeometryLocal != currentGeometry) {
+            (*i)->setDirty(oldGeometryLocal);
+        }
+        (*i)->setDirty(dirtyRegion);
+        ++i;
+    }
 }
 
 void QFbWindowSurface::resize(const QSize &size)
@@ -365,7 +411,12 @@ void QFbWindow::setGeometry(const QRect &rect)
     oldGeometry = geometry();
 
 
-    mScreen->invalidateRectCache();
+    QList<QFbScreen *>::const_iterator i = mScreens.constBegin();
+    QList<QFbScreen *>::const_iterator end = mScreens.constEnd();
+    while (i != end) {
+        (*i)->invalidateRectCache();
+        ++i;
+    }
 //###    QWindowSystemInterface::handleGeometryChange(window(), rect);
 
     QPlatformWindow::setGeometry(rect);
@@ -389,14 +440,24 @@ void QFbWindowSurface::endPaint(const QRegion &region)
 void QFbWindow::setVisible(bool visible)
 {
     visibleFlag = visible;
-    mScreen->invalidateRectCache();
-    mScreen->setDirty(geometry());
+    QList<QFbScreen *>::const_iterator i = mScreens.constBegin();
+    QList<QFbScreen *>::const_iterator end = mScreens.constEnd();
+    while (i != end) {
+        (*i)->invalidateRectCache();
+        (*i)->setDirty(geometry());
+        ++i;
+    }
 }
 
 Qt::WindowFlags QFbWindow::setWindowFlags(Qt::WindowFlags type)
 {
     flags = type;
-    mScreen->invalidateRectCache();
+    QList<QFbScreen *>::const_iterator i = mScreens.constBegin();
+    QList<QFbScreen *>::const_iterator end = mScreens.constEnd();
+    while (i != end) {
+        (*i)->invalidateRectCache();
+        ++i;
+    }
     return flags;
 }
 

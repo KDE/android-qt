@@ -55,6 +55,7 @@ class QVNCScreenPrivate;
 
 class QVNCScreen : public QFbScreen
 {
+    Q_OBJECT
 public:
     QVNCScreen(QRect screenSize, int screenId);
 
@@ -68,6 +69,7 @@ public:
 private:
     QVNCServer *server;
     QRegion doRedraw();
+    friend class QVNCIntegration;
 };
 
 class QVNCIntegrationPrivate;
@@ -84,10 +86,13 @@ public:
 
     QList<QPlatformScreen *> screens() const { return mScreens; }
 
+    bool isVirtualDesktop() { return virtualDesktop; }
+    void moveToScreen(QWidget *window, int screen);
 
 private:
     QVNCScreen *mPrimaryScreen;
     QList<QPlatformScreen *> mScreens;
+    bool virtualDesktop;
 };
 
 
