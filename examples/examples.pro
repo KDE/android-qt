@@ -31,6 +31,8 @@ SUBDIRS       = \
 
 !CONFIG(android) : SUBDIRS += qtconcurrent
 
+contains(QT_CONFIG, webkit):SUBDIRS += webkit
+
 symbian: SUBDIRS = \
                 graphicsview \
                 itemviews \

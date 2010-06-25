@@ -119,7 +119,7 @@ embedded {
     SOURCES += \
         painting/qgraphicssystem_qws.cpp \
 
-} else: if(!embedded_lite) {
+} else: if(!qpa) {
     HEADERS += \
         painting/qgraphicssystem_raster_p.h \
         painting/qgraphicssystem_runtime_p.h \
@@ -147,7 +147,7 @@ unix:x11 {
                 painting/qpaintengine_x11.cpp
 }
 
-!embedded:!embedded_lite:!x11:mac {
+!embedded:!qpa:!x11:mac {
         HEADERS += \
                 painting/qpaintengine_mac_p.h \
                 painting/qgraphicssystem_mac_p.h \
@@ -163,14 +163,14 @@ unix:x11 {
                 painting/qprintengine_mac.mm \
 }
 
-unix:!mac:!symbian|embedded_lite {
+unix:!mac:!symbian|qpa {
         HEADERS += \
                 painting/qprinterinfo_unix_p.h
         SOURCES += \
                 painting/qprinterinfo_unix.cpp
 }
 
-win32|x11|mac|embedded|embedded_lite|symbian {
+win32|x11|mac|embedded|qpa|symbian {
         SOURCES += painting/qbackingstore.cpp
         HEADERS += painting/qbackingstore_p.h
 }
@@ -187,15 +187,13 @@ embedded {
                 painting/qpaintdevice_qws.cpp
 }
 
-embedded_lite {
+qpa {
         SOURCES += \
-                painting/qcolormap_lite.cpp \
-                painting/qpaintdevice_lite.cpp \
-                painting/qgraphicssystemcursor_lite.cpp \
-                painting/qgraphicssystem_lite.cpp
+                painting/qcolormap_qpa.cpp \
+                painting/qpaintdevice_qpa.cpp \
+                painting/qplatformcursor_qpa.cpp
         HEADERS += \
-                painting/qgraphicssystemcursor_lite.h \
-                painting/qgraphicssystem_lite_p.h
+                painting/qplatformcursor_qpa.h
 }
 
 symbian {
@@ -208,7 +206,7 @@ symbian {
                 painting/qpaintengine_s60_p.h
 }
 
-x11|embedded|embedded_lite {
+x11|embedded|qpa {
         contains(QT_CONFIG,qtopia) {
             DEFINES += QT_NO_CUPS QT_NO_LPR
         } else {
@@ -374,7 +372,7 @@ x11 {
         SOURCES += painting/qwindowsurface_x11.cpp
 }
 
-!embedded:!embedded_lite:mac {
+!embedded:!qpa:mac {
         HEADERS += painting/qwindowsurface_mac_p.h
         SOURCES += painting/qwindowsurface_mac.cpp
 }

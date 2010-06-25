@@ -37,7 +37,11 @@ QBlittable *QBlittablePixmapData::blittable() const
 {
     if (!m_blittable) {
         QBlittablePixmapData *that = const_cast<QBlittablePixmapData *>(this);
+#ifdef Q_WS_QPA //####jl: graphics system nor platformintegration should have createBlittable
+        that->m_blittable = QApplicationPrivate::platformIntegration()->createBlittable(QSize(w,h));
+#else
         that->m_blittable = QApplicationPrivate::graphicsSystem()->createBlittable(QSize(w,h));
+#endif
     }
 
     return m_blittable;
@@ -56,7 +60,7 @@ void QBlittablePixmapData::resize(int width, int height)
     m_blittable = 0;
     delete m_engine;
     m_engine = 0;
-#ifdef Q_WS_LITE
+#ifdef Q_WS_QPA
     d = QApplicationPrivate::platformIntegration()->screens().at(0)->depth();
 #endif
     w = width;
