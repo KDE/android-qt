@@ -31,11 +31,7 @@ contains(CONFIG, android):INCLUDEPATH += ../plugins/graphicssystems/android
 	        SOURCES += egl/qegl_qws.cpp
 	    } else {
 	        qpa {
-                   contains(CONFIG, android) {
-                          SOURCES += egl/qegl_android.cpp
-                         } else {
-                         SOURCES += egl/qegl_qpa.cpp                                             
-                         }
+                    SOURCES += egl/qegl_qpa.cpp
 	        } else {
 	            symbian {
 	                SOURCES += egl/qegl_symbian.cpp
