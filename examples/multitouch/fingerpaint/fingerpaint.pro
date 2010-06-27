@@ -1,4 +1,4 @@
-CONFIG += android_sw
+#CONFIG += android_sw
 
 HEADERS       = mainwindow.h \
                 scribblearea.h

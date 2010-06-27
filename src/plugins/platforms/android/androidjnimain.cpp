@@ -62,7 +62,9 @@ static jmethodID m_setSurfaceVisiblityMethodID=0;
 static jmethodID m_setSurfaceOpacityMethodID=0;
 static jmethodID m_setWindowTitleMethodID=0;
 static jmethodID m_raiseSurfaceMethodID=0;
+#ifdef JNIGRPAHICS
 static jmethodID m_redrawSurfaceMethodID=0;
+#endif
 // Java surface methods
 
 // Java EGL methods
@@ -227,7 +229,7 @@ namespace QtAndroid
     {
     }
 
-    bool createSurface(int surfaceId, int l, int t, int r, int b)
+    bool createSurface(bool openGl, int surfaceId, int l, int t, int r, int b)
     {
         JNIEnv* env;
         if (m_javaVM->AttachCurrentThread(&env, NULL)<0)
@@ -237,7 +239,7 @@ namespace QtAndroid
         }
 
         bool res=env->CallBooleanMethod(m_applicationObject, m_createSurfaceMethodID,
-                            (jint)surfaceId, (jint)l, (jint)t, (jint)r, (jint)b);
+                            (jboolean)openGl, (jint)surfaceId, (jint)l, (jint)t, (jint)r, (jint)b);
 
         m_javaVM->DetachCurrentThread();
         if (!res)
@@ -475,6 +477,7 @@ static jboolean startQtApp(JNIEnv* /*env*/, jobject /*object*/)
 
 static void pauseQtApp(JNIEnv */*env*/, jobject /*thiz*/)
 {
+    qDebug()<<"pauseQtApp";
     m_applicationControl->m_surfaceMutex.lock();
     m_applicationControl->m_pauseApplicationMutex.lock();
     if (mAndroidGraphicsSystem)
@@ -513,6 +516,7 @@ static void setDisplayMetrics(JNIEnv* /*env*/, jclass /*clazz*/,
                               jint desktopWidthPixels, jint desktopHeightPixels,
                               jfloat xdpi, jfloat ydpi)
 {
+    qDebug()<<"setDisplayMetrics";
     m_desktopWidthPixels=desktopWidthPixels;
     m_desktopHeightPixels=desktopHeightPixels;
     if (!mAndroidGraphicsSystem)
@@ -535,24 +539,28 @@ static void setDisplayMetrics(JNIEnv* /*env*/, jclass /*clazz*/,
 
 static void mouseDown(JNIEnv */*env*/, jobject /*thiz*/, jint x, jint y)
 {
+    qDebug()<<"mouseDown";
     QWindowSystemInterface::handleMouseEvent(0, QEvent::MouseButtonRelease,QPoint(x,y),QPoint(x,y),
                                                              Qt::MouseButtons(Qt::LeftButton));
 }
 
 static void mouseUp(JNIEnv */*env*/, jobject /*thiz*/, jint x, jint y)
 {
+    qDebug()<<"mouseUp";
     QWindowSystemInterface::handleMouseEvent(0, QEvent::MouseButtonRelease,QPoint(x,y),QPoint(x,y),
                                                              Qt::MouseButtons(Qt::NoButton));
 }
 
 static void mouseMove(JNIEnv */*env*/, jobject /*thiz*/, jint x, jint y)
 {
+    qDebug()<<"mouseMove";
     QWindowSystemInterface::handleMouseEvent(0, QEvent::MouseButtonRelease,QPoint(x,y),QPoint(x,y),
                                                              Qt::MouseButtons(Qt::LeftButton));
 }
 
 static void touchBegin(JNIEnv */*env*/, jobject /*thiz*/)
 {
+    qDebug()<<"touchBegin";
     m_touchPoints.clear();
 }
 
@@ -775,6 +783,7 @@ static int mapAndroidKey(int key)
 
 static void keyDown(JNIEnv */*env*/, jobject /*thiz*/, jint key, jint unicode, jint modifier)
 {
+    qDebug()<<"keyDown";
     Qt::KeyboardModifiers modifiers;
     if (modifier & 1)
         modifiers|=Qt::AltModifier;
@@ -789,6 +798,7 @@ static void keyDown(JNIEnv */*env*/, jobject /*thiz*/, jint key, jint unicode, j
 
 static void keyUp(JNIEnv */*env*/, jobject /*thiz*/, jint key, jint unicode, jint modifier)
 {
+    qDebug()<<"keyUp";
     Qt::KeyboardModifiers modifiers;
     if (modifier & 1)
         modifiers|=Qt::AltModifier;
@@ -823,6 +833,7 @@ static void surfaceChanged(JNIEnv *env, jobject /*thiz*/, jobject jSurface, jint
 
 static void surfaceDestroyed(JNIEnv */*env*/, jobject /*thiz*/, jint surfaceId)
 {
+    qDebug()<<"surfaceDestroyed";
     m_applicationControl->m_pauseApplicationMutex.lock();
     if (!m_pauseApplication)
     {
@@ -904,7 +915,7 @@ static int registerNativeMethods(JNIEnv* env, const char* className,
         return JNI_FALSE;
     }
     m_applicationObject = env->NewGlobalRef(clazz);
-    m_createSurfaceMethodID = env->GetMethodID((jclass)m_applicationObject, "createSurface", "(IIIII)Z");
+    m_createSurfaceMethodID = env->GetMethodID((jclass)m_applicationObject, "createSurface", "(ZIIIII)Z");
     m_resizeSurfaceMethodID = env->GetMethodID((jclass)m_applicationObject, "resizeSurface", "(IIIII)Z");
     m_destroySurfaceMethodID = env->GetMethodID((jclass)m_applicationObject, "destroySurface", "(I)Z");
     m_setSurfaceVisiblityMethodID = env->GetMethodID((jclass)m_applicationObject, "setSurfaceVisiblity", "(IZ)V");

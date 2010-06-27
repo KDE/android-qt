@@ -2,8 +2,6 @@ package com.nokia.qt;
 
 import java.io.File;
 import java.nio.ShortBuffer;
-import java.util.HashMap;
-import java.util.Map;
 
 import android.app.Activity;
 import android.graphics.Bitmap;
@@ -18,12 +16,6 @@ public class QtApplication
 	private static Activity m_activity = null;
 	private static QtMainView m_view = null;
 	private static QtEgl mEgl = null;
-	private static Map<Integer, Bitmap> m_surfaces = new HashMap<Integer, Bitmap>();
-
-	public static void setSurface(int id, Bitmap bmp)
-	{
-		m_surfaces.put(id, bmp);
-	}
 	
 	public static QtEgl getEgl()
     {
@@ -96,7 +88,6 @@ public class QtApplication
 			return;
 
 		final QtSurface surface = (QtSurface) m_view.findViewById(id);
-		
 		if (surface == null)
 			return;
 
@@ -115,15 +106,14 @@ public class QtApplication
 	}
 
 	@SuppressWarnings("unused")
-	private boolean createSurface(final int id, final int l, final int t, final int r, final int b)
+	private boolean createSurface(final boolean OpenGl, final int id, final int l, final int t, final int r, final int b)
 	{
 		if (m_activity == null)
 			return false;
 		m_activity.runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
-				m_view.addView(new QtSurface(m_activity, id, l, t, r, b),
-						m_view.getChildCount());
+				m_view.addView(new QtSurface(m_activity, OpenGl, id, l, t, r, b), 0);
 			}
 		});
 		return true;
@@ -135,13 +125,12 @@ public class QtApplication
 		if (m_activity == null)
 			return false;
 
-		final QtSurface surface = (QtSurface) m_view.findViewById(id);
-		if (surface == null)
-			return false;
-
 		m_activity.runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
+				QtSurface surface = (QtSurface) m_view.findViewById(id);
+				if (surface == null)
+					return;
 				surface.layout(l, t, r, b);
 			}
 		});
@@ -154,11 +143,10 @@ public class QtApplication
 		if (m_activity == null)
 			return false;
 
-		final QtSurface surface = (QtSurface) m_view.findViewById(id);
 		m_activity.runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
-				m_view.removeView(surface);
+				m_view.removeView(m_view.findViewById(id));
 			}
 		});
 		return true;
@@ -170,13 +158,12 @@ public class QtApplication
 		if (m_activity == null)
 			return;
 
-		final QtSurface surface = (QtSurface) m_view.findViewById(id);
-		if (surface == null)
-			return;
-
 		m_activity.runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
+				QtSurface surface = (QtSurface) m_view.findViewById(id);
+				if (surface == null)
+					return;
 				surface.setVisibility(visible ? View.VISIBLE : View.GONE);
 			}
 		});
@@ -188,13 +175,12 @@ public class QtApplication
 		if (m_activity == null)
 			return;
 
-		final QtSurface surface = (QtSurface) m_view.findViewById(id);
-		if (surface == null)
-			return;
-
 		m_activity.runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
+				QtSurface surface = (QtSurface) m_view.findViewById(id);
+				if (surface == null)
+					return;
 				surface.getHolder().getSurface().setAlpha((float) alpha);
 			}
 		});
@@ -220,13 +206,12 @@ public class QtApplication
 		if (m_activity == null)
 			return;
 
-		final QtSurface surface = (QtSurface) m_view.findViewById(id);
-		if (surface == null)
-			return;
-
 		m_activity.runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
+				QtSurface surface = (QtSurface) m_view.findViewById(id);
+				if (surface == null)
+					return;
 				m_view.bringChildToFront(surface);
 			}
 		});
@@ -238,16 +223,12 @@ public class QtApplication
 		if (m_activity == null)
 			return;
 
-		final QtSurface surface = (QtSurface) m_view.findViewById(id);
-		
-		if (surface == null || surface.drawRequest)
-			return;
-
-		surface.drawRequest=true;
-
 		m_activity.runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
+				QtSurface surface = (QtSurface) m_view.findViewById(id);
+				if (surface == null)
+					return;
 				surface.drawBitmap(new Rect(left, top, right, bottom));
 			}
 		});

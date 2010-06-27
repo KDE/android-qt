@@ -63,12 +63,13 @@ int QAndroidPlatformIntegration::mDefaultPhysicalSizeWidth=50;
 int QAndroidPlatformIntegration::mDefaultPhysicalSizeHeight=71;
 
 
-QAndroidPlatformIntegration::QAndroidPlatformIntegration()
+QAndroidPlatformIntegration::QAndroidPlatformIntegration(bool useGL)
 {
     mPrimaryScreen = new QAndroidPlatformScreen();
     mScreens.append(mPrimaryScreen);
     m_mainThread=QThread::currentThread();
     QtAndroid::setAndroidGraphicsSystem(this);
+    m_useGL=useGL;
 }
 
 void QAndroidPlatformIntegration::setDefaultDisplayMetrics(int gw, int gh, int sw, int sh)
@@ -87,8 +88,9 @@ void QAndroidPlatformIntegration::setDefaultDesktopSize(int gw, int gh)
 
 QPixmapData *QAndroidPlatformIntegration::createPixmapData(QPixmapData::PixelType type) const
 {
+    qDebug()<<"createPixmapData";
 #ifndef QT_NO_OPENGL
-    if (QtAndroid::hasOpenGL())
+    if (m_useGL)
         return new QGLPixmapData(type);
 #endif
      return new QRasterPixmapData(type);
@@ -98,7 +100,7 @@ QWindowSurface *QAndroidPlatformIntegration::createWindowSurface(QWidget *widget
 {
     qDebug()<<"QAndroidPlatformIntegration::createWindowSurface"<<widget<<widget->winId()<<winId;
 #ifndef QT_NO_OPENGL
-    if (QtAndroid::hasOpenGL())
+    if (m_useGL)
         return new QAndroidGLWindowSurface(widget);
 #endif
     return new QAndroidWindowSurface(widget);
@@ -138,7 +140,7 @@ void QAndroidPlatformIntegration::resumeApp()
 bool QAndroidPlatformIntegration::hasOpenGL() const
 {
     qDebug()<<"QAndroidPlatformIntegration::hasOpenGL()";
-    return QtAndroid::hasOpenGL();
+    return m_useGL;
 }
 
 QPlatformGLContext * QAndroidPlatformIntegration::createGLContext()

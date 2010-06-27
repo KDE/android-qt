@@ -53,7 +53,7 @@ class QAndroidPlatformScreen;
 class QAndroidPlatformIntegration : public QPlatformIntegration
 {
 public:
-    QAndroidPlatformIntegration();
+    QAndroidPlatformIntegration(bool useGL=false);
 
     QPixmapData *createPixmapData(QPixmapData::PixelType type) const;
     QWindowSurface *createWindowSurface(QWidget *widget, WId winId) const;
@@ -77,6 +77,7 @@ public:
     static void setDefaultDesktopSize(int gw, int gh);
 
 private:
+    bool m_useGL;
     QThread * m_mainThread;
     QAndroidPlatformScreen *mPrimaryScreen;
     QList<QPlatformScreen *> mScreens;

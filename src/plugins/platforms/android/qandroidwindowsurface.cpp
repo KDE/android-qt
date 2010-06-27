@@ -51,7 +51,7 @@ QAndroidWindowSurface::QAndroidWindowSurface(QWidget *window):QWindowSurface(win
 {
     static QAtomicInt winIdGenerator(1);
     m_surfaceId = winIdGenerator.fetchAndAddRelaxed(1);
-    QtAndroid::createSurface(m_surfaceId, window->geometry().left(), window->geometry().top(),
+    QtAndroid::createSurface(false, m_surfaceId, window->geometry().left(), window->geometry().top(),
                                             window->geometry().right(), window->geometry().bottom());
 }
 
@@ -77,9 +77,9 @@ QPaintDevice *QAndroidWindowSurface::paintDevice()
 
 void QAndroidWindowSurface::flush(QWidget *widget, const QRegion &region, const QPoint &offset)
 {
-    qDebug()<<offset<<region<<widget->winId();
+    //qDebug()<<offset<<region<<widget->winId();
 //    Q_UNUSED(widget);
-    Q_UNUSED(offset);
+    Q_UNUSED(widget);
 
 //    qDebug() << "QMinimalWindowSurface::flush()";
 //    static int c = 0;

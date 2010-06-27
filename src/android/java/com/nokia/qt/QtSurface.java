@@ -12,31 +12,42 @@ import android.view.SurfaceView;
 public class QtSurface extends SurfaceView implements SurfaceHolder.Callback {
 	private int oldx, oldy;
 	private Bitmap mBitmap=null;
+	private int left, top, right, bottom;
+	private boolean mOpenGlSurface=false;
 	public boolean drawRequest=false;
 	
-	public QtSurface(Context context, int surfaceId, int l, int t, int r, int b)
+	public QtSurface(Context context, boolean OpenGl, int surfaceId, int l, int t, int r, int b)
 	{
 		super(context);
 		// Log.i(QtApplication.QtTAG,"QtSurface "+surfaceId+" Left:"+l+" Top:"+t+" Right:"+r+" Bottom:"+b);
 		setFocusable(true);
 		getHolder().addCallback(this);
-		getHolder().setType(SurfaceHolder.SURFACE_TYPE_GPU);
 		setId(surfaceId);
-		layout(l, t, r, b);
+		left=l;
+		top=t;
+		right=r;
+		bottom=b;
+		mOpenGlSurface=OpenGl;
+        if (mOpenGlSurface)
+        	getHolder().setType(SurfaceHolder.SURFACE_TYPE_GPU);
 	}
 
+	int isOpenGL()
+	{
+		return mOpenGlSurface?1:0;
+	}
+	
     @Override
     public void surfaceCreated(SurfaceHolder holder)
     {
+		layout(left, top, right, bottom);
     	QtApplication.lockSurface();
         // Log.i(QtApplication.QtTAG,"surfaceCreated "+getId());
-        if (QtApplication.getEgl()!=null)
+        if (mOpenGlSurface)
             QtApplication.getEgl().createSurface(holder, getId());
         else
-        {
         	mBitmap=Bitmap.createBitmap(getWidth(), getHeight(), Bitmap.Config.RGB_565);
-        	QtApplication.setSurface(getId(), mBitmap);
-        }
+
         QtApplication.surfaceCreated(mBitmap, getId());
         QtApplication.unlockSurface();
     }
@@ -45,13 +56,12 @@ public class QtSurface extends SurfaceView implements SurfaceHolder.Callback {
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height)
     {
     	QtApplication.lockSurface();
-        if (QtApplication.getEgl()!=null)
+
+        if (mOpenGlSurface)
             QtApplication.getEgl().createSurface(holder, getId());
         else
-        {
         	mBitmap=Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565);
-        	QtApplication.setSurface(getId(), mBitmap);
-        }
+
         QtApplication.surfaceChanged(mBitmap, getId());
         QtApplication.unlockSurface();
     }
@@ -60,13 +70,12 @@ public class QtSurface extends SurfaceView implements SurfaceHolder.Callback {
     public void surfaceDestroyed(SurfaceHolder holder)
     {
     	QtApplication.lockSurface();
-		drawRequest=true;
-        mBitmap=null;
+
+    	mBitmap=null;
         // Log.i(QtApplication.QtTAG,"surfaceDestroyed ");
-        if (QtApplication.getEgl()!=null)
+        if (mOpenGlSurface)
             QtApplication.getEgl().destroySurface(getId());
-        else
-        	QtApplication.setSurface(getId(), mBitmap);
+
         QtApplication.surfaceDestroyed(getId());
         QtApplication.unlockSurface();
     }
@@ -139,7 +148,7 @@ public class QtSurface extends SurfaceView implements SurfaceHolder.Callback {
 
 		for (int i=0;i<event.getPointerCount();i++)
 			QtApplication.touchAdd(event.getPointerId(i), getAction(i, event), i==0,
-					(int)event.getX(i), (int)event.getY(i), event.getSize(i),
+					(int)event.getX(i)+left, (int)event.getY(i)+top, event.getSize(i),
 					event.getPressure(i));
 
 		switch(event.getAction())
@@ -163,11 +172,11 @@ public class QtSurface extends SurfaceView implements SurfaceHolder.Callback {
 		switch (event.getAction())
 		{
 		case MotionEvent.ACTION_UP:
-			QtApplication.mouseUp((int) event.getX(), (int) event.getY());
+			QtApplication.mouseUp((int) event.getX()+left, (int) event.getY()+top);
 			return true;
 
 		case MotionEvent.ACTION_DOWN:
-			QtApplication.mouseDown((int) event.getX(), (int) event.getY());
+			QtApplication.mouseDown((int) event.getX()+left, (int) event.getY()+top);
 			oldx = (int) event.getX();
 			oldy = (int) event.getY();
 			return true;
@@ -177,7 +186,7 @@ public class QtSurface extends SurfaceView implements SurfaceHolder.Callback {
 			int dy = (int) (event.getY() - oldy);
 			if (Math.abs(dx) > 5 || Math.abs(dy) > 5)
 			{
-				QtApplication.mouseMove((int) event.getX(), (int) event.getY());
+				QtApplication.mouseMove((int) event.getX()+left, (int) event.getY()+top);
 				oldx = (int) event.getX();
 				oldy = (int) event.getY();
 			}
@@ -192,11 +201,11 @@ public class QtSurface extends SurfaceView implements SurfaceHolder.Callback {
 		switch (event.getAction())
 		{
 		case MotionEvent.ACTION_UP:
-			QtApplication.mouseUp((int) event.getX(), (int) event.getY());
+			QtApplication.mouseUp((int) event.getX()+left, (int) event.getY()+top);
 			return true;
 
 		case MotionEvent.ACTION_DOWN:
-			QtApplication.mouseDown((int) event.getX(), (int) event.getY());
+			QtApplication.mouseDown((int) event.getX()+left, (int) event.getY()+top);
 			oldx = (int) event.getX();
 			oldy = (int) event.getY();
 			return true;
@@ -206,7 +215,7 @@ public class QtSurface extends SurfaceView implements SurfaceHolder.Callback {
 			int dy = (int) (event.getY() - oldy);
 			if (Math.abs(dx) > 5 || Math.abs(dy) > 5)
 			{
-				QtApplication.mouseMove((int) event.getX(), (int) event.getY());
+				QtApplication.mouseMove((int) event.getX()+left, (int) event.getY()+top);
 				oldx = (int) event.getX();
 				oldy = (int) event.getY();
 			}
@@ -214,7 +223,7 @@ public class QtSurface extends SurfaceView implements SurfaceHolder.Callback {
 		}
 		return super.onTrackballEvent(event);
 	}
-	
+
 	public void drawBitmap(Rect rect)
 	{
 		QtApplication.lockSurface();
@@ -225,13 +234,12 @@ public class QtSurface extends SurfaceView implements SurfaceHolder.Callback {
 				Canvas cv=getHolder().lockCanvas(rect);
 				cv.drawBitmap(mBitmap, rect, rect, null);
 				getHolder().unlockCanvasAndPost(cv);
-				drawRequest=false;
 			}
 			catch (Exception e)
 			{
-				Log.e(QtApplication.QtTAG, "Can't create main activity", e);
+				Log.e(QtApplication.QtTAG, "Can't draw the bitmap", e);
 			}
 		}
     	QtApplication.unlockSurface();
-    	}
+    }
 }
