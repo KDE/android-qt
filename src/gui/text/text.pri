@@ -89,7 +89,7 @@ unix:x11 {
 		text/qfontengine_ft.cpp
 }
 
-!embedded:!embedded_lite:!x11:mac {
+!embedded:!qpa:!x11:mac {
 	SOURCES += \
 		text/qfont_mac.cpp
         OBJECTIVE_SOURCES += text/qfontengine_mac.mm
@@ -110,7 +110,7 @@ embedded {
 	DEFINES += QT_NO_FONTCONFIG
 }
 
-embedded_lite {
+qpa {
 	SOURCES += \
 		text/qfont_qws.cpp \
 		text/qfontengine_ft.cpp \
@@ -151,7 +151,8 @@ contains(QT_CONFIG, freetype) {
 	../3rdparty/freetype/src/base/ftinit.c \
 	../3rdparty/freetype/src/base/ftmm.c \
 	../3rdparty/freetype/src/base/fttype1.c \
-          ../3rdparty/freetype/src/base/ftbitmap.c\
+	../3rdparty/freetype/src/base/ftsynth.c \
+	../3rdparty/freetype/src/base/ftbitmap.c \
 	../3rdparty/freetype/src/bdf/bdf.c \
 	../3rdparty/freetype/src/cache/ftcache.c \
 	../3rdparty/freetype/src/cff/cff.c \

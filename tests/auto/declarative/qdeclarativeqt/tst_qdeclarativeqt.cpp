@@ -42,6 +42,7 @@
 #include <qtest.h>
 #include <QDebug>
 #include <QDeclarativeEngine>
+#include <QFontDatabase>
 #include <QFileInfo>
 #include <QDeclarativeComponent>
 #include <QDesktopServices>
@@ -49,6 +50,11 @@
 #include <QVector3D>
 #include <QCryptographicHash>
 #include <QDeclarativeItem>
+
+#ifdef Q_OS_SYMBIAN
+// In Symbian OS test data is located in applications private dir
+#define SRCDIR "."
+#endif
 
 class tst_qdeclarativeqt : public QObject
 {
@@ -70,12 +76,14 @@ private slots:
     void openUrlExternally();
     void md5();
     void createComponent();
+    void createComponent_pragmaLibrary();
     void createQmlObject();
     void consoleLog();
     void formatting();
     void isQtObject();
     void btoa();
     void atob();
+    void fontFamilies();
 
 private:
     QDeclarativeEngine engine;
@@ -232,7 +240,7 @@ void tst_qdeclarativeqt::lighter()
     QDeclarativeComponent component(&engine, TEST_FILE("lighter.qml"));
 
     QString warning1 = component.url().toString() + ":5: Error: Qt.lighter(): Invalid arguments";
-    QString warning2 = component.url().toString() + ":6: Error: Qt.lighter(): Invalid arguments";
+    QString warning2 = component.url().toString() + ":10: Error: Qt.lighter(): Invalid arguments";
     QTest::ignoreMessage(QtWarningMsg, qPrintable(warning1));
     QTest::ignoreMessage(QtWarningMsg, qPrintable(warning2));
 
@@ -241,7 +249,7 @@ void tst_qdeclarativeqt::lighter()
 
     QCOMPARE(qvariant_cast<QColor>(object->property("test1")), QColor::fromRgbF(1, 0.8, 0.3).lighter());
     QCOMPARE(qvariant_cast<QColor>(object->property("test2")), QColor());
-    QCOMPARE(qvariant_cast<QColor>(object->property("test3")), QColor());
+    QCOMPARE(qvariant_cast<QColor>(object->property("test3")), QColor::fromRgbF(1, 0.8, 0.3).lighter(180));
     QCOMPARE(qvariant_cast<QColor>(object->property("test4")), QColor("red").lighter());
     QCOMPARE(qvariant_cast<QColor>(object->property("test5")), QColor());
     QCOMPARE(qvariant_cast<QColor>(object->property("test6")), QColor());
@@ -254,7 +262,7 @@ void tst_qdeclarativeqt::darker()
     QDeclarativeComponent component(&engine, TEST_FILE("darker.qml"));
 
     QString warning1 = component.url().toString() + ":5: Error: Qt.darker(): Invalid arguments";
-    QString warning2 = component.url().toString() + ":6: Error: Qt.darker(): Invalid arguments";
+    QString warning2 = component.url().toString() + ":10: Error: Qt.darker(): Invalid arguments";
     QTest::ignoreMessage(QtWarningMsg, qPrintable(warning1));
     QTest::ignoreMessage(QtWarningMsg, qPrintable(warning2));
 
@@ -263,7 +271,7 @@ void tst_qdeclarativeqt::darker()
 
     QCOMPARE(qvariant_cast<QColor>(object->property("test1")), QColor::fromRgbF(1, 0.8, 0.3).darker());
     QCOMPARE(qvariant_cast<QColor>(object->property("test2")), QColor());
-    QCOMPARE(qvariant_cast<QColor>(object->property("test3")), QColor());
+    QCOMPARE(qvariant_cast<QColor>(object->property("test3")), QColor::fromRgbF(1, 0.8, 0.3).darker(280));
     QCOMPARE(qvariant_cast<QColor>(object->property("test4")), QColor("red").darker());
     QCOMPARE(qvariant_cast<QColor>(object->property("test5")), QColor());
     QCOMPARE(qvariant_cast<QColor>(object->property("test6")), QColor());
@@ -352,6 +360,19 @@ void tst_qdeclarativeqt::createComponent()
     QCOMPARE(object->property("relativeUrl").toString(), TEST_FILE("createComponentData.qml").toString());
 
     delete object;
+}
+
+void tst_qdeclarativeqt::createComponent_pragmaLibrary()
+{
+    // Currently, just loading createComponent_lib.qml causes crash on some platforms
+    /*
+    QDeclarativeComponent component(&engine, TEST_FILE("createComponent_lib.qml"));
+    QObject *object = component.create();
+    QVERIFY(object != 0);
+
+    QEXPECT_FAIL("", "QTBUG-11507", Continue);
+    QCOMPARE(object->property("status").toInt(), int(QDeclarativeComponent::Ready));
+    */
 }
 
 void tst_qdeclarativeqt::createQmlObject()
@@ -479,6 +500,22 @@ void tst_qdeclarativeqt::atob()
     QVERIFY(object != 0);
 
     QCOMPARE(object->property("test2").toString(), QString("Hello world!"));
+
+    delete object;
+}
+
+void tst_qdeclarativeqt::fontFamilies()
+{
+    QDeclarativeComponent component(&engine, TEST_FILE("fontFamilies.qml"));
+
+    QString warning1 = component.url().toString() + ":4: Error: Qt.fontFamilies(): Invalid arguments";
+    QTest::ignoreMessage(QtWarningMsg, qPrintable(warning1));
+
+    QObject *object = component.create();
+    QVERIFY(object != 0);
+
+    QFontDatabase database;
+    QCOMPARE(object->property("test2"), QVariant::fromValue(database.families()));
 
     delete object;
 }

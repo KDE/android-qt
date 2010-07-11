@@ -64,7 +64,8 @@ private:
                                 const QStringList dirFilters,
                                 const QRegExp &exclude);
     static QStringList getHeaders(const QString &path);
-    static QStringList getSourceFiles(const QString &path);
+    static QStringList getQmlFiles(const QString &path);
+    static QStringList getCppFiles(const QString &path);
     static QStringList getQDocFiles(const QString &path);
 
     void allSourceFilesData();
@@ -78,7 +79,7 @@ private:
 
 tst_Headers::tst_Headers() :
     copyrightPattern("\\*\\* Copyright \\(C\\) 20[0-9][0-9] Nokia Corporation and/or its subsidiary\\(-ies\\)."),
-    licensePattern("\\*\\* \\$QT_BEGIN_LICENSE:(LGPL|BSD|3RDPARTY|LGPL-ONLY)\\$"),
+    licensePattern("\\*\\* \\$QT_BEGIN_LICENSE:(LGPL|BSD|3RDPARTY|LGPL-ONLY|FDL)\\$"),
     moduleTest(QLatin1String("\\*\\* This file is part of the .+ of the Qt Toolkit."))
 {
 }
@@ -107,9 +108,14 @@ QStringList tst_Headers::getHeaders(const QString &path)
     return getFiles(path, QStringList("*.h"), QRegExp("^(?!ui_)"));
 }
 
-QStringList tst_Headers::getSourceFiles(const QString &path)
+QStringList tst_Headers::getCppFiles(const QString &path)
 {
     return getFiles(path, QStringList("*.cpp"), QRegExp("^(?!(moc_|qrc_))"));
+}
+
+QStringList tst_Headers::getQmlFiles(const QString &path)
+{
+    return getFiles(path, QStringList("*.qml"), QRegExp("."));
 }
 
 QStringList tst_Headers::getQDocFiles(const QString &path)
@@ -153,7 +159,9 @@ void tst_Headers::allSourceFilesData()
     };
 
     for (int i = 0; i < sizeof(subdirs) / sizeof(subdirs[0]); ++i) {
-        sourceFiles << getSourceFiles(qtSrcDir + subdirs[i]);
+        sourceFiles << getCppFiles(qtSrcDir + subdirs[i]);
+        if (subdirs[i] != QLatin1String("/tests"))
+            sourceFiles << getQmlFiles(qtSrcDir + subdirs[i]);
         sourceFiles << getHeaders(qtSrcDir + subdirs[i]);
         sourceFiles << getQDocFiles(qtSrcDir + subdirs[i]);
     }

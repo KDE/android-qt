@@ -810,6 +810,9 @@ qint64 QIODevice::read(char *data, qint64 maxSize)
                 }
             }
 
+            if (!maxSize)
+                return readSoFar;
+
             if ((d->openMode & Unbuffered) == 0 && maxSize < QIODEVICE_BUFFERSIZE) {
                 // In buffered mode, we try to fill up the QIODevice buffer before
                 // we do anything else.
@@ -1439,6 +1442,35 @@ bool QIODevicePrivate::putCharHelper(char c)
     return q_func()->write(&c, 1) == 1;
 }
 
+/*!
+    \internal
+*/
+qint64 QIODevicePrivate::peek(char *data, qint64 maxSize)
+{
+    qint64 readBytes = q_func()->read(data, maxSize);
+    if (readBytes <= 0)
+        return readBytes;
+
+    buffer.ungetBlock(data, readBytes);
+    pos -= readBytes;
+    return readBytes;
+}
+
+/*!
+    \internal
+*/
+QByteArray QIODevicePrivate::peek(qint64 maxSize)
+{
+    QByteArray result = q_func()->read(maxSize);
+
+    if (result.isEmpty())
+        return result;
+
+    buffer.ungetBlock(result.constData(), result.size());
+    pos -= result.size();
+    return result;
+}
+
 /*! \fn bool QIODevice::getChar(char *c)
 
     Reads one character from the device and stores it in \a c. If \a c
@@ -1473,11 +1505,7 @@ bool QIODevice::getChar(char *c)
 */
 qint64 QIODevice::peek(char *data, qint64 maxSize)
 {
-    qint64 readBytes = read(data, maxSize);
-    int i = readBytes;
-    while (i > 0)
-        ungetChar(data[i-- - 1]);
-    return readBytes;
+    return d_func()->peek(data, maxSize);
 }
 
 /*!
@@ -1499,12 +1527,7 @@ qint64 QIODevice::peek(char *data, qint64 maxSize)
 */
 QByteArray QIODevice::peek(qint64 maxSize)
 {
-    QByteArray result = read(maxSize);
-    int i = result.size();
-    const char *data = result.constData();
-    while (i > 0)
-        ungetChar(data[i-- - 1]);
-    return result;
+    return d_func()->peek(maxSize);
 }
 
 /*!

@@ -1,4 +1,4 @@
-CONFIG += assistant help x11inc
+CONFIG += help x11inc
 TARGET = qtdemo
 DEMO_DESTDIR = $$QT_BUILD_TREE
 isEmpty(DEMO_DESTDIR):DEMO_DESTDIR=../..
@@ -6,7 +6,7 @@ DESTDIR = $$DEMO_DESTDIR/bin
 INSTALLS += target sources
 
 
-QT += xml network
+QT += xml network declarative
 
 contains(QT_CONFIG, opengl) {
     DEFINES += QT_OPENGL_SUPPORT
@@ -74,3 +74,5 @@ target.path = $$[QT_INSTALL_BINS]
 sources.files = $$SOURCES $$HEADERS $$FORMS $$RESOURCES qtdemo.pro images xml *.ico *.icns *.rc *.plist
 sources.path = $$[QT_INSTALL_DEMOS]/qtdemo
 
+OTHER_FILES += \
+    qmlShell.qml

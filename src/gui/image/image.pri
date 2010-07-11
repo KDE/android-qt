@@ -63,14 +63,14 @@ win32 {
 embedded {
     SOURCES += image/qpixmap_qws.cpp
 }
-embedded_lite {
-    SOURCES += image/qpixmap_lite.cpp
+qpa {
+    SOURCES += image/qpixmap_qpa.cpp
 }
 x11 {
     HEADERS += image/qpixmap_x11_p.h
     SOURCES += image/qpixmap_x11.cpp 
 }
-!embedded:!embedded_lite:mac {
+!embedded:!qpa:mac {
     HEADERS += image/qpixmap_mac_p.h
     SOURCES += image/qpixmap_mac.cpp
 }
@@ -98,12 +98,12 @@ SOURCES += \
     SOURCES += image/qpnghandler.cpp
 
     contains(QT_CONFIG, system-png) {
-        unix:LIBS_PRIVATE  += -lpng
-        win32:LIBS += libpng.lib
+        unix|win32-g++*:LIBS_PRIVATE  += -lpng
+        win32:!win32-g++*:LIBS += libpng.lib
     } else {
 	DEFINES *= QT_USE_BUNDLED_LIBPNG
         !isEqual(QT_ARCH, i386):!isEqual(QT_ARCH, x86_64):DEFINES += PNG_NO_ASSEMBLER_CODE
-        INCLUDEPATH  += ../3rdparty/libpng ../3rdparty/zlib
+        INCLUDEPATH += ../3rdparty/libpng
         SOURCES += ../3rdparty/libpng/png.c \
           ../3rdparty/libpng/pngerror.c \
           ../3rdparty/libpng/pngget.c \
@@ -119,6 +119,14 @@ SOURCES += \
           ../3rdparty/libpng/pngwrite.c \
           ../3rdparty/libpng/pngwtran.c \
           ../3rdparty/libpng/pngwutil.c
+
+        contains(QT_CONFIG, system-zlib) {
+            symbian:LIBS_PRIVATE += -llibz
+            else:if(unix|win32-g++*):LIBS_PRIVATE += -lz
+            else:LIBS += zdll.lib
+        } else {
+            INCLUDEPATH  += ../3rdparty/zlib
+        }
     }
 } else {
     DEFINES *= QT_NO_IMAGEFORMAT_PNG

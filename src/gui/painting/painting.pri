@@ -119,9 +119,10 @@ embedded {
     SOURCES += \
         painting/qgraphicssystem_qws.cpp \
 
-} else: if(!embedded_lite) {
+} else: if(!qpa) {
     HEADERS += \
         painting/qgraphicssystem_raster_p.h \
+        painting/qgraphicssystem_runtime_p.h \
         painting/qgraphicssystemfactory_p.h \
         painting/qgraphicssystemplugin_p.h \
         painting/qwindowsurface_raster_p.h \
@@ -129,6 +130,7 @@ embedded {
 
     SOURCES += \
         painting/qgraphicssystem_raster.cpp \
+        painting/qgraphicssystem_runtime.cpp \
         painting/qgraphicssystemfactory.cpp \
         painting/qgraphicssystemplugin.cpp \
         painting/qwindowsurface_raster.cpp \
@@ -145,7 +147,7 @@ unix:x11 {
                 painting/qpaintengine_x11.cpp
 }
 
-!embedded:!embedded_lite:!x11:mac {
+!embedded:!qpa:!x11:mac {
         HEADERS += \
                 painting/qpaintengine_mac_p.h \
                 painting/qgraphicssystem_mac_p.h \
@@ -161,14 +163,14 @@ unix:x11 {
                 painting/qprintengine_mac.mm \
 }
 
-unix:!mac:!symbian|embedded_lite {
+unix:!mac:!symbian|qpa {
         HEADERS += \
                 painting/qprinterinfo_unix_p.h
         SOURCES += \
                 painting/qprinterinfo_unix.cpp
 }
 
-win32|x11|mac|embedded|embedded_lite|symbian {
+win32|x11|mac|embedded|qpa|symbian {
         SOURCES += painting/qbackingstore.cpp
         HEADERS += painting/qbackingstore_p.h
 }
@@ -185,15 +187,13 @@ embedded {
                 painting/qpaintdevice_qws.cpp
 }
 
-embedded_lite {
+qpa {
         SOURCES += \
-                painting/qcolormap_lite.cpp \
-                painting/qpaintdevice_lite.cpp \
-                painting/qgraphicssystemcursor_lite.cpp \
-                painting/qgraphicssystem_lite.cpp
+                painting/qcolormap_qpa.cpp \
+                painting/qpaintdevice_qpa.cpp \
+                painting/qplatformcursor_qpa.cpp
         HEADERS += \
-                painting/qgraphicssystemcursor_lite.h \
-                painting/qgraphicssystem_lite_p.h
+                painting/qplatformcursor_qpa.h
 }
 
 symbian {
@@ -206,7 +206,7 @@ symbian {
                 painting/qpaintengine_s60_p.h
 }
 
-x11|embedded|embedded_lite {
+x11|embedded|qpa {
         contains(QT_CONFIG,qtopia) {
             DEFINES += QT_NO_CUPS QT_NO_LPR
         } else {
@@ -249,7 +249,7 @@ contains(QMAKE_MAC_XARCH, no) {
         IWMMXT_SOURCES += painting/qdrawhelper_iwmmxt.cpp
     }
 
-    win32-g++|!win32:!*-icc* {
+    win32-g++*|!win32:!*-icc* {
         mmx {
             mmx_compiler.commands = $$QMAKE_CXX -c -Winline
 
@@ -372,7 +372,7 @@ x11 {
         SOURCES += painting/qwindowsurface_x11.cpp
 }
 
-!embedded:!embedded_lite:mac {
+!embedded:!qpa:mac {
         HEADERS += painting/qwindowsurface_mac_p.h
         SOURCES += painting/qwindowsurface_mac.cpp
 }
@@ -418,9 +418,10 @@ neon:*-g++* {
 }
 
 contains(QT_CONFIG, zlib) {
-   INCLUDEPATH += ../3rdparty/zlib
+    INCLUDEPATH += ../3rdparty/zlib
 } else:!contains(QT_CONFIG, no-zlib) {
-   unix:LIBS_PRIVATE += -lz
-#  win32:LIBS += libz.lib
+    symbian:LIBS_PRIVATE += -llibz
+    else:if(unix|win32-g++*):LIBS_PRIVATE += -lz
+    else:LIBS += zdll.lib
 }
 

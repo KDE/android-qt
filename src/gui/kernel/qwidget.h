@@ -56,6 +56,10 @@
 #include <QtGui/qcursor.h>
 #include <QtGui/qkeysequence.h>
 
+#ifdef Q_WS_QPA //should this go somewhere else?
+#include <QtGui/qplatformwindowformat_qpa.h>
+#endif
+
 #ifdef QT_INCLUDE_COMPAT
 #include <QtGui/qevent.h>
 #endif
@@ -361,8 +365,10 @@ public:
     void setGraphicsEffect(QGraphicsEffect *effect);
 #endif //QT_NO_GRAPHICSEFFECT
 
+#ifndef QT_NO_GESTURES
     void grabGesture(Qt::GestureType type, Qt::GestureFlags flags = Qt::GestureFlags());
     void ungrabGesture(Qt::GestureType type);
+#endif
 
 public Q_SLOTS:
     void setWindowTitle(const QString &);
@@ -626,9 +632,13 @@ public:
     void setWindowSurface(QWindowSurface *surface);
     QWindowSurface *windowSurface() const;
 
-#if defined(Q_WS_LITE)
+#if defined(Q_WS_QPA)
     void setPlatformWindow(QPlatformWindow *window);
     QPlatformWindow *platformWindow() const;
+
+    void setPlatformWindowFormat(const QPlatformWindowFormat &format);
+    QPlatformWindowFormat platformWindowFormat() const;
+
     friend class QDesktopScreenWidget;
 #endif
 
@@ -749,8 +759,10 @@ private:
     friend class QGraphicsProxyWidgetPrivate;
     friend class QStyleSheetStyle;
     friend struct QWidgetExceptionCleaner;
+#ifndef QT_NO_GESTURES
     friend class QGestureManager;
     friend class QWinNativePanGestureRecognizer;
+#endif // QT_NO_GESTURES
     friend class QWidgetEffectSourcePrivate;
 
 #ifdef Q_WS_MAC

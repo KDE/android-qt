@@ -1235,7 +1235,7 @@ bool qSharedBuild()
 
     Defined on Mac OS X.
 
-    \sa Q_WS_WIN, Q_WS_X11, Q_WS_QWS, Q_WS_LITE, Q_WS_S60
+    \sa Q_WS_WIN, Q_WS_X11, Q_WS_QWS, Q_WS_QPA, Q_WS_S60
 */
 
 /*!
@@ -1244,7 +1244,7 @@ bool qSharedBuild()
 
     Defined on Windows.
 
-    \sa Q_WS_MAC, Q_WS_X11, Q_WS_QWS, Q_WS_LITE, Q_WS_S60
+    \sa Q_WS_MAC, Q_WS_X11, Q_WS_QWS, Q_WS_QPA, Q_WS_S60
 */
 
 /*!
@@ -1253,7 +1253,7 @@ bool qSharedBuild()
 
     Defined on X11.
 
-    \sa Q_WS_MAC, Q_WS_WIN, Q_WS_QWS, Q_WS_LITE, Q_WS_S60
+    \sa Q_WS_MAC, Q_WS_WIN, Q_WS_QWS, Q_WS_QPA, Q_WS_S60
 */
 
 /*!
@@ -1262,11 +1262,11 @@ bool qSharedBuild()
 
     Defined on Qt for Embedded Linux.
 
-    \sa Q_WS_MAC, Q_WS_WIN, Q_WS_X11, Q_WS_LITE, Q_WS_S60
+    \sa Q_WS_MAC, Q_WS_WIN, Q_WS_X11, Q_WS_QPA, Q_WS_S60
 */
 
 /*!
-    \macro Q_WS_LITE
+    \macro Q_WS_QPA
     \relates <QtGlobal>
 
     Defined on Qt for Embedded Linux, Lite version.
@@ -2542,6 +2542,19 @@ void qFatal(const char *msg, ...)
 
 // getenv is declared as deprecated in VS2005. This function
 // makes use of the new secure getenv function.
+/*!
+    \relates <QtGlobal>
+
+    Returns the value of the environment variable with name \a
+    varName. To get the variable string, use QByteArray::constData().
+
+    \note qgetenv() was introduced because getenv() from the standard
+    C library was deprecated in VC2005 (and later versions). qgetenv()
+    uses the new replacement function in VC, and calls the standard C
+    library's implementation on all other platforms.
+
+    \sa qputenv()
+*/
 QByteArray qgetenv(const char *varName)
 {
 #if defined(_MSC_VER) && _MSC_VER >= 1400
@@ -2561,6 +2574,20 @@ QByteArray qgetenv(const char *varName)
 #endif
 }
 
+/*!
+    \relates <QtGlobal>
+
+    This function sets the \a value of the environment variable named
+    \a varName. It will create the variable if it does not exist. It
+    returns 0 if the variable could not be set.
+
+    \note qputenv() was introduced because putenv() from the standard
+    C library was deprecated in VC2005 (and later versions). qputenv()
+    uses the replacement function in VC, and calls the standard C
+    library's implementation on all other platforms.
+
+    \sa qgetenv()
+*/
 bool qputenv(const char *varName, const QByteArray& value)
 {
 #if defined(_MSC_VER) && _MSC_VER >= 1400

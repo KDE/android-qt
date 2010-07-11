@@ -1,8 +1,6 @@
 contains(QT_CONFIG, egl): {
 	CONFIG += egl
 
-contains(CONFIG, android):INCLUDEPATH += ../plugins/graphicssystems/android
-
 	HEADERS += \
 	    egl/qegl_p.h \
 	    egl/qeglcontext_p.h \
@@ -30,12 +28,8 @@ contains(CONFIG, android):INCLUDEPATH += ../plugins/graphicssystems/android
 	    embedded {
 	        SOURCES += egl/qegl_qws.cpp
 	    } else {
-	        embedded_lite {
-            contains(CONFIG, android) {
-                SOURCES += egl/qegl_android.cpp
-            } else {
-	            SOURCES += egl/qegl_lite.cpp
-            }
+	        qpa {
+	            SOURCES += egl/qegl_qpa.cpp
 	        } else {
 	            symbian {
 	                SOURCES += egl/qegl_symbian.cpp

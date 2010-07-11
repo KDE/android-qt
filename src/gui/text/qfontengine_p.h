@@ -235,7 +235,7 @@ public:
     bool symbol;
     mutable HB_FontRec hbFont;
     mutable HB_Face hbFace;
-#if defined(Q_WS_WIN) || defined(Q_WS_X11) || defined(Q_WS_QWS) || defined(Q_WS_LITE) || defined(Q_OS_SYMBIAN)
+#if defined(Q_WS_WIN) || defined(Q_WS_X11) || defined(Q_WS_QWS) || defined(Q_WS_QPA) || defined(Q_OS_SYMBIAN)
     struct KernPair {
         uint left_right;
         QFixed adjust;
@@ -462,6 +462,7 @@ private:
     CGFontRef cgFont;
     QCoreTextFontEngineMulti *parentEngine;
     int synthesisFlags;
+    CGAffineTransform transform;
     friend class QCoreTextFontEngineMulti;
 };
 
@@ -493,7 +494,7 @@ private:
     uint fontIndexForFont(CTFontRef id) const;
     CTFontRef ctfont;
     mutable QCFType<CFMutableDictionaryRef> attributeDict;
-
+    CGAffineTransform transform;
     friend class QFontDialogPrivate;
 };
 #  endif //MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_5
