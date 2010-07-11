@@ -16,7 +16,7 @@ namespace QtAndroid
     void flushImage(int surfaceId, const QPoint & pos, const QImage & image, const QRect & rect);
 
     // Surface methods
-    bool createSurface(int surfaceId, int l, int t, int r, int b);
+    bool createSurface(bool OpenGL, int surfaceId, int l, int t, int r, int b);
     bool resizeSurface(int surfaceId, int l, int t, int r, int b);
     bool destroySurface(int surfaceId);
     void setSurfaceVisiblity(int surfaceId, bool visible);

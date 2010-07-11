@@ -14,8 +14,11 @@ class QAndroidPlatformWindow : public QObject, public QPlatformWindow
 public:
     QAndroidPlatformWindow(QWidget *tlw);
 
+    ~QAndroidPlatformWindow();
+
     virtual void setVisible(bool visible);
     virtual void setOpacity(qreal level);
+    void setGeometry(const QRect &rect);
 
     virtual Qt::WindowFlags setWindowFlags(Qt::WindowFlags flags);
     virtual void setWindowTitle(const QString &title);

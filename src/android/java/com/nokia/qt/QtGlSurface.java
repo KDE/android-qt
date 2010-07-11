@@ -2,70 +2,56 @@ package com.nokia.qt;
 
 import android.content.Context;
 import android.graphics.Bitmap;
-import android.graphics.Canvas;
 import android.util.Log;
 import android.view.MotionEvent;
-import android.view.View;
+import android.view.SurfaceHolder;
+import android.view.SurfaceView;
 
-public class QtSurface extends View implements QtSurfaceInterface
-{
-	private Bitmap bitmap=null;
-	private int left, top, right, bottom;
+public class QtGlSurface extends SurfaceView implements SurfaceHolder.Callback, QtSurfaceInterface  {
 	private int oldx, oldy;
-
-	public QtSurface(Context context, int surfaceId, int l, int t, int r, int b)
+	private int left, top, right, bottom;
+	
+	public QtGlSurface(Context context, int surfaceId, int l, int t, int r, int b)
 	{
 		super(context);
+		Log.i(QtApplication.QtTAG,"QtSurface "+surfaceId+" Left:"+l+" Top:"+t+" Right:"+r+" Bottom:"+b);
 		setFocusable(true);
+		getHolder().addCallback(this);
 		setId(surfaceId);
 		left=l;
 		top=t;
 		right=r;
 		bottom=b;
-		QtApplication.lockSurface();
-		bitmap = Bitmap.createBitmap(right-left+1, bottom-top+1, Bitmap.Config.RGB_565);
-        QtApplication.unlockSurface();			
 	}
 	
-	@Override
-	protected void onDraw(Canvas canvas)
-	{
-    	QtApplication.lockSurface();
-		canvas.drawBitmap(bitmap, canvas.getClipBounds(), canvas.getClipBounds(), null);
-    	//canvas.drawBitmap(bitmap, 0, 0, null);
+    @Override
+    public void surfaceCreated(SurfaceHolder holder)
+    {
+        QtApplication.lockSurface();
+        QtApplication.getEgl().createSurface(holder, getId());
+        QtApplication.surfaceCreated(null, getId());
         QtApplication.unlockSurface();
-	}
-	
-	@Override
-	protected void onSizeChanged(int w, int h, int oldw, int oldh)
-	{
-		Log.i(QtApplication.QtTAG, "onSizeChanged id:"+getId()+" w:"+w+" h:"+h+" oldw:"+oldw+"oldh:"+oldh+" reqw:"+(right-left)+"reqh"+(bottom -top));
-		if ( w != right-left || h != bottom -top )
-			layout(left, top, right, bottom);
-		invalidate();
-	}
+        layout(left, top, right, bottom);
+    }
 
-	@Override
-	protected void onWindowVisibilityChanged(int visibility)
-	{
-		Log.i(QtApplication.QtTAG, "id:"+getId()+" WindowVisibilityChanged:"+visibility);
-		if (visibility==VISIBLE)
-		{
-	        QtApplication.lockSurface();
-	        QtApplication.surfaceCreated(bitmap, getId());
-	        QtApplication.unlockSurface();
-	        bringToFront();
-	        invalidate();
-		}
-		else if (visibility==GONE) 
-		{
-	        QtApplication.lockSurface();
-	        QtApplication.surfaceDestroyed(getId());
-	        QtApplication.unlockSurface();
-		}
-		super.onWindowVisibilityChanged(visibility);
-	}
-	
+    @Override
+    public void surfaceChanged(SurfaceHolder holder, int format, int width, int height)
+    {
+    	QtApplication.lockSurface();
+    	QtApplication.getEgl().createSurface(holder, getId());
+        QtApplication.surfaceChanged(null, getId());
+        QtApplication.unlockSurface();
+    }
+
+    @Override
+    public void surfaceDestroyed(SurfaceHolder holder)
+    {
+    	QtApplication.lockSurface();
+        QtApplication.getEgl().destroySurface(getId());
+        QtApplication.surfaceDestroyed(getId());
+        QtApplication.unlockSurface();
+    }
+
     private int getAction(int index, MotionEvent event)
     {
     	int action=event.getAction();
@@ -138,7 +124,6 @@ public class QtSurface extends View implements QtSurfaceInterface
 	@Override
 	public boolean onTouchEvent(MotionEvent event)
 	{
-//		Log.i("Duda",event.toString());
 		sendTouchEvents(event);
 		switch (event.getAction())
 		{
@@ -196,11 +181,10 @@ public class QtSurface extends View implements QtSurfaceInterface
 	}
 
 	@Override
-	public int isOpenGl()
-	{
-		return 0;
+	public int isOpenGl() {
+		return 1;
 	}
-
+	
 	@Override
 	public void Resize(int l, int t, int r, int b)
 	{
@@ -209,11 +193,8 @@ public class QtSurface extends View implements QtSurfaceInterface
 		right=r;
 		bottom=b;
 		QtApplication.lockSurface();
-		bitmap = Bitmap.createBitmap(right-left+1, bottom-top+1, Bitmap.Config.RGB_565);
-        QtApplication.surfaceChanged(bitmap, getId());
+        QtApplication.surfaceChanged(null, getId());
         QtApplication.unlockSurface();			
-        bringToFront();
 		layout(left, top, right, bottom);
-		invalidate();
 	}
 }

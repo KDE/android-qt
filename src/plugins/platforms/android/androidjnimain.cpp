@@ -49,7 +49,6 @@ struct ApplicationControl
     // Surface semaphores
 
     QMutex m_surfaceMutex;
-    QMutex m_resizeMutex;
     QMutex m_pauseApplicationMutex;
     QSemaphore m_pauseApplicationSemaphore;
 } * m_applicationControl=0;
@@ -62,7 +61,9 @@ static jmethodID m_setSurfaceVisiblityMethodID=0;
 static jmethodID m_setSurfaceOpacityMethodID=0;
 static jmethodID m_setWindowTitleMethodID=0;
 static jmethodID m_raiseSurfaceMethodID=0;
+#ifdef JNIGRPAHICS
 static jmethodID m_redrawSurfaceMethodID=0;
+#endif
 // Java surface methods
 
 // Java EGL methods
@@ -73,7 +74,6 @@ static jmethodID m_swapBuffersMethodID=0;
 // Java EGL methods
 
 static QMap<int,jobject> m_surfaces;
-static bool   m_requestResize=false;
 static bool   m_pauseApplication;
 static QAndroidPlatformIntegration * mAndroidGraphicsSystem=0;
 
@@ -83,28 +83,13 @@ static int m_desktopWidthPixels, m_desktopHeightPixels;
 
 static inline void checkPauseApplication()
 {
-    qDebug()<<"checkPauseApplication";
     m_applicationControl->m_pauseApplicationMutex.lock();
     if (m_pauseApplication)
     {
         m_applicationControl->m_pauseApplicationMutex.unlock();
         m_applicationControl->m_pauseApplicationSemaphore.acquire();
-
-        m_applicationControl->m_resizeMutex.lock();
-        m_requestResize=true;
-        m_applicationControl->m_resizeMutex.unlock();
-
-        int surfaces=m_surfaces.size();
-        for (int i=0;i<surfaces;i++) //wait until all surfaces are created && resized
-        {
-            m_applicationControl->m_createSurfaceSemaphore.acquire();
-            m_applicationControl->m_resizeSurfaceSemaphore.acquire();
-        }
-
-        m_applicationControl->m_resizeMutex.lock();
-        m_requestResize=false;
-        m_applicationControl->m_resizeMutex.unlock();
-
+        //wait until all surfaces are created
+        m_applicationControl->m_createSurfaceSemaphore.acquire(m_surfaces.size());
         m_applicationControl->m_pauseApplicationMutex.lock();
         m_pauseApplication=false;
         m_applicationControl->m_pauseApplicationMutex.unlock();
@@ -113,7 +98,6 @@ static inline void checkPauseApplication()
     }
     else
         m_applicationControl->m_pauseApplicationMutex.unlock();
-    qDebug()<<"checkPauseApplication !!!";
 }
 
 namespace QtAndroid
@@ -132,7 +116,6 @@ namespace QtAndroid
             return;
         }
         int bpp=2;
-#ifdef JNIGRPAHICS
         AndroidBitmapInfo  info;
         int ret;
 
@@ -168,7 +151,6 @@ namespace QtAndroid
         unsigned sposy=pos.y()+destinationRect.y();
 
         screenBits+=sposy*sbpl;
-#endif
 
         unsigned ibpl=image.bytesPerLine();
         unsigned iposx=destinationRect.x();
@@ -177,19 +159,12 @@ namespace QtAndroid
         unsigned char * imageBits=(unsigned char *)((const uchar*)image.bits());
         imageBits+=iposy*ibpl;
 
-#ifdef JNIGRPAHICS
         unsigned width=swidth-sposx<(unsigned)destinationRect.width()?swidth-sposx:destinationRect.width();
         unsigned height=sheight-sposy<(unsigned)destinationRect.height()?sheight-sposy:destinationRect.height();
-#else
-        Q_UNUSED(pos)
-        unsigned width=destinationRect.width();
-        unsigned height=destinationRect.height();
-#endif
 
         //qDebug()<<ibpl<<sbpl<<sxpos<<sypos<<width<<height<<sxpos+width<<sypos+height;
 
         jclass object=env->GetObjectClass(m_applicationObject);
-#ifdef JNIGRPAHICS
         for (unsigned y=0;y<height;y++)
             memcpy(screenBits+y*sbpl+sposx*bpp,
                     imageBits+y*ibpl+iposx*bpp,
@@ -200,21 +175,6 @@ namespace QtAndroid
                             (jint)destinationRect.top(),
                             (jint)destinationRect.right(),
                             (jint)destinationRect.bottom());
-#else
-        jshort* screenBits=(jshort*)malloc(width*height*sizeof(jshort));
-        for (unsigned y=0;y<height;y++)
-            memcpy(screenBits+y*width,imageBits+y*ibpl+iposx*bpp,width*bpp);
-        jshortArray img=env->NewShortArray(width*height);
-        env->SetShortArrayRegion(img,0,width*height, screenBits);
-        env->CallVoidMethod(object, m_flushImageMethodID,
-                             img, (jint)surfaceId,
-                             (jint)destinationRect.left(),
-                             (jint)destinationRect.top(),
-                             (jint)destinationRect.right(),
-                             (jint)destinationRect.bottom());
-        env->DeleteLocalRef(img);
-        free(screenBits);
-#endif
         m_javaVM->DetachCurrentThread();
     }
 
@@ -227,8 +187,9 @@ namespace QtAndroid
     {
     }
 
-    bool createSurface(int surfaceId, int l, int t, int r, int b)
+    bool createSurface(bool openGl, int surfaceId, int l, int t, int r, int b)
     {
+        qDebug()<<"createSurface"<<openGl<<surfaceId<<l<<t<<r<<b;
         JNIEnv* env;
         if (m_javaVM->AttachCurrentThread(&env, NULL)<0)
         {
@@ -237,52 +198,33 @@ namespace QtAndroid
         }
 
         bool res=env->CallBooleanMethod(m_applicationObject, m_createSurfaceMethodID,
-                            (jint)surfaceId, (jint)l, (jint)t, (jint)r, (jint)b);
+                            (jboolean)openGl, (jint)surfaceId, (jint)l, (jint)t, (jint)r, (jint)b);
 
         m_javaVM->DetachCurrentThread();
         if (!res)
             return false;
         m_applicationControl->m_createSurfaceSemaphore.acquire(); //wait until surface is created
-
-        m_applicationControl->m_resizeMutex.lock();
-        m_requestResize=true;
-        m_applicationControl->m_resizeMutex.unlock();
-
-        m_applicationControl->m_resizeSurfaceSemaphore.acquire(); //wait until surface is resized
-        m_applicationControl->m_resizeMutex.lock();
-        m_requestResize=false;
-        m_applicationControl->m_resizeMutex.unlock();
         return m_surfaces.contains(surfaceId);
     }
 
     bool resizeSurface(int surfaceId, int l, int t, int r, int b)
     {
+        qDebug()<<"resizeSurface"<<surfaceId<<l<<t<<r<<b;
         JNIEnv* env;
         if (m_javaVM->AttachCurrentThread(&env, NULL)<0)
         {
             qCritical()<<"AttachCurrentThread failed";
             return false;
         }
-        m_applicationControl->m_resizeMutex.lock();
-        m_requestResize=false;
 
         bool res=env->CallBooleanMethod(m_applicationObject, m_resizeSurfaceMethodID,
                             (jint)surfaceId, (jint)l, (jint)t, (jint)r, (jint)b);
 
         m_javaVM->DetachCurrentThread();
         if (!res)
-        {
-            m_applicationControl->m_resizeMutex.unlock();
             return false;
-        }
-
-        m_requestResize=true;
-        m_applicationControl->m_resizeMutex.unlock();
 
         m_applicationControl->m_resizeSurfaceSemaphore.acquire(); //wait until surface is resized
-        m_applicationControl->m_resizeMutex.lock();
-        m_requestResize=false;
-        m_applicationControl->m_resizeMutex.unlock();
         return m_surfaces.contains(surfaceId);
     }
 
@@ -423,13 +365,11 @@ namespace QtAndroid
 
     void lockSurface()
     {
-        qDebug()<<"lockSurface";
         m_applicationControl->m_surfaceMutex.lock();
     }
 
     void unlockSurface()
     {
-        qDebug()<<"unlockSurface";
         m_applicationControl->m_surfaceMutex.unlock();
     }
 
@@ -466,7 +406,6 @@ static jboolean startQtApp(JNIEnv* /*env*/, jobject /*object*/)
     qDebug()<<"startQtApp";
     m_surfaces.clear();
     mAndroidGraphicsSystem=0;
-    m_requestResize=false;
     m_pauseApplication=false;
     m_applicationControl = new ApplicationControl();
     pthread_t appThread;
@@ -475,6 +414,7 @@ static jboolean startQtApp(JNIEnv* /*env*/, jobject /*object*/)
 
 static void pauseQtApp(JNIEnv */*env*/, jobject /*thiz*/)
 {
+    qDebug()<<"pauseQtApp";
     m_applicationControl->m_surfaceMutex.lock();
     m_applicationControl->m_pauseApplicationMutex.lock();
     if (mAndroidGraphicsSystem)
@@ -513,6 +453,7 @@ static void setDisplayMetrics(JNIEnv* /*env*/, jclass /*clazz*/,
                               jint desktopWidthPixels, jint desktopHeightPixels,
                               jfloat xdpi, jfloat ydpi)
 {
+    qDebug()<<"setDisplayMetrics";
     m_desktopWidthPixels=desktopWidthPixels;
     m_desktopHeightPixels=desktopHeightPixels;
     if (!mAndroidGraphicsSystem)
@@ -775,6 +716,7 @@ static int mapAndroidKey(int key)
 
 static void keyDown(JNIEnv */*env*/, jobject /*thiz*/, jint key, jint unicode, jint modifier)
 {
+    qDebug()<<"keyDown";
     Qt::KeyboardModifiers modifiers;
     if (modifier & 1)
         modifiers|=Qt::AltModifier;
@@ -789,6 +731,7 @@ static void keyDown(JNIEnv */*env*/, jobject /*thiz*/, jint key, jint unicode, j
 
 static void keyUp(JNIEnv */*env*/, jobject /*thiz*/, jint key, jint unicode, jint modifier)
 {
+    qDebug()<<"keyUp";
     Qt::KeyboardModifiers modifiers;
     if (modifier & 1)
         modifiers|=Qt::AltModifier;
@@ -815,14 +758,12 @@ static void surfaceChanged(JNIEnv *env, jobject /*thiz*/, jobject jSurface, jint
     qDebug()<<"surfaceChanged"<<surfaceId;
     Q_UNUSED(env);
     m_surfaces[surfaceId] = env->NewGlobalRef(jSurface);
-    m_applicationControl->m_resizeMutex.lock();
-    if (m_requestResize)
-        m_applicationControl->m_resizeSurfaceSemaphore.release();
-    m_applicationControl->m_resizeMutex.unlock();
+    m_applicationControl->m_resizeSurfaceSemaphore.release();
 }
 
 static void surfaceDestroyed(JNIEnv */*env*/, jobject /*thiz*/, jint surfaceId)
 {
+    qDebug()<<"surfaceDestroyed";
     m_applicationControl->m_pauseApplicationMutex.lock();
     if (!m_pauseApplication)
     {
@@ -851,14 +792,12 @@ static void setEglObject(JNIEnv *env, jobject /*thiz*/,  jobject eglObject)
 
 static void lockSurface(JNIEnv */*env*/, jobject /*thiz*/)
 {
-    qDebug()<<"lockSurface";
     m_applicationControl->m_surfaceMutex.lock();
 }
 
 static void unlockSurface(JNIEnv */*env*/, jobject /*thiz*/)
 {
     m_applicationControl->m_surfaceMutex.unlock();
-    qDebug()<<"unlockSurface";
 }
 
 static JNINativeMethod methods[] = {
@@ -904,7 +843,7 @@ static int registerNativeMethods(JNIEnv* env, const char* className,
         return JNI_FALSE;
     }
     m_applicationObject = env->NewGlobalRef(clazz);
-    m_createSurfaceMethodID = env->GetMethodID((jclass)m_applicationObject, "createSurface", "(IIIII)Z");
+    m_createSurfaceMethodID = env->GetMethodID((jclass)m_applicationObject, "createSurface", "(ZIIIII)Z");
     m_resizeSurfaceMethodID = env->GetMethodID((jclass)m_applicationObject, "resizeSurface", "(IIIII)Z");
     m_destroySurfaceMethodID = env->GetMethodID((jclass)m_applicationObject, "destroySurface", "(I)Z");
     m_setSurfaceVisiblityMethodID = env->GetMethodID((jclass)m_applicationObject, "setSurfaceVisiblity", "(IZ)V");

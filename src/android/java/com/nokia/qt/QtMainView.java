@@ -12,13 +12,13 @@ public class QtMainView extends RelativeLayout
 		super(context);
 	}
 	
-	@Override
-	protected void onSizeChanged(int w, int h, int oldw, int oldh)
-	{
-		DisplayMetrics metrics = new DisplayMetrics();
-		((Activity) getContext()).getWindowManager().getDefaultDisplay().getMetrics(metrics);
-		QtApplication.setDisplayMetrics(metrics.widthPixels,
-				metrics.heightPixels, w, h, metrics.xdpi, metrics.ydpi);
-		super.onSizeChanged(w, h, oldw, oldh);
-	}
+//	@Override
+//	protected void onSizeChanged(int w, int h, int oldw, int oldh)
+//	{
+//		DisplayMetrics metrics = new DisplayMetrics();
+//		((Activity) getContext()).getWindowManager().getDefaultDisplay().getMetrics(metrics);
+//		QtApplication.setDisplayMetrics(metrics.widthPixels,
+//				metrics.heightPixels, w, h, metrics.xdpi, metrics.ydpi);
+//		super.onSizeChanged(w, h, oldw, oldh);
+//	}
 }

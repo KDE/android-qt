@@ -51,8 +51,7 @@ class QAndroidPlatformScreen;
 class QAndroidWindowSurface : public QWindowSurface
 {
 public:
-    QAndroidWindowSurface(QWidget *window);
-    ~QAndroidWindowSurface();
+    QAndroidWindowSurface(QWidget *window, int winId);
 
     virtual QPaintDevice *paintDevice();
     virtual void flush(QWidget *widget, const QRegion &region, const QPoint &offset);
@@ -60,7 +59,7 @@ public:
 
 private:
     QImage mImage;
-    int m_surfaceId;
+    int m_winId;
 };
 
 QT_END_NAMESPACE

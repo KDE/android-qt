@@ -47,17 +47,9 @@
 QT_BEGIN_NAMESPACE
 
 
-QAndroidWindowSurface::QAndroidWindowSurface(QWidget *window):QWindowSurface(window)
+QAndroidWindowSurface::QAndroidWindowSurface(QWidget *window, int winId):QWindowSurface(window)
 {
-    static QAtomicInt winIdGenerator(1);
-    m_surfaceId = winIdGenerator.fetchAndAddRelaxed(1);
-    QtAndroid::createSurface(m_surfaceId, window->geometry().left(), window->geometry().top(),
-                                            window->geometry().right(), window->geometry().bottom());
-}
-
-QAndroidWindowSurface::~QAndroidWindowSurface()
-{
-    QtAndroid::destroySurface(m_surfaceId);
+    m_winId=winId;
 }
 
 void QAndroidWindowSurface::resize(const QSize & size)
@@ -66,8 +58,6 @@ void QAndroidWindowSurface::resize(const QSize & size)
     QImage::Format format = QApplicationPrivate::platformIntegration()->screens().first()->format();
     if (mImage.size() != size)
         mImage = QImage(size, format);
-    QtAndroid::resizeSurface(m_surfaceId, window()->geometry().left(), window()->geometry().top(),
-                                            window()->geometry().right(), window()->geometry().bottom());
 }
 
 QPaintDevice *QAndroidWindowSurface::paintDevice()
@@ -77,15 +67,15 @@ QPaintDevice *QAndroidWindowSurface::paintDevice()
 
 void QAndroidWindowSurface::flush(QWidget *widget, const QRegion &region, const QPoint &offset)
 {
-    qDebug()<<offset<<region<<widget->winId();
+    //qDebug()<<offset<<region<<widget->winId();
 //    Q_UNUSED(widget);
-    Q_UNUSED(offset);
+    Q_UNUSED(widget);
 
 //    qDebug() << "QMinimalWindowSurface::flush()";
 //    static int c = 0;
 //    QString filename = QString("/sdcard/output%1.png").arg(c++, 4, 10, QLatin1Char('0'));
 //    mImage.save(filename);
-    QtAndroid::flushImage(m_surfaceId, offset, mImage, region.boundingRect());
+    QtAndroid::flushImage(m_winId, offset, mImage, region.boundingRect());
 }
 
 

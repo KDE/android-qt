@@ -40,6 +40,7 @@
 ****************************************************************************/
 
 #include <QPlatformIntegrationPlugin>
+#include <QDebug>
 #include "qandroidplatformintegration.h"
 
 QT_BEGIN_NAMESPACE
@@ -55,6 +56,9 @@ QStringList QAndroidPlatformIntegrationPlugin::keys() const
 {
     QStringList list;
     list << "android";
+    #ifndef QT_NO_OPENGL
+    list << "androidGL";
+    #endif
     return list;
 }
 
@@ -64,6 +68,10 @@ QPlatformIntegration* QAndroidPlatformIntegrationPlugin::create(const QString &k
     qDebug()<<"QAndroidPlatformIntegrationPlugin::create"<<key;
     if (key.toLower() == "android")
         return new QAndroidPlatformIntegration;
+    #ifndef QT_NO_OPENGL
+    if (key.toLower() == "androidgl")
+        return new QAndroidPlatformIntegration(true);
+    #endif
     return 0;
 }
 
