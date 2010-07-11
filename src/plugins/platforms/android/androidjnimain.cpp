@@ -42,29 +42,29 @@ struct ApplicationControl
     // Application semaphores
 
 
-    // Surface semaphores
-    QSemaphore m_createSurfaceSemaphore;
-    QSemaphore m_resizeSurfaceSemaphore;
-    QSemaphore m_destroySurfaceSemaphore;
-    // Surface semaphores
+    // Window semaphores
+    QSemaphore m_createWindowSemaphore;
+    QSemaphore m_resizeWindowSemaphore;
+    QSemaphore m_destroyWindowSemaphore;
+    // Window semaphores
 
-    QMutex m_surfaceMutex;
+    QMutex m_windowMutex;
     QMutex m_pauseApplicationMutex;
     QSemaphore m_pauseApplicationSemaphore;
 } * m_applicationControl=0;
 
-// Java surface methods
-static jmethodID m_createSurfaceMethodID=0;
-static jmethodID m_resizeSurfaceMethodID=0;
-static jmethodID m_destroySurfaceMethodID=0;
-static jmethodID m_setSurfaceVisiblityMethodID=0;
-static jmethodID m_setSurfaceOpacityMethodID=0;
+// Java window methods
+static jmethodID m_createWindowMethodID=0;
+static jmethodID m_resizeWindowMethodID=0;
+static jmethodID m_destroyWindowMethodID=0;
+static jmethodID m_setWindowVisiblityMethodID=0;
+static jmethodID m_setWindowOpacityMethodID=0;
 static jmethodID m_setWindowTitleMethodID=0;
-static jmethodID m_raiseSurfaceMethodID=0;
+static jmethodID m_raiseWindowMethodID=0;
 #ifdef JNIGRPAHICS
-static jmethodID m_redrawSurfaceMethodID=0;
+static jmethodID m_redrawWindowMethodID=0;
 #endif
-// Java surface methods
+// Java window methods
 
 // Java EGL methods
 static jmethodID m_makeCurrentMethodID=0;
@@ -73,7 +73,7 @@ static jmethodID m_swapBuffersMethodID=0;
 //static jmethodID m_getProcAddressMethodID=0;
 // Java EGL methods
 
-static QMap<int,jobject> m_surfaces;
+static QMap<int,jobject> m_windows;
 static bool   m_pauseApplication;
 static QAndroidPlatformIntegration * mAndroidGraphicsSystem=0;
 
@@ -88,8 +88,8 @@ static inline void checkPauseApplication()
     {
         m_applicationControl->m_pauseApplicationMutex.unlock();
         m_applicationControl->m_pauseApplicationSemaphore.acquire();
-        //wait until all surfaces are created
-        m_applicationControl->m_createSurfaceSemaphore.acquire(m_surfaces.size());
+        //wait until all windows are created
+        m_applicationControl->m_createWindowSemaphore.acquire(m_windows.size());
         m_applicationControl->m_pauseApplicationMutex.lock();
         m_pauseApplication=false;
         m_applicationControl->m_pauseApplicationMutex.unlock();
@@ -102,12 +102,12 @@ static inline void checkPauseApplication()
 
 namespace QtAndroid
 {
-    void flushImage(int surfaceId, const QPoint & pos, const QImage & image, const QRect & destinationRect)
+    void flushImage(int windowId, const QPoint & pos, const QImage & image, const QRect & destinationRect)
     {
         checkPauseApplication();
         JNIEnv* env;
-        QMutexLocker locker(&m_applicationControl->m_surfaceMutex);
-        if (!m_surfaces.contains(surfaceId))
+        QMutexLocker locker(&m_applicationControl->m_windowMutex);
+        if (!m_windows.contains(windowId))
             return;
 
         if (m_javaVM->AttachCurrentThread(&env, NULL)<0)
@@ -119,7 +119,7 @@ namespace QtAndroid
         AndroidBitmapInfo  info;
         int ret;
 
-        if ((ret = AndroidBitmap_getInfo(env, m_surfaces[surfaceId], &info)) < 0)
+        if ((ret = AndroidBitmap_getInfo(env, m_windows[windowId], &info)) < 0)
         {
             qWarning()<<"AndroidBitmap_getInfo() failed ! error="<<ret;
             m_javaVM->DetachCurrentThread();
@@ -135,7 +135,7 @@ namespace QtAndroid
         void * pixels;
         unsigned char * screenBits;
 
-        if ((ret = AndroidBitmap_lockPixels(env, m_surfaces[surfaceId], &pixels)) < 0)
+        if ((ret = AndroidBitmap_lockPixels(env, m_windows[windowId], &pixels)) < 0)
         {
             qWarning()<<"AndroidBitmap_lockPixels() failed ! error="<<ret;
             m_javaVM->DetachCurrentThread();
@@ -169,8 +169,8 @@ namespace QtAndroid
             memcpy(screenBits+y*sbpl+sposx*bpp,
                     imageBits+y*ibpl+iposx*bpp,
                    width*bpp);
-        AndroidBitmap_unlockPixels(env, m_surfaces[surfaceId]);
-        env->CallVoidMethod(object, m_redrawSurfaceMethodID, (jint)surfaceId,
+        AndroidBitmap_unlockPixels(env, m_windows[windowId]);
+        env->CallVoidMethod(object, m_redrawWindowMethodID, (jint)windowId,
                             (jint)destinationRect.left(),
                             (jint)destinationRect.top(),
                             (jint)destinationRect.right(),
@@ -187,9 +187,9 @@ namespace QtAndroid
     {
     }
 
-    bool createSurface(bool openGl, int surfaceId, int l, int t, int r, int b)
+    bool createWindow(bool openGl, int windowId, int l, int t, int r, int b)
     {
-        qDebug()<<"createSurface"<<openGl<<surfaceId<<l<<t<<r<<b;
+        qDebug()<<"createWindow"<<openGl<<windowId<<l<<t<<r<<b;
         JNIEnv* env;
         if (m_javaVM->AttachCurrentThread(&env, NULL)<0)
         {
@@ -197,19 +197,19 @@ namespace QtAndroid
             return false;
         }
 
-        bool res=env->CallBooleanMethod(m_applicationObject, m_createSurfaceMethodID,
-                            (jboolean)openGl, (jint)surfaceId, (jint)l, (jint)t, (jint)r, (jint)b);
+        bool res=env->CallBooleanMethod(m_applicationObject, m_createWindowMethodID,
+                            (jboolean)openGl, (jint)windowId, (jint)l, (jint)t, (jint)r, (jint)b);
 
         m_javaVM->DetachCurrentThread();
         if (!res)
             return false;
-        m_applicationControl->m_createSurfaceSemaphore.acquire(); //wait until surface is created
-        return m_surfaces.contains(surfaceId);
+        m_applicationControl->m_createWindowSemaphore.acquire(); //wait until window is created
+        return m_windows.contains(windowId);
     }
 
-    bool resizeSurface(int surfaceId, int l, int t, int r, int b)
+    bool resizeWindow(int windowId, int l, int t, int r, int b)
     {
-        qDebug()<<"resizeSurface"<<surfaceId<<l<<t<<r<<b;
+        qDebug()<<"resizeWindow"<<windowId<<l<<t<<r<<b;
         JNIEnv* env;
         if (m_javaVM->AttachCurrentThread(&env, NULL)<0)
         {
@@ -217,18 +217,18 @@ namespace QtAndroid
             return false;
         }
 
-        bool res=env->CallBooleanMethod(m_applicationObject, m_resizeSurfaceMethodID,
-                            (jint)surfaceId, (jint)l, (jint)t, (jint)r, (jint)b);
+        bool res=env->CallBooleanMethod(m_applicationObject, m_resizeWindowMethodID,
+                            (jint)windowId, (jint)l, (jint)t, (jint)r, (jint)b);
 
         m_javaVM->DetachCurrentThread();
         if (!res)
             return false;
 
-        m_applicationControl->m_resizeSurfaceSemaphore.acquire(); //wait until surface is resized
-        return m_surfaces.contains(surfaceId);
+        m_applicationControl->m_resizeWindowSemaphore.acquire(); //wait until window is resized
+        return m_windows.contains(windowId);
     }
 
-    bool destroySurface(int surfaceId)
+    bool destroyWindow(int windowId)
     {
         JNIEnv* env;
         if (m_javaVM->AttachCurrentThread(&env, NULL)<0)
@@ -237,17 +237,17 @@ namespace QtAndroid
             return false;
         }
 
-        bool res=env->CallBooleanMethod(m_applicationObject, m_destroySurfaceMethodID, (jint)surfaceId);
+        bool res=env->CallBooleanMethod(m_applicationObject, m_destroyWindowMethodID, (jint)windowId);
 
         m_javaVM->DetachCurrentThread();
 
         if (!res)
             return false;
-        m_applicationControl->m_destroySurfaceSemaphore.acquire(); //wait until surface is destroyed
-        return !m_surfaces.contains(surfaceId);
+        m_applicationControl->m_destroyWindowSemaphore.acquire(); //wait until window is destroyed
+        return !m_windows.contains(windowId);
     }
 
-    void setSurfaceVisiblity(int surfaceId, bool visible)
+    void setWindowVisiblity(int windowId, bool visible)
     {
         JNIEnv* env;
         if (m_javaVM->AttachCurrentThread(&env, NULL)<0)
@@ -256,12 +256,12 @@ namespace QtAndroid
             return;
         }
 
-        env->CallVoidMethod(m_applicationObject, m_setSurfaceVisiblityMethodID, (jint)surfaceId, (jboolean)visible);
+        env->CallVoidMethod(m_applicationObject, m_setWindowVisiblityMethodID, (jint)windowId, (jboolean)visible);
 
         m_javaVM->DetachCurrentThread();
     }
 
-    void setSurfaceOpacity(int surfaceId, double level)
+    void setWindowOpacity(int windowId, double level)
     {
         JNIEnv* env;
         if (m_javaVM->AttachCurrentThread(&env, NULL)<0)
@@ -270,11 +270,11 @@ namespace QtAndroid
             return;
         }
         jclass object=env->GetObjectClass(m_applicationObject);
-        env->CallVoidMethod(object, m_setSurfaceOpacityMethodID, (jint)surfaceId, (jdouble)level);
+        env->CallVoidMethod(object, m_setWindowOpacityMethodID, (jint)windowId, (jdouble)level);
         m_javaVM->DetachCurrentThread();
     }
 
-    void setWindowTitle(int surfaceId, const QString & title)
+    void setWindowTitle(int windowId, const QString & title)
     {
         if (!title.length())
             return;
@@ -285,12 +285,12 @@ namespace QtAndroid
             return;
         }
         jstring jtitle = env->NewStringUTF(title.toUtf8().data());
-        env->CallVoidMethod(m_applicationObject, m_setWindowTitleMethodID, (jint)surfaceId, (jstring)jtitle);
+        env->CallVoidMethod(m_applicationObject, m_setWindowTitleMethodID, (jint)windowId, (jstring)jtitle);
         env->DeleteLocalRef(jtitle);
         m_javaVM->DetachCurrentThread();
     }
 
-    void raiseSurface(int surfaceId)
+    void raiseWindow(int windowId)
     {
         JNIEnv* env;
         if (m_javaVM->AttachCurrentThread(&env, NULL)<0)
@@ -299,20 +299,20 @@ namespace QtAndroid
             return;
         }
         jclass object=env->GetObjectClass(m_applicationObject);
-        env->CallVoidMethod(object, m_raiseSurfaceMethodID, (jint)surfaceId);
+        env->CallVoidMethod(object, m_raiseWindowMethodID, (jint)windowId);
         m_javaVM->DetachCurrentThread();
     }
 
-    bool makeCurrent(int surfaceId)
+    bool makeCurrent(int windowId)
     {
-        qDebug()<<"makeCurrent"<<surfaceId;
+        qDebug()<<"makeCurrent"<<windowId;
         JNIEnv* env;
         if (m_javaVM->AttachCurrentThread(&env, NULL)<0)
         {
             qCritical()<<"AttachCurrentThread failed";
             return false;
         }
-        jboolean res=env->CallBooleanMethod(m_EglObject, m_makeCurrentMethodID, (jint)surfaceId);
+        jboolean res=env->CallBooleanMethod(m_EglObject, m_makeCurrentMethodID, (jint)windowId);
         m_javaVM->DetachCurrentThread();
         return res;
     }
@@ -331,25 +331,25 @@ namespace QtAndroid
         return true;
     }
 
-    bool swapBuffers(int surfaceId)
+    bool swapBuffers(int windowId)
     {
-        qDebug()<<"swapBuffers"<<surfaceId;
+        qDebug()<<"swapBuffers"<<windowId;
         JNIEnv* env;
         if (m_javaVM->AttachCurrentThread(&env, NULL)<0)
         {
             qCritical()<<"AttachCurrentThread failed";
             return false;
         }
-        jboolean res=env->CallBooleanMethod(m_EglObject, m_swapBuffersMethodID, (jint)surfaceId);
+        jboolean res=env->CallBooleanMethod(m_EglObject, m_swapBuffersMethodID, (jint)windowId);
         m_javaVM->DetachCurrentThread();
         return res;
     }
 
-    void * getProcAddress(int surfaceId, const QString& procName)
+    void * getProcAddress(int windowId, const QString& procName)
     {
-        qDebug()<<"getProcAddress"<<surfaceId<<procName;
+        qDebug()<<"getProcAddress"<<windowId<<procName;
         Q_UNUSED(procName)
-        Q_UNUSED(surfaceId)
+        Q_UNUSED(windowId)
 //        JNIEnv* env;
 //        if (m_javaVM->AttachCurrentThread(&env, NULL)<0)
 //        {
@@ -357,20 +357,20 @@ namespace QtAndroid
 //            return false;
 //        }
 //        jstring jprocName = env->NewStringUTF(procName.toUtf8().data());
-//        env->CallVoidMethod(m_EglObject, m_getProcAddressMethodID, (jint)surfaceId, jprocName);
+//        env->CallVoidMethod(m_EglObject, m_getProcAddressMethodID, (jint)windowId, jprocName);
 //        env->DeleteLocalRef(jprocName);
 //        m_javaVM->DetachCurrentThread();
         return NULL;
     }
 
-    void lockSurface()
+    void lockWindow()
     {
-        m_applicationControl->m_surfaceMutex.lock();
+        m_applicationControl->m_windowMutex.lock();
     }
 
-    void unlockSurface()
+    void unlockWindow()
     {
-        m_applicationControl->m_surfaceMutex.unlock();
+        m_applicationControl->m_windowMutex.unlock();
     }
 
     bool hasOpenGL()
@@ -404,7 +404,7 @@ static void * startMainMethod(void * /*data*/)
 static jboolean startQtApp(JNIEnv* /*env*/, jobject /*object*/)
 {
     qDebug()<<"startQtApp";
-    m_surfaces.clear();
+    m_windows.clear();
     mAndroidGraphicsSystem=0;
     m_pauseApplication=false;
     m_applicationControl = new ApplicationControl();
@@ -415,19 +415,19 @@ static jboolean startQtApp(JNIEnv* /*env*/, jobject /*object*/)
 static void pauseQtApp(JNIEnv */*env*/, jobject /*thiz*/)
 {
     qDebug()<<"pauseQtApp";
-    m_applicationControl->m_surfaceMutex.lock();
+    m_applicationControl->m_windowMutex.lock();
     m_applicationControl->m_pauseApplicationMutex.lock();
     if (mAndroidGraphicsSystem)
         mAndroidGraphicsSystem->pauseApp();
     m_pauseApplication=true;
     m_applicationControl->m_pauseApplicationMutex.unlock();
-    m_applicationControl->m_surfaceMutex.unlock();
+    m_applicationControl->m_windowMutex.unlock();
 }
 
 static void resumeQtApp(JNIEnv */*env*/, jobject /*thiz*/)
 {
     qDebug()<<"resumeQtApp";
-    m_applicationControl->m_surfaceMutex.lock();
+    m_applicationControl->m_windowMutex.lock();
     m_applicationControl->m_pauseApplicationMutex.lock();
     if (mAndroidGraphicsSystem)
         mAndroidGraphicsSystem->resumeApp();
@@ -436,7 +436,7 @@ static void resumeQtApp(JNIEnv */*env*/, jobject /*thiz*/)
         m_applicationControl->m_pauseApplicationSemaphore.release();
 
     m_applicationControl->m_pauseApplicationMutex.unlock();
-    m_applicationControl->m_surfaceMutex.unlock();
+    m_applicationControl->m_windowMutex.unlock();
 }
 
 static void quitQtApp(JNIEnv* /*env*/, jclass /*clazz*/)
@@ -465,7 +465,7 @@ static void setDisplayMetrics(JNIEnv* /*env*/, jclass /*clazz*/,
         mAndroidGraphicsSystem->setDesktopSize(desktopWidthPixels,desktopHeightPixels);
         mAndroidGraphicsSystem->setDisplayMetrics(qRound((double)widthPixels   / xdpi * 100 / 2.54 ),
                                                   qRound((double)heightPixels / ydpi *100  / 2.54 ));
-        if (!m_surfaces.size())
+        if (!m_windows.size())
         {
             QWindowSystemInterface::handleScreenAvailableGeometryChange(0);
             QWindowSystemInterface::handleScreenGeometryChange(0);
@@ -745,31 +745,31 @@ static void keyUp(JNIEnv */*env*/, jobject /*thiz*/, jint key, jint unicode, jin
     QWindowSystemInterface::handleKeyEvent(0, QEvent::KeyRelease, mapAndroidKey(key), modifiers, QChar(unicode),true);
 }
 
-static void surfaceCreated(JNIEnv *env, jobject /*thiz*/, jobject jSurface, jint surfaceId)
+static void windowCreated(JNIEnv *env, jobject /*thiz*/, jobject jWindow, jint windowId)
 {
-    qDebug()<<"surfaceCreated"<<surfaceId;
+    qDebug()<<"windowCreated"<<windowId;
     Q_UNUSED(env);
-    m_surfaces[surfaceId] = env->NewGlobalRef(jSurface);
-    m_applicationControl->m_createSurfaceSemaphore.release();
+    m_windows[windowId] = env->NewGlobalRef(jWindow);
+    m_applicationControl->m_createWindowSemaphore.release();
 }
 
-static void surfaceChanged(JNIEnv *env, jobject /*thiz*/, jobject jSurface, jint surfaceId)
+static void windowChanged(JNIEnv *env, jobject /*thiz*/, jobject jWindow, jint windowId)
 {
-    qDebug()<<"surfaceChanged"<<surfaceId;
+    qDebug()<<"windowChanged"<<windowId;
     Q_UNUSED(env);
-    m_surfaces[surfaceId] = env->NewGlobalRef(jSurface);
-    m_applicationControl->m_resizeSurfaceSemaphore.release();
+    m_windows[windowId] = env->NewGlobalRef(jWindow);
+    m_applicationControl->m_resizeWindowSemaphore.release();
 }
 
-static void surfaceDestroyed(JNIEnv */*env*/, jobject /*thiz*/, jint surfaceId)
+static void windowDestroyed(JNIEnv */*env*/, jobject /*thiz*/, jint windowId)
 {
-    qDebug()<<"surfaceDestroyed";
+    qDebug()<<"windowDestroyed";
     m_applicationControl->m_pauseApplicationMutex.lock();
     if (!m_pauseApplication)
     {
-        qDebug()<<"surfaceDestroyed"<<surfaceId;
-        m_surfaces.remove(surfaceId);
-        m_applicationControl->m_destroySurfaceSemaphore.release();
+        qDebug()<<"windowDestroyed"<<windowId;
+        m_windows.remove(windowId);
+        m_applicationControl->m_destroyWindowSemaphore.release();
     }
     m_applicationControl->m_pauseApplicationMutex.unlock();
 }
@@ -790,14 +790,14 @@ static void setEglObject(JNIEnv *env, jobject /*thiz*/,  jobject eglObject)
 //    m_getProcAddressMethodID = env->GetMethodID((jclass)m_EglObject, "getProcAddress", "(I)Z");
 }
 
-static void lockSurface(JNIEnv */*env*/, jobject /*thiz*/)
+static void lockWindow(JNIEnv */*env*/, jobject /*thiz*/)
 {
-    m_applicationControl->m_surfaceMutex.lock();
+    m_applicationControl->m_windowMutex.lock();
 }
 
-static void unlockSurface(JNIEnv */*env*/, jobject /*thiz*/)
+static void unlockWindow(JNIEnv */*env*/, jobject /*thiz*/)
 {
-    m_applicationControl->m_surfaceMutex.unlock();
+    m_applicationControl->m_windowMutex.unlock();
 }
 
 static JNINativeMethod methods[] = {
@@ -807,11 +807,11 @@ static JNINativeMethod methods[] = {
     {"quitQtApp", "()V", (void *)quitQtApp},
     {"setEglObject", "(Ljava/lang/Object;)V", (void *)setEglObject},
     {"setDisplayMetrics", "(IIIIFF)V", (void *)setDisplayMetrics},
-    {"surfaceCreated", "(Ljava/lang/Object;I)V", (void *)surfaceCreated},
-    {"surfaceChanged", "(Ljava/lang/Object;I)V", (void *)surfaceChanged},
-    {"surfaceDestroyed", "(I)V", (void *)surfaceDestroyed},
-    {"lockSurface", "()V", (void *)lockSurface},
-    {"unlockSurface", "()V", (void *)unlockSurface},
+    {"windowCreated", "(Ljava/lang/Object;I)V", (void *)windowCreated},
+    {"windowChanged", "(Ljava/lang/Object;I)V", (void *)windowChanged},
+    {"windowDestroyed", "(I)V", (void *)windowDestroyed},
+    {"lockWindow", "()V", (void *)lockWindow},
+    {"unlockWindow", "()V", (void *)unlockWindow},
     {"touchBegin","()V",(void*)touchBegin},
     {"touchAdd","(IIZIIFF)V",(void*)touchAdd},
     {"touchEnd","(I)V",(void*)touchEnd},
@@ -843,15 +843,15 @@ static int registerNativeMethods(JNIEnv* env, const char* className,
         return JNI_FALSE;
     }
     m_applicationObject = env->NewGlobalRef(clazz);
-    m_createSurfaceMethodID = env->GetMethodID((jclass)m_applicationObject, "createSurface", "(ZIIIII)Z");
-    m_resizeSurfaceMethodID = env->GetMethodID((jclass)m_applicationObject, "resizeSurface", "(IIIII)Z");
-    m_destroySurfaceMethodID = env->GetMethodID((jclass)m_applicationObject, "destroySurface", "(I)Z");
-    m_setSurfaceVisiblityMethodID = env->GetMethodID((jclass)m_applicationObject, "setSurfaceVisiblity", "(IZ)V");
-    m_setSurfaceOpacityMethodID = env->GetMethodID((jclass)m_applicationObject, "setSurfaceOpacity", "(ID)V");
+    m_createWindowMethodID = env->GetMethodID((jclass)m_applicationObject, "createWindow", "(ZIIIII)Z");
+    m_resizeWindowMethodID = env->GetMethodID((jclass)m_applicationObject, "resizeWindow", "(IIIII)Z");
+    m_destroyWindowMethodID = env->GetMethodID((jclass)m_applicationObject, "destroyWindow", "(I)Z");
+    m_setWindowVisiblityMethodID = env->GetMethodID((jclass)m_applicationObject, "setWindowVisiblity", "(IZ)V");
+    m_setWindowOpacityMethodID = env->GetMethodID((jclass)m_applicationObject, "setWindowOpacity", "(ID)V");
     m_setWindowTitleMethodID = env->GetMethodID((jclass)m_applicationObject, "setWindowTitle", "(ILjava/lang/String;)V");
-    m_raiseSurfaceMethodID = env->GetMethodID((jclass)m_applicationObject, "raiseSurface", "(I)V");
+    m_raiseWindowMethodID = env->GetMethodID((jclass)m_applicationObject, "raiseWindow", "(I)V");
 #ifdef JNIGRPAHICS
-    m_redrawSurfaceMethodID = env->GetMethodID((jclass)m_applicationObject, "redrawSurface", "(IIIII)V");
+    m_redrawWindowMethodID = env->GetMethodID((jclass)m_applicationObject, "redrawWindow", "(IIIII)V");
 #else
     m_flushImageMethodID = env->GetMethodID((jclass)m_applicationObject, "flushImage", "([SIIIII)V");
 #endif

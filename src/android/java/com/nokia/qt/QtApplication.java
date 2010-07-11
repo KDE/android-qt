@@ -79,7 +79,7 @@ public class QtApplication
 	}
 
 	@SuppressWarnings("unused")
-	private boolean createSurface(final boolean OpenGl, final int id, final int l, final int t, final int r, final int b)
+	private boolean createWindow(final boolean OpenGl, final int id, final int l, final int t, final int r, final int b)
 	{
 		if (m_activity == null)
 			return false;
@@ -87,16 +87,16 @@ public class QtApplication
 			@Override
 			public void run() {
 				if (OpenGl)
-					m_view.addView(new QtGlSurface(m_activity, id, l, t, r, b));
+					m_view.addView(new QtGlWindow(m_activity, id, l, t, r, b));
 				else
-					m_view.addView(new QtSurface(m_activity, id, l, t, r, b));
+					m_view.addView(new QtWindow(m_activity, id, l, t, r, b));
 			}
 		});
 		return true;
 	}
 
 	@SuppressWarnings("unused")
-	private boolean resizeSurface(final int id, final int l, final int t, final int r, final int b)
+	private boolean resizeWindow(final int id, final int l, final int t, final int r, final int b)
 	{
 		if (m_activity == null)
 			return false;
@@ -104,17 +104,17 @@ public class QtApplication
 		m_activity.runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
-				QtSurfaceInterface surface = (QtSurfaceInterface) m_view.findViewById(id);
-				if (surface == null)
+				QtWindowInterface window = (QtWindowInterface) m_view.findViewById(id);
+				if (window == null)
 					return;
-				surface.Resize(l, t, r, b);
+				window.Resize(l, t, r, b);
 			}
 		});
 		return true;
 	}
 
 	@SuppressWarnings("unused")
-	private boolean destroySurface(final int id)
+	private boolean destroyWindow(final int id)
 	{
 		Log.i(QtTAG,"destroySurface "+id);
 		if (m_activity == null)
@@ -130,7 +130,7 @@ public class QtApplication
 	}
 
 	@SuppressWarnings("unused")
-	private void setSurfaceVisiblity(final int id, final boolean visible)
+	private void setWindowVisiblity(final int id, final boolean visible)
 	{
 		Log.i(QtTAG,"setSurfaceVisiblity "+id+" visible "+visible);
 		if (m_activity == null)
@@ -139,16 +139,16 @@ public class QtApplication
 		m_activity.runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
-				QtSurface surface = (QtSurface) m_view.findViewById(id);
-				if (surface == null)
+				QtWindow window = (QtWindow) m_view.findViewById(id);
+				if (window == null)
 					return;
-				surface.setVisibility(visible ? View.VISIBLE : View.INVISIBLE);
+				window.setVisibility(visible ? View.VISIBLE : View.INVISIBLE);
 			}
 		});
 	}
 
 	@SuppressWarnings("unused")
-	private void setSurfaceOpacity(final int id, final double alpha)
+	private void setWindowOpacity(final int id, final double alpha)
 	{
 		if (m_activity == null)
 			return;
@@ -156,10 +156,10 @@ public class QtApplication
 		m_activity.runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
-				QtSurface surface = (QtSurface) m_view.findViewById(id);
-				if (surface == null)
+				QtWindow window = (QtWindow) m_view.findViewById(id);
+				if (window == null)
 					return;
-//				surface.getHolder().getSurface().setAlpha((float) alpha);
+//				window.getHolder().getSurface().setAlpha((float) alpha);
 			}
 		});
 	}
@@ -179,7 +179,7 @@ public class QtApplication
 	}
 
 	@SuppressWarnings("unused")
-	private void raiseSurface(final int id)
+	private void raiseWindow(final int id)
 	{
 		Log.i(QtTAG,"raiseSurface "+id);
 		if (m_activity == null)
@@ -188,16 +188,16 @@ public class QtApplication
 		m_activity.runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
-				QtSurface surface = (QtSurface) m_view.findViewById(id);
-				if (surface == null)
+				QtWindow window = (QtWindow) m_view.findViewById(id);
+				if (window == null)
 					return;
-				m_view.bringChildToFront(surface);
+				m_view.bringChildToFront(window);
 			}
 		});
 	}
 
 	@SuppressWarnings("unused")
-	private void redrawSurface(final int id, final int left, final int top, final int right, final int bottom )
+	private void redrawWindow(final int id, final int left, final int top, final int right, final int bottom )
 	{
 		if (m_activity == null)
 			return;
@@ -205,10 +205,10 @@ public class QtApplication
 		m_activity.runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
-				QtSurface surface = (QtSurface) m_view.findViewById(id);
-				if (surface == null)
+				QtWindow window = (QtWindow) m_view.findViewById(id);
+				if (window == null)
 					return;
-				surface.invalidate(new Rect(left, top, right, bottom));
+				window.invalidate(new Rect(left, top, right, bottom));
 			}
 		});
 	}
@@ -240,11 +240,11 @@ public class QtApplication
 	public static native void keyUp(int key, int unicode, int modifier);
 	// keyboard methods
 
-	// surface methods
-	public static native void surfaceCreated(Object surface, int id);
-	public static native void surfaceChanged(Object surface, int id);
-	public static native void surfaceDestroyed(int id);
-	public static native void lockSurface();
-	public static native void unlockSurface();
-	// surface methods
+	// window methods
+	public static native void windowCreated(Object window, int id);
+	public static native void windowChanged(Object window, int id);
+	public static native void windowDestroyed(int id);
+	public static native void lockWindow();
+	public static native void unlockWindow();
+	// window methods
 }

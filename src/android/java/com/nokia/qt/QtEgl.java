@@ -120,12 +120,12 @@ public class QtEgl {
 
 	public boolean createSurface(SurfaceHolder holder, int surfaceId)
 	{
-		QtApplication.lockSurface();
+		QtApplication.lockWindow();
 		synchronized (this)
 		{
 			if (mEgl == null)
 			{
-				QtApplication.unlockSurface();
+				QtApplication.unlockWindow();
 				return false;
 			}
 
@@ -139,7 +139,7 @@ public class QtEgl {
 
 			if (eglSurface == EGL10.EGL_NO_SURFACE)
 			{
-				QtApplication.unlockSurface();
+				QtApplication.unlockWindow();
 				throw new RuntimeException("createWindowSurface failed");
 			}
 
@@ -147,7 +147,7 @@ public class QtEgl {
 //				throw new RuntimeException("eglMakeCurrent failed.");
 
 			mEglSurfaces.put(surfaceId, eglSurface);
-			QtApplication.unlockSurface();
+			QtApplication.unlockWindow();
 			return true;
 		}
 	}

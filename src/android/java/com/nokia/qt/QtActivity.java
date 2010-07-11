@@ -121,8 +121,8 @@ public class QtActivity extends Activity
 		outState.putInt("Surfaces", view.getChildCount());
 		for (int i=0;i<view.getChildCount();i++)
 		{
-			QtSurface surface=(QtSurface) view.getChildAt(i);
-			int surfaceInfo[]={((QtSurfaceInterface)surface).isOpenGl(), surface.getId(), surface.getLeft(), surface.getTop(), surface.getRight(), surface.getBottom()};
+			QtWindow surface=(QtWindow) view.getChildAt(i);
+			int surfaceInfo[]={((QtWindowInterface)surface).isOpenGl(), surface.getId(), surface.getLeft(), surface.getTop(), surface.getRight(), surface.getBottom()};
 			outState.putIntArray("Surface_"+i, surfaceInfo);
 		}
 	}
@@ -139,9 +139,9 @@ public class QtActivity extends Activity
 			int surfaceInfo[]= {0,0,0,0,0,0};
 			surfaceInfo=savedInstanceState.getIntArray("Surface_"+i);
 			if (surfaceInfo[0]==1) // OpenGl Surface
-				view.addView(new QtGlSurface(this, surfaceInfo[1], surfaceInfo[2], surfaceInfo[3], surfaceInfo[4], surfaceInfo[5]),i);
+				view.addView(new QtGlWindow(this, surfaceInfo[1], surfaceInfo[2], surfaceInfo[3], surfaceInfo[4], surfaceInfo[5]),i);
 			else
-				view.addView(new QtSurface(this, surfaceInfo[1], surfaceInfo[2], surfaceInfo[3], surfaceInfo[4], surfaceInfo[5]), i);				
+				view.addView(new QtWindow(this, surfaceInfo[1], surfaceInfo[2], surfaceInfo[3], surfaceInfo[4], surfaceInfo[5]), i);				
 		}		
 	}
 }

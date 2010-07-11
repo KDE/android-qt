@@ -14,14 +14,14 @@ bool QAndroidGLWindowSurface::create(QGLWidget* widget, QGLFormat&)
 
 void QAndroidGLWindowSurface::setGeometry(const QRect& rect)
 {
-    QtAndroid::resizeSurface(m_surfaceId, rect.left(), rect.top(),
+    QtAndroid::resizeWindow(m_surfaceId, rect.left(), rect.top(),
                                             rect.right(), rect.bottom());
 }
 
 void QAndroidGLWindowSurface::beginPaint(const QRegion &region)
 {
     if (!m_locked)
-        QtAndroid::lockSurface();
+        QtAndroid::lockWindow();
     m_locked=true;
     QGLWindowSurface::beginPaint(region);
 }
@@ -29,6 +29,6 @@ void QAndroidGLWindowSurface::beginPaint(const QRegion &region)
 void QAndroidGLWindowSurface::endPaint(const QRegion &region)
 {
     QGLWindowSurface::endPaint(region);
-    QtAndroid::unlockSurface();
+    QtAndroid::unlockWindow();
     m_locked=false;
 }
