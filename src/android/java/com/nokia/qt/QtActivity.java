@@ -57,9 +57,11 @@ public class QtActivity extends Activity
 		requestWindowFeature(Window.FEATURE_NO_TITLE);
 		try
 		{
+			String path=getFilesDir().getAbsolutePath();
+			Log.i(QtApplication.QtTAG, path);
 			QtMainView view = new QtMainView(this);
-			QtApplication.setView(view);
 			setContentView(view);
+			QtApplication.setView(view);
 
 			if (null == getLastNonConfigurationInstance())
 			{
@@ -75,21 +77,24 @@ public class QtActivity extends Activity
 		}
 	}
 
-//	@Override
-//	protected void onPause()
-//	{
-//		Log.i(QtApplication.QtTAG, "onPause");
-//		QtApplication.pauseQtApp();
-//		super.onPause();
-//	}
-//
-//	@Override
-//	protected void onResume()
-//	{
-//		Log.i(QtApplication.QtTAG, "onResume");
-//		QtApplication.resumeQtApp();
-//		super.onRestart();
-//	}
+	@Override
+	protected void onPause()
+	{
+		if (!quitApp)
+		{
+			Log.i(QtApplication.QtTAG, "onPause");
+			QtApplication.pauseQtApp();
+		}
+		super.onPause();
+	}
+
+	@Override
+	protected void onResume()
+	{
+		Log.i(QtApplication.QtTAG, "onResume");
+		QtApplication.resumeQtApp();
+		super.onRestart();
+	}
 
 	@Override
 	public Object onRetainNonConfigurationInstance()
@@ -106,8 +111,6 @@ public class QtActivity extends Activity
 		if (quitApp)
 		{
 			Log.i(QtApplication.QtTAG, "onDestroy");
-//			QtApplication.resumeQtApp();
-//			QtApplication.unlockSurface();
 			QtApplication.quitQtApp();
 		}
 	}
@@ -122,11 +125,12 @@ public class QtActivity extends Activity
 		for (int i=0;i<view.getChildCount();i++)
 		{
 			QtWindow surface=(QtWindow) view.getChildAt(i);
+			Log.i(QtApplication.QtTAG,"id"+surface.getId()+","+surface.getLeft()+","+surface.getTop()+","+surface.getRight()+","+surface.getBottom());
 			int surfaceInfo[]={((QtWindowInterface)surface).isOpenGl(), surface.getId(), surface.getLeft(), surface.getTop(), surface.getRight(), surface.getBottom()};
 			outState.putIntArray("Surface_"+i, surfaceInfo);
 		}
 	}
-	
+
 	@Override
 	protected void onRestoreInstanceState(Bundle savedInstanceState) {
 		Log.i(QtApplication.QtTAG, "onRestoreInstanceState");

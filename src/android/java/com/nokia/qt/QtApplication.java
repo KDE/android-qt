@@ -116,7 +116,7 @@ public class QtApplication
 	@SuppressWarnings("unused")
 	private boolean destroyWindow(final int id)
 	{
-		Log.i(QtTAG,"destroySurface "+id);
+		Log.i(QtTAG,"destroyWindow "+id);
 		if (m_activity == null)
 			return false;
 

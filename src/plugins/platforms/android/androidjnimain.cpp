@@ -86,6 +86,7 @@ static inline void checkPauseApplication()
     m_applicationControl->m_pauseApplicationMutex.lock();
     if (m_pauseApplication)
     {
+        qDebug()<<"pauseApplication"<<m_windows.size();
         m_applicationControl->m_pauseApplicationMutex.unlock();
         m_applicationControl->m_pauseApplicationSemaphore.acquire();
         //wait until all windows are created
@@ -93,8 +94,7 @@ static inline void checkPauseApplication()
         m_applicationControl->m_pauseApplicationMutex.lock();
         m_pauseApplication=false;
         m_applicationControl->m_pauseApplicationMutex.unlock();
-        QWindowSystemInterface::handleScreenAvailableGeometryChange(0);
-        QWindowSystemInterface::handleScreenGeometryChange(0);
+        qDebug()<<"pauseApplication done";
     }
     else
         m_applicationControl->m_pauseApplicationMutex.unlock();
@@ -465,11 +465,8 @@ static void setDisplayMetrics(JNIEnv* /*env*/, jclass /*clazz*/,
         mAndroidGraphicsSystem->setDesktopSize(desktopWidthPixels,desktopHeightPixels);
         mAndroidGraphicsSystem->setDisplayMetrics(qRound((double)widthPixels   / xdpi * 100 / 2.54 ),
                                                   qRound((double)heightPixels / ydpi *100  / 2.54 ));
-        if (!m_windows.size())
-        {
-            QWindowSystemInterface::handleScreenAvailableGeometryChange(0);
-            QWindowSystemInterface::handleScreenGeometryChange(0);
-        }
+        QWindowSystemInterface::handleScreenAvailableGeometryChange(0);
+        QWindowSystemInterface::handleScreenGeometryChange(0);
     }
 }
 
