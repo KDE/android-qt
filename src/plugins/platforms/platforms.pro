@@ -10,5 +10,4 @@ qpa:x11 {
     SUBDIRS += testlite
 }
 
-embedded_lite:CONFIG(android): SUBDIRS += android android_sw
-
+qpa:CONFIG(android): SUBDIRS += android # android_sw

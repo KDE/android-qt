@@ -1,5 +1,4 @@
 #include <android/log.h>
-#include <pthread.h>
 #include <qcoreapplication.h>
 #include <qimage.h>
 #include <qpoint.h>
@@ -18,11 +17,7 @@
 
 #include <qabstracteventdispatcher.h>
 
-#ifdef JNIGRPAHICS
 #include <android/bitmap.h>
-#else
-static jmethodID m_flushImageMethodID=0;
-#endif
 
 #include <qmap.h>
 
@@ -61,9 +56,7 @@ static jmethodID m_setWindowVisiblityMethodID=0;
 static jmethodID m_setWindowOpacityMethodID=0;
 static jmethodID m_setWindowTitleMethodID=0;
 static jmethodID m_raiseWindowMethodID=0;
-#ifdef JNIGRPAHICS
 static jmethodID m_redrawWindowMethodID=0;
-#endif
 // Java window methods
 
 // Java EGL methods
@@ -162,8 +155,6 @@ namespace QtAndroid
         unsigned width=swidth-sposx<(unsigned)destinationRect.width()?swidth-sposx:destinationRect.width();
         unsigned height=sheight-sposy<(unsigned)destinationRect.height()?sheight-sposy:destinationRect.height();
 
-        //qDebug()<<ibpl<<sbpl<<sxpos<<sypos<<width<<height<<sxpos+width<<sypos+height;
-
         jclass object=env->GetObjectClass(m_applicationObject);
         for (unsigned y=0;y<height;y++)
             memcpy(screenBits+y*sbpl+sposx*bpp,
@@ -181,10 +172,6 @@ namespace QtAndroid
     void setAndroidGraphicsSystem(QAndroidPlatformIntegration * androidGraphicsSystem)
     {
         mAndroidGraphicsSystem=androidGraphicsSystem;
-    }
-
-    void quitApplication()
-    {
     }
 
     bool createWindow(bool openGl, int windowId, int l, int t, int r, int b)
@@ -380,36 +367,13 @@ namespace QtAndroid
 
 }
 
-extern "C" int main(int, char **); //use the standard main method to start the application
-static void * startMainMethod(void * /*data*/)
+static void startQtAndroidPlugin(JNIEnv* /*env*/, jobject /*object*/)
 {
-    char ** params;
-    params=(char**)malloc(sizeof(char*)*2);
-    params[0]=(char*)malloc(20);
-    strcpy(params[0],"QtApp");
-    params[1]=(char*)malloc(20);
-    strcpy(params[1],"-platform");
-    params[2]=(char*)malloc(20);
-    strcpy(params[2],"android");
-    int ret = main(3, params);
-    free(params[2]);
-    free(params[1]);
-    free(params[0]);
-    free(params);
-    Q_UNUSED(ret);
-    m_applicationControl->m_quitAppSemaphore.release();
-    return NULL;
-}
-
-static jboolean startQtApp(JNIEnv* /*env*/, jobject /*object*/)
-{
-    qDebug()<<"startQtApp";
+    qDebug()<<"startQtAndroidPlugin";
     m_windows.clear();
     mAndroidGraphicsSystem=0;
     m_pauseApplication=false;
     m_applicationControl = new ApplicationControl();
-    pthread_t appThread;
-    return pthread_create(&appThread, NULL, startMainMethod, NULL)==0;
 }
 
 static void pauseQtApp(JNIEnv */*env*/, jobject /*thiz*/)
@@ -439,13 +403,11 @@ static void resumeQtApp(JNIEnv */*env*/, jobject /*thiz*/)
     m_applicationControl->m_windowMutex.unlock();
 }
 
-static void quitQtApp(JNIEnv* /*env*/, jclass /*clazz*/)
+static void quitQtAndroidPlugin(JNIEnv* /*env*/, jclass /*clazz*/)
 {
-    QApplication::postEvent(qApp, new QEvent(QEvent::Quit));
-    m_applicationControl->m_quitAppSemaphore.acquire();
     delete m_applicationControl;
     m_applicationControl=0;
-    qDebug()<<"quitQtApp";
+    qDebug()<<"quitQtAndroidPlugin";
 }
 
 static void setDisplayMetrics(JNIEnv* /*env*/, jclass /*clazz*/,
@@ -523,12 +485,8 @@ static void touchAdd(JNIEnv */*env*/, jobject /*thiz*/, jint id, jint action, jb
                            (double)m_desktopWidthPixels*size,
                            (double)m_desktopHeightPixels*size);
     m_touchPoints.push_back(touchPoint);
-//    if (id==1)
-//        qDebug()<<"Duda"<<x<<y<<touchPoint.normalPosition;
-//        qDebug()<<"Duda"<<id<<action<<primary<<x<<y<<size<<pressure
-//                <<touchPoint.area<<touchPoint.normalPosition
-//                <<m_desktopWidthPixels<<m_desktopHeightPixels;
 }
+
 static void touchEnd(JNIEnv */*env*/, jobject /*thiz*/, jint action)
 {
     QEvent::Type eventType=QEvent::None;
@@ -566,6 +524,7 @@ static int mapAndroidKey(int key)
             return Qt::Key_Apostrophe;
 
         case 0x00000004: //KEYCODE_BACK
+            qDebug()<<"KEYCODE_BACK !!!!";
             return Qt::Key_Close;
 
         case 0x00000049:
@@ -798,10 +757,10 @@ static void unlockWindow(JNIEnv */*env*/, jobject /*thiz*/)
 }
 
 static JNINativeMethod methods[] = {
-    {"startQtApp", "()V", (void *)startQtApp},
+    {"startQtAndroidPlugin", "()V", (void *)startQtAndroidPlugin},
     {"pauseQtApp", "()V", (void *)pauseQtApp},
     {"resumeQtApp", "()V", (void *)resumeQtApp},
-    {"quitQtApp", "()V", (void *)quitQtApp},
+    {"quitQtAndroidPlugin", "()V", (void *)quitQtAndroidPlugin},
     {"setEglObject", "(Ljava/lang/Object;)V", (void *)setEglObject},
     {"setDisplayMetrics", "(IIIIFF)V", (void *)setDisplayMetrics},
     {"windowCreated", "(Ljava/lang/Object;I)V", (void *)windowCreated},
@@ -847,11 +806,7 @@ static int registerNativeMethods(JNIEnv* env, const char* className,
     m_setWindowOpacityMethodID = env->GetMethodID((jclass)m_applicationObject, "setWindowOpacity", "(ID)V");
     m_setWindowTitleMethodID = env->GetMethodID((jclass)m_applicationObject, "setWindowTitle", "(ILjava/lang/String;)V");
     m_raiseWindowMethodID = env->GetMethodID((jclass)m_applicationObject, "raiseWindow", "(I)V");
-#ifdef JNIGRPAHICS
     m_redrawWindowMethodID = env->GetMethodID((jclass)m_applicationObject, "redrawWindow", "(IIIII)V");
-#else
-    m_flushImageMethodID = env->GetMethodID((jclass)m_applicationObject, "flushImage", "([SIIIII)V");
-#endif
     return JNI_TRUE;
 }
 
@@ -873,7 +828,7 @@ typedef union {
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* /*reserved*/)
 {
-    __android_log_print(ANDROID_LOG_INFO,"Qt", "qt start");
+    __android_log_print(ANDROID_LOG_INFO,"Qt", "qt android plugin start");
     UnionJNIEnvToVoid uenv;
     uenv.venv = NULL;
     m_javaVM = 0;

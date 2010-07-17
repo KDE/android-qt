@@ -12,7 +12,7 @@ public class QtMainView extends RelativeLayout
 	{
 		super(context);
 	}
-	
+
 	@Override
 	protected void onSizeChanged(int w, int h, int oldw, int oldh)
 	{

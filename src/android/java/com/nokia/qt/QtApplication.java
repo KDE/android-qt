@@ -57,12 +57,15 @@ public class QtApplication
 	{
 		try
 		{
-			File f = new File("/data/local/lib/lib" + lib + ".so");
+			String library = "/data/local/lib/lib" + lib + ".so";
+			File f = new File(library);
 			if (f.exists())
-				System.load("/data/local/lib/lib" + lib + ".so");
+				System.load(library);
 			else
 				System.loadLibrary(lib);
+
 			//InitializeOpenGL();
+			startQtAndroidPlugin();
 			startQtApp();
 		}
 		catch (Exception e)
@@ -212,11 +215,18 @@ public class QtApplication
 			}
 		});
 	}
+
+	@SuppressWarnings("unused")
+	private void quitApp()
+	{
+		m_activity.finish();
+	}	
 	// application methods
 	public static native void startQtApp();
 	public static native void pauseQtApp();
 	public static native void resumeQtApp();
-	public static native void quitQtApp();
+	public static native void startQtAndroidPlugin();
+	public static native void quitQtAndroidPlugin();
 	public static native void setEglObject(Object eglObject);
 	// application methods
 

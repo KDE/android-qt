@@ -2,13 +2,20 @@ TARGET = QtAndroid
 
 include(../../qpluginbase.pri)
 
-CONFIG -= dll
-CONFIG += staticlib static
-DESTDIR	 = $$QMAKE_LIBDIR_QT
+CONFIG += dll
+DESTDIR = $$QMAKE_LIBDIR_QT
 
-CONFIG(jnigraphics) : DEFINES += JNIGRPAHICS
+DEFINES = QT_STATICPLUGIN
 
-SOURCES =   main.cpp \
+CONFIG(android-8) : LIBS += -ljnigraphics
+else{
+                    INCLUDEPATH += $$QT_SOURCE_TREE/src/plugins/platforms/android/native/include
+                    SOURCES += native/graphics/jni/bitmap.cpp
+CONFIG(android-4) : LIBS += -landroid_runtime -lsgl
+             else : LIBS += -landroid_runtime -lskia
+}
+
+SOURCES +=  main.cpp \
             androidjnimain.cpp \
             qandroidplatformintegration.cpp \
             qandroidplatformscreen.cpp \

@@ -39,6 +39,7 @@
 **
 ****************************************************************************/
 
+#include "QtGui/qplatformintegration_qpa.h"
 #include "QtGui/qwidget.h"
 #include "QtGui/qevent.h"
 #include "QtGui/qapplication.h"
@@ -74,7 +75,7 @@ void setParentForChildrenOfWidget(QPlatformWindow *window, const QWidget *widget
 void QWidgetPrivate::create_sys(WId window, bool initializeWindow, bool destroyOldWindow)
 {
     Q_Q(QWidget);
-
+    qDebug()<<"QWidgetPrivate::create_sys 1";
     Q_UNUSED(window);
     Q_UNUSED(initializeWindow);
     Q_UNUSED(destroyOldWindow);
@@ -88,19 +89,25 @@ void QWidgetPrivate::create_sys(WId window, bool initializeWindow, bool destroyO
     QWindowSurface *surface = q->windowSurface();
     QPlatformWindow *platformWindow = q->platformWindow();
 
+    qDebug()<<"QWidgetPrivate::create_sys 2"<<surface<<platformWindow<<this;
     if (!platformWindow) {
+        qDebug()<<QApplicationPrivate::platformIntegration()<<QApplicationPrivate::platformIntegration()->hasOpenGL()<<QApplicationPrivate::platformIntegration()->createPlatformWindow(0);
         platformWindow = QApplicationPrivate::platformIntegration()->createPlatformWindow(q);
     }
+    qDebug()<<"QWidgetPrivate::create_sys 2 1"<<surface<<platformWindow;
     Q_ASSERT(platformWindow);
 
+    qDebug()<<"QWidgetPrivate::create_sys 3"<<surface<<platformWindow;
     if (!surface) {
         surface = QApplicationPrivate::platformIntegration()->createWindowSurface(q,platformWindow->winId());
     }
 
+    qDebug()<<"QWidgetPrivate::create_sys 4";
     data.window_flags = q->platformWindow()->setWindowFlags(data.window_flags);
 
     setWinId(q->platformWindow()->winId());
 
+    qDebug()<<"QWidgetPrivate::create_sys 5";
     //first check children. then find who for parent.
     setParentForChildrenOfWidget(platformWindow,q);
     if (QWidget *nativeParent = q->nativeParentWidget()) {
@@ -109,8 +116,9 @@ void QWidgetPrivate::create_sys(WId window, bool initializeWindow, bool destroyO
         }
     }
 
+    qDebug()<<"QWidgetPrivate::create_sys 6";
     QApplicationPrivate::platformIntegration()->moveToScreen(q, screenNumber);
-//    qDebug() << "create_sys" << q << q->internalWinId();
+    qDebug() << "QWidgetPrivate::create_sys 7" << q << q->internalWinId();
 }
 
 void QWidget::destroy(bool destroyWindow, bool destroySubWindows)

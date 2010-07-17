@@ -39,13 +39,17 @@
 ****************************************************************************/
 
 #include <QApplication>
+#include <QDebug>
 
 #include "mainwindow.h"
 
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
+    qDebug()<<"fingerpaint 1";
     MainWindow window;
+    qDebug()<<"fingerpaint 2";
     window.show();
+    qDebug()<<"fingerpaint 3";
     return app.exec();
 }

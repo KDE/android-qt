@@ -11,7 +11,6 @@ class QString;
 namespace QtAndroid
 {
     void setAndroidGraphicsSystem(QAndroidPlatformIntegration * androidGraphicsSystem);
-    void quitApplication();
 
     void flushImage(int windowId, const QPoint & pos, const QImage & image, const QRect & rect);
 
