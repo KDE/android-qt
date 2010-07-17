@@ -7432,17 +7432,17 @@ void QWidget::setVisible(bool visible)
             return;
 
         Q_D(QWidget);
+        QWidget *pw = parentWidget();
 
         // Designer uses a trick to make grabWidget work without showing
-        if (!isWindow() && parentWidget() && parentWidget()->isVisible()
-            && !parentWidget()->testAttribute(Qt::WA_WState_Created))
-            parentWidget()->window()->d_func()->createRecursively();
+        if (!isWindow() && pw && pw->isVisible()
+            && !pw->testAttribute(Qt::WA_WState_Created))
+            pw->window()->d_func()->createRecursively();
 
         //we have to at least create toplevels before applyX11SpecificCommandLineArguments
         //but not children of non-visible parents
-        QWidget *pw = parentWidget();
         if (!testAttribute(Qt::WA_WState_Created)
-            && (isWindow() || pw->testAttribute(Qt::WA_WState_Created))) {
+            && (isWindow() || (pw && pw->testAttribute(Qt::WA_WState_Created)))) {
             create();
         }
 

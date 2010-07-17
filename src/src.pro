@@ -30,6 +30,7 @@ contains(QT_CONFIG, script): SRC_SUBDIRS += src_script
 contains(QT_CONFIG, declarative): SRC_SUBDIRS += src_declarative
 SRC_SUBDIRS += src_plugins
 contains(QT_CONFIG, declarative): SRC_SUBDIRS += src_imports
+CONFIG(android): SRC_SUBDIRS += src_android
 
 # s60installs need to be at the end, because projects.pro does an ordered build,
 # and s60installs depends on all the others.
@@ -87,6 +88,8 @@ src_webkit.subdir = $$QT_SOURCE_TREE/src/3rdparty/webkit/WebCore
 src_webkit.target = sub-webkit
 src_declarative.subdir = $$QT_SOURCE_TREE/src/declarative
 src_declarative.target = sub-declarative
+src_android.subdir = $$QT_SOURCE_TREE/src/android/cpp
+src_android.target = sub-android
 
 #CONFIG += ordered
 !wince*:!ordered {
@@ -130,6 +133,7 @@ src_declarative.target = sub-declarative
       src_phonon.depends +=  src_dbus
    }
    contains(QT_CONFIG, opengl)|contains(QT_CONFIG, opengles1)|contains(QT_CONFIG, opengles2): src_plugins.depends += src_opengl
+   src_android.depends = src_corelib
 }
 
 

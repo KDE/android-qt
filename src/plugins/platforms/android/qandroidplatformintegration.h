@@ -41,15 +41,12 @@
 
 #ifndef QGRAPHICSSYSTEM_MINIMAL_H
 #define QGRAPHICSSYSTEM_MINIMAL_H
-
 #include <QPlatformIntegration>
-#include <jni.h>
-#include <QtOpenGL/private/qpixmapdata_gl_p.h>
-#include <QtOpenGL/private/qwindowsurface_gl_p.h>
 
 QT_BEGIN_NAMESPACE
 
 class QAndroidPlatformScreen;
+class QPlatformGLContext;
 class QAndroidPlatformIntegration : public QPlatformIntegration
 {
 public:

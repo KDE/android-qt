@@ -31,8 +31,8 @@ public class QtWindow extends View implements QtWindowInterface
 	protected void onDraw(Canvas canvas)
 	{
     	QtApplication.lockWindow();
-		canvas.drawBitmap(bitmap, canvas.getClipBounds(), canvas.getClipBounds(), null);
-    	//canvas.drawBitmap(bitmap, 0, 0, null);
+		//canvas.drawBitmap(bitmap, canvas.getClipBounds(), canvas.getClipBounds(), null);
+    	canvas.drawBitmap(bitmap, 0, 0, null);
         QtApplication.unlockWindow();
 	}
 	
