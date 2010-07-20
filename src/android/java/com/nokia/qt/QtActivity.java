@@ -75,7 +75,7 @@ public class QtActivity extends Activity
 			Log.e(QtApplication.QtTAG, "Can't create main activity", e);
 		}
 	}
-//
+
 //	@Override
 //	protected void onPause()
 //	{

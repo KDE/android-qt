@@ -39,7 +39,6 @@
 **
 ****************************************************************************/
 
-#include "QtGui/qplatformintegration_qpa.h"
 #include "QtGui/qwidget.h"
 #include "QtGui/qevent.h"
 #include "QtGui/qapplication.h"
@@ -49,6 +48,7 @@
 #include "QtGui/private/qapplication_p.h"
 #include "QtGui/qdesktopwidget.h"
 #include "QtGui/qplatformwindow_qpa.h"
+#include "QtGui/qplatformintegration_qpa.h"
 
 #include <QtGui/QPlatformCursor>
 
@@ -89,10 +89,10 @@ void QWidgetPrivate::create_sys(WId window, bool initializeWindow, bool destroyO
     QWindowSurface *surface = q->windowSurface();
     QPlatformWindow *platformWindow = q->platformWindow();
 
-    qDebug()<<"QWidgetPrivate::create_sys 2"<<surface<<platformWindow<<this;
+    qDebug()<<"QWidgetPrivate::create_sys 2"<<surface<<platformWindow<<this<<QApplicationPrivate::platformIntegration();
     if (!platformWindow) {
-        qDebug()<<QApplicationPrivate::platformIntegration()<<QApplicationPrivate::platformIntegration()->hasOpenGL()<<QApplicationPrivate::platformIntegration()->createPlatformWindow(0);
-        platformWindow = QApplicationPrivate::platformIntegration()->createPlatformWindow(q);
+	qDebug()<<QApplicationPrivate::platformIntegration()<<QApplicationPrivate::platformIntegration()->hasOpenGL()<<QApplicationPrivate::platformIntegration()->createPlatformWindow(0);
+	platformWindow = QApplicationPrivate::platformIntegration()->createPlatformWindow(q);
     }
     qDebug()<<"QWidgetPrivate::create_sys 2 1"<<surface<<platformWindow;
     Q_ASSERT(platformWindow);

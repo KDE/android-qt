@@ -69,6 +69,7 @@ QAndroidPlatformIntegration::QAndroidPlatformIntegration(bool useGL)
     m_mainThread=QThread::currentThread();
     QtAndroid::setAndroidGraphicsSystem(this);
     m_useGL=useGL;
+    qDebug()<<"QAndroidPlatformIntegration::QAndroidPlatformIntegration"<<this;
 }
 
 void QAndroidPlatformIntegration::setDefaultDisplayMetrics(int gw, int gh, int sw, int sh)

@@ -50,15 +50,15 @@ class QPlatformGLContext;
 class QAndroidPlatformIntegration : public QPlatformIntegration
 {
 public:
-    QAndroidPlatformIntegration(bool useGL=false);
+    explicit QAndroidPlatformIntegration(bool useGL=false);
 
-    QPixmapData *createPixmapData(QPixmapData::PixelType type) const;
-    QWindowSurface *createWindowSurface(QWidget *widget, WId winId) const;
-    QPlatformWindow *createPlatformWindow(QWidget *widget, WId winId = 0) const;
+    virtual QPlatformWindow *createPlatformWindow(QWidget *widget, WId winId = 0) const;
+    virtual QPixmapData *createPixmapData(QPixmapData::PixelType type) const;
+    virtual QWindowSurface *createWindowSurface(QWidget *widget, WId winId) const;
 
-    QList<QPlatformScreen *> screens() const { return mScreens; }
+    virtual QList<QPlatformScreen *> screens() const { return mScreens; }
 
-    QAndroidPlatformScreen * getPrimaryScreen(){return mPrimaryScreen;}
+    virtual QAndroidPlatformScreen * getPrimaryScreen(){return mPrimaryScreen;}
 
     virtual void setDesktopSize(int width, int height);
     virtual void setDisplayMetrics(int width, int height);
