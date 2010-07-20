@@ -369,6 +369,7 @@ void QComboBoxPrivateContainer::timerEvent(QTimerEvent *timerEvent)
     if (timerEvent->timerId() == adjustSizeTimer.timerId()) {
         adjustSizeTimer.stop();
         if (combo->sizeAdjustPolicy() == QComboBox::AdjustToContents) {
+            combo->updateGeometry();
             combo->adjustSize();
             combo->update();
         }
@@ -1298,7 +1299,7 @@ QComboBox::~QComboBox()
     By default, this property has a value of 10.
 
     \note This property is ignored for non-editable comboboxes in styles that returns
-    false for QStyle::SH_ComboBox_Popup such as the Mac style or the Gtk+ Style.
+    true for QStyle::SH_ComboBox_Popup such as the Mac style or the Gtk+ Style.
 */
 int QComboBox::maxVisibleItems() const
 {
@@ -2008,11 +2009,18 @@ void QComboBox::setCurrentIndex(int index)
 void QComboBoxPrivate::setCurrentIndex(const QModelIndex &mi)
 {
     Q_Q(QComboBox);
-    bool indexChanged = (mi != currentIndex);
+
+    QModelIndex normalized;
+    if (mi.column() != modelColumn)
+        normalized = model->index(mi.row(), modelColumn, mi.parent());
+    if (!normalized.isValid())
+        normalized = mi;    // Fallback to passed index.
+
+    bool indexChanged = (normalized != currentIndex);
     if (indexChanged)
-        currentIndex = QPersistentModelIndex(mi);
+        currentIndex = QPersistentModelIndex(normalized);
     if (lineEdit) {
-        QString newText = q->itemText(currentIndex.row());
+        QString newText = q->itemText(normalized.row());
         if (lineEdit->text() != newText)
             lineEdit->setText(newText);
         updateLineEditGeometry();

@@ -125,6 +125,7 @@ public:
     void *memory;
     int size;
     QString key;
+    QString nativeKey;
     QSharedMemory::SharedMemoryError error;
     QString errorString;
 #ifndef QT_NO_SYSTEMSEMAPHORE

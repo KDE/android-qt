@@ -297,7 +297,7 @@ class Q_GUI_EXPORT QApplicationPrivate : public QCoreApplicationPrivate
 {
     Q_DECLARE_PUBLIC(QApplication)
 public:
-    QApplicationPrivate(int &argc, char **argv, QApplication::Type type);
+    QApplicationPrivate(int &argc, char **argv, QApplication::Type type, int flags);
     ~QApplicationPrivate();
 
 #if defined(Q_WS_X11)
@@ -520,8 +520,6 @@ public:
     static QApplicationPrivate *instance() { return self; }
 
     static QString styleOverride;
-
-    static int app_compile_version;
 
 #ifdef QT_KEYPAD_NAVIGATION
     static QWidget *oldEditFocus;

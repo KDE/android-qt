@@ -57,16 +57,51 @@
 #include <private/qgl_p.h>
 #include <qglshaderprogram.h>
 
+// #define QT_GL_TEXTURE_GLYPH_CACHE_DEBUG
 
 QT_BEGIN_NAMESPACE
 
 class QGL2PaintEngineExPrivate;
 
-class Q_OPENGL_EXPORT QGLTextureGlyphCache : public QObject, public QImageTextureGlyphCache
+struct QGLGlyphTexture
 {
-    Q_OBJECT
+    QGLGlyphTexture(const QGLContext *ctx)
+        : m_width(0)
+        , m_height(0)
+    {
+        if (ctx && !ctx->d_ptr->workaround_brokenFBOReadBack)
+            glGenFramebuffers(1, &m_fbo);
+
+#ifdef QT_GL_TEXTURE_GLYPH_CACHE_DEBUG
+        qDebug(" -> QGLGlyphTexture() %p for context %p.", this, ctx);
+#endif
+    }
+
+    ~QGLGlyphTexture() {
+        const QGLContext *ctx = QGLContext::currentContext();
+#ifdef QT_GL_TEXTURE_GLYPH_CACHE_DEBUG
+        qDebug("~QGLGlyphTexture() %p for context %p.", this, ctx);
+#endif
+        // At this point, the context group is made current, so it's safe to
+        // release resources without a makeCurrent() call
+        if (ctx) {
+            if (!ctx->d_ptr->workaround_brokenFBOReadBack)
+                glDeleteFramebuffers(1, &m_fbo);
+            if (m_width || m_height)
+                glDeleteTextures(1, &m_texture);
+        }
+    }
+
+    GLuint m_texture;
+    GLuint m_fbo;
+    int m_width;
+    int m_height;
+};
+
+class Q_OPENGL_EXPORT QGLTextureGlyphCache : public QImageTextureGlyphCache
+{
 public:
-    QGLTextureGlyphCache(QGLContext *context, QFontEngineGlyphCache::Type type, const QTransform &matrix);
+    QGLTextureGlyphCache(const QGLContext *context, QFontEngineGlyphCache::Type type, const QTransform &matrix);
     ~QGLTextureGlyphCache();
 
     virtual void createTextureData(int width, int height);
@@ -74,47 +109,33 @@ public:
     virtual void fillTexture(const Coord &c, glyph_t glyph);
     virtual int glyphPadding() const;
 
-    inline GLuint texture() const { return m_texture; }
+    inline GLuint texture() const {
+        QGLTextureGlyphCache *that = const_cast<QGLTextureGlyphCache *>(this);
+        QGLGlyphTexture *glyphTexture = that->m_textureResource.value(ctx);
+        return glyphTexture ? glyphTexture->m_texture : 0;
+    }
 
-    inline int width() const { return m_width; }
-    inline int height() const { return m_height; }
+    inline int width() const {
+        QGLTextureGlyphCache *that = const_cast<QGLTextureGlyphCache *>(this);
+        QGLGlyphTexture *glyphTexture = that->m_textureResource.value(ctx);
+        return glyphTexture ? glyphTexture->m_width : 0;
+    }
+    inline int height() const {
+        QGLTextureGlyphCache *that = const_cast<QGLTextureGlyphCache *>(this);
+        QGLGlyphTexture *glyphTexture = that->m_textureResource.value(ctx);
+        return glyphTexture ? glyphTexture->m_height : 0;
+    }
 
     inline void setPaintEnginePrivate(QGL2PaintEngineExPrivate *p) { pex = p; }
 
-
-public Q_SLOTS:
-    void contextDestroyed(const QGLContext *context) {
-        if (context == ctx) {
-            const QGLContext *nextCtx = qt_gl_transfer_context(ctx);
-            if (!nextCtx) {
-                // the context may not be current, so we cannot directly
-                // destroy the fbo and texture here, but since the context
-                // is about to be destroyed, the GL server will do the
-                // clean up for us anyway
-                m_fbo = 0;
-                m_texture = 0;
-                ctx = 0;
-            } else {
-                // since the context holding the texture is shared, and
-                // about to be destroyed, we have to transfer ownership
-                // of the texture to one of the share contexts
-                ctx = const_cast<QGLContext *>(nextCtx);
-            }
-        }
-    }
+    void setContext(const QGLContext *context);
+    inline const QGLContext *context() const { return ctx; }
 
 private:
-    QGLContext *ctx;
+    QGLContextGroupResource<QGLGlyphTexture> m_textureResource;
 
+    const QGLContext *ctx;
     QGL2PaintEngineExPrivate *pex;
-
-    GLuint m_texture;
-    GLuint m_fbo;
-
-    int m_width;
-    int m_height;
-
-    QGLShaderProgram *m_program;
 };
 
 QT_END_NAMESPACE

@@ -6,7 +6,7 @@ include(qt-defines.qdocconf)
 
 project                 = Qt Designer
 description             = Qt Designer Manual
-url                     = http://qt.nokia.com/doc/4.7
+url                     = http://qt.nokia.com/doc/4.8
 
 indexes                 = $QT_BUILD_TREE/doc-build/html-qt/qt.index
 
@@ -44,7 +44,7 @@ qhp.Designer.extraFiles          = images/bg_l.png \
 									style/style_ie8.css \
                              	    style/style.css
 
-qhp.Designer.filterAttributes    = qt 4.7.0 tools designer
+qhp.Designer.filterAttributes    = qt 4.8.0 tools designer
 qhp.Designer.customFilters.Designer.name = Qt Designer Manual
 qhp.Designer.customFilters.Designer.filterAttributes = qt tools designer
 qhp.Designer.subprojects         = manual examples

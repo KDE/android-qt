@@ -4054,7 +4054,7 @@ void QWindowsXPStylePrivate::dumpNativeDIB(int w, int h)
         bufferPos += sprintf(bufferPos, "\n};\n\n");
         printf(bufferDump);
 
-        delete bufferDump;
+        delete[] bufferDump;
         ++pCount;
     }
 }

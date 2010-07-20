@@ -148,8 +148,6 @@ QT_BEGIN_NAMESPACE
 
 Q_CORE_EXPORT void qt_call_post_routines();
 
-int QApplicationPrivate::app_compile_version = 0x040000; //we don't know exactly, but it's at least 4.0.0
-
 QApplication::Type qt_appType=QApplication::Tty;
 QApplicationPrivate *QApplicationPrivate::self = 0;
 
@@ -164,8 +162,8 @@ bool QApplicationPrivate::autoSipEnabled = false;
 bool QApplicationPrivate::autoSipEnabled = true;
 #endif
 
-QApplicationPrivate::QApplicationPrivate(int &argc, char **argv, QApplication::Type type)
-    : QCoreApplicationPrivate(argc, argv)
+QApplicationPrivate::QApplicationPrivate(int &argc, char **argv, QApplication::Type type, int flags)
+    : QCoreApplicationPrivate(argc, argv, flags)
 {
     application_type = type;
     qt_appType = type;
@@ -707,12 +705,12 @@ void QApplicationPrivate::process_cmdline()
 */
 
 QApplication::QApplication(int &argc, char **argv)
-    : QCoreApplication(*new QApplicationPrivate(argc, argv, GuiClient))
+    : QCoreApplication(*new QApplicationPrivate(argc, argv, GuiClient, 0x040000))
 { Q_D(QApplication); d->construct(); }
 
 QApplication::QApplication(int &argc, char **argv, int _internal)
-    : QCoreApplication(*new QApplicationPrivate(argc, argv, GuiClient))
-{ Q_D(QApplication); d->construct(); QApplicationPrivate::app_compile_version = _internal;}
+    : QCoreApplication(*new QApplicationPrivate(argc, argv, GuiClient, _internal))
+{ Q_D(QApplication); d->construct(); }
 
 
 /*!
@@ -741,12 +739,12 @@ QApplication::QApplication(int &argc, char **argv, int _internal)
 */
 
 QApplication::QApplication(int &argc, char **argv, bool GUIenabled )
-    : QCoreApplication(*new QApplicationPrivate(argc, argv, GUIenabled ? GuiClient : Tty))
+    : QCoreApplication(*new QApplicationPrivate(argc, argv, GUIenabled ? GuiClient : Tty, 0x040000))
 { Q_D(QApplication); d->construct(); }
 
 QApplication::QApplication(int &argc, char **argv, bool GUIenabled , int _internal)
-    : QCoreApplication(*new QApplicationPrivate(argc, argv, GUIenabled ? GuiClient : Tty))
-{ Q_D(QApplication); d->construct();  QApplicationPrivate::app_compile_version = _internal;}
+    : QCoreApplication(*new QApplicationPrivate(argc, argv, GUIenabled ? GuiClient : Tty, _internal))
+{ Q_D(QApplication); d->construct();}
 
 
 
@@ -764,12 +762,12 @@ QApplication::QApplication(int &argc, char **argv, bool GUIenabled , int _intern
     \c -qws option).
 */
 QApplication::QApplication(int &argc, char **argv, Type type)
-    : QCoreApplication(*new QApplicationPrivate(argc, argv, type))
+    : QCoreApplication(*new QApplicationPrivate(argc, argv, type, 0x040000))
 { Q_D(QApplication); d->construct(); }
 
 QApplication::QApplication(int &argc, char **argv, Type type , int _internal)
-    : QCoreApplication(*new QApplicationPrivate(argc, argv, type))
-{ Q_D(QApplication); d->construct();  QApplicationPrivate::app_compile_version = _internal;}
+    : QCoreApplication(*new QApplicationPrivate(argc, argv, type, _internal))
+{ Q_D(QApplication); d->construct(); }
 
 
 /*!
@@ -850,7 +848,7 @@ static char *aargv[] = { (char*)"unknown", 0 };
     This function is only available on X11.
 */
 QApplication::QApplication(Display* dpy, Qt::HANDLE visual, Qt::HANDLE colormap)
-    : QCoreApplication(*new QApplicationPrivate(aargc, aargv, GuiClient))
+    : QCoreApplication(*new QApplicationPrivate(aargc, aargv, GuiClient, 0x040000))
 {
     if (! dpy)
         qWarning("QApplication: Invalid Display* argument");
@@ -859,7 +857,7 @@ QApplication::QApplication(Display* dpy, Qt::HANDLE visual, Qt::HANDLE colormap)
 }
 
 QApplication::QApplication(Display* dpy, Qt::HANDLE visual, Qt::HANDLE colormap, int _internal)
-    : QCoreApplication(*new QApplicationPrivate(aargc, aargv, GuiClient))
+    : QCoreApplication(*new QApplicationPrivate(aargc, aargv, GuiClient, _internal))
 {
     if (! dpy)
         qWarning("QApplication: Invalid Display* argument");
@@ -884,7 +882,7 @@ QApplication::QApplication(Display* dpy, Qt::HANDLE visual, Qt::HANDLE colormap,
 */
 QApplication::QApplication(Display *dpy, int &argc, char **argv,
                            Qt::HANDLE visual, Qt::HANDLE colormap)
-    : QCoreApplication(*new QApplicationPrivate(argc, argv, GuiClient))
+    : QCoreApplication(*new QApplicationPrivate(argc, argv, GuiClient, 0x040000))
 {
     if (! dpy)
         qWarning("QApplication: Invalid Display* argument");
@@ -894,7 +892,7 @@ QApplication::QApplication(Display *dpy, int &argc, char **argv,
 
 QApplication::QApplication(Display *dpy, int &argc, char **argv,
                            Qt::HANDLE visual, Qt::HANDLE colormap, int _internal)
-    : QCoreApplication(*new QApplicationPrivate(argc, argv, GuiClient))
+    : QCoreApplication(*new QApplicationPrivate(argc, argv, GuiClient, _internal))
 {
     if (! dpy)
         qWarning("QApplication: Invalid Display* argument");
@@ -3705,11 +3703,6 @@ bool QApplication::notify(QObject *receiver, QEvent *e)
     d->checkReceiverThread(receiver);
 #endif
 
-#ifdef QT3_SUPPORT
-    if (e->type() == QEvent::ChildRemoved && !receiver->d_func()->pendingChildInsertedEvents.isEmpty())
-        receiver->d_func()->removePendingChildInsertedEvents(static_cast<QChildEvent *>(e)->child());
-#endif // QT3_SUPPORT
-
     // capture the current mouse/keyboard state
     if(e->spontaneous()) {
         if (e->type() == QEvent::KeyPress
@@ -5809,6 +5802,8 @@ Q_GUI_EXPORT void qt_translateRawTouchEvent(QWidget *window,
 QGestureManager* QGestureManager::instance()
 {
     QApplicationPrivate *qAppPriv = QApplicationPrivate::instance();
+    if (!qAppPriv)
+        return 0;
     if (!qAppPriv->gestureManager)
         qAppPriv->gestureManager = new QGestureManager(qApp);
     return qAppPriv->gestureManager;

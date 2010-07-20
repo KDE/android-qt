@@ -135,8 +135,9 @@ public:
     }
     void stopAutoScroll() { autoScrollTimer.stop(); autoScrollCount = 0;}
 
-
-    bool dropOn(QDropEvent *event, int *row, int *col, QModelIndex *index);
+#ifndef QT_NO_DRAGANDDROP
+    virtual bool dropOn(QDropEvent *event, int *row, int *col, QModelIndex *index);
+#endif
     bool droppingOnItself(QDropEvent *event, const QModelIndex &index);
 
     QWidget *editor(const QModelIndex &index, const QStyleOptionViewItem &options);
@@ -367,6 +368,7 @@ public:
     bool viewportEnteredNeeded;
 
     QAbstractItemView::State state;
+    QAbstractItemView::State stateBeforeAnimation;
     QAbstractItemView::EditTriggers editTriggers;
     QAbstractItemView::EditTrigger lastTrigger;
 

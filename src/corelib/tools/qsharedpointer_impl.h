@@ -841,8 +841,12 @@ qobject_cast(const QWeakPointer<T> &src)
 {
     return qSharedPointerObjectCast<typename QtSharedPointer::RemovePointer<X>::Type, T>(src);
 }
-
 #endif
+
+
+template<typename T> Q_DECLARE_TYPEINFO_BODY(QWeakPointer<T>, Q_MOVABLE_TYPE);
+template<typename T> Q_DECLARE_TYPEINFO_BODY(QSharedPointer<T>, Q_MOVABLE_TYPE);
+
 
 QT_END_NAMESPACE
 

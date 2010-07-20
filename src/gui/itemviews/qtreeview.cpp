@@ -1669,14 +1669,7 @@ void QTreeView::drawRow(QPainter *painter, const QStyleOptionViewItem &option,
             opt.state = oldState;
         }
 
-        if (const QWidget *widget = d->editorForIndex(modelIndex).editor) {
-            painter->save();
-            painter->setClipRect(widget->geometry());
-            d->delegateForIndex(modelIndex)->paint(painter, opt, modelIndex);
-            painter->restore();
-        } else {
-            d->delegateForIndex(modelIndex)->paint(painter, opt, modelIndex);
-        }
+        d->delegateForIndex(modelIndex)->paint(painter, opt, modelIndex);
     }
 
     if (currentRowHasFocus) {
@@ -2469,10 +2462,8 @@ void QTreeView::rowsInserted(const QModelIndex &parent, int start, int end)
     }
 
     const int parentItem = d->viewIndex(parent);
-    if (((parentItem != -1) && d->viewItems.at(parentItem).expanded && updatesEnabled())
+    if (((parentItem != -1) && d->viewItems.at(parentItem).expanded)
         || (parent == d->root)) {
-        d->doDelayedItemsLayout();
-    } else if ((parentItem != -1) && d->viewItems.at(parentItem).expanded) {
         d->doDelayedItemsLayout();
     } else if (parentItem != -1 && (d->model->rowCount(parent) == end - start + 1)) {
         // the parent just went from 0 children to more. update to re-paint the decoration
@@ -2870,13 +2861,13 @@ void QTreeViewPrivate::expand(int item, bool emitSignal)
     if (emitSignal && animationsEnabled)
         prepareAnimatedOperation(item, QVariantAnimation::Forward);
 #endif //QT_NO_ANIMATION
-    QAbstractItemView::State oldState = state;
+    stateBeforeAnimation = state;
     q->setState(QAbstractItemView::ExpandingState);
     const QModelIndex index = viewItems.at(item).index;
     storeExpanded(index);
     viewItems[item].expanded = true;
     layout(item);
-    q->setState(oldState);
+    q->setState(stateBeforeAnimation);
 
     if (model->canFetchMore(index))
         model->fetchMore(index);
@@ -2945,7 +2936,7 @@ void QTreeViewPrivate::collapse(int item, bool emitSignal)
         prepareAnimatedOperation(item, QVariantAnimation::Backward);
 #endif //QT_NO_ANIMATION
 
-    QAbstractItemView::State oldState = state;
+    stateBeforeAnimation = state;
     q->setState(QAbstractItemView::CollapsingState);
     expandedIndexes.erase(it);
     viewItems[item].expanded = false;
@@ -2955,7 +2946,7 @@ void QTreeViewPrivate::collapse(int item, bool emitSignal)
         index = viewItems[index].parentItem;
     }
     removeViewItems(item + 1, total); // collapse
-    q->setState(oldState);
+    q->setState(stateBeforeAnimation);
 
     if (emitSignal) {
         emit q->collapsed(modelIndex);
@@ -3066,7 +3057,7 @@ QPixmap QTreeViewPrivate::renderTreeToPixmapForAnimation(const QRect &rect) cons
 void QTreeViewPrivate::_q_endAnimatedOperation()
 {
     Q_Q(QTreeView);
-    q->setState(QAbstractItemView::NoState);
+    q->setState(stateBeforeAnimation);
     q->updateGeometries();
     viewport->update();
 }

@@ -547,6 +547,7 @@ public:
 
     bool setMinimumSize_helper(int &minw, int &minh);
     bool setMaximumSize_helper(int &maxw, int &maxh);
+    virtual bool hasHeightForWidth() const;
     void setConstraints_sys();
     bool pointInsideRectAndMask(const QPoint &) const;
     QWidget *childAt_helper(const QPoint &, bool) const;

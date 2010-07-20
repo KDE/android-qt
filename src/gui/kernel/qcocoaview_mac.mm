@@ -473,7 +473,7 @@ static int qCocoaViewCount = 0;
     }
 
     // Make sure the opengl context is updated on resize.
-    if (qwidgetprivate && qwidgetprivate->isGLWidget) {
+    if (qwidgetprivate && qwidgetprivate->isGLWidget && [self window]) {
         qwidgetprivate->needWindowChange = true;
         QEvent event(QEvent::MacGLWindowChange);
         qApp->sendEvent(qwidget, &event);
@@ -498,13 +498,11 @@ static int qCocoaViewCount = 0;
         return;
 
     if (QApplicationPrivate::graphicsSystem() != 0) {
-        if (qwidgetprivate->maybeBackingStore()) {
-            // Drawing is handled on the window level
-            // See qcocoasharedwindowmethods_mac_p.h
-            if (!qwidget->testAttribute(Qt::WA_PaintOnScreen))
-                return;
-        }
+        if (QWidgetBackingStore *bs = qwidgetprivate->maybeBackingStore())
+            bs->markDirty(qwidget->rect(), qwidget);
+        qwidgetprivate->syncBackingStore(qwidget->rect());
     }
+
     CGContextRef cg = (CGContextRef)[[NSGraphicsContext currentContext] graphicsPort];
     qwidgetprivate->hd = cg;
     CGContextSaveGState(cg);

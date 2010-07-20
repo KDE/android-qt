@@ -44,11 +44,11 @@
 
 #include <stddef.h>
 
-#define QT_VERSION_STR   "4.7.0"
+#define QT_VERSION_STR   "4.8.0"
 /*
    QT_VERSION is (major << 16) + (minor << 8) + patch.
 */
-#define QT_VERSION 0x040700
+#define QT_VERSION 0x040800
 /*
    can be used like #if (QT_VERSION >= QT_VERSION_CHECK(4, 4, 0))
 */
@@ -1357,15 +1357,22 @@ class QDataStream;
 #    else
 #      define Q_GUI_EXPORT_INLINE inline
 #    endif
+#    if defined(QT_BUILD_COMPAT_LIB)
+#      define Q_COMPAT_EXPORT_INLINE Q_COMPAT_EXPORT inline
+#    else
+#      define Q_COMPAT_EXPORT_INLINE inline
+#    endif
 #elif defined(Q_CC_RVCT)
 // we force RVCT not to export inlines by passing --visibility_inlines_hidden
 // so we need to just inline it, rather than exporting and inlining
 // note: this affects the contents of the DEF files (ie. these functions do not appear)
 #    define Q_CORE_EXPORT_INLINE inline
 #    define Q_GUI_EXPORT_INLINE inline
+#    define Q_COMPAT_EXPORT_INLINE inline
 #else
 #    define Q_CORE_EXPORT_INLINE Q_CORE_EXPORT inline
 #    define Q_GUI_EXPORT_INLINE Q_GUI_EXPORT inline
+#    define Q_COMPAT_EXPORT_INLINE Q_COMPAT_EXPORT inline
 #endif
 
 /*
@@ -2038,8 +2045,7 @@ enum { /* TYPEINFO flags */
     Q_DUMMY_TYPE = 0x4
 };
 
-#define Q_DECLARE_TYPEINFO(TYPE, FLAGS) \
-template <> \
+#define Q_DECLARE_TYPEINFO_BODY(TYPE, FLAGS) \
 class QTypeInfo<TYPE > \
 { \
 public: \
@@ -2052,6 +2058,11 @@ public: \
     }; \
     static inline const char *name() { return #TYPE; } \
 }
+
+#define Q_DECLARE_TYPEINFO(TYPE, FLAGS) \
+template<> \
+Q_DECLARE_TYPEINFO_BODY(TYPE, FLAGS)
+
 
 template <typename T>
 inline void qSwap(T &value1, T &value2)

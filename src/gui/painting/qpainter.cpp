@@ -61,6 +61,8 @@
 #include "qstyle.h"
 #include "qthread.h"
 #include "qvarlengtharray.h"
+#include "qstatictext.h"
+#include "qglyphs.h"
 
 #include <private/qfontengine_p.h>
 #include <private/qpaintengine_p.h>
@@ -70,8 +72,8 @@
 #include <private/qwidget_p.h>
 #include <private/qpaintengine_raster_p.h>
 #include <private/qmath_p.h>
-#include <qstatictext.h>
 #include <private/qstatictext_p.h>
+#include <private/qglyphs_p.h>
 #include <private/qstylehelper_p.h>
 
 QT_BEGIN_NAMESPACE
@@ -86,6 +88,10 @@ bool qt_show_painter_debug_output = true;
 
 extern QPixmap qt_pixmapForBrush(int style, bool invert);
 
+static void drawTextItemDecoration(QPainter *painter, const QPointF &pos, QFontEngine *fe,
+                                   QTextCharFormat::UnderlineStyle underlineStyle,
+                                   QTextItemInt::RenderFlags flags, qreal width,
+                                   const QTextCharFormat &charFormat);
 void qt_format_text(const QFont &font,
                     const QRectF &_r, int tf, const QTextOption *option, const QString& str, QRectF *brect,
                     int tabstops, int* tabarray, int tabarraylen,
@@ -153,6 +159,10 @@ static bool qt_painter_thread_test(int devType, const char *what, bool extraCond
 #endif
             break;
     default:
+#ifdef Q_WS_X11
+        if (QApplication::testAttribute(Qt::AA_X11InitThreads))
+            return true;
+#endif
         if (!extraCondition && QThread::currentThread() != qApp->thread()) {
             qWarning("QPainter: It is not safe to use %s outside the GUI thread", what);
             return false;
@@ -5247,7 +5257,7 @@ void QPainter::drawPixmap(const QPointF &p, const QPixmap &pm)
         return;
 
 #ifndef QT_NO_DEBUG
-    qt_painter_thread_test(d->device->devType(), "drawPixmap()");
+    qt_painter_thread_test(d->device->devType(), "drawPixmap()", true);
 #endif
 
     if (d->extended) {
@@ -5317,7 +5327,7 @@ void QPainter::drawPixmap(const QRectF &r, const QPixmap &pm, const QRectF &sr)
     if (!d->engine || pm.isNull())
         return;
 #ifndef QT_NO_DEBUG
-    qt_painter_thread_test(d->device->devType(), "drawPixmap()");
+    qt_painter_thread_test(d->device->devType(), "drawPixmap()", true);
 #endif
 
     qreal x = r.x();
@@ -5702,17 +5712,50 @@ void QPainter::drawImage(const QRectF &targetRect, const QImage &image, const QR
     d->engine->drawImage(QRectF(x, y, w, h), image, QRectF(sx, sy, sw, sh), flags);
 }
 
+/*!
+    Draws the glyphs represented by \a glyphs at \a position. The \a position gives the
+    edge of the baseline for the string of glyphs. The glyphs will be retrieved from the font
+    selected on \a glyphs and at offsets given by the positions in \a glyphs.
+
+    \since 4.8
+
+    \sa QGlyphs::setFont(), QGlyphs::setPositions(), QGlyphs::setGlyphIndexes()
+*/
+void QPainter::drawGlyphs(const QPointF &position, const QGlyphs &glyphs)
+{
+    Q_D(QPainter);
+
+    QFont oldFont = d->state->font;
+    d->state->font = glyphs.font();
+
+    QVector<quint32> glyphIndexes = glyphs.glyphIndexes();
+    QVector<QPointF> glyphPositions = glyphs.positions();
+
+    int count = qMin(glyphIndexes.size(), glyphPositions.size());
+    QVarLengthArray<QFixedPoint, 128> fixedPointPositions(count);
+    for (int i=0; i<count; ++i)
+        fixedPointPositions[i] = QFixedPoint::fromPointF(position + glyphPositions.at(i));
+
+    d->drawGlyphs(glyphIndexes.data(), fixedPointPositions.data(), count);
+
+    d->state->font = oldFont;
+}
 
 void qt_draw_glyphs(QPainter *painter, const quint32 *glyphArray, const QPointF *positionArray,
                     int glyphCount)
 {
+    QVarLengthArray<QFixedPoint, 128> positions(glyphCount);
+    for (int i=0; i<glyphCount; ++i)
+        positions[i] = QFixedPoint::fromPointF(positionArray[i]);
+
     QPainterPrivate *painter_d = QPainterPrivate::get(painter);
-    painter_d->drawGlyphs(glyphArray, positionArray, glyphCount);
+    painter_d->drawGlyphs(const_cast<quint32 *>(glyphArray), positions.data(), glyphCount);
 }
 
-void QPainterPrivate::drawGlyphs(const quint32 *glyphArray, const QPointF *positionArray,
-                                 int glyphCount)
+void QPainterPrivate::drawGlyphs(quint32 *glyphArray, QFixedPoint *positions, int glyphCount)
 {
+    Q_Q(QPainter);
+
     updateState(state);
 
     QFontEngine *fontEngine = state->font.d->engineForScript(QUnicodeTables::Common);
@@ -5727,11 +5770,26 @@ void QPainterPrivate::drawGlyphs(const quint32 *glyphArray, const QPointF *posit
         fontEngine = static_cast<QFontEngineMulti *>(fontEngine)->engine(engineIdx);
     }
 
-    QVarLengthArray<QFixedPoint, 128> positions;
+    QFixed leftMost;
+    QFixed rightMost;
+    QFixed baseLine;
     for (int i=0; i<glyphCount; ++i) {
-        QFixedPoint fp = QFixedPoint::fromPointF(positionArray[i]);
-        positions.append(fp);
+        glyph_metrics_t gm = fontEngine->boundingBox(glyphArray[i]);
+        if (i == 0 || leftMost > positions[i].x)
+            leftMost = positions[i].x;
+
+        // We don't support glyphs that do not share a common baseline. If this turns out to
+        // be a relevant use case, then we need to find clusters of glyphs that share a baseline
+        // and do a drawTextItemDecorations call per cluster.
+        if (i == 0 || baseLine < positions[i].y)
+            baseLine = positions[i].y;
+
+        // We use the advance rather than the actual bounds to match the algorithm in drawText()
+        if (i == 0 || rightMost < positions[i].x + gm.xoff)
+            rightMost = positions[i].x + gm.xoff;
     }
+
+    QFixed width = rightMost - leftMost;
 
     if (extended != 0) {
         QStaticTextItem staticTextItem;
@@ -5740,7 +5798,7 @@ void QPainterPrivate::drawGlyphs(const quint32 *glyphArray, const QPointF *posit
         staticTextItem.fontEngine = fontEngine;
         staticTextItem.numGlyphs = glyphCount;
         staticTextItem.glyphs = reinterpret_cast<glyph_t *>(const_cast<glyph_t *>(glyphArray));
-        staticTextItem.glyphPositions = positions.data();
+        staticTextItem.glyphPositions = positions;
 
         extended->drawStaticTextItem(&staticTextItem);
     } else {
@@ -5757,7 +5815,7 @@ void QPainterPrivate::drawGlyphs(const quint32 *glyphArray, const QPointF *posit
 
         textItem.glyphs.numGlyphs = glyphCount;
         textItem.glyphs.glyphs = reinterpret_cast<HB_Glyph *>(const_cast<quint32 *>(glyphArray));
-        textItem.glyphs.offsets = positions.data();
+        textItem.glyphs.offsets = positions;
         textItem.glyphs.advances_x = advances.data();
         textItem.glyphs.advances_y = advances.data();
         textItem.glyphs.justifications = glyphJustifications.data();
@@ -5765,6 +5823,21 @@ void QPainterPrivate::drawGlyphs(const quint32 *glyphArray, const QPointF *posit
 
         engine->drawTextItem(QPointF(0, 0), textItem);
     }
+
+    QTextItemInt::RenderFlags flags;
+    if (state->font.underline())
+        flags |= QTextItemInt::Underline;
+    if (state->font.overline())
+        flags |= QTextItemInt::Overline;
+    if (state->font.strikeOut())
+        flags |= QTextItemInt::StrikeOut;
+
+    drawTextItemDecoration(q, QPointF(leftMost.toReal(), baseLine.toReal()),
+                           fontEngine,
+                           (state->font.underline()
+                                ? QTextCharFormat::SingleUnderline
+                                : QTextCharFormat::NoUnderline),
+                           flags, width.toReal(), QTextCharFormat());
 }
 
 /*!
@@ -5895,7 +5968,7 @@ void QPainter::drawStaticText(const QPointF &topLeftPosition, const QStaticText 
 
     // Recreate the layout of the static text because the matrix or font has changed
     if (staticTextNeedsReinit)
-        staticText_d->init();    
+        staticText_d->init();
 
     if (transformedPosition != staticText_d->position) { // Translate to actual position
         QFixed fx = QFixed::fromReal(transformedPosition.x());
@@ -6290,14 +6363,14 @@ static QPixmap generateWavyPixmap(qreal maxRadius, const QPen &pen)
     return pixmap;
 }
 
-static void drawTextItemDecoration(QPainter *painter, const QPointF &pos, const QTextItemInt &ti)
+static void drawTextItemDecoration(QPainter *painter, const QPointF &pos, QFontEngine *fe,
+                                   QTextCharFormat::UnderlineStyle underlineStyle,
+                                   QTextItemInt::RenderFlags flags, qreal width,
+                                   const QTextCharFormat &charFormat)
 {
-    QTextCharFormat::UnderlineStyle underlineStyle = ti.underlineStyle;
     if (underlineStyle == QTextCharFormat::NoUnderline
-        && !(ti.flags & (QTextItem::StrikeOut | QTextItem::Overline)))
+        && !(flags & (QTextItem::StrikeOut | QTextItem::Overline)))
         return;
-
-    QFontEngine *fe = ti.fontEngine;
 
     const QPen oldPen = painter->pen();
     const QBrush oldBrush = painter->brush();
@@ -6307,7 +6380,7 @@ static void drawTextItemDecoration(QPainter *painter, const QPointF &pos, const 
     pen.setWidthF(fe->lineThickness().toReal());
     pen.setCapStyle(Qt::FlatCap);
 
-    QLineF line(pos.x(), pos.y(), pos.x() + ti.width.toReal(), pos.y());
+    QLineF line(pos.x(), pos.y(), pos.x() + width, pos.y());
 
     const qreal underlineOffset = fe->underlinePosition().toReal();
     // deliberately ceil the offset to avoid the underline coming too close to
@@ -6322,21 +6395,21 @@ static void drawTextItemDecoration(QPainter *painter, const QPointF &pos, const 
         painter->save();
         painter->translate(0, pos.y() + 1);
 
-        QColor uc = ti.charFormat.underlineColor();
+        QColor uc = charFormat.underlineColor();
         if (uc.isValid())
             pen.setColor(uc);
 
         // Adapt wave to underlineOffset or pen width, whatever is larger, to make it work on all platforms
         const QPixmap wave = generateWavyPixmap(qMax(underlineOffset, pen.widthF()), pen);
-        const int descent = (int) ti.descent.toReal();
+        const int descent = (int) fe->descent().toReal();
 
         painter->setBrushOrigin(painter->brushOrigin().x(), 0);
-        painter->fillRect(pos.x(), 0, qCeil(ti.width.toReal()), qMin(wave.height(), descent), wave);
+        painter->fillRect(pos.x(), 0, qCeil(width), qMin(wave.height(), descent), wave);
         painter->restore();
     } else if (underlineStyle != QTextCharFormat::NoUnderline) {
         QLineF underLine(line.x1(), underlinePos, line.x2(), underlinePos);
 
-        QColor uc = ti.charFormat.underlineColor();
+        QColor uc = charFormat.underlineColor();
         if (uc.isValid())
             pen.setColor(uc);
 
@@ -6348,14 +6421,14 @@ static void drawTextItemDecoration(QPainter *painter, const QPointF &pos, const 
     pen.setStyle(Qt::SolidLine);
     pen.setColor(oldPen.color());
 
-    if (ti.flags & QTextItem::StrikeOut) {
+    if (flags & QTextItem::StrikeOut) {
         QLineF strikeOutLine = line;
         strikeOutLine.translate(0., - fe->ascent().toReal() / 3.);
         painter->setPen(pen);
         painter->drawLine(strikeOutLine);
     }
 
-    if (ti.flags & QTextItem::Overline) {
+    if (flags & QTextItem::Overline) {
         QLineF overLine = line;
         overLine.translate(0., - fe->ascent().toReal());
         painter->setPen(pen);
@@ -6496,7 +6569,8 @@ void QPainter::drawTextItem(const QPointF &p, const QTextItem &_ti)
         else
             d->engine->drawTextItem(p, ti);
     }
-    drawTextItemDecoration(this, p, ti);
+    drawTextItemDecoration(this, p, ti.fontEngine, ti.underlineStyle, ti.flags, ti.width.toReal(),
+                           ti.charFormat);
 
     if (d->state->renderHints != oldRenderHints) {
         d->state->renderHints = oldRenderHints;
@@ -6635,7 +6709,7 @@ void QPainter::drawTiledPixmap(const QRectF &r, const QPixmap &pixmap, const QPo
         return;
 
 #ifndef QT_NO_DEBUG
-    qt_painter_thread_test(d->device->devType(), "drawTiledPixmap()");
+    qt_painter_thread_test(d->device->devType(), "drawTiledPixmap()", true);
 #endif
 
     qreal sw = pixmap.width();
@@ -7934,6 +8008,9 @@ start_lengthVariant:
     if (option) {
         engine.option = *option;
     }
+
+    if (engine.option.tabStop() < 0 && tabstops > 0)
+        engine.option.setTabStop(tabstops);
 
     engine.option.setTextDirection(layout_direction);
     if (tf & Qt::AlignJustify)

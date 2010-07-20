@@ -1564,7 +1564,8 @@ QWidget::~QWidget()
     d->needsFlush = 0;
 
     // set all QPointers for this object to zero
-    QObjectPrivate::clearGuards(this);
+    if (d->hasGuards)
+        QObjectPrivate::clearGuards(this);
 
     if (d->declarativeData) {
         QAbstractDeclarativeData::destroyed(d->declarativeData, this);
@@ -1796,13 +1797,7 @@ void QWidgetPrivate::syncBackingStore()
         repaint_sys(dirty);
         dirty = QRegion();
     } else if (QWidgetBackingStore *bs = maybeBackingStore()) {
-#ifdef QT_MAC_USE_COCOA
-        Q_UNUSED(bs);
-        void qt_mac_set_needs_display(QWidget *, QRegion);
-        qt_mac_set_needs_display(q_func(), QRegion());
-#else
         bs->sync();
-#endif
     }
 }
 
@@ -1811,13 +1806,7 @@ void QWidgetPrivate::syncBackingStore(const QRegion &region)
     if (paintOnScreen())
         repaint_sys(region);
     else if (QWidgetBackingStore *bs = maybeBackingStore()) {
-#ifdef QT_MAC_USE_COCOA
-        Q_UNUSED(bs);
-        void qt_mac_set_needs_display(QWidget *, QRegion);
-        qt_mac_set_needs_display(q_func(), region);
-#else
         bs->sync(q_func(), region);
-#endif
     }
 }
 
@@ -9730,6 +9719,23 @@ int QWidget::heightForWidth(int w) const
     return -1;
 }
 
+
+/*!
+    \internal
+
+    *virtual private*
+
+    This is a bit hackish, but ideally we would have created a virtual function
+    in the public API (however, too late...) so that subclasses could reimplement 
+    their own function.
+    Instead we add a virtual function to QWidgetPrivate.
+    ### Qt5: move to public class and make virtual
+*/ 
+bool QWidgetPrivate::hasHeightForWidth() const
+{
+    return layout ? layout->hasHeightForWidth() : size_policy.hasHeightForWidth();
+}
+
 /*!
     \fn QWidget *QWidget::childAt(int x, int y) const
 
@@ -12080,8 +12086,8 @@ void QWidget::ungrabGesture(Qt::GestureType gesture)
 {
     Q_D(QWidget);
     if (d->gestureContext.remove(gesture)) {
-        QGestureManager *manager = QGestureManager::instance();
-        manager->cleanupCachedGestures(this, gesture);
+        if (QGestureManager *manager = QGestureManager::instance())
+            manager->cleanupCachedGestures(this, gesture);
     }
 }
 #endif // QT_NO_GESTURES

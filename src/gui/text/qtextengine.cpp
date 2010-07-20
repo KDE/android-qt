@@ -1366,6 +1366,7 @@ void QTextEngine::invalidate()
     maxWidth = 0;
     if (specialData)
         specialData->resolvedFormatIndices.clear();
+    feCache.reset();
 }
 
 void QTextEngine::clearLineData()
@@ -1538,14 +1539,19 @@ bool QTextEngine::isRightToLeft() const
 int QTextEngine::findItem(int strPos) const
 {
     itemize();
-
-    // ##### use binary search
-    int item;
-    for (item = layoutData->items.size()-1; item > 0; --item) {
-        if (layoutData->items[item].position <= strPos)
-            break;
+    int left = 0;
+    int right = layoutData->items.size()-1;
+    while(left <= right) {
+        int middle = ((right-left)/2)+left;
+        if (strPos > layoutData->items[middle].position)
+            left = middle+1;
+        else if(strPos < layoutData->items[middle].position)
+            right = middle-1;
+        else {
+            return middle;
+        }
     }
-    return item;
+    return right;
 }
 
 QFixed QTextEngine::width(int from, int len) const
@@ -1757,6 +1763,13 @@ QFont QTextEngine::font(const QScriptItem &si) const
     return font;
 }
 
+QTextEngine::FontEngineCache::FontEngineCache()
+{
+    reset();
+}
+
+//we cache the previous results of this function, as calling it numerous times with the same effective
+//input is common (and hard to cache at a higher level)
 QFontEngine *QTextEngine::fontEngine(const QScriptItem &si, QFixed *ascent, QFixed *descent, QFixed *leading) const
 {
     QFontEngine *engine = 0;
@@ -1765,28 +1778,47 @@ QFontEngine *QTextEngine::fontEngine(const QScriptItem &si, QFixed *ascent, QFix
 
     QFont font = fnt;
     if (hasFormats()) {
-        QTextCharFormat f = format(&si);
-        font = f.font();
-
-        if (block.docHandle() && block.docHandle()->layout()) {
-            // Make sure we get the right dpi on printers
-            QPaintDevice *pdev = block.docHandle()->layout()->paintDevice();
-            if (pdev)
-                font = QFont(font, pdev);
+        if (feCache.prevFontEngine && feCache.prevPosition == si.position && feCache.prevLength == length(&si) && feCache.prevScript == script) {
+            engine = feCache.prevFontEngine;
+            scaledEngine = feCache.prevScaledFontEngine;
         } else {
-            font = font.resolve(fnt);
-        }
-        engine = font.d->engineForScript(script);
-        QTextCharFormat::VerticalAlignment valign = f.verticalAlignment();
-        if (valign == QTextCharFormat::AlignSuperScript || valign == QTextCharFormat::AlignSubScript) {
-            if (font.pointSize() != -1)
-                font.setPointSize((font.pointSize() * 2) / 3);
-            else
-                font.setPixelSize((font.pixelSize() * 2) / 3);
-            scaledEngine = font.d->engineForScript(script);
+            QTextCharFormat f = format(&si);
+            font = f.font();
+
+            if (block.docHandle() && block.docHandle()->layout()) {
+                // Make sure we get the right dpi on printers
+                QPaintDevice *pdev = block.docHandle()->layout()->paintDevice();
+                if (pdev)
+                    font = QFont(font, pdev);
+            } else {
+                font = font.resolve(fnt);
+            }
+            engine = font.d->engineForScript(script);
+            QTextCharFormat::VerticalAlignment valign = f.verticalAlignment();
+            if (valign == QTextCharFormat::AlignSuperScript || valign == QTextCharFormat::AlignSubScript) {
+                if (font.pointSize() != -1)
+                    font.setPointSize((font.pointSize() * 2) / 3);
+                else
+                    font.setPixelSize((font.pixelSize() * 2) / 3);
+                scaledEngine = font.d->engineForScript(script);
+            }
+            feCache.prevFontEngine = engine;
+            feCache.prevScaledFontEngine = scaledEngine;
+            feCache.prevScript = script;
+            feCache.prevPosition = si.position;
+            feCache.prevLength = length(&si);
         }
     } else {
-        engine = font.d->engineForScript(script);
+        if (feCache.prevFontEngine && feCache.prevScript == script && feCache.prevPosition == -1)
+            engine = feCache.prevFontEngine;
+        else {
+            engine = font.d->engineForScript(script);
+            feCache.prevFontEngine = engine;
+            feCache.prevScript = script;
+            feCache.prevPosition = -1;
+            feCache.prevLength = -1;
+            feCache.prevScaledFontEngine = 0;
+        }
     }
 
     if (si.analysis.flags == QScriptAnalysis::SmallCaps) {
@@ -2308,27 +2340,27 @@ QString QTextEngine::elidedText(Qt::TextElideMode mode, const QFixed &width, int
 
     if (flags & Qt::TextShowMnemonic) {
         itemize();
+        HB_CharAttributes *attributes = const_cast<HB_CharAttributes *>(this->attributes());
         for (int i = 0; i < layoutData->items.size(); ++i) {
             QScriptItem &si = layoutData->items[i];
             if (!si.num_glyphs)
                 shape(i);
 
-            HB_CharAttributes *attributes = const_cast<HB_CharAttributes *>(this->attributes());
             unsigned short *logClusters = this->logClusters(&si);
             QGlyphLayout glyphs = shapedGlyphs(&si);
 
             const int end = si.position + length(&si);
-            for (int i = si.position; i < end - 1; ++i)
+            for (int i = si.position; i < end - 1; ++i) {
                 if (layoutData->string.at(i) == QLatin1Char('&')) {
                     const int gp = logClusters[i - si.position];
                     glyphs.attributes[gp].dontPrint = true;
                     attributes[i + 1].charStop = false;
                     attributes[i + 1].whiteSpace = false;
                     attributes[i + 1].lineBreakType = HB_NoBreak;
-                    if (i < end - 1
-                            && layoutData->string.at(i + 1) == QLatin1Char('&'))
+                    if (layoutData->string.at(i + 1) == QLatin1Char('&'))
                         ++i;
                 }
+            }
         }
     }
 
@@ -2388,7 +2420,7 @@ QString QTextEngine::elidedText(Qt::TextElideMode mode, const QFixed &width, int
 
     if (mode == Qt::ElideRight) {
         QFixed currentWidth;
-        int pos = 0;
+        int pos;
         int nextBreak = 0;
 
         do {
@@ -2408,7 +2440,7 @@ QString QTextEngine::elidedText(Qt::TextElideMode mode, const QFixed &width, int
         return layoutData->string.left(pos) + ellipsisText;
     } else if (mode == Qt::ElideLeft) {
         QFixed currentWidth;
-        int pos = layoutData->string.length();
+        int pos;
         int nextBreak = layoutData->string.length();
 
         do {
