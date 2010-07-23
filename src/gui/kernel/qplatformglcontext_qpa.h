@@ -58,6 +58,11 @@ public:
     virtual void swapBuffers() = 0;
     virtual void* getProcAddress(const QString& procName) = 0;
 
+    static QPlatformGLContext *defaultSharedContext();
+
+protected:
+    static void setDefaultSharedContext(QPlatformGLContext *sharedContext);
+
 };
 
 QT_END_NAMESPACE

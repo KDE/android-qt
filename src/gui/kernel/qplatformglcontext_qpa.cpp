@@ -4,7 +4,7 @@
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
-** This file is part of the plugins of the Qt Toolkit.
+** This file is part of the QtOpenGL module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
 ** No Commercial Usage
@@ -39,35 +39,16 @@
 **
 ****************************************************************************/
 
-#include <private/qgraphicssystemplugin_p.h>
+#include "qplatformglcontext_qpa.h"
 
-#include "qgraphicssystem_blittable.h"
+static QPlatformGLContext *staticSharedContext = 0;
 
-QT_BEGIN_NAMESPACE
-
-class QBlittableGraphicsSystemPlugin : public QGraphicsSystemPlugin
+void QPlatformGLContext::setDefaultSharedContext(QPlatformGLContext *sharedContext)
 {
-public:
-    QStringList keys() const;
-    QGraphicsSystem *create(const QString&);
-};
-
-QStringList QBlittableGraphicsSystemPlugin::keys() const
-{
-    QStringList list;
-    list << QLatin1String("Blittable");
-    return list;
+    staticSharedContext = sharedContext;
 }
 
-QGraphicsSystem* QBlittableGraphicsSystemPlugin::create(const QString& system)
+QPlatformGLContext *QPlatformGLContext::defaultSharedContext()
 {
-    if (system.toLower() == QLatin1String("blittable")) {
-        return new QBlittableGraphicsSystem;
-    }
-
-    return 0;
+    return staticSharedContext;
 }
-
-Q_EXPORT_PLUGIN2(blittable, QBlittableGraphicsSystemPlugin)
-
-QT_END_NAMESPACE

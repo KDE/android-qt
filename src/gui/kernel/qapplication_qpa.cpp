@@ -60,6 +60,7 @@
 #include <QPlatformCursor>
 #include <qdebug.h>
 #include <QWindowSystemInterface>
+#include "qwindowsysteminterface_qpa_p.h"
 #include <QPlatformIntegration>
 
 #include "qdesktopwidget_qpa_p.h"
@@ -86,26 +87,45 @@ static int mousePressX;
 static int mousePressY;
 static int mouse_double_click_distance = 5;
 
-void QApplicationPrivate::processUserEvent(QWindowSystemInterface::UserEvent *e)
+void QApplicationPrivate::processWindowSystemEvent(QWindowSystemInterfacePrivate::WindowSystemEvent *e)
 {
     switch(e->type) {
-    case QEvent::MouseButtonDblClick: // if mouse event, calculate appropriate widget and local coordinates
-    case QEvent::MouseButtonPress:
-    case QEvent::MouseButtonRelease:
-    case QEvent::MouseMove:
-        QApplicationPrivate::processMouseEvent(static_cast<QWindowSystemInterface::MouseEvent *>(e));
+    case QWindowSystemInterfacePrivate::Mouse:
+        QApplicationPrivate::processMouseEvent(static_cast<QWindowSystemInterfacePrivate::MouseEvent *>(e));
         break;
-    case QEvent::Wheel:
-        QApplicationPrivate::processWheelEvent(static_cast<QWindowSystemInterface::WheelEvent *>(e));
+    case QWindowSystemInterfacePrivate::Wheel:
+        QApplicationPrivate::processWheelEvent(static_cast<QWindowSystemInterfacePrivate::WheelEvent *>(e));
         break;
-    case QEvent::KeyPress:
-    case QEvent::KeyRelease:
-        QApplicationPrivate::processKeyEvent(static_cast<QWindowSystemInterface::KeyEvent *>(e));
+    case QWindowSystemInterfacePrivate::Key:
+        QApplicationPrivate::processKeyEvent(static_cast<QWindowSystemInterfacePrivate::KeyEvent *>(e));
         break;
-    case QEvent::TouchBegin:
-    case QEvent::TouchUpdate:
-    case QEvent::TouchEnd:
-        QApplicationPrivate::processTouchEvent(static_cast<QWindowSystemInterface::TouchEvent *>(e));
+    case QWindowSystemInterfacePrivate::Touch:
+        QApplicationPrivate::processTouchEvent(static_cast<QWindowSystemInterfacePrivate::TouchEvent *>(e));
+        break;
+    case QWindowSystemInterfacePrivate::GeometryChange:
+        QApplicationPrivate::processGeometryChangeEvent(static_cast<QWindowSystemInterfacePrivate::GeometryChangeEvent*>(e));
+        break;
+    case QWindowSystemInterfacePrivate::Enter:
+        QApplicationPrivate::processEnterEvent(static_cast<QWindowSystemInterfacePrivate::EnterEvent *>(e));
+        break;
+    case QWindowSystemInterfacePrivate::Leave:
+        QApplicationPrivate::processLeaveEvent(static_cast<QWindowSystemInterfacePrivate::LeaveEvent *>(e));
+        break;
+    case QWindowSystemInterfacePrivate::Close:
+        QApplicationPrivate::processCloseEvent(
+                static_cast<QWindowSystemInterfacePrivate::CloseEvent *>(e));
+        break;
+    case QWindowSystemInterfacePrivate::ScreenCountChange:
+        QApplicationPrivate::reportScreenCount(
+                static_cast<QWindowSystemInterfacePrivate::ScreenCountEvent *>(e));
+        break;
+    case QWindowSystemInterfacePrivate::ScreenGeometry:
+        QApplicationPrivate::reportGeometryChange(
+                static_cast<QWindowSystemInterfacePrivate::ScreenGeometryEvent *>(e));
+        break;
+    case QWindowSystemInterfacePrivate::ScreenAvailableGeometry:
+        QApplicationPrivate::reportAvailableGeometryChange(
+                static_cast<QWindowSystemInterfacePrivate::ScreenAvailableGeometryEvent *>(e));
         break;
     default:
         qWarning() << "Unknown user input event type:" << e->type;
@@ -490,7 +510,7 @@ void qt_init(QApplicationPrivate *priv, int type)
     }
 
     QList<QByteArray> pluginList;
-    QString platformName = qgetenv("QT_QPA_PLATFORM");
+    QString platformName = QLatin1String(qgetenv("QT_QPA_PLATFORM"));
 
     // Get command line params
 
@@ -506,7 +526,7 @@ void qt_init(QApplicationPrivate *priv, int type)
                 appFont = argv[i];
         } else if (arg == "-platform") {
             if (++i < argc)
-                platformName = argv[i];
+                platformName = QLatin1String(argv[i]);
         } else if (arg == "-plugin") {
             if (++i < argc)
                 pluginList << argv[i];
@@ -570,7 +590,7 @@ void QApplication::setMainWidget(QWidget *mainWidget)
 }
 #endif
 
-void QApplicationPrivate::processMouseEvent(QWindowSystemInterface::MouseEvent *e)
+void QApplicationPrivate::processMouseEvent(QWindowSystemInterfacePrivate::MouseEvent *e)
 {
     // qDebug() << "handleMouseEvent" << tlw << ev.pos() << ev.globalPos() << hex << ev.buttons();
     static QWeakPointer<QWidget> implicit_mouse_grabber;
@@ -579,8 +599,9 @@ void QApplicationPrivate::processMouseEvent(QWindowSystemInterface::MouseEvent *
     // move first
     Qt::MouseButtons stateChange = e->buttons ^ buttons;
     if (e->globalPos != QPoint(qt_last_x, qt_last_y) && (stateChange != Qt::NoButton)) {
-        QWindowSystemInterface::MouseEvent * newMouseEvent = new QWindowSystemInterface::MouseEvent(e->widget.data(), e->timestamp, e->localPos, e->globalPos, e->buttons);
-        QWindowSystemInterfacePrivate::userEventQueue.prepend(newMouseEvent); // just in case the move triggers a new event loop
+        QWindowSystemInterfacePrivate::MouseEvent * newMouseEvent =
+                new QWindowSystemInterfacePrivate::MouseEvent(e->widget.data(), e->timestamp, e->localPos, e->globalPos, e->buttons);
+        QWindowSystemInterfacePrivate::windowSystemEventQueue.prepend(newMouseEvent); // just in case the move triggers a new event loop
         stateChange = Qt::NoButton;
     }
 
@@ -639,7 +660,7 @@ void QApplicationPrivate::processMouseEvent(QWindowSystemInterface::MouseEvent *
         implicit_mouse_grabber.clear();
         //### how should popup mode and implicit mouse grab interact?
 
-    } else if (tlw && app_do_modal && !qt_try_modal(tlw, e->type) ) {
+    } else if (tlw && app_do_modal && !qt_try_modal(tlw, QEvent::MouseButtonRelease) ) {
         //even if we're blocked by modality, we should deliver the mouse release event..
         //### this code is not completely correct: multiple buttons can be pressed simultaneously
         if (!(implicit_mouse_grabber && buttons == Qt::NoButton)) {
@@ -717,7 +738,7 @@ void QApplicationPrivate::processMouseEvent(QWindowSystemInterface::MouseEvent *
 
 //### there's a lot of duplicated logic here -- refactoring required!
 
-void QApplicationPrivate::processWheelEvent(QWindowSystemInterface::WheelEvent *e)
+void QApplicationPrivate::processWheelEvent(QWindowSystemInterfacePrivate::WheelEvent *e)
 {
 //    QPoint localPoint = ev.pos();
     QPoint globalPoint = e->globalPos;
@@ -739,7 +760,7 @@ void QApplicationPrivate::processWheelEvent(QWindowSystemInterface::WheelEvent *
 
      mouseWidget = mouseWindow;
 
-     if (app_do_modal && !qt_try_modal(mouseWindow, e->type) ) {
+     if (app_do_modal && !qt_try_modal(mouseWindow, QEvent::Wheel) ) {
          qDebug() << "modal blocked wheel event" << mouseWindow;
          return;
      }
@@ -759,7 +780,7 @@ void QApplicationPrivate::processWheelEvent(QWindowSystemInterface::WheelEvent *
 
 // Remember, Qt convention is:  keyboard state is state *before*
 
-void QApplicationPrivate::processKeyEvent(QWindowSystemInterface::KeyEvent *e)
+void QApplicationPrivate::processKeyEvent(QWindowSystemInterfacePrivate::KeyEvent *e)
 {
     QWidget *focusW = 0;
     if (self->inPopupMode()) {
@@ -778,23 +799,43 @@ void QApplicationPrivate::processKeyEvent(QWindowSystemInterface::KeyEvent *e)
 
     if (!focusW)
         return;
-    if (app_do_modal && !qt_try_modal(focusW, e->type))
+    if (app_do_modal && !qt_try_modal(focusW, e->keyType))
         return;
 
     modifiers = e->modifiers;
-    QKeyEvent ev(e->type, e->key, e->modifiers, e->unicode, e->repeat, e->repeatCount);
+    QKeyEvent ev(e->keyType, e->key, e->modifiers, e->unicode, e->repeat, e->repeatCount);
     QApplication::sendSpontaneousEvent(focusW, &ev);
 }
 
-void QApplicationPrivate::processGeometryChange(QWidget *tlw, const QRect &newRect)
+void QApplicationPrivate::processEnterEvent(QWindowSystemInterfacePrivate::EnterEvent *e)
 {
+    QApplicationPrivate::dispatchEnterLeave(e->enter.data(),0);
+    qt_last_mouse_receiver = e->enter.data();
+}
+
+void QApplicationPrivate::processLeaveEvent(QWindowSystemInterfacePrivate::LeaveEvent *e)
+{
+    QApplicationPrivate::dispatchEnterLeave(0,qt_last_mouse_receiver);
+
+    if (e->leave.data() && !e->leave.data()->isAncestorOf(qt_last_mouse_receiver)) //(???) this should not happen
+        QApplicationPrivate::dispatchEnterLeave(0, e->leave.data());
+    qt_last_mouse_receiver = 0;
+
+}
+
+
+void QApplicationPrivate::processGeometryChangeEvent(QWindowSystemInterfacePrivate::GeometryChangeEvent *e)
+{
+    if (e->tlw.isNull())
+       return;
+    QWidget *tlw = e->tlw.data();
     if (!tlw->isWindow())
         return; //geo of native child widgets is controlled by lighthouse
                 //so we already have sent the events; besides this new rect
                 //is not mapped to parent
 
+    QRect newRect = e->newGeometry;
     QRect cr(tlw->geometry());
-
     bool isResize = cr.size() != newRect.size();
     bool isMove = cr.topLeft() != newRect.topLeft();
     tlw->data->crect = newRect;
@@ -811,17 +852,21 @@ void QApplicationPrivate::processGeometryChange(QWidget *tlw, const QRect &newRe
     }
 }
 
-void QApplicationPrivate::processCloseEvent(QWidget *tlw)
+void QApplicationPrivate::processCloseEvent(QWindowSystemInterfacePrivate::CloseEvent *e)
 {
-    tlw->d_func()->close_helper(QWidgetPrivate::CloseWithSpontaneousEvent);
+    if (e->topLevel.isNull()) {
+        //qDebug() << "QApplicationPrivate::processCloseEvent NULL";
+        return;
+    }
+    e->topLevel.data()->d_func()->close_helper(QWidgetPrivate::CloseWithSpontaneousEvent);
 }
 
-void QApplicationPrivate::processTouchEvent(QWindowSystemInterface::TouchEvent *e)
+void QApplicationPrivate::processTouchEvent(QWindowSystemInterfacePrivate::TouchEvent *e)
 {
     translateRawTouchEvent(e->widget.data(), e->devType, e->points);
 }
 
-void QApplicationPrivate::reportScreenCount(int count)
+void QApplicationPrivate::reportScreenCount(QWindowSystemInterfacePrivate::ScreenCountEvent *e)
 {
     // This operation only makes sense after the QApplication constructor runs
     if (QCoreApplication::startingUp())
@@ -830,10 +875,10 @@ void QApplicationPrivate::reportScreenCount(int count)
     QApplication::desktop()->d_func()->updateScreenList();
     // signal anything listening for creation or deletion of screens
     QDesktopWidget *desktop = QApplication::desktop();
-    emit desktop->screenCountChanged(count);
+    emit desktop->screenCountChanged(e->count);
 }
 
-void QApplicationPrivate::reportGeometryChange(int screenIndex)
+void QApplicationPrivate::reportGeometryChange(QWindowSystemInterfacePrivate::ScreenGeometryEvent *e)
 {
     // This operation only makes sense after the QApplication constructor runs
     if (QCoreApplication::startingUp())
@@ -843,7 +888,7 @@ void QApplicationPrivate::reportGeometryChange(int screenIndex)
 
     // signal anything listening for screen geometry changes
     QDesktopWidget *desktop = QApplication::desktop();
-    emit desktop->resized(screenIndex);
+    emit desktop->resized(e->index);
 
     // make sure maximized and fullscreen windows are updated
     QWidgetList list = QApplication::topLevelWidgets();
@@ -856,7 +901,8 @@ void QApplicationPrivate::reportGeometryChange(int screenIndex)
     }
 }
 
-void QApplicationPrivate::reportAvailableGeometryChange(int screenIndex)
+void QApplicationPrivate::reportAvailableGeometryChange(
+        QWindowSystemInterfacePrivate::ScreenAvailableGeometryEvent *e)
 {
     // This operation only makes sense after the QApplication constructor runs
     if (QCoreApplication::startingUp())
@@ -866,7 +912,7 @@ void QApplicationPrivate::reportAvailableGeometryChange(int screenIndex)
 
     // signal anything listening for screen geometry changes
     QDesktopWidget *desktop = QApplication::desktop();
-    emit desktop->workAreaResized(screenIndex);
+    emit desktop->workAreaResized(e->index);
 
     // make sure maximized and fullscreen windows are updated
     QWidgetList list = QApplication::topLevelWidgets();
