@@ -1327,7 +1327,6 @@ void QWidgetPrivate::createRecursively()
 
 void QWidget::create(WId window, bool initializeWindow, bool destroyOldWindow)
 {
-    qDebug()<<"QWidget::create 1";
     Q_D(QWidget);
     if (testAttribute(Qt::WA_WState_Created) && window == 0 && internalWinId())
         return;
@@ -1365,7 +1364,6 @@ void QWidget::create(WId window, bool initializeWindow, bool destroyOldWindow)
         }
     }
 #endif //Q_WS_QPA
-    qDebug()<<"QWidget::create 2";
 
 #ifdef QT3_SUPPORT
     if (flags & Qt::WStaticContents)
@@ -1382,7 +1380,6 @@ void QWidget::create(WId window, bool initializeWindow, bool destroyOldWindow)
         setAttribute(Qt::WA_NoMousePropagation);
 #endif
 
-    qDebug()<<"QWidget::create 2 1";
     static int paintOnScreenEnv = -1;
     if (paintOnScreenEnv == -1)
         paintOnScreenEnv = qgetenv("QT_ONSCREEN_PAINT").toInt() > 0 ? 1 : 0;
@@ -1396,7 +1393,6 @@ void QWidget::create(WId window, bool initializeWindow, bool destroyOldWindow)
     qDebug() << "QWidget::create:" << this << "parent:" << parentWidget()
              << "Alien?" << !testAttribute(Qt::WA_NativeWindow);
 #endif
-    qDebug()<<"QWidget::create 2 2";
 
 #if defined (Q_WS_WIN) && !defined(QT_NO_DRAGANDDROP)
     // Unregister the dropsite (if already registered) before we
@@ -1406,15 +1402,11 @@ void QWidget::create(WId window, bool initializeWindow, bool destroyOldWindow)
         d->registerDropSite(false);
     }
 #endif // defined (Q_WS_WIN) && !defined(QT_NO_DRAGANDDROP)
-    qDebug()<<"QWidget::create 2 3";
 
     d->updateIsOpaque();
-    qDebug()<<"QWidget::create 2 3 1";
 
     setAttribute(Qt::WA_WState_Created);                        // set created flag
-    qDebug()<<"QWidget::create 2 3 2";
     d->create_sys(window, initializeWindow, destroyOldWindow);
-    qDebug()<<"QWidget::create 2 3 3";
 
     // a real toplevel window needs a backing store
     if (isWindow() && windowType() != Qt::Desktop) {
@@ -1422,10 +1414,8 @@ void QWidget::create(WId window, bool initializeWindow, bool destroyOldWindow)
         if (hasBackingStoreSupport())
             d->topData()->backingStore.create(this);
     }
-    qDebug()<<"QWidget::create 2 4";
 
     d->setModal_sys();
-    qDebug()<<"QWidget::create 3";
 
     if (!isWindow() && parentWidget() && parentWidget()->testAttribute(Qt::WA_DropSiteRegistered))
         setAttribute(Qt::WA_DropSiteRegistered, true);
@@ -1448,7 +1438,6 @@ void QWidget::create(WId window, bool initializeWindow, bool destroyOldWindow)
         if (isWindow() && !testAttribute(Qt::WA_SetWindowIcon))
             d->setWindowIcon_sys();
     }
-    qDebug()<<"QWidget::create 4";
 }
 
 /*!
