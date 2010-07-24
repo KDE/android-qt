@@ -66,7 +66,7 @@ static jmethodID m_swapBuffersMethodID=0;
 //static jmethodID m_getProcAddressMethodID=0;
 // Java EGL methods
 
-static QMap<int,jobject> m_windows;
+static QMap<int,QPair<jobject,QWidget *> > m_windows;
 static bool   m_pauseApplication;
 static QAndroidPlatformIntegration * mAndroidGraphicsSystem=0;
 
@@ -112,7 +112,7 @@ namespace QtAndroid
         AndroidBitmapInfo  info;
         int ret;
 
-        if ((ret = AndroidBitmap_getInfo(env, m_windows[windowId], &info)) < 0)
+    if ((ret = AndroidBitmap_getInfo(env, m_windows[windowId].first, &info)) < 0)
         {
             qWarning()<<"AndroidBitmap_getInfo() failed ! error="<<ret;
             m_javaVM->DetachCurrentThread();
@@ -128,7 +128,7 @@ namespace QtAndroid
         void * pixels;
         unsigned char * screenBits;
 
-        if ((ret = AndroidBitmap_lockPixels(env, m_windows[windowId], &pixels)) < 0)
+    if ((ret = AndroidBitmap_lockPixels(env, m_windows[windowId].first, &pixels)) < 0)
         {
             qWarning()<<"AndroidBitmap_lockPixels() failed ! error="<<ret;
             m_javaVM->DetachCurrentThread();
@@ -160,7 +160,7 @@ namespace QtAndroid
             memcpy(screenBits+y*sbpl+sposx*bpp,
                     imageBits+y*ibpl+iposx*bpp,
                    width*bpp);
-        AndroidBitmap_unlockPixels(env, m_windows[windowId]);
+    AndroidBitmap_unlockPixels(env, m_windows[windowId].first);
         env->CallVoidMethod(object, m_redrawWindowMethodID, (jint)windowId,
                             (jint)destinationRect.left(),
                             (jint)destinationRect.top(),
@@ -174,7 +174,7 @@ namespace QtAndroid
         mAndroidGraphicsSystem=androidGraphicsSystem;
     }
 
-    bool createWindow(bool openGl, int windowId, int l, int t, int r, int b)
+    bool createWindow(bool openGl, QWidget * tlw, int windowId, int l, int t, int r, int b)
     {
         qDebug()<<"createWindow"<<openGl<<windowId<<l<<t<<r<<b;
         JNIEnv* env;
@@ -191,7 +191,12 @@ namespace QtAndroid
         if (!res)
             return false;
         m_applicationControl->m_createWindowSemaphore.acquire(); //wait until window is created
-        return m_windows.contains(windowId);
+    if (m_windows.contains(windowId))
+    {
+        m_windows[windowId].second=tlw;
+        return true;
+    }
+    return false;
     }
 
     bool resizeWindow(int windowId, int l, int t, int r, int b)
@@ -433,30 +438,33 @@ static void setDisplayMetrics(JNIEnv* /*env*/, jclass /*clazz*/,
 }
 
 
-static void mouseDown(JNIEnv */*env*/, jobject /*thiz*/, jint x, jint y)
+static void mouseDown(JNIEnv */*env*/, jobject /*thiz*/, jint winId, jint x, jint y)
 {
-    QWindowSystemInterface::handleMouseEvent(0, QEvent::MouseButtonRelease,QPoint(x,y),QPoint(x,y),
-                                                             Qt::MouseButtons(Qt::LeftButton));
+    QWindowSystemInterface::handleMouseEvent(m_windows.contains(winId)?m_windows[winId].second:0,
+                                             QEvent::MouseButtonRelease,QPoint(x,y),QPoint(x,y),
+                                             Qt::MouseButtons(Qt::LeftButton));
 }
 
-static void mouseUp(JNIEnv */*env*/, jobject /*thiz*/, jint x, jint y)
+static void mouseUp(JNIEnv */*env*/, jobject /*thiz*/, jint winId, jint x, jint y)
 {
-    QWindowSystemInterface::handleMouseEvent(0, QEvent::MouseButtonRelease,QPoint(x,y),QPoint(x,y),
-                                                             Qt::MouseButtons(Qt::NoButton));
+    QWindowSystemInterface::handleMouseEvent(m_windows.contains(winId)?m_windows[winId].second:0,
+                                             QEvent::MouseButtonRelease,QPoint(x,y),QPoint(x,y),
+                                             Qt::MouseButtons(Qt::NoButton));
 }
 
-static void mouseMove(JNIEnv */*env*/, jobject /*thiz*/, jint x, jint y)
+static void mouseMove(JNIEnv */*env*/, jobject /*thiz*/, jint winId, jint x, jint y)
 {
-    QWindowSystemInterface::handleMouseEvent(0, QEvent::MouseButtonRelease,QPoint(x,y),QPoint(x,y),
-                                                             Qt::MouseButtons(Qt::LeftButton));
+    QWindowSystemInterface::handleMouseEvent(m_windows.contains(winId)?m_windows[winId].second:0,
+                                             QEvent::MouseButtonRelease,QPoint(x,y),QPoint(x,y),
+                                             Qt::MouseButtons(Qt::LeftButton));
 }
 
-static void touchBegin(JNIEnv */*env*/, jobject /*thiz*/)
+static void touchBegin(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/)
 {
     m_touchPoints.clear();
 }
 
-static void touchAdd(JNIEnv */*env*/, jobject /*thiz*/, jint id, jint action, jboolean primary, jint x, jint y, jfloat size, jfloat pressure)
+static void touchAdd(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/, jint id, jint action, jboolean primary, jint x, jint y, jfloat size, jfloat pressure)
 {
     Qt::TouchPointStates state=Qt::TouchPointStationary;
     switch(action)
@@ -487,7 +495,7 @@ static void touchAdd(JNIEnv */*env*/, jobject /*thiz*/, jint id, jint action, jb
     m_touchPoints.push_back(touchPoint);
 }
 
-static void touchEnd(JNIEnv */*env*/, jobject /*thiz*/, jint action)
+static void touchEnd(JNIEnv */*env*/, jobject /*thiz*/, jint winId, jint action)
 {
     QEvent::Type eventType=QEvent::None;
     switch (action)
@@ -502,7 +510,7 @@ static void touchEnd(JNIEnv */*env*/, jobject /*thiz*/, jint action)
             eventType=QEvent::TouchEnd;
             break;
     }
-    QWindowSystemInterface::handleTouchEvent(0, eventType, QTouchEvent::TouchScreen, m_touchPoints);
+    QWindowSystemInterface::handleTouchEvent(m_windows.contains(winId)?m_windows[winId].second:0, eventType, QTouchEvent::TouchScreen, m_touchPoints);
 }
 
 static int mapAndroidKey(int key)
@@ -705,7 +713,7 @@ static void windowCreated(JNIEnv *env, jobject /*thiz*/, jobject jWindow, jint w
 {
     qDebug()<<"windowCreated"<<windowId;
     Q_UNUSED(env);
-    m_windows[windowId] = env->NewGlobalRef(jWindow);
+    m_windows[windowId].first = env->NewGlobalRef(jWindow);
     m_applicationControl->m_createWindowSemaphore.release();
 }
 
@@ -713,7 +721,7 @@ static void windowChanged(JNIEnv *env, jobject /*thiz*/, jobject jWindow, jint w
 {
     qDebug()<<"windowChanged"<<windowId;
     Q_UNUSED(env);
-    m_windows[windowId] = env->NewGlobalRef(jWindow);
+    m_windows[windowId].first = env->NewGlobalRef(jWindow);
     m_applicationControl->m_resizeWindowSemaphore.release();
 }
 
@@ -768,12 +776,12 @@ static JNINativeMethod methods[] = {
     {"windowDestroyed", "(I)V", (void *)windowDestroyed},
     {"lockWindow", "()V", (void *)lockWindow},
     {"unlockWindow", "()V", (void *)unlockWindow},
-    {"touchBegin","()V",(void*)touchBegin},
-    {"touchAdd","(IIZIIFF)V",(void*)touchAdd},
-    {"touchEnd","(I)V",(void*)touchEnd},
-    {"mouseDown", "(II)V", (void *)mouseDown},
-    {"mouseUp", "(II)V", (void *)mouseUp},
-    {"mouseMove", "(II)V", (void *)mouseMove},
+    {"touchBegin","(I)V",(void*)touchBegin},
+    {"touchAdd","(IIIZIIFF)V",(void*)touchAdd},
+    {"touchEnd","(II)V",(void*)touchEnd},
+    {"mouseDown", "(III)V", (void *)mouseDown},
+    {"mouseUp", "(III)V", (void *)mouseUp},
+    {"mouseMove", "(III)V", (void *)mouseMove},
     {"keyDown", "(III)V", (void *)keyDown},
     {"keyUp", "(III)V", (void *)keyUp}
 };

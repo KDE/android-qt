@@ -1,7 +1,6 @@
 package com.nokia.qt;
 
 import java.io.File;
-
 import android.app.Activity;
 import android.graphics.Rect;
 import android.util.Log;
@@ -237,12 +236,12 @@ public class QtApplication
 	// screen methods
 
 	// pointer methods
-	public static native void mouseDown(int x, int y);
-	public static native void mouseUp(int x, int y);
-	public static native void mouseMove(int x, int y);
-	public static native void touchBegin();
-	public static native void touchAdd(int pointerId, int action, boolean primary, int x, int y, float size, float pressure);
-	public static native void touchEnd(int action);
+	public static native void mouseDown(int winId, int x, int y);
+	public static native void mouseUp(int winId, int x, int y);
+	public static native void mouseMove(int winId, int x, int y);
+	public static native void touchBegin(int winId);
+	public static native void touchAdd(int winId, int pointerId, int action, boolean primary, int x, int y, float size, float pressure);
+	public static native void touchEnd(int winId, int action);
 	// pointer methods
 
 	// keyboard methods
