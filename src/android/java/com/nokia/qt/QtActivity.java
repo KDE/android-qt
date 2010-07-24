@@ -76,24 +76,24 @@ public class QtActivity extends Activity
 		}
 	}
 
-//	@Override
-//	protected void onPause()
-//	{
-//		if (!quitApp)
-//		{
-//			Log.i(QtApplication.QtTAG, "onPause");
-//			QtApplication.pauseQtApp();
-//		}
-//		super.onPause();
-//	}
-//
-//	@Override
-//	protected void onResume()
-//	{
-//		Log.i(QtApplication.QtTAG, "onResume");
-//		QtApplication.resumeQtApp();
-//		super.onRestart();
-//	}
+	@Override
+	protected void onPause()
+	{
+		if (!quitApp)
+		{
+			Log.i(QtApplication.QtTAG, "onPause");
+			QtApplication.pauseQtApp();
+		}
+		super.onPause();
+	}
+
+	@Override
+	protected void onResume()
+	{
+		Log.i(QtApplication.QtTAG, "onResume");
+		QtApplication.resumeQtApp();
+		super.onRestart();
+	}
 
 	@Override
 	public Object onRetainNonConfigurationInstance()
@@ -114,37 +114,37 @@ public class QtActivity extends Activity
 		}
 	}
 
-//	@Override
-//	protected void onSaveInstanceState(Bundle outState) {
-//		Log.i(QtApplication.QtTAG, "onSaveInstanceState");
-//		super.onSaveInstanceState(outState);
-//		Log.i(QtApplication.QtTAG, "onSaveInstanceState");
-//		QtMainView view = QtApplication.getView();
-//		outState.putInt("Surfaces", view.getChildCount());
-//		for (int i=0;i<view.getChildCount();i++)
-//		{
-//			QtWindow surface=(QtWindow) view.getChildAt(i);
-//			Log.i(QtApplication.QtTAG,"id"+surface.getId()+","+surface.getLeft()+","+surface.getTop()+","+surface.getRight()+","+surface.getBottom());
-//			int surfaceInfo[]={((QtWindowInterface)surface).isOpenGl(), surface.getId(), surface.getLeft(), surface.getTop(), surface.getRight(), surface.getBottom()};
-//			outState.putIntArray("Surface_"+i, surfaceInfo);
-//		}
-//	}
-//
-//	@Override
-//	protected void onRestoreInstanceState(Bundle savedInstanceState) {
-//		Log.i(QtApplication.QtTAG, "onRestoreInstanceState");
-//		super.onRestoreInstanceState(savedInstanceState);
-//		Log.i(QtApplication.QtTAG, "onRestoreInstanceState");
-//		QtMainView view = QtApplication.getView();
-//		int surfaces=savedInstanceState.getInt("Surfaces");
-//		for (int i=0;i<surfaces;i++)
-//		{
-//			int surfaceInfo[]= {0,0,0,0,0,0};
-//			surfaceInfo=savedInstanceState.getIntArray("Surface_"+i);
-//			if (surfaceInfo[0]==1) // OpenGl Surface
-//				view.addView(new QtGlWindow(this, surfaceInfo[1], surfaceInfo[2], surfaceInfo[3], surfaceInfo[4], surfaceInfo[5]),i);
-//			else
-//				view.addView(new QtWindow(this, surfaceInfo[1], surfaceInfo[2], surfaceInfo[3], surfaceInfo[4], surfaceInfo[5]), i);				
-//		}		
-//	}
+	@Override
+	protected void onSaveInstanceState(Bundle outState) {
+		Log.i(QtApplication.QtTAG, "onSaveInstanceState");
+		super.onSaveInstanceState(outState);
+		Log.i(QtApplication.QtTAG, "onSaveInstanceState");
+		QtMainView view = QtApplication.getView();
+		outState.putInt("Surfaces", view.getChildCount());
+		for (int i=0;i<view.getChildCount();i++)
+		{
+			QtWindow surface=(QtWindow) view.getChildAt(i);
+			Log.i(QtApplication.QtTAG,"id"+surface.getId()+","+surface.getLeft()+","+surface.getTop()+","+surface.getRight()+","+surface.getBottom());
+			int surfaceInfo[]={((QtWindowInterface)surface).isOpenGl(), surface.getId(), surface.getLeft(), surface.getTop(), surface.getRight(), surface.getBottom()};
+			outState.putIntArray("Surface_"+i, surfaceInfo);
+		}
+	}
+
+	@Override
+	protected void onRestoreInstanceState(Bundle savedInstanceState) {
+		Log.i(QtApplication.QtTAG, "onRestoreInstanceState");
+		super.onRestoreInstanceState(savedInstanceState);
+		Log.i(QtApplication.QtTAG, "onRestoreInstanceState");
+		QtMainView view = QtApplication.getView();
+		int surfaces=savedInstanceState.getInt("Surfaces");
+		for (int i=0;i<surfaces;i++)
+		{
+			int surfaceInfo[]= {0,0,0,0,0,0};
+			surfaceInfo=savedInstanceState.getIntArray("Surface_"+i);
+			if (surfaceInfo[0]==1) // OpenGl Surface
+				view.addView(new QtGlWindow(this, surfaceInfo[1], surfaceInfo[2], surfaceInfo[3], surfaceInfo[4], surfaceInfo[5]),i);
+			else
+				view.addView(new QtWindow(this, surfaceInfo[1], surfaceInfo[2], surfaceInfo[3], surfaceInfo[4], surfaceInfo[5]), i);
+		}
+	}
 }

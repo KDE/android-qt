@@ -20,7 +20,7 @@ bool QAndroidPlatformGLContext::create(QPaintDevice* device, QGLFormat& /*format
     }
     m_surfaceId=widget->winId();
     qDebug()<<"Window ID="<<m_surfaceId;
-    return QtAndroid::createWindow(true, m_surfaceId, widget->geometry().left(), widget->geometry().top(),
+    return QtAndroid::createWindow(true, widget, m_surfaceId, widget->geometry().left(), widget->geometry().top(),
                                             widget->geometry().right(), widget->geometry().bottom());
 }
 

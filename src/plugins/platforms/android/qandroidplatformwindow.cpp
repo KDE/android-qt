@@ -12,7 +12,7 @@ QAndroidPlatformWindow::QAndroidPlatformWindow(QWidget *tlw):
     static QAtomicInt winIdGenerator(1);
     m_windowId = winIdGenerator.fetchAndAddRelaxed(1);
     m_window = tlw;
-    QtAndroid::createWindow(false, m_windowId, m_window->geometry().left(), m_window->geometry().top(),
+    QtAndroid::createWindow(false, tlw, m_windowId, m_window->geometry().left(), m_window->geometry().top(),
                                             m_window->geometry().right(), m_window->geometry().bottom());
 }
 
@@ -42,7 +42,7 @@ void QAndroidPlatformWindow::setOpacity(qreal level)
 
 Qt::WindowFlags QAndroidPlatformWindow::setWindowFlags(Qt::WindowFlags flags)
 {
-    qDebug()<<"QAndroidPlatformWindow::setWindowFlags"<<flags;
+   qDebug()<<"QAndroidPlatformWindow::setWindowFlags"<<flags;
    if (flags != Qt::Popup && flags != Qt::Tool && flags != Qt::ToolTip && flags != Qt::SplashScreen)
         m_window->setWindowState(m_window->windowState() | Qt::WindowMaximized);
     return flags;
