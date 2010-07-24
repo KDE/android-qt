@@ -7507,8 +7507,6 @@ void QWidget::setVisible(bool visible)
 
         Q_D(QWidget);
         QWidget *pw = parentWidget();
-
-        QWidget *pw = parentWidget();
         // Designer uses a trick to make grabWidget work without showing
         if (!isWindow() && pw && pw->isVisible()
             && !pw->testAttribute(Qt::WA_WState_Created))
