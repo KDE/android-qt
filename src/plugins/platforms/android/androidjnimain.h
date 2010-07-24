@@ -7,7 +7,7 @@ class QPoint;
 class QThread;
 class QAndroidPlatformIntegration;
 class QString;
-
+class QWidget;
 namespace QtAndroid
 {
     void setAndroidGraphicsSystem(QAndroidPlatformIntegration * androidGraphicsSystem);
@@ -15,7 +15,7 @@ namespace QtAndroid
     void flushImage(int windowId, const QPoint & pos, const QImage & image, const QRect & rect);
 
     // Window methods
-    bool createWindow(bool OpenGL, int windowId, int l, int t, int r, int b);
+    bool createWindow(bool OpenGL, QWidget * tlw, int windowId, int l, int t, int r, int b);
     bool resizeWindow(int windowId, int l, int t, int r, int b);
     bool destroyWindow(int windowId);
     void setWindowVisiblity(int windowId, bool visible);

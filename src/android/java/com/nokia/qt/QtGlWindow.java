@@ -100,23 +100,23 @@ public class QtGlWindow extends SurfaceView implements SurfaceHolder.Callback, Q
 
     public void sendTouchEvents(MotionEvent event)
     {
-		QtApplication.touchBegin();
+		QtApplication.touchBegin(getId());
 
 		for (int i=0;i<event.getPointerCount();i++)
-			QtApplication.touchAdd(event.getPointerId(i), getAction(i, event), i==0,
-					(int)event.getX(i)+left, (int)event.getY(i)+top, event.getSize(i),
+			QtApplication.touchAdd(getId(),event.getPointerId(i), getAction(i, event), i==0,
+					(int)event.getX(i), (int)event.getY(i), event.getSize(i),
 					event.getPressure(i));
 
 		switch(event.getAction())
 		{
 		case MotionEvent.ACTION_DOWN:
-			QtApplication.touchEnd(0);
+			QtApplication.touchEnd(getId(),0);
 			break;
 		case MotionEvent.ACTION_UP:
-			QtApplication.touchEnd(2);
+			QtApplication.touchEnd(getId(),2);
 			break;
 		default:
-			QtApplication.touchEnd(1);
+			QtApplication.touchEnd(getId(),1);
 		}
     }
 
@@ -127,11 +127,11 @@ public class QtGlWindow extends SurfaceView implements SurfaceHolder.Callback, Q
 		switch (event.getAction())
 		{
 		case MotionEvent.ACTION_UP:
-			QtApplication.mouseUp((int) event.getX()+left, (int) event.getY()+top);
+			QtApplication.mouseUp(getId(),(int) event.getX(), (int) event.getY());
 			return true;
 
 		case MotionEvent.ACTION_DOWN:
-			QtApplication.mouseDown((int) event.getX()+left, (int) event.getY()+top);
+			QtApplication.mouseDown(getId(),(int) event.getX(), (int) event.getY());
 			oldx = (int) event.getX();
 			oldy = (int) event.getY();
 			return true;
@@ -141,7 +141,7 @@ public class QtGlWindow extends SurfaceView implements SurfaceHolder.Callback, Q
 			int dy = (int) (event.getY() - oldy);
 			if (Math.abs(dx) > 5 || Math.abs(dy) > 5)
 			{
-				QtApplication.mouseMove((int) event.getX()+left, (int) event.getY()+top);
+				QtApplication.mouseMove(getId(),(int) event.getX(), (int) event.getY());
 				oldx = (int) event.getX();
 				oldy = (int) event.getY();
 			}
@@ -156,11 +156,11 @@ public class QtGlWindow extends SurfaceView implements SurfaceHolder.Callback, Q
 		switch (event.getAction())
 		{
 		case MotionEvent.ACTION_UP:
-			QtApplication.mouseUp((int) event.getX()+left, (int) event.getY()+top);
+			QtApplication.mouseUp(getId(),(int) event.getX(), (int) event.getY());
 			return true;
 
 		case MotionEvent.ACTION_DOWN:
-			QtApplication.mouseDown((int) event.getX()+left, (int) event.getY()+top);
+			QtApplication.mouseDown(getId(),(int) event.getX(), (int) event.getY());
 			oldx = (int) event.getX();
 			oldy = (int) event.getY();
 			return true;
@@ -170,7 +170,7 @@ public class QtGlWindow extends SurfaceView implements SurfaceHolder.Callback, Q
 			int dy = (int) (event.getY() - oldy);
 			if (Math.abs(dx) > 5 || Math.abs(dy) > 5)
 			{
-				QtApplication.mouseMove((int) event.getX()+left, (int) event.getY()+top);
+				QtApplication.mouseMove(getId(),(int) event.getX(), (int) event.getY());
 				oldx = (int) event.getX();
 				oldy = (int) event.getY();
 			}
