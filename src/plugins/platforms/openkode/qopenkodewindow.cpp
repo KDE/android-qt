@@ -39,70 +39,105 @@
 **
 ****************************************************************************/
 #include "qopenkodewindow.h"
+#include "qopenkodeintegration.h"
+#include "../eglconvenience/qeglplatformcontext.h"
+#include "../eglconvenience/qeglconvenience.h"
 
+#include <KD/kd.h>
 #include <KD/NV_display.h>
 
-#include <QtGui/private/qeglcontext_p.h>
+#include <EGL/egl.h>
+
 #include <QtGui/qwidget.h>
+#include <QtGui/private/qwidget_p.h>
+#include <QtGui/private/qapplication_p.h>
+
+#include <QtCore/qvector.h>
 #include <QtCore/QDebug>
+
+
 
 QOpenKODEWindow::QOpenKODEWindow(QWidget *tlw)
     : QPlatformWindow(tlw)
 {
-    /* Initialize EGL display */
-    EGLBoolean rvbool = eglInitialize(QEgl::display(), KD_NULL, KD_NULL);
-    if (!rvbool) {
-        kdLogMessage("EGL failed to initialize display\n");
+    if (tlw->platformWindowFormat().windowApi() == QPlatformWindowFormat::OpenVG) {
+        m_eglApi = EGL_OPENVG_API;
+    } else {
+        m_eglContextAttrs.append(EGL_CONTEXT_CLIENT_VERSION);
+        m_eglContextAttrs.append(2);
+
+        m_eglApi = EGL_OPENGL_ES_API;
+    }
+    eglBindAPI(m_eglApi);
+
+    m_eglContextAttrs.append(EGL_NONE);
+    m_eglWindowAttrs.append(EGL_NONE);
+
+    QList<QPlatformScreen *> screens = QApplicationPrivate::platformIntegration()->screens();
+    //XXXX: jl figure out how to pick the correct screen.
+//    Q_ASSERT(screens.size() > tlw->d_func()->screenNumber);
+//    QOpenKODEScreen *screen = qobject_cast<QOpenKODEScreen *>(screens.at(tlw->d_func()->screenNumber));
+    QOpenKODEScreen *screen = qobject_cast<QOpenKODEScreen *>(screens.at(0));
+    if (!screen) {
+        qErrnoWarning("Could not make QOpenKODEWindow without a screen");
     }
 
-    kdWindow = kdCreateWindow(QEgl::display(),
-                              QEgl::defaultConfig(QInternal::Widget,QEgl::OpenGL,QEgl::Renderable),
+    QPlatformWindowFormat format = tlw->platformWindowFormat();
+    format.setRedBufferSize(5);
+    format.setGreenBufferSize(6);
+    format.setBlueBufferSize(5);
+    tlw->setPlatformWindowFormat(format);
+
+    m_eglConfig = q_configFromQPlatformWindowFormat(screen->eglDisplay(),tlw->platformWindowFormat());
+
+    m_kdWindow = kdCreateWindow(screen->eglDisplay(),
+                              m_eglConfig,
                               KD_NULL);
-    if (!kdWindow) {
+    if (!m_kdWindow) {
         qErrnoWarning(kdGetError(), "Error creating native window");
         return;
     }
 
     const KDint windowSize[2]  = { tlw->width(), tlw->height()-1 };
-    if (kdSetWindowPropertyiv(kdWindow, KD_WINDOWPROPERTY_SIZE, windowSize)) {
+    if (kdSetWindowPropertyiv(m_kdWindow, KD_WINDOWPROPERTY_SIZE, windowSize)) {
         qErrnoWarning(kdGetError(), "Could not set native window size");
         return;
     }
 
     KDboolean visibillity(false);
-    if (kdSetWindowPropertybv(kdWindow, KD_WINDOWPROPERTY_VISIBILITY, &visibillity)) {
+    if (kdSetWindowPropertybv(m_kdWindow, KD_WINDOWPROPERTY_VISIBILITY, &visibillity)) {
         qErrnoWarning(kdGetError(), "Could not set visibillity to false");
     }
 
-//    const KDboolean windowExclusive[] = { false };
-//    if (kdSetWindowPropertybv(kdWindow, KD_WINDOWPROPERTY_DESKTOP_EXCLUSIVE_NV, windowExclusive)) {
-//        qErrnoWarning(kdGetError(), "Could not set exclusive bit");
-//        //return;
-//    }
-//
     const KDint windowPos[2] = { tlw->x(), tlw->y() };
-    if (kdSetWindowPropertyiv(kdWindow, KD_WINDOWPROPERTY_DESKTOP_OFFSET_NV, windowPos)) {
+    if (kdSetWindowPropertyiv(m_kdWindow, KD_WINDOWPROPERTY_DESKTOP_OFFSET_NV, windowPos)) {
         qErrnoWarning(kdGetError(), "Could not set native window position");
         return;
     }
 
-    if (kdRealizeWindow(kdWindow, &eglWindow)) {
+    if (kdRealizeWindow(m_kdWindow, &m_eglWindow)) {
         qErrnoWarning(kdGetError(), "Could not realize native window");
         return;
     }
+
+    EGLSurface surface = eglCreateWindowSurface(screen->eglDisplay(),m_eglConfig,m_eglWindow,m_eglWindowAttrs.constData());
+
+    m_platformGlContext = new QEGLPlatformContext(screen->eglDisplay(), m_eglConfig,
+                                                  m_eglContextAttrs.data(), surface, m_eglApi);
 }
 
 QOpenKODEWindow::~QOpenKODEWindow()
 {
-    qDebug() << "destroying window";
-    kdDestroyWindow(kdWindow);
+    qDebug() << "destroying window" << m_kdWindow;
+    delete m_platformGlContext;
+    kdDestroyWindow(m_kdWindow);
 }
 void QOpenKODEWindow::setGeometry(const QRect &rect)
 {
     const QRect geo = geometry();
     if (geo.size() != rect.size()) {
-        const KDint windowSize[2]  = { rect.width(), rect.height() };
-        if (kdSetWindowPropertyiv(kdWindow, KD_WINDOWPROPERTY_SIZE, windowSize)) {
+        const KDint windowSize[2]  = { rect.width(), rect.height() -1 };
+        if (kdSetWindowPropertyiv(m_kdWindow, KD_WINDOWPROPERTY_SIZE, windowSize)) {
             qErrnoWarning(kdGetError(), "Could not set native window size");
             //return;
         }
@@ -110,18 +145,31 @@ void QOpenKODEWindow::setGeometry(const QRect &rect)
 
     if (geo.topLeft() != rect.topLeft()) {
         const KDint windowPos[2] = { rect.x(), rect.y() };
-        if (kdSetWindowPropertyiv(kdWindow, KD_WINDOWPROPERTY_DESKTOP_OFFSET_NV, windowPos)) {
+        if (kdSetWindowPropertyiv(m_kdWindow, KD_WINDOWPROPERTY_DESKTOP_OFFSET_NV, windowPos)) {
             qErrnoWarning(kdGetError(), "Could not set native window position");
             //return;
         }
     }
 
+    //need to recreate context
+    delete m_platformGlContext;
+
+    QList<QPlatformScreen *> screens = QApplicationPrivate::platformIntegration()->screens();
+    QOpenKODEScreen *screen = qobject_cast<QOpenKODEScreen *>(screens.at(0));
+    EGLSurface surface = eglCreateWindowSurface(screen->eglDisplay(),m_eglConfig,m_eglWindow,m_eglWindowAttrs.constData());
+    m_platformGlContext = new QEGLPlatformContext(screen->eglDisplay(),m_eglConfig,
+                                                  m_eglContextAttrs.data(),surface,m_eglApi);
 }
 
 void QOpenKODEWindow::setVisible(bool visible)
 {
     KDboolean visibillity(visible);
-    if (kdSetWindowPropertybv(kdWindow, KD_WINDOWPROPERTY_VISIBILITY, &visibillity)) {
+    if (kdSetWindowPropertybv(m_kdWindow, KD_WINDOWPROPERTY_VISIBILITY, &visibillity)) {
         qErrnoWarning(kdGetError(), "Could not set visibillity to false");
     }
+}
+
+QPlatformGLContext *QOpenKODEWindow::glContext()
+{
+    return m_platformGlContext;
 }

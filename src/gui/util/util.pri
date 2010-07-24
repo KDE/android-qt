@@ -20,7 +20,10 @@ SOURCES += \
         util/qundoview.cpp
 
 
-win32 {
+wince* {
+		SOURCES += \
+				util/qsystemtrayicon_wince.cpp
+} else:win32 {
 		SOURCES += \
 				util/qsystemtrayicon_win.cpp
 }
@@ -30,19 +33,18 @@ unix:x11 {
 				util/qsystemtrayicon_x11.cpp
 }
 
-embedded|embedded_lite {
+embedded|qpa {
 		SOURCES += \
 				util/qsystemtrayicon_qws.cpp
 }
 
-!embedded:!embedded_lite:!x11:mac {
+!embedded:!qpa:!x11:mac {
 		OBJECTIVE_SOURCES += util/qsystemtrayicon_mac.mm
 }
 
 symbian {
-    LIBS += -lsendas2 -letext -lapmime
+    LIBS += -lsendas2 -letext -lapmime -lplatformenv
     contains(QT_CONFIG, s60) {
-        LIBS += -lplatformenv
         contains(CONFIG, is_using_gnupoc) {
             LIBS += -lcommonui
         } else {

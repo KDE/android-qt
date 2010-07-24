@@ -54,74 +54,52 @@ QT_BEGIN_NAMESPACE
     \brief The Image element allows you to add bitmaps to a scene.
     \inherits Item
 
-    The Image element supports untransformed, stretched and tiled.
+    An Image element displays a specified \l source image:
 
-    For an explanation of stretching and tiling, see the fillMode property description.
-
-    Examples:
     \table
     \row
-    \o \image declarative-qtlogo1.png
-    \o Untransformed
-    \qml
-    Image { source: "pics/qtlogo.png" }
-    \endqml
-    \row
-    \o \image declarative-qtlogo2.png
-    \o fillMode: Stretch (default)
-    \qml
-    Image {
-        width: 160
-        height: 160
-        source: "pics/qtlogo.png"
-    }
-    \endqml
-    \row
-    \o \image declarative-qtlogo3.png
-    \o fillMode: Tile
-    \qml
-    Image {
-        fillMode: Image.Tile
-        width: 160; height: 160
-        source: "pics/qtlogo.png"
-    }
-    \endqml
-    \row
-    \o \image declarative-qtlogo6.png
-    \o fillMode: TileVertically
-    \qml
-    Image {
-        fillMode: Image.TileVertically
-        width: 160; height: 160
-        source: "pics/qtlogo.png"
-    }
-    \endqml
-    \row
-    \o \image declarative-qtlogo5.png
-    \o fillMode: TileHorizontally
-    \qml
-    Image {
-        fillMode: Image.TileHorizontally
-        width: 160; height: 160
-        source: "pics/qtlogo.png"
-    }
+    \o \image declarative-qtlogo.png
+    \o \qml
+        import Qt 4.7
+
+        Image { source: "qtlogo.png" }
     \endqml
     \endtable
- */
+
+    If the \l {Image::width}{width} and \l{Image::height}{height} properties are not specified,
+    the Image element is automatically sized to the loaded image. Image elements can be 
+    stretched and tiled using the \l fillMode property.
+
+    By default, locally available images are loaded immediately, and the user interface
+    is blocked until loading is complete. If a large image is to be loaded, it may be
+    preferable to load the image in a low priority thread, by enabling the \l asynchronous
+    property.
+
+    If the image is from a network rather than a local resource, it is automatically loaded
+    asynchronously, and the \l progress and \l status properties are updated as appropriate.  
+
+    Images are cached and shared internally, so if several Image elements have the same \l source,
+    only one copy of the image will be loaded.
+
+    \bold Note: Images are often the greatest user of memory in QML user interfaces.  It is recommended
+    that images which do not form part of the user interface have their
+    size bounded via the \l sourceSize property. This is especially important for content
+    that is loaded from external sources or provided by the user.
+
+    \sa {declarative/imageelements/image}{Image example}, QDeclarativeImageProvider
+*/
 
 /*!
     \internal
     \class QDeclarativeImage Image
     \brief The QDeclarativeImage class provides an image item that you can add to a QDeclarativeView.
 
-    \ingroup group_coreitems
-
     Example:
     \qml
     Image { source: "pics/star.png" }
     \endqml
 
-    A QDeclarativeImage object can be instantiated in Qml using the tag \l Image.
+    A QDeclarativeImage object can be instantiated in QML using the tag \l Image.
 */
 
 QDeclarativeImage::QDeclarativeImage(QDeclarativeItem *parent)
@@ -138,19 +116,10 @@ QDeclarativeImage::~QDeclarativeImage()
 {
 }
 
-/*!
-    \qmlproperty QPixmap Image::pixmap
-
-    This property holds the QPixmap image to display.
-
-    This is useful for displaying images provided by a C++ implementation,
-    for example, a model may provide a data role of type QPixmap.
-*/
-
 QPixmap QDeclarativeImage::pixmap() const
 {
     Q_D(const QDeclarativeImage);
-    return d->pix;
+    return d->pix.pixmap();
 }
 
 void QDeclarativeImage::setPixmap(const QPixmap &pix)
@@ -164,7 +133,7 @@ void QDeclarativeImage::setPixmap(const QPixmap &pix)
 void QDeclarativeImagePrivate::setPixmap(const QPixmap &pixmap)
 {
     Q_Q(QDeclarativeImage);
-    pix = pixmap;
+    pix.setPixmap(pixmap);
 
     q->setImplicitWidth(pix.width());
     q->setImplicitHeight(pix.height());
@@ -181,15 +150,90 @@ void QDeclarativeImagePrivate::setPixmap(const QPixmap &pixmap)
     than the size of the item.
 
     \list
-    \o Stretch - the image is scaled to fit
-    \o PreserveAspectFit - the image is scaled uniformly to fit without cropping
-    \o PreserveAspectCrop - the image is scaled uniformly to fill, cropping if necessary
-    \o Tile - the image is duplicated horizontally and vertically
-    \o TileVertically - the image is stretched horizontally and tiled vertically
-    \o TileHorizontally - the image is stretched vertically and tiled horizontally
+    \o Image.Stretch - the image is scaled to fit
+    \o Image.PreserveAspectFit - the image is scaled uniformly to fit without cropping
+    \o Image.PreserveAspectCrop - the image is scaled uniformly to fill, cropping if necessary
+    \o Image.Tile - the image is duplicated horizontally and vertically
+    \o Image.TileVertically - the image is stretched horizontally and tiled vertically
+    \o Image.TileHorizontally - the image is stretched vertically and tiled horizontally
     \endlist
 
-    \image declarative-image_fillMode.gif
+    \table
+    
+    \row
+    \o \image declarative-qtlogo-stretch.png
+    \o Stretch (default)
+    \qml
+    Image {
+        width: 130; height: 100
+        smooth: true
+        source: "qtlogo.png"
+    }
+    \endqml
+
+    \row
+    \o \image declarative-qtlogo-preserveaspectfit.png
+    \o PreserveAspectFit
+    \qml
+    Image {
+        width: 130; height: 100
+        fillMode: Image.PreserveAspectFit
+        smooth: true
+        source: "qtlogo.png"
+    }
+    \endqml
+
+    \row
+    \o \image declarative-qtlogo-preserveaspectcrop.png
+    \o PreserveAspectCrop
+    \qml
+    Image {
+        width: 130; height: 100
+        fillMode: Image.PreserveAspectCrop
+        smooth: true
+        source: "qtlogo.png"
+        clip: true
+    }
+    \endqml
+
+    \row
+    \o \image declarative-qtlogo-tile.png
+    \o Tile
+    \qml
+    Image {
+        width: 120; height: 120
+        fillMode: Image.Tile
+        source: "qtlogo.png"
+    }
+    \endqml
+
+    \row
+    \o \image declarative-qtlogo-tilevertically.png
+    \o TileVertically
+    \qml
+    Image {
+        width: 120; height: 120
+        fillMode: Image.TileVertically
+        smooth: true
+        source: "qtlogo.png"
+    }
+    \endqml
+
+    \row
+    \o \image declarative-qtlogo-tilehorizontally.png
+    \o TileHorizontally
+    \qml
+    Image {
+        width: 120; height: 120
+        fillMode: Image.TileHorizontally
+        smooth: true
+        source: "qtlogo.png"
+    }
+    \endqml
+
+    \endtable
+
+    \sa {declarative/imageelements/image}{Image example}
 */
 QDeclarativeImage::FillMode QDeclarativeImage::fillMode() const
 {
@@ -225,24 +269,32 @@ qreal QDeclarativeImage::paintedHeight() const
 
     This property holds the status of image loading.  It can be one of:
     \list
-    \o Null - no image has been set
-    \o Ready - the image has been loaded
-    \o Loading - the image is currently being loaded
-    \o Error - an error occurred while loading the image
+    \o Image.Null - no image has been set
+    \o Image.Ready - the image has been loaded
+    \o Image.Loading - the image is currently being loaded
+    \o Image.Error - an error occurred while loading the image
     \endlist
 
-    Note that a change in the status property does not cause anything to happen
-    (although it reflects what has happened with the image internally). If you wish
-    to react to the change in status you need to do it yourself, for example in one
-    of the following ways:
-    \list
-    \o Create a state, so that a state change occurs, e.g.
-    \qml State { name: 'loaded'; when: image.status = Image.Ready } \endqml
-    \o Do something inside the onStatusChanged signal handler, e.g.
-    \qml Image { id: image; onStatusChanged: if (image.status == Image.Ready) console.log('Loaded') } \endqml
-    \o Bind to the status variable somewhere, e.g.
-    \qml Text { text: if (image.status != Image.Ready) { 'Not Loaded' } else { 'Loaded' } } \endqml
-    \endlist
+    Use this status to provide an update or respond to the status change in some way.
+    For example, you could:
+
+    \e {Trigger a state change:}
+    \qml 
+        State { name: 'loaded'; when: image.status = Image.Ready }
+    \endqml
+
+    \e {Implement an \c onStatusChanged signal handler:}
+    \qml 
+        Image {
+            id: image
+            onStatusChanged: if (image.status == Image.Ready) console.log('Loaded')
+        }
+    \endqml
+
+    \e {Bind to the status value:}
+    \qml
+        Text { text: image.status != Image.Ready ? 'Not Loaded' : 'Loaded' }
+    \endqml
 
     \sa progress
 */
@@ -272,30 +324,45 @@ qreal QDeclarativeImage::paintedHeight() const
 /*!
     \qmlproperty QSize Image::sourceSize
 
-    This properties is the size of the loaded image, in pixels.
+    This property holds the actual width and height of the loaded image.
 
-    If you set this property explicitly, you can to control the storage
-    used by a loaded image. The image will be scaled down if its intrinsic size
-    is greater than this value.
+    Unlike the \l {Item::}{width} and \l {Item::}{height} properties, which scale
+    the painting of the image, this property sets the actual number of pixels
+    stored for the loaded image so that large images do not use more
+    memory than necessary. For example, this ensures the image is memory is no
+    larger than 1024x1024 pixels, regardless of the Image's \l {Item::}{width} and 
+    \l {Item::}{height} values:
 
-    If only one dimension of the size is set (and the other left at 0), the
-    unset dimension will be set in proportion to the set dimension to preserve
-    the source image aspect ratio. The fillMode is independent of this.
+    \code
+    Rectangle {
+        width: ...
+        height: ...
 
-    Unlike setting the width and height properties, which merely scale the painting
-    of the image, this property affects the number of pixels stored.
+        Image {
+           anchors.fill: parent
+           source: "reallyBigImage.jpg"
+           sourceSize.width: 1024
+           sourceSize.height: 1024
+        }
+    }
+    \endcode
 
-    \e{Changing this property dynamically will lead to the image source being reloaded,
-    potentially even from the network if it is not in the disk cache.}
+    If the image's actual size is larger than the sourceSize, the image is scaled down.
+    If only one dimension of the size is set to greater than 0, the
+    other dimension is set in proportion to preserve the source image's aspect ratio.
+    (The \l fillMode is independent of this.)
 
     If the source is an instrinsically scalable image (eg. SVG), this property
-    determines the size of the loaded image regardless of intrinsic size. You should
-    avoid changing this property dynamically - rendering an SVG is \e slow compared
+    determines the size of the loaded image regardless of intrinsic size.
+    Avoid changing this property dynamically; rendering an SVG is \e slow compared
     to an image.
 
     If the source is a non-scalable image (eg. JPEG), the loaded image will
     be no greater than this property specifies. For some formats (currently only JPEG),
     the whole image will never actually be loaded into memory.
+ 
+    \note \e {Changing this property dynamically causes the image source to be reloaded,
+    potentially even from the network, if it is not in the disk cache.}
 */
 
 void QDeclarativeImage::updatePaintedGeometry()
@@ -339,6 +406,8 @@ void QDeclarativeImage::geometryChanged(const QRectF &newGeometry, const QRectF 
     Image can handle any image format supported by Qt, loaded from any URL scheme supported by Qt.
 
     The URL may be absolute, or relative to the URL of the component.
+
+    \sa QDeclarativeImageProvider
 */
 
 /*!
@@ -348,7 +417,7 @@ void QDeclarativeImage::geometryChanged(const QRectF &newGeometry, const QRectF 
     asynchronously in a separate thread.  The default value is
     false, causing the user interface thread to block while the
     image is loaded.  Setting \a asynchronous to true is useful where
-    maintaining a responsive user interface is more desireable
+    maintaining a responsive user interface is more desirable
     than having images immediately visible.
 
     Note that this property is only valid for images read from the
@@ -439,7 +508,6 @@ void QDeclarativeImage::paint(QPainter *p, const QStyleOptionGraphicsItem *, QWi
 void QDeclarativeImage::pixmapChange()
 {
     updatePaintedGeometry();
-    emit pixmapChanged();
 }
 
 QT_END_NAMESPACE

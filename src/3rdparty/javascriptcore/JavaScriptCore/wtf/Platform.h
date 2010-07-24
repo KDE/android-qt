@@ -79,9 +79,14 @@
 #endif
 
 /* COMPILER(MINGW) - MinGW GCC */
-#if defined(MINGW) || defined(__MINGW32__)
+/* COMPILER(MINGW64) - mingw-w64 GCC - only used as additional check to exclude mingw.org specific functions */
+#if defined(__MINGW32__)
 #define WTF_COMPILER_MINGW 1
-#endif
+#include <_mingw.h> /* private MinGW header */
+    #if defined(__MINGW64_VERSION_MAJOR) /* best way to check for mingw-w64 vs mingw.org */
+        #define WTF_COMPILER_MINGW64 1
+    #endif /* __MINGW64_VERSION_MAJOR */
+#endif /* __MINGW32__ */
 
 /* COMPILER(SUNCC) - Sun CC compiler, also known as Sun Studio or Sun Pro */
 #if defined(__SUNPRO_CC) || defined(__SUNPRO_C)
@@ -91,6 +96,11 @@
 /* COMPILER(WINSCW) - CodeWarrior for Symbian emulator */
 #if defined(__WINSCW__)
 #define WTF_COMPILER_WINSCW 1
+#endif
+
+/* COMPILER(INTEL) - Intel C++ Compiler */
+#if defined(__INTEL_COMPILER)
+#define WTF_COMPILER_INTEL 1
 #endif
 
 /* COMPILER(ACC) - HP aCC */
@@ -702,11 +712,11 @@
 #define HAVE_SYS_TIME_H 1
 #define HAVE_SYS_TIMEB_H 1
 
-#if !defined(BUILDING_ON_TIGER) && !defined(BUILDING_ON_LEOPARD)
+#if !defined(TARGETING_TIGER) && !defined(TARGETING_LEOPARD)
 
 #define HAVE_DISPATCH_H 1
 
-#if !PLATFORM(IPHONE) && !PLATFORM(QT)
+#if !PLATFORM(IPHONE)
 #define HAVE_MADV_FREE_REUSE 1
 #define HAVE_MADV_FREE 1
 #define HAVE_PTHREAD_SETNAME_NP 1
@@ -968,6 +978,7 @@ on MinGW. See https://bugs.webkit.org/show_bug.cgi?id=29268 */
 
 #if PLATFORM(QT)
 #if (CPU(X86) && OS(WINDOWS) && COMPILER(MINGW) && GCC_VERSION >= 40100) \
+    || (CPU(X86_64) && OS(WINDOWS) && COMPILER(MINGW64) && GCC_VERSION >= 40100) \
     || (CPU(X86) && OS(WINDOWS) && COMPILER(MSVC)) \
     || (CPU(X86) && OS(LINUX) && GCC_VERSION >= 40100) \
     || (CPU(X86_64) && OS(LINUX) && GCC_VERSION >= 40100) \

@@ -53,7 +53,7 @@ QT_MODULE(Declarative)
 
 class QDeclarativePathViewPrivate;
 class QDeclarativePathViewAttached;
-class Q_DECLARATIVE_EXPORT QDeclarativePathView : public QDeclarativeItem
+class Q_AUTOTEST_EXPORT QDeclarativePathView : public QDeclarativeItem
 {
     Q_OBJECT
 
@@ -132,6 +132,10 @@ public:
 
     static QDeclarativePathViewAttached *qmlAttachedProperties(QObject *);
 
+public Q_SLOTS:
+    void incrementCurrentIndex();
+    void decrementCurrentIndex();
+
 Q_SIGNALS:
     void currentIndexChanged();
     void offsetChanged();
@@ -157,6 +161,7 @@ protected:
     void mouseReleaseEvent(QGraphicsSceneMouseEvent *);
     bool sendMouseEvent(QGraphicsSceneMouseEvent *event);
     bool sceneEventFilter(QGraphicsItem *, QEvent *);
+    bool event(QEvent *event);
     void componentComplete();
 
 private Q_SLOTS:
@@ -215,6 +220,7 @@ Q_SIGNALS:
 
 private:
     friend class QDeclarativePathViewPrivate;
+    friend class QDeclarativePathView;
     QDeclarativePathView *m_view;
     QDeclarativeOpenMetaObject *m_metaobject;
     bool m_onPath : 1;

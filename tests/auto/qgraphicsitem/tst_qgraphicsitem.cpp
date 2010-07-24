@@ -45,6 +45,7 @@
 #include <private/qtextcontrol_p.h>
 #include <private/qgraphicsitem_p.h>
 #include <private/qgraphicsview_p.h>
+#include <private/qgraphicsscene_p.h>
 #include <QStyleOptionGraphicsItem>
 #include <QAbstractTextDocumentLayout>
 #include <QBitmap>
@@ -235,11 +236,12 @@ public:
     QRectF boundingRect() const
     { return br; }
 
-    void paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *)
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *o, QWidget *)
     {
         hints = painter->renderHints();
         painter->setBrush(brush);
         painter->drawRect(boundingRect());
+        lastExposedRect = o->exposedRect;
         ++repaints;
     }
 
@@ -249,10 +251,19 @@ public:
         return QGraphicsItem::sceneEvent(event);
     }
 
+    void reset()
+    {
+        events.clear();
+        hints = QPainter::RenderHints(0);
+        repaints = 0;
+        lastExposedRect = QRectF();
+    }
+
     QList<QEvent::Type> events;
     QPainter::RenderHints hints;
     int repaints;
     QRectF br;
+    QRectF lastExposedRect;
     QBrush brush;
 };
 
@@ -337,6 +348,7 @@ private slots:
     void childrenBoundingRect2();
     void childrenBoundingRect3();
     void childrenBoundingRect4();
+    void childrenBoundingRect5();
     void group();
     void setGroup();
     void setGroup2();
@@ -410,6 +422,7 @@ private slots:
     void setGraphicsEffect();
     void panel();
     void addPanelToActiveScene();
+    void panelWithFocusItem();
     void activate();
     void setActivePanelOnInactiveScene();
     void activationOnShowHide();
@@ -429,6 +442,8 @@ private slots:
     void scenePosChange();
     void updateMicroFocus();
     void textItem_shortcuts();
+    void scroll();
+    void stopClickFocusPropagation();
 
     // task specific tests below me
     void task141694_textItemEnsureVisible();
@@ -447,6 +462,8 @@ private slots:
     void QT_2649_focusScope();
     void sortItemsWhileAdding();
     void doNotMarkFullUpdateIfNotInScene();
+    void itemDiesDuringDraggingOperation();
+    void QTBUG_12112_focusItem();
 
 private:
     QList<QGraphicsItem *> paintedItems;
@@ -3354,6 +3371,34 @@ void tst_QGraphicsItem::childrenBoundingRect4()
 
     QCOMPARE(rect->childrenBoundingRect(), rect3->boundingRect());
     QCOMPARE(rect2->childrenBoundingRect(), rect3->boundingRect());
+}
+
+void tst_QGraphicsItem::childrenBoundingRect5()
+{
+    QGraphicsScene scene;
+
+    QGraphicsRectItem *parent = scene.addRect(QRectF(0, 0, 100, 100));
+    QGraphicsRectItem *child = scene.addRect(QRectF(0, 0, 100, 100));
+    child->setParentItem(parent);
+
+    QGraphicsView view(&scene);
+    view.show();
+
+    QTest::qWaitForWindowShown(&view);
+
+    // Try to mess up the cached bounding rect.
+    QRectF expectedChildrenBoundingRect = parent->boundingRect();
+    QCOMPARE(parent->childrenBoundingRect(), expectedChildrenBoundingRect);
+
+    // Apply some effects.
+    QGraphicsDropShadowEffect *dropShadow = new QGraphicsDropShadowEffect;
+    dropShadow->setOffset(25, 25);
+    child->setGraphicsEffect(dropShadow);
+    parent->setGraphicsEffect(new QGraphicsOpacityEffect);
+
+    QVERIFY(parent->childrenBoundingRect() != expectedChildrenBoundingRect);
+    expectedChildrenBoundingRect |= dropShadow->boundingRect();
+    QCOMPARE(parent->childrenBoundingRect(), expectedChildrenBoundingRect);
 }
 
 void tst_QGraphicsItem::group()
@@ -7542,6 +7587,7 @@ void tst_QGraphicsItem::itemUsesExtendedStyleOption()
     scene.addItem(rect);
     rect->setPos(200, 200);
     QGraphicsView view(&scene);
+    view.setWindowFlags(Qt::X11BypassWindowManagerHint);
     rect->startTrack = false;
     view.show();
     QTest::qWaitForWindowShown(&view);
@@ -8370,6 +8416,54 @@ void tst_QGraphicsItem::panel()
     // Reactivate the scene
     QApplication::sendEvent(&scene, &activate);
     QVERIFY(!panel1->isActive());
+}
+
+void tst_QGraphicsItem::panelWithFocusItem()
+{
+    QGraphicsScene scene;
+    QEvent activate(QEvent::WindowActivate);
+    QApplication::sendEvent(&scene, &activate);
+
+    QGraphicsRectItem *parentPanel = new QGraphicsRectItem;
+    QGraphicsRectItem *parentPanelFocusItem = new QGraphicsRectItem(parentPanel);
+    parentPanel->setFlag(QGraphicsItem::ItemIsPanel);
+    parentPanelFocusItem->setFlag(QGraphicsItem::ItemIsFocusable);
+    parentPanelFocusItem->setFocus();
+    scene.addItem(parentPanel);
+
+    QVERIFY(parentPanel->isActive());
+    QVERIFY(parentPanelFocusItem->hasFocus());
+    QCOMPARE(parentPanel->focusItem(), (QGraphicsItem *)parentPanelFocusItem);
+    QCOMPARE(parentPanelFocusItem->focusItem(), (QGraphicsItem *)parentPanelFocusItem);
+
+    QGraphicsRectItem *childPanel = new QGraphicsRectItem;
+    QGraphicsRectItem *childPanelFocusItem = new QGraphicsRectItem(childPanel);
+    childPanel->setFlag(QGraphicsItem::ItemIsPanel);
+    childPanelFocusItem->setFlag(QGraphicsItem::ItemIsFocusable);
+    childPanelFocusItem->setFocus();
+
+    QVERIFY(!childPanelFocusItem->hasFocus());
+    QCOMPARE(childPanel->focusItem(), (QGraphicsItem *)childPanelFocusItem);
+    QCOMPARE(childPanelFocusItem->focusItem(), (QGraphicsItem *)childPanelFocusItem);
+
+    childPanel->setParentItem(parentPanel);
+
+    QVERIFY(!parentPanel->isActive());
+    QVERIFY(!parentPanelFocusItem->hasFocus());
+    QCOMPARE(parentPanel->focusItem(), (QGraphicsItem *)parentPanelFocusItem);
+    QCOMPARE(parentPanelFocusItem->focusItem(), (QGraphicsItem *)parentPanelFocusItem);
+
+    QVERIFY(childPanel->isActive());
+    QVERIFY(childPanelFocusItem->hasFocus());
+    QCOMPARE(childPanel->focusItem(), (QGraphicsItem *)childPanelFocusItem);
+    QCOMPARE(childPanelFocusItem->focusItem(), (QGraphicsItem *)childPanelFocusItem);
+
+    childPanel->hide();
+
+    QVERIFY(parentPanel->isActive());
+    QVERIFY(parentPanelFocusItem->hasFocus());
+    QCOMPARE(parentPanel->focusItem(), (QGraphicsItem *)parentPanelFocusItem);
+    QCOMPARE(parentPanelFocusItem->focusItem(), (QGraphicsItem *)parentPanelFocusItem);
 }
 
 void tst_QGraphicsItem::addPanelToActiveScene()
@@ -10153,6 +10247,131 @@ void tst_QGraphicsItem::textItem_shortcuts()
     QTRY_COMPARE(item->textCursor().selectedText(), item->toPlainText());
 }
 
+void tst_QGraphicsItem::scroll()
+{
+    // Create two overlapping rectangles in the scene:
+    // +-------+
+    // |       | <- item1
+    // |   +-------+
+    // |   |       |
+    // +---|       | <- item2
+    //     |       |
+    //     +-------+
+
+    EventTester *item1 = new EventTester;
+    item1->br = QRectF(0, 0, 200, 200);
+    item1->brush = Qt::red;
+    item1->setFlag(QGraphicsItem::ItemUsesExtendedStyleOption);
+
+    EventTester *item2 = new EventTester;
+    item2->br = QRectF(0, 0, 200, 200);
+    item2->brush = Qt::blue;
+    item2->setFlag(QGraphicsItem::ItemUsesExtendedStyleOption);
+    item2->setPos(100, 100);
+
+    QGraphicsScene scene(0, 0, 300, 300);
+    scene.addItem(item1);
+    scene.addItem(item2);
+
+    MyGraphicsView view(&scene);
+    view.setFrameStyle(0);
+    view.show();
+    QTest::qWaitForWindowShown(&view);
+    QTRY_VERIFY(view.repaints > 0);
+
+    view.reset();
+    item1->reset();
+    item2->reset();
+
+    const QRectF item1BoundingRect = item1->boundingRect();
+    const QRectF item2BoundingRect = item2->boundingRect();
+
+    // Scroll item1:
+    // Item1 should get full exposure
+    // Item2 should get exposure for the part that overlaps item1.
+    item1->scroll(0, -10);
+    QTRY_VERIFY(view.repaints > 0);
+    QCOMPARE(item1->lastExposedRect, item1BoundingRect);
+
+    QRectF expectedItem2Expose = item2BoundingRect;
+    // NB! Adjusted by 2 pixels for antialiasing
+    expectedItem2Expose &= item1->mapRectToItem(item2, item1BoundingRect.adjusted(-2, -2, 2, 2));
+    QCOMPARE(item2->lastExposedRect, expectedItem2Expose);
+
+    // Enable ItemCoordinateCache on item1.
+    view.reset();
+    item1->setCacheMode(QGraphicsItem::ItemCoordinateCache);
+    QTRY_VERIFY(view.repaints > 0);
+    view.reset();
+    item1->reset();
+    item2->reset();
+
+    // Scroll item1:
+    // Item1 should only get expose for the newly exposed area (accelerated scroll).
+    // Item2 should get exposure for the part that overlaps item1.
+    item1->scroll(0, -10, QRectF(50, 50, 100, 100));
+    QTRY_VERIFY(view.repaints > 0);
+    QCOMPARE(item1->lastExposedRect, QRectF(50, 140, 100, 10));
+
+    expectedItem2Expose = item2BoundingRect;
+    // NB! Adjusted by 2 pixels for antialiasing
+    expectedItem2Expose &= item1->mapRectToItem(item2, QRectF(50, 50, 100, 100).adjusted(-2, -2, 2, 2));
+    QCOMPARE(item2->lastExposedRect, expectedItem2Expose);
+}
+
+void tst_QGraphicsItem::stopClickFocusPropagation()
+{
+    class MyItem : public QGraphicsRectItem
+    {
+    public:
+        MyItem() : QGraphicsRectItem(0, 0, 100, 100) {}
+        void paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *)
+        {
+            painter->fillRect(boundingRect(), hasFocus() ? QBrush(Qt::red) : brush());
+        }
+    };
+
+    QGraphicsScene scene(-50, -50, 400, 400);
+    scene.setStickyFocus(true);
+
+    QGraphicsRectItem *noFocusOnTop = new MyItem;
+    noFocusOnTop->setBrush(Qt::yellow);
+    noFocusOnTop->setFlag(QGraphicsItem::ItemStopsClickFocusPropagation);
+
+    QGraphicsRectItem *focusableUnder = new MyItem;
+    focusableUnder->setBrush(Qt::blue);
+    focusableUnder->setFlag(QGraphicsItem::ItemIsFocusable);
+    focusableUnder->setPos(50, 50);
+
+    QGraphicsRectItem *itemWithFocus = new MyItem;
+    itemWithFocus->setBrush(Qt::black);
+    itemWithFocus->setFlag(QGraphicsItem::ItemIsFocusable);
+    itemWithFocus->setPos(250, 10);
+
+    scene.addItem(noFocusOnTop);
+    scene.addItem(focusableUnder);
+    scene.addItem(itemWithFocus);
+    focusableUnder->stackBefore(noFocusOnTop);
+    itemWithFocus->setFocus();
+
+    QGraphicsView view(&scene);
+    view.show();
+    QTest::qWaitForWindowShown(&view);
+
+    QApplication::setActiveWindow(&view);
+    QTRY_COMPARE(QApplication::activeWindow(), static_cast<QWidget *>(&view));
+    QVERIFY(itemWithFocus->hasFocus());
+
+    QPointF mousePressPoint = noFocusOnTop->mapToScene(QPointF());
+    mousePressPoint.rx() += 60;
+    mousePressPoint.ry() += 60;
+    const QList<QGraphicsItem *> itemsAtMousePressPosition = scene.items(mousePressPoint);
+    QVERIFY(itemsAtMousePressPosition.contains(focusableUnder));
+
+    sendMousePress(&scene, mousePressPoint);
+    QVERIFY(itemWithFocus->hasFocus());
+}
+
 void tst_QGraphicsItem::QTBUG_5418_textItemSetDefaultColor()
 {
     struct Item : public QGraphicsTextItem
@@ -10482,6 +10701,54 @@ void tst_QGraphicsItem::doNotMarkFullUpdateIfNotInScene()
     QTRY_COMPARE(item->painted, 3);
     QTRY_COMPARE(item2->painted, 3);
     QTRY_COMPARE(item3->painted, 3);
+}
+
+void tst_QGraphicsItem::itemDiesDuringDraggingOperation()
+{
+    QGraphicsScene scene;
+    QGraphicsView view(&scene);
+    QGraphicsRectItem *item = new QGraphicsRectItem(QRectF(0, 0, 100, 100));
+    item->setFlag(QGraphicsItem::ItemIsMovable);
+    item->setAcceptDrops(true);
+    scene.addItem(item);
+    view.show();
+    QApplication::setActiveWindow(&view);
+    QTest::qWaitForWindowShown(&view);
+    QTRY_COMPARE(QApplication::activeWindow(), (QWidget *)&view);
+    QGraphicsSceneDragDropEvent dragEnter(QEvent::GraphicsSceneDragEnter);
+    dragEnter.setScenePos(item->boundingRect().center());
+    QApplication::sendEvent(&scene, &dragEnter);
+    QGraphicsSceneDragDropEvent event(QEvent::GraphicsSceneDragMove);
+    event.setScenePos(item->boundingRect().center());
+    QApplication::sendEvent(&scene, &event);
+    QVERIFY(QGraphicsScenePrivate::get(&scene)->dragDropItem == item);
+    delete item;
+    QVERIFY(QGraphicsScenePrivate::get(&scene)->dragDropItem == 0);
+}
+
+void tst_QGraphicsItem::QTBUG_12112_focusItem()
+{
+    QGraphicsScene scene;
+    QGraphicsView view(&scene);
+    QGraphicsRectItem *item1 = new QGraphicsRectItem(0, 0, 20, 20);
+    item1->setFlag(QGraphicsItem::ItemIsFocusable);
+    QGraphicsRectItem *item2 = new QGraphicsRectItem(20, 20, 20, 20);
+    item2->setFlag(QGraphicsItem::ItemIsFocusable);
+    item1->setFocus();
+    scene.addItem(item2);
+    scene.addItem(item1);
+
+    view.show();
+    QApplication::setActiveWindow(&view);
+    QTest::qWaitForWindowShown(&view);
+    QTRY_COMPARE(QApplication::activeWindow(), (QWidget *)&view);
+
+    QVERIFY(item1->focusItem());
+    QVERIFY(!item2->focusItem());
+
+    item2->setFocus();
+    QVERIFY(!item1->focusItem());
+    QVERIFY(item2->focusItem());
 }
 
 QTEST_MAIN(tst_QGraphicsItem)

@@ -98,16 +98,19 @@ static inline int qt_socket_select(int nfds, fd_set *readfds, fd_set *writefds, 
 class QSelectMutexGrabber
 {
 public:
-    QSelectMutexGrabber(int fd, QMutex *mutex)
+    QSelectMutexGrabber(int writeFd, int readFd, QMutex *mutex)
         : m_mutex(mutex)
     {
         if (m_mutex->tryLock())
             return;
 
         char dummy = 0;
-        qt_pipe_write(fd, &dummy, 1);
+        qt_pipe_write(writeFd, &dummy, 1);
 
         m_mutex->lock();
+
+        char buffer;
+        while (::read(readFd, &buffer, 1) > 0) {}
     }
 
     ~QSelectMutexGrabber()
@@ -401,10 +404,6 @@ void QSelectThread::run()
         ret = qt_socket_select(maxfd, &readfds, &writefds, &exceptionfds, 0);
         savedSelectErrno = errno;
 
-        char buffer;
-
-        while (::read(m_pipeEnds[0], &buffer, 1) > 0) {}
-
         if(ret == 0) {
          // do nothing
         } else if (ret < 0) {
@@ -462,9 +461,9 @@ void QSelectThread::run()
                 } // end for
 
                 // traversed all, so update
+                updateActivatedNotifiers(QSocketNotifier::Exception, &exceptionfds);
                 updateActivatedNotifiers(QSocketNotifier::Read, &readfds);
                 updateActivatedNotifiers(QSocketNotifier::Write, &writefds);
-                updateActivatedNotifiers(QSocketNotifier::Exception, &exceptionfds);
 
                 break;
             case EINTR: // Should never occur on Symbian, but this is future proof!
@@ -474,12 +473,13 @@ void QSelectThread::run()
                 break;
             }
         } else {
+            updateActivatedNotifiers(QSocketNotifier::Exception, &exceptionfds);
             updateActivatedNotifiers(QSocketNotifier::Read, &readfds);
             updateActivatedNotifiers(QSocketNotifier::Write, &writefds);
-            updateActivatedNotifiers(QSocketNotifier::Exception, &exceptionfds);
         }
 
-        m_waitCond.wait(&m_mutex);
+        if (FD_ISSET(m_pipeEnds[0], &readfds))
+            m_waitCond.wait(&m_mutex);
     }
 
     m_mutex.unlock();
@@ -493,7 +493,9 @@ void QSelectThread::requestSocketEvents ( QSocketNotifier *notifier, TRequestSta
         start();
     }
 
-    QSelectMutexGrabber lock(m_pipeEnds[1], &m_mutex);
+    Q_ASSERT(QThread::currentThread() == this->thread());
+
+    QSelectMutexGrabber lock(m_pipeEnds[1], m_pipeEnds[0], &m_mutex);
 
     Q_ASSERT(!m_AOStatuses.contains(notifier));
 
@@ -504,7 +506,9 @@ void QSelectThread::requestSocketEvents ( QSocketNotifier *notifier, TRequestSta
 
 void QSelectThread::cancelSocketEvents ( QSocketNotifier *notifier )
 {
-    QSelectMutexGrabber lock(m_pipeEnds[1], &m_mutex);
+    Q_ASSERT(QThread::currentThread() == this->thread());
+
+    QSelectMutexGrabber lock(m_pipeEnds[1], m_pipeEnds[0], &m_mutex);
 
     m_AOStatuses.remove(notifier);
 
@@ -513,7 +517,9 @@ void QSelectThread::cancelSocketEvents ( QSocketNotifier *notifier )
 
 void QSelectThread::restart()
 {
-    QSelectMutexGrabber lock(m_pipeEnds[1], &m_mutex);
+    Q_ASSERT(QThread::currentThread() == this->thread());
+
+    QSelectMutexGrabber lock(m_pipeEnds[1], m_pipeEnds[0], &m_mutex);
 
     m_waitCond.wakeAll();
 }
@@ -1105,3 +1111,5 @@ void CQtActiveScheduler::Error(TInt aError) const
 }
 
 QT_END_NAMESPACE
+
+#include "moc_qeventdispatcher_symbian_p.cpp"

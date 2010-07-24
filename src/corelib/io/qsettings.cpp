@@ -1126,7 +1126,7 @@ static void initDefaultPaths(QMutexLocker *locker)
         if (env == 0) {
             userPath = homePath;
             userPath += QLatin1Char('/');
-#if defined(Q_WS_QWS) || defined(Q_WS_LITE)
+#if defined(Q_WS_QWS) || defined(Q_WS_QPA)
             userPath += QLatin1String("Settings");
 #else
             userPath += QLatin1String(".config");
@@ -2274,9 +2274,9 @@ void QConfFileSettingsPrivate::ensureSectionParsed(QConfFile *confFile,
     be different instances of your application running at the same
     time or different applications altogether) to read and write to
     the same system locations. It uses advisory file locking and a
-    smart merging algorithm to ensure data integrity. Changes
-    performed by another process aren't visible in the current
-    process until sync() is called.
+    smart merging algorithm to ensure data integrity. Note that sync()
+    imports changes made by other processes (in addition to writing
+    the changes from this QSettings).
 
     \section1 Platform-Specific Notes
 

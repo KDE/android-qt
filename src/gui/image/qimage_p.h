@@ -63,6 +63,8 @@
 
 QT_BEGIN_NAMESPACE
 
+class QImageWriter;
+
 struct Q_GUI_EXPORT QImageData {        // internal image data
     QImageData();
     ~QImageData();
@@ -96,6 +98,9 @@ struct Q_GUI_EXPORT QImageData {        // internal image data
 
     bool checkForAlphaPixels() const;
 
+    // Convert the image in-place, minimizing memory reallocation
+    // Return false if the conversion cannot be done in-place.
+    bool convertInPlace(QImage::Format newFormat, Qt::ImageConversionFlags);
 
 #ifndef QT_NO_IMAGE_TEXT
     QMap<QString, QString> text;
@@ -104,6 +109,8 @@ struct Q_GUI_EXPORT QImageData {        // internal image data
 
     QPaintEngine *paintEngine;
 };
+
+void qInitImageConversions();
 
 QT_END_NAMESPACE
 

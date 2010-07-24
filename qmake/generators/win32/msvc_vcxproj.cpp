@@ -89,7 +89,6 @@ bool VcxprojGenerator::writeMakefile(QTextStream &t)
         return true;
     }
     return project->isActiveConfig("build_pass");
-    return true;
 }
 
 
@@ -275,6 +274,7 @@ void VcxprojGenerator::initCompilerTool()
     conf.compiler.AssemblerListingLocation = placement ;
     conf.compiler.ProgramDataBaseFileName = ".\\" ;
     conf.compiler.ObjectFileName = placement ;
+    conf.compiler.ExceptionHandling = "false";
     // PCH
     if (usePCH) {
         conf.compiler.PrecompiledHeader             = "Use";

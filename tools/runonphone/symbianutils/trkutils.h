@@ -56,6 +56,7 @@ QT_END_NAMESPACE
 namespace trk {
 
 typedef unsigned char byte;
+struct TrkResult;
 
 enum Command {
     //meta commands
@@ -135,9 +136,30 @@ enum Command {
     TrkDSPositionFile = 0xd4
 };
 
+enum DSOSItemTypes {
+    kDSOSProcessItem = 0x0000,
+    kDSOSThreadItem = 0x0001,
+    kDSOSDLLItem = 0x0002,
+    kDSOSAppItem = 0x0003,
+    kDSOSMemBlockItem = 0x0004,
+    kDSOSProcAttachItem = 0x0005,
+    kDSOSThreadAttachItem = 0x0006,
+    kDSOSProcAttach2Item = 0x0007,
+    kDSOSProcRunItem = 0x0008,
+    /* 0x0009 - 0x00ff reserved for general expansion */
+    /* 0x0100 - 0xffff available for target-specific use */
+};
+
+enum SerialMultiplexor {
+    MuxRaw = 0,
+    MuxTextTrace = 0x0102,
+    MuxTrk = 0x0190
+};
+
 inline byte extractByte(const char *data) { return *data; }
 SYMBIANUTILS_EXPORT ushort extractShort(const char *data);
 SYMBIANUTILS_EXPORT uint extractInt(const char *data);
+SYMBIANUTILS_EXPORT quint64 extractInt64(const char *data);
 
 SYMBIANUTILS_EXPORT QString quoteUnprintableLatin1(const QByteArray &ba);
 
@@ -157,11 +179,14 @@ SYMBIANUTILS_EXPORT void appendString(QByteArray *ba, const QByteArray &str, End
 
 struct SYMBIANUTILS_EXPORT Library
 {
-    Library() {}
+    Library();
+    explicit Library(const TrkResult &r);
 
     QByteArray name;
     uint codeseg;
     uint dataseg;
+     //library addresses are valid for a given process (depending on memory model, they might be loaded at the same address in all processes or not)
+    uint pid;
 };
 
 struct SYMBIANUTILS_EXPORT TrkAppVersion
@@ -180,6 +205,11 @@ struct SYMBIANUTILS_EXPORT Session
     Session();
     void reset();
     QString deviceDescription(unsigned verbose) const;
+    QString toString() const;
+    // Answer to qXfer::libraries
+    QByteArray gdbLibraryList() const;
+    // Answer to qsDllInfo, can be sent chunk-wise.
+    QByteArray gdbQsDllInfo(int start = 0, int count = -1) const;
 
     // Trk feedback
     byte cpuMajor;
@@ -191,6 +221,7 @@ struct SYMBIANUTILS_EXPORT Session
     byte extended2TypeSize;
     TrkAppVersion trkAppVersion;
     uint pid;
+    uint mainTid;
     uint tid;
     uint codeseg;
     uint dataseg;
@@ -199,12 +230,7 @@ struct SYMBIANUTILS_EXPORT Session
     typedef QList<Library> Libraries;
     Libraries libraries;
 
-    typedef uint Thread;
-    typedef QList<Thread> Threads;
-    Threads threads;
-
     // Gdb request
-    uint currentThread;
     QStringList modules;
 };
 
@@ -217,6 +243,7 @@ struct SYMBIANUTILS_EXPORT TrkResult
     int errorCode() const;
     QString errorString() const;
 
+    ushort multiplex;
     byte code;
     byte token;
     QByteArray data;

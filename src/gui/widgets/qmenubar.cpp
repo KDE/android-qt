@@ -768,7 +768,7 @@ QAction *QMenuBarPrivate::getNextAction(const int _start, const int increment) c
     const int start = (_start == -1 && increment == -1) ? actions.count() : _start;
     const int end =  increment == -1 ? 0 : actions.count() - 1;
 
-    for (int i = start; start != end;) {
+    for (int i = start; i != end;) {
         i += increment;
         QAction *current = actions.at(i);
         if (!actionRects.at(i).isNull() && (allowActiveAndDisabled || current->isEnabled()))
@@ -1956,7 +1956,7 @@ bool QMenuBar::isNativeMenuBar() const
   to the right soft key.
 
   Currently there is only support for the default action on Windows
-  Mobile. All other platforms ignore the default action.
+  Mobile. On all other platforms this method is not available.
 
   \sa defaultAction()
 */

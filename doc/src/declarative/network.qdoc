@@ -6,35 +6,21 @@
 **
 ** This file is part of the documentation of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
+** $QT_BEGIN_LICENSE:FDL$
+** Commercial Usage
+** Licensees holding valid Qt Commercial licenses may use this file in
+** accordance with the Qt Commercial License Agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in a
+** written agreement between you and Nokia.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL included in the
-** packaging of this file.  Please review the following information to
-** ensure the GNU Lesser General Public License version 2.1 requirements
-** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** In addition, as a special exception, Nokia gives you certain additional
-** rights.  These rights are described in the Nokia Qt LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU Free Documentation License
+** Alternatively, this file may be used under the terms of the GNU Free
+** Documentation License version 1.3 as published by the Free Software
+** Foundation and appearing in the file included in the packaging of this
+** file.
 **
 ** If you have questions regarding the use of this file, please contact
 ** Nokia at qt-info@nokia.com.
-**
-**
-**
-**
-**
-**
-**
-**
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
@@ -68,7 +54,7 @@ Network transparency is supported throughout QML, for example:
 \o WebViews - the \c url property of WebView (obviously!)
 \endlist
 
-Even QML types themselves can be on the network - if the \l {Qt Declarative UI Runtime}{qml} tool is used to load
+Even QML types themselves can be on the network - if the \l {QML Viewer} is used to load
 \tt http://example.com/mystuff/Hello.qml and that content refers to a type "World", the engine
 will load \tt http://example.com/mystuff/qmldir and resolve the type just as it would for a local file.
 For example if the qmldir file contains the line "World World.qml", it will load 
@@ -133,7 +119,7 @@ All network access from QML is managed by a QNetworkAccessManager set on the QDe
 By default, this is an unmodified Qt QNetworkAccessManager. You may set a different manager by
 providing a QDeclarativeNetworkAccessManagerFactory and setting it via
 QDeclarativeEngine::setNetworkAccessManagerFactory().
-For example, the \l {Qt Declarative UI Runtime}{qml} tool sets a QDeclarativeNetworkAccessManagerFactory which
+For example, the \l {QML Viewer} sets a QDeclarativeNetworkAccessManagerFactory which
 creates QNetworkAccessManager that trusts HTTP Expiry headers to avoid network cache checks,
 allows HTTP Pipelining, adds a persistent HTTP CookieJar, a simple disk cache, and supports proxy settings.
 

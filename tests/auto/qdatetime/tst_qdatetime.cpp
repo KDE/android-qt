@@ -106,6 +106,8 @@ private slots:
     void daysTo();
     void secsTo_data();
     void secsTo();
+    void msecsTo_data();
+    void msecsTo();
     void operator_eqeq();
     void currentDateTime();
     void currentDateTimeUtc();
@@ -910,6 +912,30 @@ void tst_QDateTime::secsTo()
     QVERIFY((dt >= result) == (0 >= nsecs));
 }
 
+void tst_QDateTime::msecsTo_data()
+{
+    addMSecs_data();
+}
+
+void tst_QDateTime::msecsTo()
+{
+    QFETCH(QDateTime, dt);
+    QFETCH(int, nsecs);
+    QFETCH(QDateTime, result);
+
+#ifdef Q_OS_IRIX
+    QEXPECT_FAIL("cet4", "IRIX databases say 1970 had DST", Abort);
+#endif
+    QCOMPARE(dt.msecsTo(result), qint64(nsecs) * 1000);
+    QCOMPARE(result.msecsTo(dt), -qint64(nsecs) * 1000);
+    QVERIFY((dt == result) == (0 == (qint64(nsecs) * 1000)));
+    QVERIFY((dt != result) == (0 != (qint64(nsecs) * 1000)));
+    QVERIFY((dt < result) == (0 < (qint64(nsecs) * 1000)));
+    QVERIFY((dt <= result) == (0 <= (qint64(nsecs) * 1000)));
+    QVERIFY((dt > result) == (0 > (qint64(nsecs) * 1000)));
+    QVERIFY((dt >= result) == (0 >= (qint64(nsecs) * 1000)));
+}
+
 void tst_QDateTime::currentDateTime()
 {
 #if defined(Q_OS_WINCE)
@@ -1429,6 +1455,12 @@ void tst_QDateTime::fromString()
 
     dt = QDateTime::fromString("2002-10-01", Qt::ISODate);
     QCOMPARE(dt, QDateTime(QDate(2002, 10, 1), QTime(0, 0, 0, 0)));
+
+    dt = QDateTime::fromString("1987-02-13T13:24:51+01:00", Qt::ISODate);
+    QCOMPARE(dt, QDateTime(QDate(1987, 2, 13), QTime(12, 24, 51), Qt::UTC));
+
+    dt = QDateTime::fromString("1987-02-13T13:24:51-01:00", Qt::ISODate);
+    QCOMPARE(dt, QDateTime(QDate(1987, 2, 13), QTime(14, 24, 51), Qt::UTC));
 
     dt = QDateTime::fromString("Thu Jan 1 00:12:34 1970 GMT");
     QCOMPARE(dt.toUTC(), QDateTime(QDate(1970, 1, 1), QTime(0, 12, 34), Qt::UTC));

@@ -73,11 +73,12 @@ QT_BEGIN_NAMESPACE
 class ConnectionProgressNotifier;
 class SymbianEngine;
 
-class QNetworkSessionPrivateImpl : public QNetworkSessionPrivate, public CActive,
+typedef void (*TOpenCUnSetdefaultifFunction)();
+
+class QNetworkSessionPrivateImpl : public QNetworkSessionPrivate, public CActive
 #ifdef SNAP_FUNCTIONALITY_AVAILABLE
-                                   public MMobilityProtocolResp,
+                                 , public MMobilityProtocolResp
 #endif
-                                   public MConnectionMonitorObserver
 {
     Q_OBJECT
 public:
@@ -130,8 +131,9 @@ protected: // From CActive
     void RunL();
     void DoCancel();
     
-private: // MConnectionMonitorObserver
-    void EventL(const CConnMonEventBase& aEvent);
+private Q_SLOTS:
+    void configurationStateChanged(TUint32 accessPointId, TUint32 connMonId, QNetworkSession::State newState);
+    void configurationRemoved(QNetworkConfigurationPrivatePointer config);
     
 private:
     TUint iapClientCount(TUint aIAPId) const;
@@ -153,10 +155,19 @@ private: // data
 
     QDateTime startTime;
 
+    RLibrary iOpenCLibrary;
+    TOpenCUnSetdefaultifFunction iDynamicUnSetdefaultif;
+
     mutable RSocketServ iSocketServ;
     mutable RConnection iConnection;
     mutable RConnectionMonitor iConnectionMonitor;
     ConnectionProgressNotifier* ipConnectionNotifier;
+    
+    bool iHandleStateNotificationsFromManager;
+    bool iFirstSync;
+    bool iStoppedByUser;
+    bool iClosedByUser;
+    
 #ifdef SNAP_FUNCTIONALITY_AVAILABLE    
     CActiveCommsMobilityApiExt* iMobility;
 #endif    
@@ -170,6 +181,8 @@ private: // data
     
     TUint32 iOldRoamingIap;
     TUint32 iNewRoamingIap;
+
+    bool isOpening;
 
     friend class ConnectionProgressNotifier;
 };

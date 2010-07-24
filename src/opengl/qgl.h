@@ -128,10 +128,6 @@ class QGLOverlayWidget;
 class QGLWidgetPrivate;
 class QGLContextPrivate;
 
-#ifdef Q_WS_LITE
-class QPlatformGLWidgetSurface;
-#endif
-
 // Namespace class:
 namespace QGL
 {
@@ -270,7 +266,9 @@ public:
         OpenGL_ES_Version_2_0             = 0x00000800,
         OpenGL_Version_3_0                = 0x00001000,
         OpenGL_Version_3_1                = 0x00002000,
-        OpenGL_Version_3_2                = 0x00004000
+        OpenGL_Version_3_2                = 0x00004000,
+        OpenGL_Version_3_3                = 0x00008000,
+        OpenGL_Version_4_0                = 0x00010000
     };
     Q_DECLARE_FLAGS(OpenGLVersionFlags, OpenGLVersionFlag)
 
@@ -283,12 +281,19 @@ private:
 
     friend Q_OPENGL_EXPORT bool operator==(const QGLFormat&, const QGLFormat&);
     friend Q_OPENGL_EXPORT bool operator!=(const QGLFormat&, const QGLFormat&);
+#ifndef QT_NO_DEBUG_STREAM
+    friend Q_OPENGL_EXPORT QDebug operator<<(QDebug, const QGLFormat &);
+#endif
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(QGLFormat::OpenGLVersionFlags)
 
 Q_OPENGL_EXPORT bool operator==(const QGLFormat&, const QGLFormat&);
 Q_OPENGL_EXPORT bool operator!=(const QGLFormat&, const QGLFormat&);
+
+#ifndef QT_NO_DEBUG_STREAM
+Q_OPENGL_EXPORT QDebug operator<<(QDebug, const QGLFormat &);
+#endif
 
 class Q_OPENGL_EXPORT QGLContext
 {
@@ -435,6 +440,7 @@ private:
     friend class QGLFramebufferObjectPrivate;
     friend class QGLFBOGLPaintDevice;
     friend class QGLPaintDevice;
+    friend class QGLWidgetGLPaintDevice;
     friend class QX11GLPixmapData;
     friend class QX11GLSharedContexts;
 private:
@@ -534,11 +540,6 @@ public:
 
     void drawTexture(const QRectF &target, QMacCompatGLuint textureId, QMacCompatGLenum textureTarget = GL_TEXTURE_2D);
     void drawTexture(const QPointF &point, QMacCompatGLuint textureId, QMacCompatGLenum textureTarget = GL_TEXTURE_2D);
-#endif
-
-#ifdef Q_WS_LITE
-    // Used by the platform context to get at the surface which it created for the glwidget:
-    QPlatformGLWidgetSurface* platformSurface();
 #endif
 
 public Q_SLOTS:

@@ -54,9 +54,17 @@
 //
 
 #include "qconfig.h"
-#include "qfontengine_p.h"
+#include <private/qfontengine_p.h>
 #include "qsize.h"
 #include <openfont.h>
+
+#ifdef SYMBIAN_GDI_GLYPHDATA
+#define Q_SYMBIAN_HAS_FONTTABLE_API
+#endif
+
+#ifdef Q_SYMBIAN_HAS_FONTTABLE_API
+#define Q_SYMBIAN_HAS_GLYPHOUTLINE_API
+#endif // Q_SYMBIAN_HAS_FONTTABLE_API
 
 class CFont;
 
@@ -66,20 +74,22 @@ QT_BEGIN_NAMESPACE
 class QSymbianTypeFaceExtras
 {
 public:
-    QSymbianTypeFaceExtras(CFont* fontOwner, COpenFont *font);
+    QSymbianTypeFaceExtras(CFont* cFont, COpenFont *openFont = 0);
+    ~QSymbianTypeFaceExtras();
 
     QByteArray getSfntTable(uint tag) const;
     bool getSfntTableData(uint tag, uchar *buffer, uint *length) const;
-    const unsigned char *cmap() const;
+    const uchar *cmap() const;
     CFont *fontOwner() const;
 
 private:
-    COpenFont *m_font;
-    mutable MOpenFontTrueTypeExtension *m_trueTypeExtension;
-    mutable const unsigned char *m_cmap;
+    CFont* m_cFont;
     mutable bool m_symbolCMap;
     mutable QByteArray m_cmapTable;
-    CFont* m_fontOwner;
+#ifndef Q_SYMBIAN_HAS_FONTTABLE_API
+    COpenFont *m_openFont;
+    mutable MOpenFontTrueTypeExtension *m_trueTypeExtension;
+#endif // Q_SYMBIAN_HAS_FONTTABLE_API
 };
 
 class QFontEngineS60 : public QFontEngine
@@ -90,6 +100,9 @@ public:
 
     bool stringToCMap(const QChar *str, int len, QGlyphLayout *glyphs, int *nglyphs, QTextEngine::ShaperFlags flags) const;
     void recalcAdvances(QGlyphLayout *glyphs, QTextEngine::ShaperFlags flags) const;
+
+    void addGlyphsToPath(glyph_t *glyphs, QFixedPoint *positions, int nglyphs,
+                         QPainterPath *path, QTextItem::RenderFlags flags);
 
     QImage alphaMapForGlyph(glyph_t glyph);
 
@@ -121,6 +134,7 @@ public:
 
 private:
     friend class QFontPrivate;
+    friend class QSymbianVGFontGlyphCache;
 
     QFixed glyphAdvance(HB_Glyph glyph) const;
     CFont *fontWithSize(qreal size) const;

@@ -186,7 +186,7 @@ if (@ARGV)
             }
 
             # If the line specifies a file, parse the source and destination locations.
-            if ($line =~ m|\"([^\"]+)\"\s*\-\s*\"([^\"]+)\"|)
+            if ($line =~ m|^ *\"([^\"]+)\"\s*\-\s*\"([^\"]+)\"|)
             {
                 my $sourcePath = $1;
 
@@ -269,7 +269,8 @@ if (@ARGV)
         }
 
         print ("\n");
-        print ("NOTE: A patched package should not be used for distribution!\n");
+        print ("NOTE: A patched package may not work as expected due to reduced capabilities.\n");
+        print ("      Therefore it should not be used for any kind of Symbian signing or distribution!\n");
         print ("\n");
     }
 }

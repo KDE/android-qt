@@ -54,25 +54,20 @@ Q_DECLARE_METATYPE(QModelIndex)
 QT_BEGIN_NAMESPACE
 
 QT_MODULE(Declarative)
-/*****************************************************************************
- *****************************************************************************
- XXX Experimental
- *****************************************************************************
-*****************************************************************************/
 
 class QDeclarativeItem;
 class QDeclarativeComponent;
 class QDeclarativePackage;
 class QDeclarativeVisualDataModelPrivate;
 
-class Q_DECLARATIVE_EXPORT QDeclarativeVisualModel : public QObject
+class Q_AUTOTEST_EXPORT QDeclarativeVisualModel : public QObject
 {
     Q_OBJECT
 
     Q_PROPERTY(int count READ count NOTIFY countChanged)
 
 public:
-    QDeclarativeVisualModel() {}
+    QDeclarativeVisualModel(QObject *parent=0) : QObject(parent) {}
     virtual ~QDeclarativeVisualModel() {}
 
     enum ReleaseFlag { Referenced = 0x01, Destroyed = 0x02 };
@@ -108,7 +103,7 @@ private:
 
 class QDeclarativeVisualItemModelAttached;
 class QDeclarativeVisualItemModelPrivate;
-class Q_DECLARATIVE_EXPORT QDeclarativeVisualItemModel : public QDeclarativeVisualModel
+class Q_AUTOTEST_EXPORT QDeclarativeVisualItemModel : public QDeclarativeVisualModel
 {
     Q_OBJECT
     Q_DECLARE_PRIVATE(QDeclarativeVisualItemModel)
@@ -117,7 +112,7 @@ class Q_DECLARATIVE_EXPORT QDeclarativeVisualItemModel : public QDeclarativeVisu
     Q_CLASSINFO("DefaultProperty", "children")
 
 public:
-    QDeclarativeVisualItemModel();
+    QDeclarativeVisualItemModel(QObject *parent=0);
     virtual ~QDeclarativeVisualItemModel() {}
 
     virtual int count() const;
@@ -143,7 +138,7 @@ private:
 };
 
 
-class Q_DECLARATIVE_EXPORT QDeclarativeVisualDataModel : public QDeclarativeVisualModel
+class Q_AUTOTEST_EXPORT QDeclarativeVisualDataModel : public QDeclarativeVisualModel
 {
     Q_OBJECT
     Q_DECLARE_PRIVATE(QDeclarativeVisualDataModel)
@@ -156,7 +151,7 @@ class Q_DECLARATIVE_EXPORT QDeclarativeVisualDataModel : public QDeclarativeVisu
     Q_CLASSINFO("DefaultProperty", "delegate")
 public:
     QDeclarativeVisualDataModel();
-    QDeclarativeVisualDataModel(QDeclarativeContext *);
+    QDeclarativeVisualDataModel(QDeclarativeContext *, QObject *parent=0);
     virtual ~QDeclarativeVisualDataModel();
 
     QVariant model() const;

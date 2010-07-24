@@ -82,6 +82,7 @@ private:
     bool m_shouldFinish;
     bool m_shouldSendResponse;
     bool m_shouldForwardData;
+    int m_redirectionTries;
 };
 
 // Self destructing QIODevice for FormData
@@ -103,6 +104,7 @@ protected:
 
 private:
     void moveToNextElement();
+    void openFileForCurrentElement();
 
 private:
     Vector<FormDataElement> m_formElements;

@@ -169,12 +169,14 @@ private slots:
     void initialShow();
     void initialShow2();
     void itemChangeEvents();
+    void itemSendGeometryPosChangesDeactivated();
 
     // Task fixes
     void task236127_bspTreeIndexFails();
     void task243004_setStyleCrash();
     void task250119_shortcutContext();
     void QT_BUG_6544_tabFocusFirstUnsetWhenRemovingItems();
+    void QT_BUG_12056_tabFocusFirstUnsetWhenRemovingItems();
 };
 
 
@@ -3030,6 +3032,34 @@ void tst_QGraphicsWidget::itemChangeEvents()
     QTRY_VERIFY(!item->valueDuringEvents.value(QEvent::EnabledChange).toBool());
 }
 
+void tst_QGraphicsWidget::itemSendGeometryPosChangesDeactivated()
+{
+    QGraphicsScene scene;
+    QGraphicsView view(&scene);
+    QGraphicsWidget *item = new QGraphicsWidget;
+    scene.addItem(item);
+    view.show();
+    QTest::qWaitForWindowShown(&view);
+    item->setGeometry(QRectF(0, 0, 50, 50));
+    QTRY_COMPARE(item->geometry(), QRectF(0, 0, 50, 50));
+
+    item->setFlag(QGraphicsItem::ItemSendsGeometryChanges, false);
+    item->setGeometry(QRectF(0, 0, 60, 60));
+    QCOMPARE(item->geometry(), QRectF(0, 0, 60, 60));
+    QCOMPARE(item->pos(), QPointF(0, 0));
+    item->setPos(QPointF(10, 10));
+    QCOMPARE(item->pos(), QPointF(10, 10));
+    QCOMPARE(item->geometry(), QRectF(10, 10, 60, 60));
+
+    item->setFlag(QGraphicsItem::ItemSendsScenePositionChanges, false);
+    item->setGeometry(QRectF(0, 0, 60, 60));
+    QCOMPARE(item->geometry(), QRectF(0, 0, 60, 60));
+    QCOMPARE(item->pos(), QPointF(0, 0));
+    item->setPos(QPointF(10, 10));
+    QCOMPARE(item->pos(), QPointF(10, 10));
+    QCOMPARE(item->geometry(), QRectF(10, 10, 60, 60));
+}
+
 void tst_QGraphicsWidget::QT_BUG_6544_tabFocusFirstUnsetWhenRemovingItems()
 {
     QGraphicsScene scene;
@@ -3057,6 +3087,25 @@ void tst_QGraphicsWidget::QT_BUG_6544_tabFocusFirstUnsetWhenRemovingItems()
 
     // Add an item into the scene.
     scene.addItem(parent2);
+
+    //This should not crash
+}
+void tst_QGraphicsWidget::QT_BUG_12056_tabFocusFirstUnsetWhenRemovingItems()
+{
+    QGraphicsScene scene;
+    QGraphicsWidget* item1 = new QGraphicsWidget;
+    QGraphicsWidget* item2 = new QGraphicsWidget;
+    QGraphicsWidget* item3 = new QGraphicsWidget;
+
+    scene.addItem(item1);
+    scene.addItem(item2);
+
+    scene.removeItem(item2);
+    scene.removeItem(item1);
+    delete item2;
+    delete item1;
+
+    scene.addItem(item3);
 
     //This should not crash
 }

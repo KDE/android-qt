@@ -271,7 +271,7 @@ private:
     QGlyphSet *loadTransformedGlyphSet(const QTransform &matrix);
     bool loadGlyphs(QGlyphSet *gs, glyph_t *glyphs, int num_glyphs, GlyphFormat format = Format_Render);
 
-#if defined(Q_WS_QWS) || defined(Q_WS_LITE) || defined(Q_OS_SYMBIAN)
+#if defined(Q_WS_QWS) || defined(Q_WS_QPA) || defined(Q_OS_SYMBIAN)
     virtual void draw(QPaintEngine * /*p*/, qreal /*x*/, qreal /*y*/, const QTextItemInt & /*si*/) {}
 #endif
 
@@ -304,6 +304,7 @@ protected:
 
     bool antialias;
     bool transform;
+    bool embolden;
     SubpixelAntialiasingType subpixelType;
     int lcdFilterType;
     bool canUploadGlyphsToServer;

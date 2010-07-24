@@ -1805,6 +1805,11 @@ QByteArray &QByteArray::replace(int pos, int len, const QByteArray &after)
 /*! \fn QByteArray &QByteArray::replace(int pos, int len, const char *after)
 
     \overload
+
+    Replaces \a len bytes from index position \a pos with the zero terminated
+    string \a after.
+
+    Notice: this can change the lenght of the byte array.
 */
 QByteArray &QByteArray::replace(int pos, int len, const char *after)
 {
@@ -2681,7 +2686,7 @@ void QByteArray::clear()
     Writes byte array \a ba to the stream \a out and returns a reference
     to the stream.
 
-    \sa {Format of the QDataStream operators}
+    \sa {Serializing Qt Data Types}
 */
 
 QDataStream &operator<<(QDataStream &out, const QByteArray &ba)
@@ -2698,7 +2703,7 @@ QDataStream &operator<<(QDataStream &out, const QByteArray &ba)
     Reads a byte array into \a ba from the stream \a in and returns a
     reference to the stream.
 
-    \sa {Format of the QDataStream operators}
+    \sa {Serializing Qt Data Types}
 */
 
 QDataStream &operator>>(QDataStream &in, QByteArray &ba)

@@ -47,6 +47,7 @@
 
 #include <QtCore/qurl.h>
 #include <QtCore/qstringlist.h>
+#include <QtScript/qscriptvalue.h>
 
 #include <private/qlistmodelinterface_p.h>
 
@@ -69,7 +70,7 @@ struct QDeclarativeXmlQueryResult {
     QStringList keyRoleResultsCache;
 };
 
-class Q_DECLARATIVE_EXPORT QDeclarativeXmlListModel : public QListModelInterface, public QDeclarativeParserStatus
+class Q_AUTOTEST_EXPORT QDeclarativeXmlListModel : public QListModelInterface, public QDeclarativeParserStatus
 {
     Q_OBJECT
     Q_INTERFACES(QDeclarativeParserStatus)
@@ -109,9 +110,13 @@ public:
     QString namespaceDeclarations() const;
     void setNamespaceDeclarations(const QString&);
 
+    Q_INVOKABLE QScriptValue get(int index) const;
+
     enum Status { Null, Ready, Loading, Error };
     Status status() const;
     qreal progress() const;
+
+    Q_INVOKABLE QString errorString() const;
 
     virtual void classBegin();
     virtual void componentComplete();
@@ -137,13 +142,14 @@ private Q_SLOTS:
     void requestProgress(qint64,qint64);
     void dataCleared();
     void queryCompleted(const QDeclarativeXmlQueryResult &);
+    void queryError(void* object, const QString& error);
 
 private:
     Q_DECLARE_PRIVATE(QDeclarativeXmlListModel)
     Q_DISABLE_COPY(QDeclarativeXmlListModel)
 };
 
-class Q_DECLARATIVE_EXPORT QDeclarativeXmlListModelRole : public QObject
+class Q_AUTOTEST_EXPORT QDeclarativeXmlListModelRole : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(QString name READ name WRITE setName NOTIFY nameChanged)

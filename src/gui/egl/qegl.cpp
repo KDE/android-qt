@@ -42,6 +42,7 @@
 #include <QtGui/qpaintdevice.h>
 #include <QtGui/qpixmap.h>
 #include <QtGui/qwidget.h>
+#include <QtCore/qatomic.h>
 #include <QtCore/qdebug.h>
 
 #include "qegl_p.h"
@@ -49,6 +50,34 @@
 
 
 QT_BEGIN_NAMESPACE
+
+
+/*
+    QEglContextTracker is used to track the EGL contexts that we
+    create internally in Qt, so that we can call eglTerminate() to
+    free additional EGL resources when the last context is destroyed.
+*/
+
+class QEglContextTracker
+{
+public:
+    static void ref() { contexts.ref(); }
+    static void deref() {
+        if (!contexts.deref()) {
+            eglTerminate(QEgl::display());
+            displayOpen = 0;
+        }
+    }
+    static void setDisplayOpened() { displayOpen = 1; }
+    static bool displayOpened() { return displayOpen; }
+
+private:
+    static QBasicAtomicInt contexts;
+    static QBasicAtomicInt displayOpen;
+};
+
+QBasicAtomicInt QEglContextTracker::contexts = Q_BASIC_ATOMIC_INITIALIZER(0);
+QBasicAtomicInt QEglContextTracker::displayOpen = Q_BASIC_ATOMIC_INITIALIZER(0);
 
 // Current GL and VG contexts.  These are used to determine if
 // we can avoid an eglMakeCurrent() after a call to lazyDoneCurrent().
@@ -66,6 +95,7 @@ QEglContext::QEglContext()
     , ownsContext(true)
     , sharing(false)
 {
+    QEglContextTracker::ref();
 }
 
 QEglContext::~QEglContext()
@@ -76,6 +106,7 @@ QEglContext::~QEglContext()
         currentGLContext = 0;
     if (currentVGContext == this)
         currentVGContext = 0;
+    QEglContextTracker::deref();
 }
 
 bool QEglContext::isValid() const
@@ -484,6 +515,31 @@ bool QEglContext::swapBuffers(EGLSurface surface)
     return ok;
 }
 
+bool QEglContext::swapBuffersRegion2NOK(EGLSurface surface, const QRegion *region) {
+    QVector<QRect> qrects = region->rects();
+    EGLint *gl_rects;
+    uint count;
+    uint i;
+
+    count = qrects.size();
+    QVarLengthArray <EGLint> arr(4 * count);
+    gl_rects = arr.data();
+    for (i = 0; i < count; i++) {
+      QRect qrect = qrects[i];
+
+      gl_rects[4 * i + 0] = qrect.x();
+      gl_rects[4 * i + 1] = qrect.y();
+      gl_rects[4 * i + 2] = qrect.width();
+      gl_rects[4 * i + 3] = qrect.height();
+    }
+
+    bool ok = QEgl::eglSwapBuffersRegion2NOK(QEgl::display(), surface, count, gl_rects);
+
+    if (!ok)
+        qWarning() << "QEglContext::swapBuffersRegion2NOK():" << QEgl::errorString();
+    return ok;
+}
+
 int QEglContext::configAttrib(int name) const
 {
     EGLint value;
@@ -501,15 +557,16 @@ typedef EGLBoolean (EGLAPIENTRY *_eglDestroyImageKHR)(EGLDisplay, EGLImageKHR);
 static _eglCreateImageKHR qt_eglCreateImageKHR = 0;
 static _eglDestroyImageKHR qt_eglDestroyImageKHR = 0;
 
+typedef EGLBoolean (EGLAPIENTRY *_eglSwapBuffersRegion2NOK)(EGLDisplay, EGLSurface, EGLint, const EGLint*);
+
+static _eglSwapBuffersRegion2NOK qt_eglSwapBuffersRegion2NOK = 0;
 
 EGLDisplay QEgl::display()
 {
     static EGLDisplay dpy = EGL_NO_DISPLAY;
-    static bool openedDisplay = false;
-
-    if (!openedDisplay) {
+    if (!QEglContextTracker::displayOpened()) {
         dpy = eglGetDisplay(nativeDisplay());
-        openedDisplay = true;
+        QEglContextTracker::setDisplayOpened();
         if (dpy == EGL_NO_DISPLAY) {
             qWarning("QEgl::display(): Falling back to EGL_DEFAULT_DISPLAY");
             dpy = eglGetDisplay(EGLNativeDisplayType(EGL_DEFAULT_DISPLAY));
@@ -531,6 +588,10 @@ EGLDisplay QEgl::display()
             qt_eglDestroyImageKHR = (_eglDestroyImageKHR) eglGetProcAddress("eglDestroyImageKHR");
         }
 #endif
+
+        if (QEgl::hasExtension("EGL_NOK_swap_region2")) {
+            qt_eglSwapBuffersRegion2NOK = (_eglSwapBuffersRegion2NOK) eglGetProcAddress("eglSwapBuffersRegion2NOK");
+        }
     }
 
     return dpy;
@@ -562,6 +623,18 @@ EGLBoolean QEgl::eglDestroyImageKHR(EGLDisplay dpy, EGLImageKHR img)
     return 0;
 }
 
+EGLBoolean QEgl::eglSwapBuffersRegion2NOK(EGLDisplay dpy, EGLSurface surface, EGLint count, const EGLint *rects)
+{
+    if (qt_eglSwapBuffersRegion2NOK)
+        return qt_eglSwapBuffersRegion2NOK(dpy, surface, count, rects);
+
+    QEgl::display(); // Initialises function pointers
+    if (qt_eglSwapBuffersRegion2NOK)
+        return qt_eglSwapBuffersRegion2NOK(dpy, surface, count, rects);
+
+    qWarning("QEgl::eglSwapBuffersRegion2NOK() called but EGL_NOK_swap_region2 extension not present");
+    return 0;
+}
 
 #ifndef Q_WS_X11
 EGLSurface QEgl::createSurface(QPaintDevice *device, EGLConfig cfg, const QEglProperties *properties)

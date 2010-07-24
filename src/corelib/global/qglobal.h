@@ -417,14 +417,12 @@ namespace QT_NAMESPACE {}
 #  if defined(__INTEL_COMPILER)
 #    define Q_CC_INTEL
 #  endif
-/* x64 does not support mmx intrinsics on windows */
-#  if (defined(Q_OS_WIN64) && defined(_M_X64))
+/* MSVC does not support SSE/MMX on x64 */
+#  if (defined(Q_CC_MSVC) && defined(_M_X64))
 #    undef QT_HAVE_SSE
-#    undef QT_HAVE_SSE2
 #    undef QT_HAVE_MMX
 #    undef QT_HAVE_3DNOW
 #  endif
-
 
 #elif defined(__BORLANDC__) || defined(__TURBOC__)
 #  define Q_CC_BOR
@@ -810,7 +808,7 @@ namespace QT_NAMESPACE {}
 #  define Q_WS_PM
 #  error "Qt does not work with OS/2 Presentation Manager or Workplace Shell"
 #elif defined(Q_OS_UNIX)
-#  if defined(Q_OS_MAC) && !defined(__USE_WS_X11__) && !defined(Q_WS_QWS) && !defined(Q_WS_LITE)
+#  if defined(Q_OS_MAC) && !defined(__USE_WS_X11__) && !defined(Q_WS_QWS) && !defined(Q_WS_QPA)
 #    define Q_WS_MAC
 #    define Q_WS_MACX
 #    if defined(Q_OS_MAC64)
@@ -822,7 +820,7 @@ namespace QT_NAMESPACE {}
 #    if !defined(QT_NO_S60)
 #      define Q_WS_S60
 #    endif
-#  elif !defined(Q_WS_QWS) && !defined(Q_WS_LITE)
+#  elif !defined(Q_WS_QWS) && !defined(Q_WS_QPA)
 #    define Q_WS_X11
 #  endif
 #endif
@@ -1073,15 +1071,16 @@ redefine to built-in booleans to make autotests work properly */
 //the alignment needs to be forced for sse2 to not crash with mingw
 #if defined(Q_WS_WIN)
 #  if defined(Q_CC_MINGW)
-#    define QT_WIN_CALLBACK CALLBACK __attribute__ ((force_align_arg_pointer))
+#    define QT_ENSURE_STACK_ALIGNED_FOR_SSE __attribute__ ((force_align_arg_pointer))
 #  else
-#    define QT_WIN_CALLBACK CALLBACK
+#    define QT_ENSURE_STACK_ALIGNED_FOR_SSE
 #  endif
+#  define QT_WIN_CALLBACK CALLBACK QT_ENSURE_STACK_ALIGNED_FOR_SSE 
 #endif
 
 typedef int QNoImplicitBoolCast;
 
-#if defined(QT_ARCH_ARM) || defined(QT_ARCH_ARMV6) || defined(QT_ARCH_AVR32) || (defined(QT_ARCH_MIPS) && (defined(Q_WS_QWS) || defined(Q_WS_LITE) || defined(Q_OS_WINCE))) || defined(QT_ARCH_SH) || defined(QT_ARCH_SH4A)
+#if defined(QT_ARCH_ARM) || defined(QT_ARCH_ARMV6) || defined(QT_ARCH_AVR32) || (defined(QT_ARCH_MIPS) && (defined(Q_WS_QWS) || defined(Q_WS_QPA) || defined(Q_OS_WINCE))) || defined(QT_ARCH_SH) || defined(QT_ARCH_SH4A)
 #define QT_NO_FPU
 #endif
 
@@ -1248,11 +1247,6 @@ class QDataStream;
 #    else
 #      define Q_MULTIMEDIA_EXPORT Q_DECL_IMPORT
 #    endif
-#    if  defined(QT_BUILD_MEDIASERVICES_LIB)
-#      define Q_MEDIASERVICES_EXPORT Q_DECL_EXPORT
-#    else
-#      define Q_MEDIASERVICES_EXPORT Q_DECL_IMPORT
-#    endif
 #    if defined(QT_BUILD_OPENVG_LIB)
 #      define Q_OPENVG_EXPORT Q_DECL_EXPORT
 #    else
@@ -1299,7 +1293,6 @@ class QDataStream;
 #    define Q_CANVAS_EXPORT Q_DECL_IMPORT
 #    define Q_OPENGL_EXPORT Q_DECL_IMPORT
 #    define Q_MULTIMEDIA_EXPORT Q_DECL_IMPORT
-#    define Q_MEDIASERVICES_EXPORT Q_DECL_IMPORT
 #    define Q_OPENVG_EXPORT Q_DECL_IMPORT
 #    define Q_XML_EXPORT Q_DECL_IMPORT
 #    define Q_XMLPATTERNS_EXPORT Q_DECL_IMPORT
@@ -1328,7 +1321,6 @@ class QDataStream;
 #    define Q_DECLARATIVE_EXPORT Q_DECL_EXPORT
 #    define Q_OPENGL_EXPORT Q_DECL_EXPORT
 #    define Q_MULTIMEDIA_EXPORT Q_DECL_EXPORT
-#    define Q_MEDIASERVICES_EXPORT Q_DECL_EXPORT
 #    define Q_OPENVG_EXPORT Q_DECL_EXPORT
 #    define Q_XML_EXPORT Q_DECL_EXPORT
 #    define Q_XMLPATTERNS_EXPORT Q_DECL_EXPORT
@@ -1344,7 +1336,6 @@ class QDataStream;
 #    define Q_DECLARATIVE_EXPORT
 #    define Q_OPENGL_EXPORT
 #    define Q_MULTIMEDIA_EXPORT
-#    define Q_MEDIASERVICES_EXPORT
 #    define Q_XML_EXPORT
 #    define Q_XMLPATTERNS_EXPORT
 #    define Q_SCRIPT_EXPORT
@@ -2438,6 +2429,7 @@ QT3_SUPPORT Q_CORE_EXPORT const char *qInstallPathSysconf();
 #if defined(Q_OS_SYMBIAN)
 
 #ifdef SYMBIAN_BUILD_GCE
+#define Q_SYMBIAN_SUPPORTS_SURFACES
 //RWsPointerCursor is fixed, so don't use low performance sprites
 #define Q_SYMBIAN_FIXED_POINTER_CURSORS
 #define Q_SYMBIAN_HAS_EXTENDED_BITMAP_TYPE

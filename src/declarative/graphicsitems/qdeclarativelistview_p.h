@@ -50,7 +50,7 @@ QT_BEGIN_NAMESPACE
 
 QT_MODULE(Declarative)
 
-class Q_DECLARATIVE_EXPORT QDeclarativeViewSection : public QObject
+class Q_AUTOTEST_EXPORT QDeclarativeViewSection : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(QString property READ property WRITE setProperty NOTIFY changed)
@@ -86,7 +86,7 @@ private:
 class QDeclarativeVisualModel;
 class QDeclarativeListViewAttached;
 class QDeclarativeListViewPrivate;
-class Q_DECLARATIVE_EXPORT QDeclarativeListView : public QDeclarativeFlickable
+class Q_AUTOTEST_EXPORT QDeclarativeListView : public QDeclarativeFlickable
 {
     Q_OBJECT
     Q_DECLARE_PRIVATE_D(QGraphicsItem::d_ptr.data(), QDeclarativeListView)
@@ -124,6 +124,7 @@ class Q_DECLARATIVE_EXPORT QDeclarativeListView : public QDeclarativeFlickable
     Q_ENUMS(HighlightRangeMode)
     Q_ENUMS(Orientation)
     Q_ENUMS(SnapMode)
+    Q_ENUMS(PositionMode)
     Q_CLASSINFO("DefaultProperty", "data")
 
 public:
@@ -197,10 +198,12 @@ public:
     QDeclarativeComponent *header() const;
     void setHeader(QDeclarativeComponent *);
 
+    virtual void setContentX(qreal pos);
+    virtual void setContentY(qreal pos);
+
     static QDeclarativeListViewAttached *qmlAttachedProperties(QObject *);
 
     enum PositionMode { Beginning, Center, End, Visible, Contain };
-    Q_ENUMS(PositionMode);
 
     Q_INVOKABLE void positionViewAtIndex(int index, int mode);
     Q_INVOKABLE int indexAt(int x, int y) const;
@@ -276,12 +279,21 @@ public:
         }
     }
 
-    Q_PROPERTY(QString prevSection READ prevSection NOTIFY prevSectionChanged)
+    Q_PROPERTY(QString previousSection READ prevSection NOTIFY prevSectionChanged)
     QString prevSection() const { return m_prevSection; }
     void setPrevSection(const QString &sect) {
         if (m_prevSection != sect) {
             m_prevSection = sect;
             emit prevSectionChanged();
+        }
+    }
+
+    Q_PROPERTY(QString nextSection READ nextSection NOTIFY nextSectionChanged)
+    QString nextSection() const { return m_nextSection; }
+    void setNextSection(const QString &sect) {
+        if (m_nextSection != sect) {
+            m_nextSection = sect;
+            emit nextSectionChanged();
         }
     }
 
@@ -310,6 +322,7 @@ Q_SIGNALS:
     void currentItemChanged();
     void sectionChanged();
     void prevSectionChanged();
+    void nextSectionChanged();
     void delayRemoveChanged();
     void add();
     void remove();
@@ -318,6 +331,7 @@ public:
     QDeclarativeListView *m_view;
     mutable QString m_section;
     QString m_prevSection;
+    QString m_nextSection;
     bool m_isCurrent : 1;
     bool m_delayRemove : 1;
 };

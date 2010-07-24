@@ -46,9 +46,10 @@
 
 #include <QtGui/QPlatformIntegration>
 #include <QtGui/QPlatformScreen>
-#include <QtGui/private/qeglcontext_p.h>
+#include <QtGui/QPlatformGLContext>
 
-# include <GLES2/gl2.h>
+#include <GLES2/gl2.h>
+#include <EGL/egl.h>
 
 QT_BEGIN_NAMESPACE
 
@@ -56,6 +57,7 @@ struct KDDesktopNV;
 
 class QOpenKODEScreen : public QPlatformScreen
 {
+    Q_OBJECT
 public:
     QOpenKODEScreen();
     ~QOpenKODEScreen() {}
@@ -65,11 +67,13 @@ public:
     QImage::Format format() const { return mFormat; }
     QSize physicalSize() const { return mPhysicalSize; }
 
+    EGLDisplay eglDisplay() { return mEglDisplay; }
 public:
     QRect mGeometry;
     int mDepth;
     QImage::Format mFormat;
     QSize mPhysicalSize;
+    EGLDisplay mEglDisplay;
 };
 
 class QOpenKODEIntegration : public QPlatformIntegration
@@ -82,8 +86,8 @@ public:
     QWindowSurface *createWindowSurface(QWidget *widget, WId winId) const;
 
     bool hasOpenGL() const;
-    QPlatformGLContext * createGLContext();
-    QPlatformGLWidgetSurface * createGLWidgetSurface();
+
+    QPlatformEventLoopIntegration *createEventLoopIntegration() const;
 
     virtual QList<QPlatformScreen *> screens() const { return mScreens; }
 
@@ -91,7 +95,6 @@ public:
 
 private:
     QList<QPlatformScreen *> mScreens;
-    QSemaphore eventMutex;
 };
 
 QT_END_NAMESPACE

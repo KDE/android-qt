@@ -55,19 +55,19 @@ QT_BEGIN_NAMESPACE
 QT_MODULE(Declarative)
 
 class QDeclarativeParentChangePrivate;
-class Q_DECLARATIVE_EXPORT QDeclarativeParentChange : public QDeclarativeStateOperation, public QDeclarativeActionEvent
+class Q_AUTOTEST_EXPORT QDeclarativeParentChange : public QDeclarativeStateOperation, public QDeclarativeActionEvent
 {
     Q_OBJECT
     Q_DECLARE_PRIVATE(QDeclarativeParentChange)
 
     Q_PROPERTY(QDeclarativeItem *target READ object WRITE setObject)
     Q_PROPERTY(QDeclarativeItem *parent READ parent WRITE setParent)
-    Q_PROPERTY(qreal x READ x WRITE setX)
-    Q_PROPERTY(qreal y READ y WRITE setY)
-    Q_PROPERTY(qreal width READ width WRITE setWidth)
-    Q_PROPERTY(qreal height READ height WRITE setHeight)
-    Q_PROPERTY(qreal scale READ scale WRITE setScale)
-    Q_PROPERTY(qreal rotation READ rotation WRITE setRotation)
+    Q_PROPERTY(QDeclarativeScriptString x READ x WRITE setX)
+    Q_PROPERTY(QDeclarativeScriptString y READ y WRITE setY)
+    Q_PROPERTY(QDeclarativeScriptString width READ width WRITE setWidth)
+    Q_PROPERTY(QDeclarativeScriptString height READ height WRITE setHeight)
+    Q_PROPERTY(QDeclarativeScriptString scale READ scale WRITE setScale)
+    Q_PROPERTY(QDeclarativeScriptString rotation READ rotation WRITE setRotation)
 public:
     QDeclarativeParentChange(QObject *parent=0);
     ~QDeclarativeParentChange();
@@ -80,34 +80,34 @@ public:
 
     QDeclarativeItem *originalParent() const;
 
-    qreal x() const;
-    void setX(qreal x);
+    QDeclarativeScriptString x() const;
+    void setX(QDeclarativeScriptString x);
     bool xIsSet() const;
 
-    qreal y() const;
-    void setY(qreal y);
+    QDeclarativeScriptString y() const;
+    void setY(QDeclarativeScriptString y);
     bool yIsSet() const;
 
-    qreal width() const;
-    void setWidth(qreal width);
+    QDeclarativeScriptString width() const;
+    void setWidth(QDeclarativeScriptString width);
     bool widthIsSet() const;
 
-    qreal height() const;
-    void setHeight(qreal height);
+    QDeclarativeScriptString height() const;
+    void setHeight(QDeclarativeScriptString height);
     bool heightIsSet() const;
 
-    qreal scale() const;
-    void setScale(qreal scale);
+    QDeclarativeScriptString scale() const;
+    void setScale(QDeclarativeScriptString scale);
     bool scaleIsSet() const;
 
-    qreal rotation() const;
-    void setRotation(qreal rotation);
+    QDeclarativeScriptString rotation() const;
+    void setRotation(QDeclarativeScriptString rotation);
     bool rotationIsSet() const;
 
     virtual ActionList actions();
 
     virtual void saveOriginals();
-    virtual void copyOriginals(QDeclarativeActionEvent*);
+    //virtual void copyOriginals(QDeclarativeActionEvent*);
     virtual void execute(Reason reason = ActualChange);
     virtual bool isReversable();
     virtual void reverse(Reason reason = ActualChange);
@@ -118,7 +118,7 @@ public:
 };
 
 class QDeclarativeStateChangeScriptPrivate;
-class Q_DECLARATIVE_EXPORT QDeclarativeStateChangeScript : public QDeclarativeStateOperation, public QDeclarativeActionEvent
+class Q_AUTOTEST_EXPORT QDeclarativeStateChangeScript : public QDeclarativeStateOperation, public QDeclarativeActionEvent
 {
     Q_OBJECT
     Q_DECLARE_PRIVATE(QDeclarativeStateChangeScript)
@@ -251,7 +251,7 @@ private:
 };
 
 class QDeclarativeAnchorChangesPrivate;
-class Q_DECLARATIVE_EXPORT QDeclarativeAnchorChanges : public QDeclarativeStateOperation, public QDeclarativeActionEvent
+class Q_AUTOTEST_EXPORT QDeclarativeAnchorChanges : public QDeclarativeStateOperation, public QDeclarativeActionEvent
 {
     Q_OBJECT
     Q_DECLARE_PRIVATE(QDeclarativeAnchorChanges)
@@ -277,6 +277,7 @@ public:
     virtual bool override(QDeclarativeActionEvent*other);
     virtual bool changesBindings();
     virtual void saveOriginals();
+    virtual bool needsCopy() { return true; }
     virtual void copyOriginals(QDeclarativeActionEvent*);
     virtual void clearBindings();
     virtual void rewind();

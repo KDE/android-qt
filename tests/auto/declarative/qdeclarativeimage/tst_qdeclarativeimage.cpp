@@ -55,6 +55,10 @@
 
 #include "../shared/testhttpserver.h"
 
+#ifdef Q_OS_SYMBIAN
+// In Symbian OS test data is located in applications private dir
+#define SRCDIR "."
+#endif
 
 #define SERVER_PORT 14451
 #define SERVER_ADDR "http://127.0.0.1:14451"
@@ -84,7 +88,6 @@ private slots:
     void resized();
     void preserveAspectRatio();
     void smooth();
-    void pixmap();
     void svg();
     void big();
     void tiling_QTBUG_6716();
@@ -120,8 +123,8 @@ void tst_qdeclarativeimage::noSource()
 void tst_qdeclarativeimage::imageSource_data()
 {
     QTest::addColumn<QString>("source");
-    QTest::addColumn<qreal>("width");
-    QTest::addColumn<qreal>("height");
+    QTest::addColumn<double>("width");
+    QTest::addColumn<double>("height");
     QTest::addColumn<bool>("remote");
     QTest::addColumn<bool>("async");
     QTest::addColumn<QString>("error");
@@ -142,8 +145,8 @@ void tst_qdeclarativeimage::imageSource_data()
 void tst_qdeclarativeimage::imageSource()
 {
     QFETCH(QString, source);
-    QFETCH(qreal, width);
-    QFETCH(qreal, height);
+    QFETCH(double, width);
+    QFETCH(double, height);
     QFETCH(bool, remote);
     QFETCH(bool, async);
     QFETCH(QString, error);
@@ -174,8 +177,8 @@ void tst_qdeclarativeimage::imageSource()
 
     if (error.isEmpty()) {
         TRY_WAIT(obj->status() == QDeclarativeImage::Ready);
-        QCOMPARE(obj->width(), width);
-        QCOMPARE(obj->height(), height);
+        QCOMPARE(obj->width(), qreal(width));
+        QCOMPARE(obj->height(), qreal(height));
         QCOMPARE(obj->fillMode(), QDeclarativeImage::Stretch);
         QCOMPARE(obj->progress(), 1.0);
     } else {
@@ -257,36 +260,6 @@ void tst_qdeclarativeimage::smooth()
     delete obj;
 }
 
-void tst_qdeclarativeimage::pixmap()
-{
-    QString componentStr = "import Qt 4.7\nImage { pixmap: testPixmap }";
-
-    QPixmap pixmap;
-    QDeclarativeContext *ctxt = engine.rootContext();
-    ctxt->setContextProperty("testPixmap", pixmap);
-
-    QDeclarativeComponent component(&engine);
-    component.setData(componentStr.toLatin1(), QUrl::fromLocalFile(""));
-
-    QDeclarativeImage *obj = qobject_cast<QDeclarativeImage*>(component.create());
-    QVERIFY(obj != 0);
-    QCOMPARE(obj->source(), QUrl());
-    QVERIFY(obj->status() == QDeclarativeImage::Null);
-    QCOMPARE(obj->width(), 0.);
-    QCOMPARE(obj->height(), 0.);
-    QCOMPARE(obj->fillMode(), QDeclarativeImage::Stretch);
-    QCOMPARE(obj->progress(), 0.0);
-    QVERIFY(obj->pixmap().isNull());
-
-    pixmap = QPixmap(SRCDIR "/data/colors.png");
-    ctxt->setContextProperty("testPixmap", pixmap);
-    QCOMPARE(obj->width(), 120.);
-    QCOMPARE(obj->height(), 120.);
-    QVERIFY(obj->status() == QDeclarativeImage::Ready);
-
-    delete obj;
-}
-
 void tst_qdeclarativeimage::svg()
 {
     QString src = QUrl::fromLocalFile(SRCDIR "/data/heart.svg").toString();
@@ -303,6 +276,8 @@ void tst_qdeclarativeimage::svg()
     QCOMPARE(obj->pixmap(), QPixmap(SRCDIR "/data/heart-mac.png"));
 #elif defined(Q_OS_WIN32)
     QCOMPARE(obj->pixmap(), QPixmap(SRCDIR "/data/heart-win32.png"));
+#elif defined(QT_ARCH_ARM)
+    QCOMPARE(obj->pixmap(), QPixmap(SRCDIR "/data/heart-arm.png"));
 #else
     QCOMPARE(obj->pixmap(), QPixmap(SRCDIR "/data/heart.png"));
 #endif
@@ -317,6 +292,8 @@ void tst_qdeclarativeimage::svg()
     QCOMPARE(obj->pixmap(), QPixmap(SRCDIR "/data/heart200-mac.png"));
 #elif defined(Q_OS_WIN32)
     QCOMPARE(obj->pixmap(), QPixmap(SRCDIR "/data/heart200-win32.png"));
+#elif defined(QT_ARCH_ARM)
+    QCOMPARE(obj->pixmap(), QPixmap(SRCDIR "/data/heart200-arm.png"));
 #else
     QCOMPARE(obj->pixmap(), QPixmap(SRCDIR "/data/heart200.png"));
 #endif
@@ -400,7 +377,7 @@ T *tst_qdeclarativeimage::findItem(QGraphicsObject *parent, const QString &objec
         //qDebug() << "try" << item;
         if (mo.cast(item) && (objectName.isEmpty() || item->objectName() == objectName)) {
             if (index != -1) {
-                QDeclarativeExpression e(qmlContext(item), "index", item);
+                QDeclarativeExpression e(qmlContext(item), item, "index");
                 if (e.evaluate().toInt() == index)
                     return static_cast<T*>(item);
             } else {

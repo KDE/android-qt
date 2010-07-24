@@ -2,8 +2,8 @@ TARGET = QtAndroid_sw
 
 include(../../qpluginbase.pri)
 
-CONFIG -= dll
-CONFIG += staticlib static
+CONFIG = dll
+#CONFIG += staticlib static
 DESTDIR	 = $$QMAKE_LIBDIR_QT
 
 CONFIG(jnigraphics) : DEFINES += JNIGRPAHICS

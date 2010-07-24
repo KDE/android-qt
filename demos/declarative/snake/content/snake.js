@@ -37,6 +37,7 @@ function startNewGame()
         startNewGameTimer.running = true;
         return;
     }
+
     numRows = numRowsAvailable;
     numColumns = numColumnsAvailable;
     board = new Array(numRows * numColumns);
@@ -52,15 +53,14 @@ function startNewGame()
             link.spawned = false;
             link.dying = false;
         } else {
-            if(linkComponent.isReady == false){
-                if(linkComponent.isError == true)
-                    console.log(linkComponent.errorsString());
+            if(linkComponent.status != Component.Ready) {
+                if(linkComponent.status == Component.Error) 
+                    console.log(linkComponent.errorString());
                 else
                     console.log("Still loading linkComponent");
                 continue;//TODO: Better error handling?
             }
-            var link = linkComponent.createObject();
-            link.parent = playfield;
+            var link = linkComponent.createObject(playfield);
             link.z = numRows * numColumns + 1 - i;
             link.type = i == 0 ? 2 : 0;
             link.spawned = false;
@@ -150,7 +150,7 @@ function move() {
         snake.push(newLink);
     } else {
         var lastLink = snake[snake.length-1];
-        board[lastLink.row * numColumns + lastLink.column] = Undefined;
+        board[lastLink.row * numColumns + lastLink.column] = undefined;
     }
 
     if (waitForCookie > 0) {
@@ -186,7 +186,7 @@ function move() {
 
 function isFree(row, column)
 {
-    return board[row * numColumns + column] == Undefined;
+    return board[row * numColumns + column] == undefined;
 }
 
 function isHead(row, column)
@@ -214,7 +214,7 @@ function moveSkull()
         --linksToDie;
         var link = snake.pop();
         link.dying = true;
-        board[link.row * numColumns + link.column] = Undefined;
+        board[link.row * numColumns + link.column] = undefined;
         if (score > 0)
             --score;
         if (snake.length == 0) {
@@ -293,15 +293,14 @@ function createCookie(value) {
         }
     }
 
-    if(cookieComponent.isReady == false){
-        if(cookieComponent.isError == true)
-            console.log(cookieComponent.errorsString());
+    if(cookieComponent.status != Component.Ready) {
+        if(cookieComponent.status == Component.Error)
+            console.log(cookieComponent.errorString());
         else
             console.log("Still loading cookieComponent");
         return;//TODO: Better error handling?
     }
-    cookie = cookieComponent.createObject();
-    cookie.parent = head.parent;
+    cookie = cookieComponent.createObject(head.parent);
     cookie.value = value;
     cookie.row = row;
     cookie.column = column;

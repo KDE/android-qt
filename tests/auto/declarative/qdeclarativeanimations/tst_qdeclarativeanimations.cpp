@@ -44,8 +44,14 @@
 #include <QtDeclarative/qdeclarativeview.h>
 #include <private/qdeclarativerectangle_p.h>
 #include <private/qdeclarativeanimation_p.h>
+#include <private/qdeclarativeitem_p.h>
 #include <QVariantAnimation>
 #include <QEasingCurve>
+
+#ifdef Q_OS_SYMBIAN
+// In Symbian OS test data is located in applications private dir
+#define SRCDIR "."
+#endif
 
 class tst_qdeclarativeanimations : public QObject
 {
@@ -75,6 +81,7 @@ private slots:
     void dontStart();
     void easingProperties();
     void rotation();
+    void runningTrueBug();
 };
 
 #define QTIMED_COMPARE(lhs, rhs) do { \
@@ -303,7 +310,7 @@ void tst_qdeclarativeanimations::badTypes()
         c.create();
 
         QVERIFY(c.errors().count() == 1);
-        QCOMPARE(c.errors().at(0).description(), QLatin1String("Invalid property assignment: double expected"));
+        QCOMPARE(c.errors().at(0).description(), QLatin1String("Invalid property assignment: number expected"));
     }
 
     //make sure we get a compiler error
@@ -324,7 +331,7 @@ void tst_qdeclarativeanimations::badTypes()
         QDeclarativeRectangle *rect = qobject_cast<QDeclarativeRectangle*>(c.create());
         QVERIFY(rect);
 
-        rect->setState("state1");
+        QDeclarativeItemPrivate::get(rect)->setState("state1");
         QTest::qWait(1000 + 50);
         QDeclarativeRectangle *myRect = rect->findChild<QDeclarativeRectangle*>("MyRect");
         QVERIFY(myRect);
@@ -366,7 +373,7 @@ void tst_qdeclarativeanimations::mixedTypes()
         QDeclarativeRectangle *rect = qobject_cast<QDeclarativeRectangle*>(c.create());
         QVERIFY(rect);
 
-        rect->setState("state1");
+        QDeclarativeItemPrivate::get(rect)->setState("state1");
         QTest::qWait(500);
         QDeclarativeRectangle *myRect = rect->findChild<QDeclarativeRectangle*>("MyRect");
         QVERIFY(myRect);
@@ -382,7 +389,7 @@ void tst_qdeclarativeanimations::mixedTypes()
         QDeclarativeRectangle *rect = qobject_cast<QDeclarativeRectangle*>(c.create());
         QVERIFY(rect);
 
-        rect->setState("state1");
+        QDeclarativeItemPrivate::get(rect)->setState("state1");
         QTest::qWait(500);
         QDeclarativeRectangle *myRect = rect->findChild<QDeclarativeRectangle*>("MyRect");
         QVERIFY(myRect);
@@ -468,7 +475,7 @@ void tst_qdeclarativeanimations::propertiesTransition()
         QDeclarativeRectangle *rect = qobject_cast<QDeclarativeRectangle*>(c.create());
         QVERIFY(rect);
 
-        rect->setState("moved");
+        QDeclarativeItemPrivate::get(rect)->setState("moved");
         QDeclarativeRectangle *myRect = rect->findChild<QDeclarativeRectangle*>("TheRect");
         QVERIFY(myRect);
         QTest::qWait(waitDuration);
@@ -483,7 +490,7 @@ void tst_qdeclarativeanimations::propertiesTransition()
 
         QDeclarativeRectangle *myRect = rect->findChild<QDeclarativeRectangle*>("TheRect");
         QVERIFY(myRect);
-        rect->setState("moved");
+        QDeclarativeItemPrivate::get(rect)->setState("moved");
         QCOMPARE(myRect->x(),qreal(200));
         QCOMPARE(myRect->y(),qreal(100));
         QTest::qWait(waitDuration);
@@ -498,7 +505,7 @@ void tst_qdeclarativeanimations::propertiesTransition()
 
         QDeclarativeRectangle *myRect = rect->findChild<QDeclarativeRectangle*>("TheRect");
         QVERIFY(myRect);
-        rect->setState("moved");
+        QDeclarativeItemPrivate::get(rect)->setState("moved");
         QCOMPARE(myRect->x(),qreal(200));
         QCOMPARE(myRect->y(),qreal(100));
     }
@@ -511,7 +518,7 @@ void tst_qdeclarativeanimations::propertiesTransition()
 
         QDeclarativeRectangle *myRect = rect->findChild<QDeclarativeRectangle*>("TheRect");
         QVERIFY(myRect);
-        rect->setState("moved");
+        QDeclarativeItemPrivate::get(rect)->setState("moved");
         QCOMPARE(myRect->x(),qreal(100));
         QTest::qWait(waitDuration);
         QTIMED_COMPARE(myRect->x(),qreal(200));
@@ -525,7 +532,7 @@ void tst_qdeclarativeanimations::propertiesTransition()
 
         QDeclarativeRectangle *myRect = rect->findChild<QDeclarativeRectangle*>("TheRect");
         QVERIFY(myRect);
-        rect->setState("moved");
+        QDeclarativeItemPrivate::get(rect)->setState("moved");
         QCOMPARE(myRect->x(),qreal(100));
         QTest::qWait(waitDuration);
         QTIMED_COMPARE(myRect->x(),qreal(200));
@@ -539,7 +546,7 @@ void tst_qdeclarativeanimations::propertiesTransition()
 
         QDeclarativeRectangle *myRect = rect->findChild<QDeclarativeRectangle*>("TheRect");
         QVERIFY(myRect);
-        rect->setState("moved");
+        QDeclarativeItemPrivate::get(rect)->setState("moved");
         QCOMPARE(myRect->x(),qreal(100));
         QTest::qWait(waitDuration);
         QTIMED_COMPARE(myRect->x(),qreal(100));
@@ -709,7 +716,7 @@ void tst_qdeclarativeanimations::rotation()
     QDeclarativeRectangle *rr3 = rect->findChild<QDeclarativeRectangle*>("rr3");
     QDeclarativeRectangle *rr4 = rect->findChild<QDeclarativeRectangle*>("rr4");
 
-    rect->setState("state1");
+    QDeclarativeItemPrivate::get(rect)->setState("state1");
     QTest::qWait(800);
     qreal r1 = rr->rotation();
     qreal r2 = rr2->rotation();
@@ -725,6 +732,20 @@ void tst_qdeclarativeanimations::rotation()
 
     QTest::qWait(800);
     QTIMED_COMPARE(rr->rotation() + rr2->rotation() + rr3->rotation() + rr4->rotation(), qreal(370*4));
+}
+
+void tst_qdeclarativeanimations::runningTrueBug()
+{
+    //ensure we start correctly when "running: true" is explicitly set
+    QDeclarativeEngine engine;
+    QDeclarativeComponent c(&engine, QUrl::fromLocalFile(SRCDIR "/data/runningTrueBug.qml"));
+    QDeclarativeRectangle *rect = qobject_cast<QDeclarativeRectangle*>(c.create());
+    QVERIFY(rect);
+
+    QDeclarativeRectangle *cloud = rect->findChild<QDeclarativeRectangle*>("cloud");
+    QVERIFY(cloud);
+    QTest::qWait(1000);
+    QVERIFY(cloud->x() > qreal(0));
 }
 
 QTEST_MAIN(tst_qdeclarativeanimations)

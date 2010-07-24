@@ -132,6 +132,7 @@ public:
         BlockAdded = 6,
         BlockDeleted = 7,
         GroupFormatChange = 8,
+        CursorMoved = 9,
         Custom = 256
     };
     enum Operation {
@@ -276,7 +277,7 @@ public:
     void documentChange(int from, int length);
 
     inline void addCursor(QTextCursorPrivate *c) { cursors.append(c); }
-    inline void removeCursor(QTextCursorPrivate *c) { cursors.removeAll(c); changedCursors.removeAll(c); }
+    inline void removeCursor(QTextCursorPrivate *c) { cursors.removeAll(c); }
 
     QTextFrame *frameAt(int pos) const;
     QTextFrame *rootFrame() const;
@@ -315,6 +316,7 @@ private:
     bool modified;
 
     int editBlock;
+    int editBlockCursorPosition;
     int docChangeFrom;
     int docChangeOldLength;
     int docChangeLength;
@@ -327,8 +329,7 @@ private:
     BlockMap blocks;
     int initialBlockCharFormatIndex;
 
-    QList<QTextCursorPrivate*> cursors;
-    QList<QTextCursorPrivate*> changedCursors;
+    QList<QTextCursorPrivate *> cursors;
     QMap<int, QTextObject *> objects;
     QMap<QUrl, QVariant> resources;
     QMap<QUrl, QVariant> cachedResources;
@@ -344,6 +345,7 @@ public:
     int maximumBlockCount;
     uint needsEnsureMaximumBlockCount : 1;
     uint inContentsChange : 1;
+    uint blockCursorAdjustment : 1;
     QSizeF pageSize;
     QString title;
     QString url;

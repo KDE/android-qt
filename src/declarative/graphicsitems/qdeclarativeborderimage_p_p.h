@@ -66,7 +66,6 @@ class QDeclarativeBorderImagePrivate : public QDeclarativeImageBasePrivate
 public:
     QDeclarativeBorderImagePrivate()
       : border(0), sciReply(0),
-        sciPendingPixmapCache(false),
         horizontalTileMode(QDeclarativeBorderImage::Stretch),
         verticalTileMode(QDeclarativeBorderImage::Stretch),
         redirectCount(0)
@@ -77,18 +76,26 @@ public:
     {
     }
 
+
     QDeclarativeScaleGrid *getScaleGrid()
     {
         Q_Q(QDeclarativeBorderImage);
-        if (!border)
+        if (!border) {
             border = new QDeclarativeScaleGrid(q);
+            static int borderChangedSignalIdx = -1;
+            static int doUpdateSlotIdx = -1;
+            if (borderChangedSignalIdx < 0)
+                borderChangedSignalIdx = QDeclarativeScaleGrid::staticMetaObject.indexOfSignal("borderChanged()");
+            if (doUpdateSlotIdx < 0)
+                doUpdateSlotIdx = QDeclarativeBorderImage::staticMetaObject.indexOfSlot("doUpdate()");
+            QMetaObject::connect(border, borderChangedSignalIdx, q, doUpdateSlotIdx);
+        }
         return border;
     }
 
     QDeclarativeScaleGrid *border;
     QUrl sciurl;
     QNetworkReply *sciReply;
-    bool sciPendingPixmapCache;
     QDeclarativeBorderImage::TileMode horizontalTileMode;
     QDeclarativeBorderImage::TileMode verticalTileMode;
     int redirectCount;

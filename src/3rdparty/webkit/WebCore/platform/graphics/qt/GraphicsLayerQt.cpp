@@ -41,8 +41,13 @@
 #include <QtGui/qpixmapcache.h>
 #include <QtGui/qstyleoption.h>
 
+
+#define QT_DEBUG_RECACHE 0
+#define QT_DEBUG_CACHEDUMP 0
+
 namespace WebCore {
 
+#ifndef QT_NO_GRAPHICSEFFECT
 class MaskEffectQt : public QGraphicsEffect {
 public:
     MaskEffectQt(QObject* parent, QGraphicsItem* maskLayer)
@@ -57,7 +62,12 @@ public:
         // It's more efficient to do it this way because
         // (a) we don't need the QBrush abstraction - we always end up using QGraphicsItem::paint from the mask layer
         // (b) QGraphicsOpacityEffect detaches the pixmap, which is inefficient on OpenGL.
-        QPixmap maskPixmap(sourceBoundingRect().toAlignedRect().size());
+        const QSize maskSize = sourceBoundingRect().toAlignedRect().size();
+        if (!maskSize.isValid() || maskSize.isEmpty()) {
+            drawSource(painter);
+            return;
+        }
+        QPixmap maskPixmap(maskSize);
 
         // we need to do this so the pixmap would have hasAlpha()
         maskPixmap.fill(Qt::transparent);
@@ -91,6 +101,7 @@ public:
 
     QGraphicsItem* m_maskLayer;
 };
+#endif // QT_NO_GRAPHICSEFFECT
 
 class GraphicsLayerQtImpl : public QGraphicsObject {
     Q_OBJECT
@@ -179,7 +190,9 @@ public:
     TransformationMatrix m_transformRelativeToRootLayer;
     bool m_transformAnimationRunning;
     bool m_opacityAnimationRunning;
+#ifndef QT_NO_GRAPHICSEFFECT
     QWeakPointer<MaskEffectQt> m_maskEffect;
+#endif
 
     struct ContentData {
         QPixmap pixmap;
@@ -205,7 +218,10 @@ public:
     int m_changeMask;
 
     QSizeF m_size;
-    QPixmapCache::Key m_backingStoreKey;
+    struct {
+        QPixmapCache::Key key;
+        QSizeF size;
+    } m_backingStore;
 #ifndef QT_NO_ANIMATION
     QList<QWeakPointer<QAbstractAnimation> > m_animations;
 #endif
@@ -294,35 +310,109 @@ const GraphicsLayerQtImpl* GraphicsLayerQtImpl::rootLayer() const
 
 QPixmap GraphicsLayerQtImpl::recache(const QRegion& regionToUpdate)
 {
-    if (!m_layer->drawsContent())
+    if (!m_layer->drawsContent() || m_size.isEmpty() || !m_size.isValid())
         return QPixmap();
 
-    QRegion region = regionToUpdate;
     QPixmap pixmap;
-
-    // We might be drawing into an existing cache.
-    if (!QPixmapCache::find(m_backingStoreKey, &pixmap))
-        region = QRegion(QRect(0, 0, m_size.width(), m_size.height()));
-
-    if (m_size != pixmap.size()) {
-        pixmap = QPixmap(m_size.toSize());
-        if (!m_layer->contentsOpaque())
-            pixmap.fill(Qt::transparent);
-        m_pendingContent.regionToUpdate = QRegion(QRect(QPoint(0, 0), m_size.toSize()));
+    QRegion region = regionToUpdate;
+    if (QPixmapCache::find(m_backingStore.key, &pixmap)) {
+        if (region.isEmpty())
+            return pixmap;
+        QPixmapCache::remove(m_backingStore.key); // Remove the reference to the pixmap in the cache to avoid a detach.
     }
 
-    QPainter painter(&pixmap);
-    GraphicsContext gc(&painter);
+    {
+        bool erased = false;
 
-    // Clear the area in cache that we're drawing into
-    painter.setCompositionMode(QPainter::CompositionMode_Clear);
-    painter.fillRect(region.boundingRect(), Qt::transparent);
+        // If the pixmap is not in the cache or the view has grown since last cached.
+        if (pixmap.isNull() || m_size != m_backingStore.size) {
+#if QT_DEBUG_RECACHE
+            if (pixmap.isNull())
+                qDebug() << "CacheMiss" << this << m_size;
+#endif
+            bool fill = true;
+            QRegion newRegion;
+            QPixmap oldPixmap = pixmap;
 
-    // Render the actual contents into the cache
-    painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
-    m_layer->paintGraphicsLayerContents(gc, region.boundingRect());
+            // If the pixmap is two small to hold the view contents we enlarge, otherwise just use the old (large) pixmap.
+            if (pixmap.width() < m_size.width() || pixmap.height() < m_size.height()) {
+#if QT_DEBUG_RECACHE
+                qDebug() << "CacheGrow" << this << m_size;
+#endif
+                pixmap = QPixmap(m_size.toSize());
+                pixmap.fill(Qt::transparent);
+                newRegion = QRegion(0, 0, m_size.width(), m_size.height());
+            }
 
-    m_backingStoreKey = QPixmapCache::insert(pixmap);    
+#if 1
+            // Blit the contents of oldPixmap back into the cached pixmap as we are just adding new pixels.
+            if (!oldPixmap.isNull()) {
+                const QRegion cleanRegion = (QRegion(0, 0, m_size.width(), m_size.height())
+                                             & QRegion(0, 0, m_backingStore.size.width(), m_backingStore.size.height())) - regionToUpdate;
+                if (!cleanRegion.isEmpty()) {
+#if QT_DEBUG_RECACHE
+                    qDebug() << "CacheBlit" << this << cleanRegion;
+#endif
+                    const QRect cleanBounds(cleanRegion.boundingRect());
+                    QPainter painter(&pixmap);
+                    painter.setCompositionMode(QPainter::CompositionMode_Source);
+                    painter.drawPixmap(cleanBounds.topLeft(), oldPixmap, cleanBounds);
+                    newRegion -= cleanRegion;
+                    fill = false; // We cannot just fill the pixmap.
+                }
+                oldPixmap = QPixmap();
+            }
+#endif
+            region += newRegion;
+            if (fill && !region.isEmpty()) { // Clear the entire pixmap with the background.
+#if QT_DEBUG_RECACHE
+                qDebug() << "CacheErase" << this << m_size << background;
+#endif
+                erased = true;
+                pixmap.fill(Qt::transparent);
+            }
+        }
+        region &= QRegion(0, 0, m_size.width(), m_size.height());
+
+        // If we have something to draw its time to erase it and render the contents.
+        if (!region.isEmpty()) {
+#if QT_DEBUG_CACHEDUMP
+            static int recacheCount = 0;
+            ++recacheCount;
+            qDebug() << "**** CACHEDUMP" << recacheCount << this << m_layer << region << m_size;
+            pixmap.save(QString().sprintf("/tmp/%05d_A.png", recacheCount), "PNG");
+#endif
+
+            QPainter painter(&pixmap);
+            GraphicsContext gc(&painter);
+
+            painter.setClipRegion(region);
+
+            if (!erased) { // Erase the area in cache that we're drawing into.
+                painter.setCompositionMode(QPainter::CompositionMode_Clear);
+                painter.fillRect(region.boundingRect(), Qt::transparent);
+
+#if QT_DEBUG_CACHEDUMP
+                qDebug() << "**** CACHEDUMP" << recacheCount << this << m_layer << region << m_size;
+                pixmap.save(QString().sprintf("/tmp/%05d_B.png", recacheCount), "PNG");
+#endif
+            }
+
+            // Render the actual contents into the cache.
+            painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
+            m_layer->paintGraphicsLayerContents(gc, region.boundingRect());
+            painter.end();
+
+#if QT_DEBUG_CACHEDUMP
+            qDebug() << "**** CACHEDUMP" << recacheCount << this << m_layer << region << m_size;
+            pixmap.save(QString().sprintf("/tmp/%05d_C.png", recacheCount), "PNG");
+#endif
+        }
+        m_backingStore.size = m_size; // Store the used size of the pixmap.
+    }
+
+    // Finally insert into the cache and allow a reference there.
+    m_backingStore.key = QPixmapCache::insert(pixmap);
     return pixmap;
 }
 
@@ -355,14 +445,6 @@ void GraphicsLayerQtImpl::updateTransform()
         setVisible(false);
         // No point in making extra calculations for invisible elements.
         return;
-    }
-
-    // Simplistic depth test - we stack the item behind its parent if its computed z is lower than the parent's computed z at the item's center point.
-    if (parent) {
-        const QPointF centerPointMappedToRoot = rootLayer()->mapFromItem(this, m_size.width() / 2, m_size.height() / 2);
-        setFlag(ItemStacksBehindParent,
-                m_transformRelativeToRootLayer.mapPoint(FloatPoint3D(centerPointMappedToRoot.x(), centerPointMappedToRoot.y(), 0)).z() <
-                parent->m_transformRelativeToRootLayer.mapPoint(FloatPoint3D(centerPointMappedToRoot.x(), centerPointMappedToRoot.y(), 0)).z());
     }
 
     // The item is front-facing or backface-visibility is on.
@@ -445,8 +527,9 @@ void GraphicsLayerQtImpl::paint(QPainter* painter, const QStyleOptionGraphicsIte
         if (m_state.drawsContent) {
             QPixmap backingStore;
             // We might need to recache, in case we try to paint and the cache was purged (e.g. if it was full).
-            if (!QPixmapCache::find(m_backingStoreKey, &backingStore) || backingStore.size() != m_size.toSize())
+            if (!QPixmapCache::find(m_backingStore.key, &backingStore) || backingStore.size() != m_size.toSize())
                 backingStore = recache(QRegion(m_state.contentsRect));
+            const QRectF bounds(0, 0, m_backingStore.size.width(), m_backingStore.size.height());
             painter->drawPixmap(0, 0, backingStore);
         }
         break;
@@ -523,6 +606,7 @@ void GraphicsLayerQtImpl::flushChanges(bool recursive, bool forceUpdateTransform
         // we can't paint here, because we don't know if the mask layer
         // itself is ready... we'll have to wait till this layer tries to paint
         setFlag(ItemClipsChildrenToShape, m_layer->maskLayer() || m_layer->masksToBounds());
+#ifndef QT_NO_GRAPHICSEFFECT
         setGraphicsEffect(0);
         if (m_layer->maskLayer()) {
             if (GraphicsLayerQtImpl* mask = qobject_cast<GraphicsLayerQtImpl*>(m_layer->maskLayer()->platformLayer()->toGraphicsObject())) {
@@ -530,6 +614,7 @@ void GraphicsLayerQtImpl::flushChanges(bool recursive, bool forceUpdateTransform
                 setGraphicsEffect(mask->m_maskEffect.data());
             }
         }
+#endif
     }
 
     if (m_changeMask & SizeChange) {
@@ -604,11 +689,19 @@ void GraphicsLayerQtImpl::flushChanges(bool recursive, bool forceUpdateTransform
     if ((m_changeMask & ContentsOpaqueChange) && m_state.contentsOpaque != m_layer->contentsOpaque())
         prepareGeometryChange();
 
+#ifndef QT_NO_GRAPHICSEFFECT
     if (m_maskEffect)
         m_maskEffect.data()->update();
-    else if (m_changeMask & DisplayChange) {        
+    else
+#endif
+    if (m_changeMask & DisplayChange) {
+#ifndef QT_GRAPHICS_LAYER_NO_RECACHE_ON_DISPLAY_CHANGE
         // Recache now: all the content is ready and we don't want to wait until the paint event.
-        recache(m_pendingContent.regionToUpdate);
+        // We only need to do this for HTML content, there's no point in caching directly composited
+        // content like images or solid rectangles.
+        if (m_pendingContent.contentType == HTMLContentType)
+            recache(m_pendingContent.regionToUpdate);
+#endif
         update(m_pendingContent.regionToUpdate.boundingRect());
         m_pendingContent.regionToUpdate = QRegion();
     }
@@ -1197,9 +1290,9 @@ public:
             transformMatrix.blend(m_sourceMatrix, progress);
         }
 
+        m_layer.data()->m_layer->setTransform(transformMatrix);
+        // We force the actual opacity change, otherwise it would be ignored because of the animation.
         m_layer.data()->setBaseTransform(transformMatrix);
-        if (m_fillsForwards)
-            m_layer.data()->m_layer->setTransform(m_layer.data()->m_baseTransform);
     }
 
     virtual void updateState(QAbstractAnimation::State newState, QAbstractAnimation::State oldState)
@@ -1237,18 +1330,19 @@ public:
         if (m_fillsForwards)
             setCurrentTime(1);
     }
+
     virtual void applyFrame(const qreal& fromValue, const qreal& toValue, qreal progress)
     {
         qreal opacity = qBound(qreal(0), fromValue + (toValue-fromValue)*progress, qreal(1));
 
         // FIXME: this is a hack, due to a probable QGraphicsScene bug.
         // Without this the opacity change doesn't always have immediate effect.
-        if (!m_layer.data()->opacity() && opacity)
+        if (m_layer.data()->scene() && !m_layer.data()->opacity() && opacity)
             m_layer.data()->scene()->update();
 
+        m_layer.data()->m_layer->setOpacity(opacity);
+        // We force the actual opacity change, otherwise it would be ignored because of the animation.
         m_layer.data()->setOpacity(opacity);
-        if (m_fillsForwards)
-            m_layer.data()->m_layer->setOpacity(opacity);
     }
 
     virtual void updateState(QAbstractAnimation::State newState, QAbstractAnimation::State oldState)
@@ -1308,10 +1402,7 @@ bool GraphicsLayerQt::addAnimation(const KeyframeValueList& values, const IntSiz
     if (anim->fillsBackwards())
         newAnim->setCurrentTime(0);
 
-    if (anim->delay())
-        QTimer::singleShot(anim->delay() * 1000, newAnim, SLOT(start()));
-    else
-        newAnim->start();
+    newAnim->start();
 
     // we synchronize the animation's clock to WebCore's timeOffset
     newAnim->setCurrentTime(timeOffset * 1000);

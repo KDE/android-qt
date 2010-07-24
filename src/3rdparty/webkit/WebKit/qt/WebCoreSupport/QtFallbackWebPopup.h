@@ -23,6 +23,8 @@
 #include "QtAbstractWebPopup.h"
 #include <QComboBox>
 
+#ifndef QT_NO_COMBOBOX
+
 QT_BEGIN_NAMESPACE
 class QGraphicsProxyWidget;
 QT_END_NAMESPACE
@@ -40,6 +42,8 @@ public:
     virtual void show();
     virtual void hide();
 
+    void destroyPopup();
+
 private slots:
     void activeChanged(int);
 
@@ -47,7 +51,6 @@ private:
     friend class QtFallbackWebPopupCombo;
     bool m_popupVisible;
     QtFallbackWebPopupCombo* m_combo;
-    QGraphicsProxyWidget* m_proxy;
 
     void populate();
 #if ENABLE(SYMBIAN_DIALOG_PROVIDERS)
@@ -60,11 +63,14 @@ public:
     QtFallbackWebPopupCombo(QtFallbackWebPopup& ownerPopup);
     virtual void showPopup();
     virtual void hidePopup();
+    virtual bool eventFilter(QObject* watched, QEvent* event);
 
 private:
     QtFallbackWebPopup& m_ownerPopup;
 };
 
 }
+
+#endif // QT_NO_COMBOBOX
 
 #endif // QtFallbackWebPopup_h

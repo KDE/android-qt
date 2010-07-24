@@ -48,6 +48,7 @@
 #include <qdeclarativeinfo.h>
 #include <qdeclarativeproperty_p.h>
 #include <qdeclarativeguard_p.h>
+#include <qdeclarativeengine_p.h>
 
 #include <private/qobject_p.h>
 
@@ -57,12 +58,16 @@ class QDeclarativeBehaviorPrivate : public QObjectPrivate
 {
     Q_DECLARE_PUBLIC(QDeclarativeBehavior)
 public:
-    QDeclarativeBehaviorPrivate() : animation(0), enabled(true) {}
+    QDeclarativeBehaviorPrivate() : animation(0), enabled(true), finalized(false)
+      , blockRunningChanged(false) {}
 
     QDeclarativeProperty property;
     QVariant currentValue;
+    QVariant targetValue;
     QDeclarativeGuard<QDeclarativeAbstractAnimation> animation;
     bool enabled;
+    bool finalized;
+    bool blockRunningChanged;
 };
 
 /*!
@@ -80,7 +85,7 @@ public:
         y: 200  // initial value
         Behavior on y {
             NumberAnimation {
-                easing.type: "OutBounce"
+                easing.type: Easing.OutBounce
                 easing.amplitude: 100
                 duration: 200
             }
@@ -91,7 +96,7 @@ public:
     Currently only a single Behavior may be specified for a property;
     this Behavior can be enabled and disabled via the \l{enabled} property.
 
-    \sa QtDeclarative
+    \sa {declarative/animation/behaviors}{Behavior example}, QtDeclarative
 */
 
 
@@ -129,8 +134,21 @@ void QDeclarativeBehavior::setAnimation(QDeclarativeAbstractAnimation *animation
     if (d->animation) {
         d->animation->setDefaultTarget(d->property);
         d->animation->setDisableUserControl();
+        connect(d->animation->qtAnimation(),
+                SIGNAL(stateChanged(QAbstractAnimation::State,QAbstractAnimation::State)),
+                this,
+                SLOT(qtAnimationStateChanged(QAbstractAnimation::State,QAbstractAnimation::State)));
     }
 }
+
+
+void QDeclarativeBehavior::qtAnimationStateChanged(QAbstractAnimation::State newState,QAbstractAnimation::State)
+{
+    Q_D(QDeclarativeBehavior);
+    if (!d->blockRunningChanged)
+        d->animation->notifyRunningChanged(newState == QAbstractAnimation::Running);
+}
+
 
 /*!
     \qmlproperty bool Behavior::enabled
@@ -158,15 +176,23 @@ void QDeclarativeBehavior::write(const QVariant &value)
 {
     Q_D(QDeclarativeBehavior);
     qmlExecuteDeferred(this);
-    if (!d->animation || !d->enabled) {
+    if (!d->animation || !d->enabled || !d->finalized) {
         QDeclarativePropertyPrivate::write(d->property, value, QDeclarativePropertyPrivate::BypassInterceptor | QDeclarativePropertyPrivate::DontRemoveBinding);
+        d->targetValue = value;
         return;
     }
 
-    d->currentValue = d->property.read();
+    if (value == d->targetValue)
+        return;
 
-    if (d->animation->qtAnimation()->duration() != -1)
+    d->currentValue = d->property.read();
+    d->targetValue = value;
+
+    if (d->animation->qtAnimation()->duration() != -1
+            && d->animation->qtAnimation()->state() != QAbstractAnimation::Stopped) {
+        d->blockRunningChanged = true;
         d->animation->qtAnimation()->stop();
+    }
 
     QDeclarativeStateOperation::ActionList actions;
     QDeclarativeAction action;
@@ -178,6 +204,7 @@ void QDeclarativeBehavior::write(const QVariant &value)
     QList<QDeclarativeProperty> after;
     d->animation->transition(actions, after, QDeclarativeAbstractAnimation::Forward);
     d->animation->qtAnimation()->start();
+    d->blockRunningChanged = false;
     if (!after.contains(d->property))
         QDeclarativePropertyPrivate::write(d->property, value, QDeclarativePropertyPrivate::BypassInterceptor | QDeclarativePropertyPrivate::DontRemoveBinding);    
 }
@@ -189,6 +216,15 @@ void QDeclarativeBehavior::setTarget(const QDeclarativeProperty &property)
     d->currentValue = property.read();
     if (d->animation)
         d->animation->setDefaultTarget(property);
+
+    QDeclarativeEnginePrivate *engPriv = QDeclarativeEnginePrivate::get(qmlEngine(this));
+    engPriv->registerFinalizedParserStatusObject(this, this->metaObject()->indexOfSlot("componentFinalized()"));
+}
+
+void QDeclarativeBehavior::componentFinalized()
+{
+    Q_D(QDeclarativeBehavior);
+    d->finalized = true;
 }
 
 QT_END_NAMESPACE

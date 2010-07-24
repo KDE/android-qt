@@ -50,10 +50,10 @@
 #ifdef Q_WS_MAC
 # include <private/qpixmap_mac_p.h>
 #endif
-#ifdef Q_WS_LITE
+#ifdef Q_WS_QPA
 # include <QtGui/private/qapplication_p.h>
 #endif
-#ifdef Q_WS_S60
+#ifdef Q_OS_SYMBIAN
 # include <private/qpixmap_s60_p.h>
 #endif
 
@@ -62,9 +62,6 @@ QT_BEGIN_NAMESPACE
 QGraphicsSystem::~QGraphicsSystem()
 {
 }
-
-QBlittable *QGraphicsSystem::createBlittable(const QSize &) const
-{ return 0; }
 
 QPixmapData *QGraphicsSystem::createDefaultPixmapData(QPixmapData::PixelType type)
 {
@@ -77,14 +74,19 @@ QPixmapData *QGraphicsSystem::createDefaultPixmapData(QPixmapData::PixelType typ
     return new QRasterPixmapData(type);
 #elif defined(Q_WS_MAC)
     return new QMacPixmapData(type);
-#elif defined(Q_WS_LITE)
+#elif defined(Q_WS_QPA)
     return QApplicationPrivate::platformIntegration()->createPixmapData(type);
-#elif defined(Q_WS_S60)
+#elif defined(Q_OS_SYMBIAN)
     return new QS60PixmapData(type);
 #elif !defined(Q_WS_QWS)
 #error QGraphicsSystem::createDefaultPixmapData() not implemented
 #endif
     return 0;
+}
+
+QPixmapData *QGraphicsSystem::createPixmapData(QPixmapData *origin)
+{
+    return createPixmapData(origin->pixelType());
 }
 
 QT_END_NAMESPACE

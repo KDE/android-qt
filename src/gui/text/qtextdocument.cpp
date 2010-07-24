@@ -127,6 +127,8 @@ bool Qt::mightBeRichText(const QString& text)
                     tag += text[i];
                 else if (!tag.isEmpty() && text[i].isSpace())
                     break;
+                else if (!tag.isEmpty() && text[i] == QLatin1Char('/') && i + 1 == close)
+                    break;
                 else if (!text[i].isSpace() && (!tag.isEmpty() || text[i] != QLatin1Char('!')))
                     return false; // that's not a tag
             }
@@ -581,11 +583,11 @@ void QTextDocument::setDefaultTextOption(const QTextOption &option)
 void QTextDocument::markContentsDirty(int from, int length)
 {
     Q_D(QTextDocument);
-    if (!d->inContentsChange)
-        d->beginEditBlock();
     d->documentChange(from, length);
-    if (!d->inContentsChange)
-        d->endEditBlock();
+    if (!d->inContentsChange) {
+        d->lout->documentChanged(d->docChangeFrom, d->docChangeOldLength, d->docChangeLength);
+        d->docChangeFrom = -1;
+    }
 }
 
 /*!
@@ -1947,7 +1949,7 @@ QVariant QTextDocument::loadResource(int type, const QUrl &name)
 #endif
 
     // handle data: URLs
-    if (r.isNull() && name.scheme() == QLatin1String("data"))
+    if (r.isNull() && name.scheme().compare(QLatin1String("data"), Qt::CaseInsensitive) == 0)
         r = qDecodeDataUrl(name).second;
 
     // if resource was not loaded try to load it here
@@ -2496,13 +2498,10 @@ void QTextHtmlExporter::emitBlockAttributes(const QTextBlock &block)
     QTextBlockFormat format = block.blockFormat();
     emitAlignment(format.alignment());
 
-    Qt::LayoutDirection dir = format.layoutDirection();
-    if (dir == Qt::LeftToRight) {
-        // assume default to not bloat the html too much
-        // html += QLatin1String(" dir='ltr'");
-    } else {
+    // assume default to not bloat the html too much
+    // html += QLatin1String(" dir='ltr'");
+    if (block.textDirection() == Qt::RightToLeft)
         html += QLatin1String(" dir='rtl'");
-    }
 
     QLatin1String style(" style=\"");
     html += style;

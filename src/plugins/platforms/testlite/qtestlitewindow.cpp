@@ -41,6 +41,7 @@
 
 #include "qtestliteintegration.h"
 #include <QWindowSystemInterface>
+#include <private/qwindowsurface_p.h>
 
 #include "qtestlitewindow.h"
 
@@ -82,8 +83,6 @@ static bool seen_badwindow;
 
 static Atom wmProtocolsAtom;
 static Atom wmDeleteWindowAtom;
-
-
 
 class MyX11CursorNode
 {
@@ -154,14 +153,26 @@ QTestLiteWindow::QTestLiteWindow(const QTestLiteIntegration *platformIntegration
     xd = platformIntegration->xd;
     xd->windowList.append(this);
     {
-        int x = 0;
-        int y = 0;
-        int w = 300;
-        int h = 300; //###
+        int x = window->x();
+        int y = window->y();
+        int w = window->width();
+        int h = window->height();
 
-        x_window = XCreateSimpleWindow(xd->display, xd->rootWindow(),
-                                       x, y, w, h, 0 /*border_width*/,
-                                       xd->blackPixel(), xd->whitePixel());
+//        int n, i;
+//        if(window->platformWindowFormat().windowApi() == QPlatformWindowFormat::OpenGL) {
+//            x_visualInfo = QGLXGLContext::findVisual(window->platformWindowFormat(),xd);
+
+//            XSetWindowAttributes a;
+//            a.background_pixel = xd->whitePixel();
+//            a.border_pixel = xd->blackPixel();
+//            x_window = XCreateWindow(xd->display, xd->rootWindow(),x, y, w, h,
+//                                      0, visualInfo()->depth, InputOutput, visualInfo()->visual,
+//                                      CWBackPixel|CWBorderPixel, &a);
+//        } else {
+            x_window = XCreateSimpleWindow(xd->display, xd->rootWindow(),
+                                           x, y, w, h, 0 /*border_width*/,
+                                           xd->blackPixel(), xd->whitePixel());
+//        }
 
 #ifdef MYX11_DEBUG
         qDebug() << "QTestLiteWindow::QTestLiteWindow creating" << hex << x_window << window;
@@ -186,16 +197,7 @@ QTestLiteWindow::QTestLiteWindow(const QTestLiteIntegration *platformIntegration
 			   wmProtocolsAtom,
 			   XA_ATOM, 32, PropModeAppend,
 			   (unsigned char *) &wmDeleteWindowAtom, 1);
-
-
-    setWindowTitle(QLatin1String("Qt Lighthouse"));
-
     currentCursor = -1;
-
-    setWindowFlags(window->windowFlags()); //##### This should not be the plugin's responsibility
-
-
-    //xw->windowTL = this;
 }
 
 
@@ -208,6 +210,7 @@ QTestLiteWindow::~QTestLiteWindow()
     XDestroyWindow(xd->display, x_window);
 
     xd->windowList.removeAll(this);
+    delete mGLContext;
 }
 
 
@@ -623,11 +626,6 @@ void QTestLiteWindow::handleKeyEvent(QEvent::Type type, void *ev)
 
 void QTestLiteWindow::setGeometry(const QRect &rect)
 {
-    QRect oldRect = geometry();
-    if (rect == oldRect)
-        return;
-
-    //if unchanged ###
     XMoveResizeWindow(xd->display, x_window, rect.x(), rect.y(), rect.width(), rect.height());
     QPlatformWindow::setGeometry(rect);
 }
@@ -641,6 +639,13 @@ Qt::WindowFlags QTestLiteWindow::windowFlags() const
 WId QTestLiteWindow::winId() const
 {
     return x_window;
+}
+
+void QTestLiteWindow::setParent(const QPlatformWindow *window)
+{
+    QPoint point = widget()->mapTo(widget()->nativeParentWidget(),QPoint());
+    XReparentWindow(xd->display,x_window,window->winId(),point.x(),point.y());
+    XMapWindow(xd->display, x_window);
 }
 
 void QTestLiteWindow::raise()
@@ -689,7 +694,6 @@ void QTestLiteWindow::paintEvent()
 
 void QTestLiteWindow::resizeEvent(XConfigureEvent *e)
 {
-
     if ((e->width != width || e->height != height) && e->x == 0 && e->y == 0) {
         //qDebug() << "resize with bogus pos" << e->x << e->y << e->width << e->height << "window"<< hex << window;
     } else {
@@ -832,7 +836,7 @@ static inline bool isTransient(const QWidget *w)
 
 Qt::WindowFlags QTestLiteWindow::setWindowFlags(Qt::WindowFlags flags)
 {
-    Q_ASSERT(flags & Qt::Window);
+//    Q_ASSERT(flags & Qt::Window);
     window_flags = flags;
 
     if (mwm_hint_atom == XNone) {
@@ -1017,8 +1021,7 @@ QPlatformGLContext *QTestLiteWindow::glContext()
 
 QPlatformGLContext *QTestLiteWindow::createGLContext()
 {
-    QGLFormat format;
-    QPlatformGLContext *context = new QGLXGLContext(x_window, xd, format, 0);
+    QPlatformGLContext *context = new QGLXGLContext(x_window, xd, widget()->platformWindowFormat());
     return context;
 }
 

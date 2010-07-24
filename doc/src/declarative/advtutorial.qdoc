@@ -6,35 +6,21 @@
 **
 ** This file is part of the documentation of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
+** $QT_BEGIN_LICENSE:FDL$
+** Commercial Usage
+** Licensees holding valid Qt Commercial licenses may use this file in
+** accordance with the Qt Commercial License Agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in a
+** written agreement between you and Nokia.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL included in the
-** packaging of this file.  Please review the following information to
-** ensure the GNU Lesser General Public License version 2.1 requirements
-** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** In addition, as a special exception, Nokia gives you certain additional
-** rights.  These rights are described in the Nokia Qt LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+** GNU Free Documentation License
+** Alternatively, this file may be used under the terms of the GNU Free
+** Documentation License version 1.3 as published by the Free Software
+** Foundation and appearing in the file included in the packaging of this
+** file.
 **
 ** If you have questions regarding the use of this file, please contact
 ** Nokia at qt-info@nokia.com.
-**
-**
-**
-**
-**
-**
-**
-**
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
@@ -105,15 +91,19 @@ is the \l SystemPalette item. This provides access to the Qt system palette
 and is used to give the button a more native look-and-feel.
 
 Notice the anchors for the \c Item, \c Button and \c Text elements are set using
-\l {codingconventions.html#Grouped-properties}{group notation} for readability.
+\l {qdeclarativeintroduction.html#dot-properties}{group notation} for readability.
 
 \section2 Adding \c Button and \c Block components
 
-The \c Button item in the code above is defined in a separate file named \c Button.qml.
+The \c Button item in the code above is defined in a separate component file named \c Button.qml.
 To create a functional button, we use the QML elements \l Text and \l MouseArea inside a \l Rectangle.
 Here is the \c Button.qml code:
 
 \snippet declarative/tutorials/samegame/samegame1/Button.qml 0
+
+This essentially defines a rectangle that contains text and can be clicked. The \l MouseArea
+has an \c onClicked() handler that is implemented to emit the \c clicked() signal of the
+\c container when the area is clicked.
 
 In Same Game, the screen is filled with small blocks when the game begins.
 Each block is just an item that contains an image. The block
@@ -174,7 +164,7 @@ The \c createBlock() function creates a block from the \c Block.qml file
 and moves the new block to its position on the game canvas. This involves several steps:
 
 \list
-\o \l {createComponent(url file)}{createComponent()} is called to generate an element from \c Block.qml.
+\o \l {QML:Qt::createComponent()}{Qt.createComponent()} is called to generate an element from \c Block.qml.
    If the component is ready, we can call \c createObject() to create an instance of the \c Block item.
 \o If \c createObject() returned null (i.e. if there was an error while
    loading the object), print the error information.
@@ -226,14 +216,14 @@ until it is won or lost.
 To do this, we have added the following functions to \c samegame.js:
 
 \list
-\o function \c{handleClick(x,y)}
-\o function \c{floodFill(xIdx,yIdx,type)}
-\o function \c{shuffleDown()}
-\o function \c{victoryCheck()}
-\o function \c{floodMoveCheck(xIdx, yIdx, type)}
+\o \c{handleClick(x,y)}
+\o \c{floodFill(xIdx,yIdx,type)}
+\o \c{shuffleDown()}
+\o \c{victoryCheck()}
+\o \c{floodMoveCheck(xIdx, yIdx, type)}
 \endlist
 
-As this is a tutorial about QML, not game design, we will only discuss \c handleClick() and \c victoryCheck() below since they interface directly with the QML elements. Note that although the game logic here is written in JavaScript, it could have been written in C++ and then exposed to JavaScript. 
+As this is a tutorial about QML, not game design, we will only discuss \c handleClick() and \c victoryCheck() below since they interface directly with the QML elements. Note that although the game logic here is written in JavaScript, it could have been written in C++ and then exposed to QML. 
 
 \section3 Enabling mouse click interaction
 
@@ -268,6 +258,8 @@ The Game Over dialog is created using a \c Dialog element that is defined in \c 
 And this is how it is used in the main \c samegame.qml file:
 
 \snippet declarative/tutorials/samegame/samegame3/samegame.qml 2
+
+We give the dialog a \l {Item::z}{z} value of 100 to ensure it is displayed on top of our other components. The default \c z value for an item is 0.
 
 
 \section3 A dash of color
@@ -314,18 +306,17 @@ In anticipation of the new block animations, \c Block.qml file is now renamed to
 \section3 Animating block movement
 
 First we will animate the blocks so that they move in a fluid manner. QML has a number of methods for adding fluid
-movement, and in this case we're going to use the \l SpringFollow element to add an animation with a spring-like
-movement. In \c BoomBlock.qml, we apply a \l SpringFollow
-to the \c x and \c y properties so that the block will follow and animate its movement towards the
-position specified by the new \c targetX and \c targetY properties (whose values will be set by \c samegame.js).
-Here is the code added to \c BoomBlock.qml:
+movement, and in this case we're going to use the \l Behavior element to add a \l SpringAnimation.
+In \c BoomBlock.qml, we apply a \l SpringAnimation behavior to the \c x and \c y properties so that the
+block will follow and animate its movement in a spring-like fashion towards the specified position (whose
+values will be set by \c samegame.js).Here is the code added to \c BoomBlock.qml:
 
 \snippet declarative/tutorials/samegame/samegame4/content/BoomBlock.qml 1
 
 The \c spring and \c damping values can be changed to modify the spring-like effect of the animation.
 
 The \c {enabled: spawned} setting refers to the \c spawned value that is set from \c createBlock() in \c samegame.js.
-This ensures the \l SpringFollow on the \c x is only enabled after \c createBlock() has set the block to
+This ensures the \l SpringAnimation on the \c x is only enabled after \c createBlock() has set the block to
 the correct position. Otherwise, the blocks will slide out of the corner (0,0) when a game begins, instead of falling
 from the top in rows. (Try commenting out \c {enabled: spawned} and see for yourself.)
 
@@ -383,14 +374,40 @@ The theme change here is produced simply by replacing the block images. This can
 
 Another feature we might want to add to the game is a method of storing and retrieving high scores.
 
-In \c samegame.qml we now pop up a dialog when the game is over and requests the player's name so it can be added to a High Scores table. The dialog is created using \c Dialog.qml:
+To do this, we will show a dialog when the game is over to request the player's name and add it to a High Scores table.
+This requires a few changes to \c Dialog.qml. In addition to a \c Text element, it now has a
+\c TextInput child item for receiving keyboard text input:
+
+\snippet declarative/tutorials/samegame/samegame4/content/Dialog.qml 0
+\dots 4
+\snippet declarative/tutorials/samegame/samegame4/content/Dialog.qml 2
+\dots 4
+\snippet declarative/tutorials/samegame/samegame4/content/Dialog.qml 3
+
+We'll also add a \c showWithInput() function. The text input will only be visible if this function
+is called instead of \c show(). When the dialog is closed, it emits a \c closed() signal, and
+other elements can retrieve the text entered by the user through an \c inputText property:
+
+\snippet declarative/tutorials/samegame/samegame4/content/Dialog.qml 0
+\snippet declarative/tutorials/samegame/samegame4/content/Dialog.qml 1
+\dots 4
+\snippet declarative/tutorials/samegame/samegame4/content/Dialog.qml 3
+
+Now the dialog can be used in \c samegame.qml:
 
 \snippet declarative/tutorials/samegame/samegame4/samegame.qml 0
 
-When the dialog is closed, we call the new \c saveHighScore() function in \c samegame.js, which stores the high score locally in an SQL database and also send the score to an online database if possible. 
+When the dialog emits the \c closed signal, we call the new \c saveHighScore() function in \c samegame.js, which stores the high score locally in an SQL database and also send the score to an online database if possible. 
 
+The \c nameInputDialog is activated in the \c victoryCheck() function in \c samegame.js:
+
+\snippet declarative/tutorials/samegame/samegame4/content/samegame.js 3
+\dots 4
+\snippet declarative/tutorials/samegame/samegame4/content/samegame.js 4
 
 \section3 Storing high scores offline
+
+Now we need to implement the functionality to actually save the High Scores table.
 
 Here is the \c saveHighScore() function in \c samegame.js:
 
@@ -436,6 +453,6 @@ By following this tutorial you've seen how you can write a fully functional appl
 \endlist
 
 There is so much more to learn about QML that we haven't been able to cover in this tutorial. Check out all the
-demos and examples and the \l {Declarative UI (QML)}{documentation} to find out all the things you can do with QML!
+demos and examples and the \l {Qt Quick}{documentation} to see all the things you can do with QML!
 
 */

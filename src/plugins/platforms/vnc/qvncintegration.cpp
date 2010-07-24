@@ -92,6 +92,11 @@ static void usage()
     qWarning() << "         defaults to" << defaultWidth() << "x" << defaultHeight();
     qWarning() << "    display=<ID> - set the VNC display port to ID + 5900";
     qWarning() << "         defaults to" << defaultDisplay();
+    qWarning() << "    offset=<X>x<Y> - set the current screens offset";
+    qWarning() << "    vnc - start configuration of a new screen";
+    qWarning() << "         size and offset are inherited from the previous screen if not set";
+    qWarning() << "         display id is incremented from the previous screen if not set";
+    qWarning() << "    virtual - manage the set of screens as a virtual desktop";
 }
 
 QVNCIntegration::QVNCIntegration(const QStringList& paramList)
@@ -151,16 +156,6 @@ QPixmapData *QVNCIntegration::createPixmapData(QPixmapData::PixelType type) cons
     return new QRasterPixmapData(type);
 }
 
-// QWindowSurface *QVNCIntegration::createWindowSurface(QWidget *widget) const
-// {
-//     if (widget->windowType() == Qt::Desktop)
-//         return 0;   // Don't create an explicit window surface for the destkop.
-//     QFbWindowSurface * surface;
-//     surface = new QFbWindowSurface(mPrimaryScreen, widget);
-//     mPrimaryScreen->addWindowSurface(surface);
-//     return surface;
-// }
-
 QWindowSurface *QVNCIntegration::createWindowSurface(QWidget *widget, WId) const
 {
     QFbWindowSurface * surface;
@@ -186,6 +181,40 @@ QPlatformWindow *QVNCIntegration::createPlatformWindow(QWidget *widget, WId /*wi
         mPrimaryScreen->addWindow(w);
     return w;
 }
+
+QPixmap QVNCIntegration::grabWindow(WId window, int x, int y, int width, int height) const
+{
+//    qDebug() << "QVNCIntegration::grabWindow" << window << x << y << width << height;
+
+    if (window == 0) { //desktop
+        QImage *desktopImage = mPrimaryScreen->image();
+        if (x==0 && y == 0 && width < 0 && height < 0) {
+            return QPixmap::fromImage(*desktopImage);
+        }
+        if (width < 0)
+            width = desktopImage->width() - x;
+        if (height < 0)
+            height = desktopImage->height() - y;
+        int bytesPerPixel = desktopImage->depth()/8; //We don't support 1, 2, or 4 bpp
+        QImage img(desktopImage->scanLine(y) + bytesPerPixel*x, width, height, desktopImage->bytesPerLine(), desktopImage->format());
+        return QPixmap::fromImage(img);
+    }
+    QWidget *win = QWidget::find(window);
+    if (win) {
+        QRect r = win->geometry();
+        if (width < 0)
+            width = r.width() - x;
+        if (height < 0)
+            height = r.height() - y;
+        QImage *desktopImage = mPrimaryScreen->image();
+        int bytesPerPixel = desktopImage->depth()/8; //We don't support 1, 2, or 4 bpp
+
+        QImage img(desktopImage->scanLine(r.top() + y) + bytesPerPixel*(r.left()+x), width, height, desktopImage->bytesPerLine(), desktopImage->format());
+          return QPixmap::fromImage(img);
+    }
+    return QPixmap();
+}
+
 
 void QVNCIntegration::moveToScreen(QWidget *window, int screen)
 {

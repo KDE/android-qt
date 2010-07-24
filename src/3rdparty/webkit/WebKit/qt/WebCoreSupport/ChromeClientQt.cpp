@@ -559,13 +559,28 @@ bool ChromeClientQt::allowsAcceleratedCompositing() const
 }
 
 #endif
+    
+#if ENABLE(TILED_BACKING_STORE)
+IntRect ChromeClientQt::visibleRectForTiledBackingStore() const
+{ 
+    if (!platformPageClient() || !m_webPage)
+        return IntRect();
+
+    if (!platformPageClient()->viewResizesToContentsEnabled())
+        return QRect(m_webPage->mainFrame()->scrollPosition(), m_webPage->mainFrame()->geometry().size());
+
+    return enclosingIntRect(FloatRect(platformPageClient()->graphicsItemVisibleRect()));
+}
+#endif
 
 QtAbstractWebPopup* ChromeClientQt::createSelectPopup()
 {
 #if defined(Q_WS_MAEMO_5)
     return new QtMaemoWebPopup;
-#else
+#elif !defined(QT_NO_COMBOBOX)
     return new QtFallbackWebPopup;
+#else
+    return 0;
 #endif
 }
 

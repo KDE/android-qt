@@ -1,6 +1,6 @@
 #!/bin/sh
 
-make -j3
+make -j3 || exit 0
 adb shell rm -r /data/local/qt
 rm -fr al
 mkdir al

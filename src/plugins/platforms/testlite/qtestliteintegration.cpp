@@ -46,7 +46,7 @@
 #include <QtGui/private/qpixmap_raster_p.h>
 #include <QtCore/qdebug.h>
 
-#include <QGraphicsSystemCursor>
+#include <QPlatformCursor>
 
 #include "qtestlitewindow.h"
 
@@ -59,10 +59,10 @@
 
 QT_BEGIN_NAMESPACE
 
-class MyCursor : QGraphicsSystemCursor
+class MyCursor : QPlatformCursor
 {
 public:
-    MyCursor(QPlatformScreen *screen) : QGraphicsSystemCursor(screen) {}
+    MyCursor(QPlatformScreen *screen) : QPlatformCursor(screen) {}
 
     void changeCursor(QCursor * cursor, QWidget * widget) {
         QTestLiteWindow *w = 0;
@@ -109,16 +109,19 @@ QTestLiteIntegration::QTestLiteIntegration(bool useOpenGL)
 
 QPixmapData *QTestLiteIntegration::createPixmapData(QPixmapData::PixelType type) const
 {
+#ifndef QT_NO_OPENGL
     if (mUseOpenGL)
         return new QGLPixmapData(type);
+#endif
     return new QRasterPixmapData(type);
 }
 
 QWindowSurface *QTestLiteIntegration::createWindowSurface(QWidget *widget, WId) const
 {
+#ifndef QT_NO_OPENGL
     if (mUseOpenGL)
         return new QGLWindowSurface(widget);
-
+#endif
     return new QTestLiteWindowSurface(mPrimaryScreen, widget);
 }
 
@@ -138,7 +141,10 @@ QPixmap QTestLiteIntegration::grabWindow(WId window, int x, int y, int width, in
 
 bool QTestLiteIntegration::hasOpenGL() const
 {
+#ifndef QT_NO_OPENGL
     return glXQueryExtension(xd->display, 0, 0) != 0;
+#endif
+    return false;
 }
 
 QT_END_NAMESPACE

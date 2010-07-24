@@ -54,6 +54,7 @@
 
 #ifdef Q_WS_S60
 #include <aknappui.h>
+#include <eikbtgpc.h>
 #endif
 
 // This is necessary in order to be able to perform delayed invokation on slots
@@ -387,7 +388,6 @@ void QWidgetPrivate::create_sys(WId window, bool /* initializeWindow */, bool de
                 | EPointerFilterMove | EPointerFilterDrag, 0);
             drawableWindow->EnableVisibilityChangeEvents();
 
-            s60UpdateIsOpaque();
         }
 
         q->setAttribute(Qt::WA_WState_Created);
@@ -399,6 +399,9 @@ void QWidgetPrivate::create_sys(WId window, bool /* initializeWindow */, bool de
         // We wait until the control is fully constructed before calling setWinId, because
         // this generates a WinIdChanged event.
         setWinId(control.take());
+
+        if (!desktop)
+            s60UpdateIsOpaque(); // must be called after setWinId()
 
     } else if (q->testAttribute(Qt::WA_NativeWindow) || paintOnScreen()) { // create native child widget
 
@@ -431,6 +434,7 @@ void QWidgetPrivate::create_sys(WId window, bool /* initializeWindow */, bool de
         // Request mouse move events.
         drawableWindow->PointerFilter(EPointerFilterEnterExit
             | EPointerFilterMove | EPointerFilterDrag, 0);
+        drawableWindow->EnableVisibilityChangeEvents();
 
         if (q->isVisible() && q->testAttribute(Qt::WA_Mapped)) {
             activateSymbianWindow(control.data());
@@ -485,11 +489,8 @@ void QWidgetPrivate::show_sys()
                 && !S60->buttonGroupContainer() && !S60->statusPane()) {
 
             bool isFullscreen = q->windowState() & Qt::WindowFullScreen;
-            bool cbaRequested = q->windowFlags() & Qt::WindowSoftkeysVisibleHint;
 
-            // If the window is fullscreen and has not explicitly requested that the CBA be visible
-            // we delay the creation even more.
-            if ((!isFullscreen || cbaRequested) && !q->testAttribute(Qt::WA_DontShowOnScreen)) {
+            if (!q->testAttribute(Qt::WA_DontShowOnScreen)) {
 
                 // Create the status pane and CBA here
                 CEikAppUi *ui = static_cast<CEikAppUi *>(S60->appUi());
@@ -738,9 +739,6 @@ void QWidgetPrivate::s60UpdateIsOpaque()
     if (!q->testAttribute(Qt::WA_WState_Created) || !q->testAttribute(Qt::WA_TranslucentBackground))
         return;
 
-    if ((data.window_flags & Qt::FramelessWindowHint) == 0)
-        return;
-
     RWindow *const window = static_cast<RWindow *>(q->effectiveWinId()->DrawableWindow());
 
 #ifdef Q_SYMBIAN_SEMITRANSPARENT_BG_SURFACE
@@ -909,14 +907,12 @@ void QWidgetPrivate::registerDropSite(bool /* on */)
 
 void QWidgetPrivate::createTLSysExtra()
 {
-    extra->topextra->backingStore = 0;
     extra->topextra->inExpose = 0;
 }
 
 void QWidgetPrivate::deleteTLSysExtra()
 {
-    delete extra->topextra->backingStore;
-    extra->topextra->backingStore = 0;
+    extra->topextra->backingStore.destroy();
 }
 
 void QWidgetPrivate::createSysExtra()
@@ -1087,12 +1083,14 @@ void QWidget::setWindowState(Qt::WindowStates newstate)
     Qt::WindowStates oldstate = windowState();
 
     const TBool isFullscreen = newstate & Qt::WindowFullScreen;
+#ifdef Q_WS_S60
     const TBool cbaRequested = windowFlags() & Qt::WindowSoftkeysVisibleHint;
     const TBool cbaVisible = CEikButtonGroupContainer::Current() ? true : false;
     const TBool softkeyVisibilityChange = isFullscreen && (cbaRequested != cbaVisible);
 
     if (oldstate == newstate && !softkeyVisibilityChange)
         return;
+#endif // Q_WS_S60
 
     if (isWindow()) {
         createWinId();
@@ -1179,6 +1177,7 @@ void QWidget::setWindowState(Qt::WindowStates newstate)
 void QWidget::destroy(bool destroyWindow, bool destroySubWindows)
 {
     Q_D(QWidget);
+    d->aboutToDestroy();
     if (!isWindow() && parentWidget())
         parentWidget()->d_func()->invalidateBuffer(geometry());
     d->deactivateWidgetCleanup();

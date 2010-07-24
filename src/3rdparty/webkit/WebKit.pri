@@ -22,15 +22,15 @@ building-libs {
             QMAKE_FRAMEWORKPATH = $$OUTPUT_DIR/lib $$QMAKE_FRAMEWORKPATH
         } else {
             win32-*|wince* {
-                CONFIG(debug, debug|release):build_pass: QTWEBKITLIBNAME = $${QTWEBKITLIBNAME}d
+                !CONFIG(release, debug|release):build_pass: QTWEBKITLIBNAME = $${QTWEBKITLIBNAME}d
                 QTWEBKITLIBNAME = $${QTWEBKITLIBNAME}$${QT_MAJOR_VERSION}
-                win32-g++: LIBS += -l$$QTWEBKITLIBNAME
+                win32-g++*: LIBS += -l$$QTWEBKITLIBNAME
                 else: LIBS += $${QTWEBKITLIBNAME}.lib
             } else {
                 LIBS += -lQtWebKit
                 symbian {
                     TARGET.EPOCSTACKSIZE = 0x14000 // 80 kB
-                    TARGET.EPOCHEAPSIZE = 0x20000 0x2000000 // Min 128kB, Max 32MB
+                    TARGET.EPOCHEAPSIZE = 0x20000 0x6000000 // Min 128kB, Max 32MB
                 }
             }
         }
@@ -48,7 +48,12 @@ CONFIG(release, debug|release) {
 }
 
 BASE_DIR = $$PWD
-INCLUDEPATH += $$OUTPUT_DIR/include/QtWebKit
+
+symbian {
+    INCLUDEPATH += $$PWD/include/QtWebKit
+} else {
+    INCLUDEPATH += $$OUTPUT_DIR/include/QtWebKit
+}
 
 CONFIG -= warn_on
 *-g++*:QMAKE_CXXFLAGS += -Wall -Wreturn-type -fno-strict-aliasing -Wcast-align -Wchar-subscripts -Wformat-security -Wreturn-type -Wno-unused-parameter -Wno-sign-compare -Wno-switch -Wno-switch-enum -Wundef -Wmissing-noreturn -Winit-self

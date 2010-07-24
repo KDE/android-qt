@@ -230,6 +230,9 @@ void EventHandler::clear()
     m_capturingMouseEventsNode = 0;
     m_latchedWheelEventNode = 0;
     m_previousWheelScrolledNode = 0;
+#if ENABLE(TOUCH_EVENTS)
+    m_originatingTouchPointTargets.clear();
+#endif
 }
 
 void EventHandler::selectClosestWordFromMouseEvent(const MouseEventWithHitTestResults& result)
@@ -926,9 +929,13 @@ void EventHandler::setMousePressNode(PassRefPtr<Node> node)
     m_mousePressNode = node;
 }
 
-bool EventHandler::scrollOverflow(ScrollDirection direction, ScrollGranularity granularity)
+bool EventHandler::scrollOverflow(ScrollDirection direction, ScrollGranularity granularity, Node* startingNode)
 {
-    Node* node = m_frame->document()->focusedNode();
+    Node* node = startingNode;
+
+    if (!node)
+        node = m_frame->document()->focusedNode();
+
     if (!node)
         node = m_mousePressNode.get();
     
@@ -943,9 +950,12 @@ bool EventHandler::scrollOverflow(ScrollDirection direction, ScrollGranularity g
     return false;
 }
 
-bool EventHandler::scrollRecursively(ScrollDirection direction, ScrollGranularity granularity)
+bool EventHandler::scrollRecursively(ScrollDirection direction, ScrollGranularity granularity, Node* startingNode)
 {
-    bool handled = scrollOverflow(direction, granularity);
+    // The layout needs to be up to date to determine if we can scroll. We may be
+    // here because of an onLoad event, in which case the final layout hasn't been performed yet.
+    m_frame->document()->updateLayoutIgnorePendingStylesheets();
+    bool handled = scrollOverflow(direction, granularity, startingNode);
     if (!handled) {
         Frame* frame = m_frame;
         do {
@@ -2153,7 +2163,9 @@ bool EventHandler::keyEvent(const PlatformKeyboardEvent& initialKeyEvent)
 
     if (initialKeyEvent.type() == PlatformKeyboardEvent::RawKeyDown) {
         node->dispatchEvent(keydown, ec);
-        return keydown->defaultHandled() || keydown->defaultPrevented();
+        // If frame changed as a result of keydown dispatch, then return true to avoid sending a subsequent keypress message to the new frame.
+        bool changedFocusedFrame = m_frame->page() && m_frame != m_frame->page()->focusController()->focusedOrMainFrame();
+        return keydown->defaultHandled() || keydown->defaultPrevented() || changedFocusedFrame;
     }
 
     // Run input method in advance of DOM event handling.  This may result in the IM
@@ -2173,7 +2185,9 @@ bool EventHandler::keyEvent(const PlatformKeyboardEvent& initialKeyEvent)
     }
 
     node->dispatchEvent(keydown, ec);
-    bool keydownResult = keydown->defaultHandled() || keydown->defaultPrevented();
+    // If frame changed as a result of keydown dispatch, then return early to avoid sending a subsequent keypress message to the new frame.
+    bool changedFocusedFrame = m_frame->page() && m_frame != m_frame->page()->focusController()->focusedOrMainFrame();
+    bool keydownResult = keydown->defaultHandled() || keydown->defaultPrevented() || changedFocusedFrame;
     if (handledByInputMethod || (keydownResult && !backwardCompatibilityMode))
         return keydownResult;
     
@@ -2714,21 +2728,21 @@ bool EventHandler::handleTouchEvent(const PlatformTouchEvent& event)
 
         // Increment the platform touch id by 1 to avoid storing a key of 0 in the hashmap.
         unsigned touchPointTargetKey = point.id() + 1;
-        EventTarget* touchTarget = 0;
+        RefPtr<EventTarget> touchTarget;
         if (point.state() == PlatformTouchPoint::TouchPressed) {
             m_originatingTouchPointTargets.set(touchPointTargetKey, target);
             touchTarget = target;
         } else if (point.state() == PlatformTouchPoint::TouchReleased || point.state() == PlatformTouchPoint::TouchCancelled) {
             // The target should be the original target for this touch, so get it from the hashmap. As it's a release or cancel
             // we also remove it from the map.
-            touchTarget = m_originatingTouchPointTargets.take(touchPointTargetKey).get();
+            touchTarget = m_originatingTouchPointTargets.take(touchPointTargetKey);
         } else
-            touchTarget = m_originatingTouchPointTargets.get(touchPointTargetKey).get();
+            touchTarget = m_originatingTouchPointTargets.get(touchPointTargetKey);
 
-        if (!touchTarget)
+        if (!touchTarget.get())
             continue;
 
-        RefPtr<Touch> touch = Touch::create(doc->frame(), touchTarget, point.id(),
+        RefPtr<Touch> touch = Touch::create(doc->frame(), touchTarget.get(), point.id(),
                                             point.screenPos().x(), point.screenPos().y(),
                                             adjustedPageX, adjustedPageY);
 

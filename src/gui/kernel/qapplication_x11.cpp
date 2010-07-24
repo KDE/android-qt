@@ -2155,7 +2155,7 @@ void qt_init(QApplicationPrivate *priv, int,
         X11->fc_scale = fc_scale;
         for (int s = 0; s < ScreenCount(X11->display); ++s) {
             int subpixel = FC_RGBA_UNKNOWN;
-#if RENDER_MAJOR > 0 || RENDER_MINOR >= 6
+#if !defined(QT_NO_XRENDER) && (RENDER_MAJOR > 0 || RENDER_MINOR >= 6)
             if (X11->use_xrender) {
                 int rsp = XRenderQuerySubpixelOrder(X11->display, s);
                 switch (rsp) {
@@ -5268,7 +5268,7 @@ bool QETWidget::translateConfigEvent(const XEvent *event)
 
         if (isVisible() && data->crect.size() != oldSize) {
             Q_ASSERT(d->extra->topextra);
-            QWidgetBackingStore *bs = d->extra->topextra->backingStore;
+            QWidgetBackingStore *bs = d->extra->topextra->backingStore.data();
             const bool hasStaticContents = bs && bs->hasStaticContents();
             // If we have a backing store with static contents, we have to disable the top-level
             // resize optimization in order to get invalidated regions for resized widgets.

@@ -43,10 +43,11 @@
 #define QDECLARATIVEVIEWER_H
 
 #include <QMainWindow>
-#include <QMenuBar>
-#include <private/qdeclarativetimer_p.h>
+#include <QTimer>
 #include <QTime>
 #include <QList>
+
+#include "loggerwidget.h"
 
 QT_BEGIN_NAMESPACE
 
@@ -59,17 +60,17 @@ class QDeclarativeTester;
 class QNetworkReply;
 class QNetworkCookieJar;
 class NetworkAccessManagerFactory;
+class QTranslator;
+class QActionGroup;
+class QMenuBar;
 
 class QDeclarativeViewer
-#if defined(Q_OS_SYMBIAN)
     : public QMainWindow
-#else
-    : public QWidget
-#endif
 {
-Q_OBJECT
+    Q_OBJECT
+
 public:
-    QDeclarativeViewer(QWidget *parent=0, Qt::WindowFlags flags=0);
+    QDeclarativeViewer(QWidget *parent = 0, Qt::WindowFlags flags = 0);
     ~QDeclarativeViewer();
 
     static void registerTypes();
@@ -92,7 +93,7 @@ public:
     void setRecordFile(const QString&);
     void setRecordArgs(const QStringList&);
     void setRecording(bool on);
-    bool isRecording() const { return recordTimer.isRunning(); }
+    bool isRecording() const { return recordTimer.isActive(); }
     void setAutoRecord(int from, int to);
     void setDeviceKeys(bool);
     void setNetworkCacheSize(int size);
@@ -100,13 +101,12 @@ public:
     void addPluginPath(const QString& plugin);
     void setUseGL(bool use);
     void setUseNativeFileBrowser(bool);
-    void updateSizeHints();
     void setSizeToView(bool sizeToView);
-    QStringList builtinSkins() const;
-
-    QMenuBar *menuBar() const;
 
     QDeclarativeView *view() const;
+    LoggerWidget *warningsWidget() const;
+
+    void enableExperimentalGestures();
 
 public slots:
     void sceneResized(QSize size);
@@ -117,10 +117,9 @@ public slots:
     void toggleRecording();
     void toggleRecordingWithSelection();
     void ffmpegFinished(int code);
-    void setSkin(const QString& skinDirectory);
     void showProxySettings ();
     void proxySettingsChanged ();
-    void setScaleView();
+    void rotateOrientation();
     void statusChanged();
     void setSlowMode(bool);
     void launch(const QString &);
@@ -128,38 +127,40 @@ public slots:
 protected:
     virtual void keyPressEvent(QKeyEvent *);
     virtual bool event(QEvent *);
-
-    void createMenu(QMenuBar *menu, QMenu *flatmenu);
+    void createMenu();
 
 private slots:
+    void appAboutToQuit();
+
     void autoStartRecording();
     void autoStopRecording();
     void recordFrame();
     void chooseRecordingOptions();
     void pickRecordingFile();
-    void setScaleSkin();
-    void setPortrait();
-    void setLandscape();
-    void toggleOrientation();
-    void startNetwork();
     void toggleFullScreen();
+    void changeOrientation(QAction*);
+    void orientationChanged();
+
+    void showWarnings(bool show);
+    void warningsWidgetOpened();
+    void warningsWidgetClosed();
 
 private:
-    QString getVideoFileName();
-    int menuBarHeight() const;
+    void updateSizeHints(bool initial = false);
 
-    PreviewDeviceSkin *skin;
-    QSize skinscreensize;
+    QString getVideoFileName();
+
+    LoggerWidget *loggerWindow;
     QDeclarativeView *canvas;
     QSize initialSize;
     QString currentFileOrUrl;
-    QDeclarativeTimer recordTimer;
+    QTimer recordTimer;
     QString frame_fmt;
     QImage frame;
     QList<QImage*> frames;
     QProcess* frame_stream;
-    QDeclarativeTimer autoStartTimer;
-    QDeclarativeTimer autoStopTimer;
+    QTimer autoStartTimer;
+    QTimer autoStopTimer;
     QString record_dither;
     QString record_file;
     QSize record_outsize;
@@ -170,7 +171,6 @@ private:
     QAction *recordAction;
     QString currentSkin;
     bool scaleSkin;
-    mutable QMenuBar *mb;
     RecordingDialog *recdlg;
 
     void senseImageMagick();
@@ -179,8 +179,8 @@ private:
     bool ffmpegAvailable;
     bool convertAvailable;
 
-    QAction *portraitOrientation;
-    QAction *landscapeOrientation;
+    QActionGroup *orientation;
+    QAction *showWarningsWindow;
 
     QString m_script;
     ScriptOptions m_scriptOptions;
@@ -188,10 +188,14 @@ private:
 
     QNetworkReply *wgtreply;
     QString wgtdir;
-
     NetworkAccessManagerFactory *namFactory;
 
     bool useQmlFileBrowser;
+
+    QTranslator *translator;
+    void loadTranslationFile(const QString& directory);
+
+    void loadDummyDataFiles(const QString& directory);
 };
 Q_DECLARE_OPERATORS_FOR_FLAGS(QDeclarativeViewer::ScriptOptions)
 

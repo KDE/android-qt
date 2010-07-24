@@ -98,7 +98,7 @@ QPixmapData *QAndroidPlatformIntegration::createPixmapData(QPixmapData::PixelTyp
 
 QWindowSurface *QAndroidPlatformIntegration::createWindowSurface(QWidget *widget, WId winId) const
 {
-    qDebug()<<"QAndroidPlatformIntegration::createWindowSurface"<<widget<<widget->winId()<<winId;
+    qDebug()<<"QAndroidPlatformIntegration::createWindowSurface"<<widget;
 #ifndef QT_NO_OPENGL
     if (m_useGL)
         return new QAndroidGLWindowSurface(widget);
@@ -108,7 +108,7 @@ QWindowSurface *QAndroidPlatformIntegration::createWindowSurface(QWidget *widget
 
 QPlatformWindow *QAndroidPlatformIntegration::createPlatformWindow(QWidget *widget, WId winId) const
 {
-    qDebug()<<"QAndroidPlatformIntegration::createPlatformWindow"<<widget<<widget->winId()<<winId;
+    qDebug()<<"QAndroidPlatformIntegration::createPlatformWindow"<<widget;
     return new QAndroidPlatformWindow(widget);
 }
 

@@ -57,7 +57,7 @@ QT_BEGIN_NAMESPACE
 QT_MODULE(Declarative)
 class QDeclarativeBasePositionerPrivate;
 
-class Q_DECLARATIVE_EXPORT QDeclarativeBasePositioner : public QDeclarativeItem
+class Q_AUTOTEST_EXPORT QDeclarativeBasePositioner : public QDeclarativeItem
 {
     Q_OBJECT
 
@@ -94,6 +94,7 @@ protected Q_SLOTS:
 
 protected:
     virtual void doPositioning(QSizeF *contentSize)=0;
+    virtual void reportConflictingAnchors()=0;
     struct PositionedItem {
         PositionedItem(QDeclarativeItem *i) : item(i), isNew(false), isVisible(true) {}
         bool operator==(const PositionedItem &other) const { return other.item == item; }
@@ -111,29 +112,31 @@ private:
     Q_DECLARE_PRIVATE_D(QGraphicsItem::d_ptr.data(), QDeclarativeBasePositioner)
 };
 
-class Q_DECLARATIVE_EXPORT QDeclarativeColumn : public QDeclarativeBasePositioner
+class Q_AUTOTEST_EXPORT QDeclarativeColumn : public QDeclarativeBasePositioner
 {
     Q_OBJECT
 public:
     QDeclarativeColumn(QDeclarativeItem *parent=0);
 protected:
     virtual void doPositioning(QSizeF *contentSize);
+    virtual void reportConflictingAnchors();
 private:
     Q_DISABLE_COPY(QDeclarativeColumn)
 };
 
-class Q_DECLARATIVE_EXPORT QDeclarativeRow: public QDeclarativeBasePositioner
+class Q_AUTOTEST_EXPORT QDeclarativeRow: public QDeclarativeBasePositioner
 {
     Q_OBJECT
 public:
     QDeclarativeRow(QDeclarativeItem *parent=0);
 protected:
     virtual void doPositioning(QSizeF *contentSize);
+    virtual void reportConflictingAnchors();
 private:
     Q_DISABLE_COPY(QDeclarativeRow)
 };
 
-class Q_DECLARATIVE_EXPORT QDeclarativeGrid : public QDeclarativeBasePositioner
+class Q_AUTOTEST_EXPORT QDeclarativeGrid : public QDeclarativeBasePositioner
 {
     Q_OBJECT
     Q_PROPERTY(int rows READ rows WRITE setRows NOTIFY rowsChanged)
@@ -161,6 +164,7 @@ Q_SIGNALS:
 
 protected:
     virtual void doPositioning(QSizeF *contentSize);
+    virtual void reportConflictingAnchors();
 
 private:
     int m_rows;
@@ -170,7 +174,7 @@ private:
 };
 
 class QDeclarativeFlowPrivate;
-class Q_DECLARATIVE_EXPORT QDeclarativeFlow: public QDeclarativeBasePositioner
+class Q_AUTOTEST_EXPORT QDeclarativeFlow: public QDeclarativeBasePositioner
 {
     Q_OBJECT
     Q_PROPERTY(Flow flow READ flow WRITE setFlow NOTIFY flowChanged)
@@ -187,7 +191,7 @@ Q_SIGNALS:
 
 protected:
     virtual void doPositioning(QSizeF *contentSize);
-
+    virtual void reportConflictingAnchors();
 protected:
     QDeclarativeFlow(QDeclarativeFlowPrivate &dd, QDeclarativeItem *parent);
 private:

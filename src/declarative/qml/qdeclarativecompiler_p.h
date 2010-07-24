@@ -84,7 +84,6 @@ public:
 
     QString name;
     QUrl url;
-    QDeclarativeEnginePrivate::Imports imports;
     QDeclarativeTypeNameCache *importCache;
 
     struct TypeReference 
@@ -147,7 +146,7 @@ private:
 };
 
 class QMetaObjectBuilder;
-class Q_DECLARATIVE_EXPORT QDeclarativeCompiler
+class Q_AUTOTEST_EXPORT QDeclarativeCompiler
 {
     Q_DECLARE_TR_FUNCTIONS(QDeclarativeCompiler)
 public:
@@ -162,6 +161,7 @@ public:
     static bool isSignalPropertyName(const QByteArray &);
 
     int evaluateEnum(const QByteArray& script) const; // for QDeclarativeCustomParser::evaluateEnum
+    const QMetaObject *resolveType(const QByteArray& name) const; // for QDeclarativeCustomParser::resolveType
 
 private:
     static void reset(QDeclarativeCompiledData *);
@@ -192,7 +192,7 @@ private:
                      const BindingContext &);
     bool buildProperty(QDeclarativeParser::Property *prop, QDeclarativeParser::Object *obj, 
                        const BindingContext &);
-    bool buildPropertyInNamespace(QDeclarativeEnginePrivate::ImportedNamespace *ns,
+    bool buildPropertyInNamespace(QDeclarativeImportedNamespace *ns,
                                   QDeclarativeParser::Property *prop, 
                                   QDeclarativeParser::Object *obj, 
                                   const BindingContext &);
@@ -336,6 +336,7 @@ private:
     QList<QDeclarativeError> exceptions;
     QDeclarativeCompiledData *output;
     QDeclarativeEngine *engine;
+    QDeclarativeEnginePrivate *enginePrivate;
     QDeclarativeParser::Object *unitRoot;
     QDeclarativeCompositeTypeData *unit;
 };

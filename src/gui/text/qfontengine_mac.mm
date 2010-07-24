@@ -162,9 +162,14 @@ QCoreTextFontEngineMulti::QCoreTextFontEngineMulti(const ATSFontFamilyRef &, con
     QCFString name;
     ATSFontGetName(atsFontRef, kATSOptionFlagsDefault, &name);
 
+    transform = CGAffineTransformIdentity;
+    if (fontDef.stretch != 100) {
+        transform = CGAffineTransformMakeScale(float(fontDef.stretch) / float(100), 1);
+    }
+
     QCFType<CTFontDescriptorRef> descriptor = CTFontDescriptorCreateWithNameAndSize(name, fontDef.pixelSize);
-    QCFType<CTFontRef> baseFont = CTFontCreateWithFontDescriptor(descriptor, fontDef.pixelSize, 0);
-    ctfont = CTFontCreateCopyWithSymbolicTraits(baseFont, fontDef.pixelSize, 0, symbolicTraits, symbolicTraits);
+    QCFType<CTFontRef> baseFont = CTFontCreateWithFontDescriptor(descriptor, fontDef.pixelSize, &transform);
+    ctfont = CTFontCreateCopyWithSymbolicTraits(baseFont, fontDef.pixelSize, &transform, symbolicTraits, symbolicTraits);
 
     // CTFontCreateCopyWithSymbolicTraits returns NULL if we ask for a trait that does
     // not exist for the given font. (for example italic)
@@ -232,7 +237,8 @@ bool QCoreTextFontEngineMulti::stringToCMap(const QChar *str, int len, QGlyphLay
         *nglyphs = len;
         for (int i = 0; i < len; ++i) {
             outGlyphs[i] = 0;
-            logClusters[i] = i;
+            if (logClusters)
+                logClusters[i] = i;
             outAdvances_x[i] = QFixed();
             outAdvances_y[i] = QFixed();
             outAttributes[i].clusterStart = true;
@@ -342,7 +348,29 @@ bool QCoreTextFontEngineMulti::stringToCMap(const QChar *str, int len, QGlyphLay
 bool QCoreTextFontEngineMulti::stringToCMap(const QChar *str, int len, QGlyphLayout *glyphs,
                                             int *nglyphs, QTextEngine::ShaperFlags flags) const
 {
-    return stringToCMap(str, len, glyphs, nglyphs, flags, 0, 0);
+    *nglyphs = len;
+    QVarLengthArray<CGGlyph> cgGlyphs(len);
+    CTFontGetGlyphsForCharacters(ctfont, (const UniChar*)str, cgGlyphs.data(), len);
+
+    for (int i = 0; i < len; ++i)
+        glyphs->glyphs[i] = cgGlyphs[i];
+
+    if (flags & QTextEngine::GlyphIndicesOnly)
+        return true;
+
+    QVarLengthArray<CGSize> advances(len);
+    CTFontGetAdvancesForGlyphs(ctfont, kCTFontHorizontalOrientation, cgGlyphs.data(), advances.data(), len);
+
+    for (int i = 0; i < len; ++i) {
+        glyphs->advances_x[i] = QFixed::fromReal(advances[i].width);
+        glyphs->advances_y[i] = QFixed::fromReal(advances[i].height);
+        if (fontDef.styleStrategy & QFont::ForceIntegerMetrics) {
+            glyphs->advances_x[i] = glyphs->advances_x[i].round();
+            glyphs->advances_y[i] = glyphs->advances_y[i].round();
+        }
+    }
+
+    return true;
 }
 
 void QCoreTextFontEngineMulti::recalcAdvances(int , QGlyphLayout *, QTextEngine::ShaperFlags) const
@@ -378,7 +406,10 @@ QCoreTextFontEngine::QCoreTextFontEngine(CTFontRef font, const QFontDef &def,
     if (fontDef.style != QFont::StyleNormal && !(traits & kCTFontItalicTrait)) {
         synthesisFlags |= SynthesizedItalic;
     }
-
+    transform = CGAffineTransformIdentity;
+    if (fontDef.stretch != 100) {
+        transform = CGAffineTransformMakeScale(float(fontDef.stretch) / float(100), 1);
+    }
     QByteArray os2Table = getSfntTable(MAKE_TAG('O', 'S', '/', '2'));
     if (os2Table.size() >= 10)
         fsType = qFromBigEndian<quint16>(reinterpret_cast<const uchar *>(os2Table.constData() + 8));
@@ -503,7 +534,7 @@ void QCoreTextFontEngine::draw(CGContextRef ctx, qreal x, qreal y, const QTextIt
     if (synthesisFlags & QFontEngine::SynthesizedItalic)
         cgMatrix = CGAffineTransformConcat(cgMatrix, CGAffineTransformMake(1, 0, -tanf(14 * acosf(0) / 90), 1, 0, 0));
 
-// ###    cgMatrix = CGAffineTransformConcat(cgMatrix, transform);
+    cgMatrix = CGAffineTransformConcat(cgMatrix, transform);
 
     CGContextSetTextMatrix(ctx, cgMatrix);
 
@@ -626,7 +657,7 @@ QImage QCoreTextFontEngine::imageForGlyph(glyph_t glyph, int margin, bool aa)
     if (synthesisFlags & QFontEngine::SynthesizedItalic)
         cgMatrix = CGAffineTransformConcat(cgMatrix, CGAffineTransformMake(1, 0, tanf(14 * acosf(0) / 90), 1, 0, 0));
 
-// ###    cgMatrix = CGAffineTransformConcat(cgMatrix, transform);
+    cgMatrix = CGAffineTransformConcat(cgMatrix, transform);
 
     CGContextSetTextMatrix(ctx, cgMatrix);
     CGContextSetRGBFillColor(ctx, 1, 1, 1, 1);

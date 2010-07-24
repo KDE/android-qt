@@ -55,7 +55,7 @@ QT_MODULE(Declarative)
 
 class QDeclarativeProperty;
 class QDeclarativeSmoothedAnimationPrivate;
-class Q_DECLARATIVE_EXPORT QDeclarativeSmoothedAnimation : public QDeclarativeNumberAnimation
+class Q_AUTOTEST_EXPORT QDeclarativeSmoothedAnimation : public QDeclarativeNumberAnimation
 {
     Q_OBJECT
     Q_DECLARE_PRIVATE(QDeclarativeSmoothedAnimation)
@@ -96,7 +96,7 @@ Q_SIGNALS:
 
 QT_END_NAMESPACE
 
-QML_DECLARE_TYPE(QDeclarativeSmoothedAnimation);
+QML_DECLARE_TYPE(QDeclarativeSmoothedAnimation)
 
 QT_END_HEADER
 

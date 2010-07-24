@@ -112,6 +112,8 @@ struct QDeclarativeMetaTypeData
     QBitArray objects;
     QBitArray interfaces;
     QBitArray lists;
+
+    QList<QDeclarativePrivate::AutoParentFunction> parentFunctions;
 };
 Q_GLOBAL_STATIC(QDeclarativeMetaTypeData, metaTypeData)
 Q_GLOBAL_STATIC(QReadWriteLock, metaTypeDataLock)
@@ -483,6 +485,16 @@ int QDeclarativeType::index() const
     return d->m_index;
 }
 
+int QDeclarativePrivate::registerAutoParentFunction(AutoParentFunction function)
+{
+    QWriteLocker lock(metaTypeDataLock());
+    QDeclarativeMetaTypeData *data = metaTypeData();
+
+    data->parentFunctions.append(function);
+
+    return data->parentFunctions.count() - 1;
+}
+
 int QDeclarativePrivate::registerType(const QDeclarativePrivate::RegisterInterface &interface)
 {
     if (interface.version > 0) 
@@ -581,6 +593,13 @@ bool QDeclarativeMetaType::isModule(const QByteArray &module, int versionMajor, 
                     ((*it).vmajor_max == versionMajor && (*it).vminor_max >= versionMinor))
                 && ((*it).vmajor_min < versionMajor ||
                     ((*it).vmajor_min == versionMajor && (*it).vminor_min <= versionMinor))));
+}
+
+QList<QDeclarativePrivate::AutoParentFunction> QDeclarativeMetaType::parentFunctions()
+{
+    QReadLocker lock(metaTypeDataLock());
+    QDeclarativeMetaTypeData *data = metaTypeData();
+    return data->parentFunctions;
 }
 
 QObject *QDeclarativeMetaType::toQObject(const QVariant &v, bool *ok)
@@ -1133,7 +1152,7 @@ bool QDeclarativeMetaType::copy(int type, void *data, const void *copy)
             *static_cast<float *>(data) = float(0);
             return true;
         case QMetaType::Double:
-            *static_cast<double *>(data) = double();
+            *static_cast<double *>(data) = double(0);
             return true;
         case QMetaType::QChar:
             *static_cast<NS(QChar) *>(data) = NS(QChar)();

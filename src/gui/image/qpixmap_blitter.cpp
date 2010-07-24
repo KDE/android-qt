@@ -14,8 +14,8 @@ QT_BEGIN_NAMESPACE
 
 static int global_ser_no = 0;
 
-QBlittablePixmapData::QBlittablePixmapData(QPixmapData::PixelType type)
-    : QPixmapData(type,BlitterClass), m_engine(0), m_blittable(0)
+QBlittablePixmapData::QBlittablePixmapData()
+    : QPixmapData(QPixmapData::PixmapType,BlitterClass), m_engine(0), m_blittable(0)
 #ifdef QT_BLITTER_RASTEROVERLAY
     ,m_rasterOverlay(0), m_unmergedCopy(0)
 #endif //QT_BLITTER_RASTEROVERLAY
@@ -37,7 +37,7 @@ QBlittable *QBlittablePixmapData::blittable() const
 {
     if (!m_blittable) {
         QBlittablePixmapData *that = const_cast<QBlittablePixmapData *>(this);
-        that->m_blittable = QApplicationPrivate::graphicsSystem()->createBlittable(QSize(w,h));
+        that->m_blittable = this->createBlittable(QSize(w,h));
     }
 
     return m_blittable;
@@ -56,7 +56,7 @@ void QBlittablePixmapData::resize(int width, int height)
     m_blittable = 0;
     delete m_engine;
     m_engine = 0;
-#ifdef Q_WS_LITE
+#ifdef Q_WS_QPA
     d = QApplicationPrivate::platformIntegration()->screens().at(0)->depth();
 #endif
     w = width;

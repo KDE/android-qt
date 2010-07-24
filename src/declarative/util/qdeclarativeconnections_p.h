@@ -58,13 +58,14 @@ QT_MODULE(Declarative)
 class QDeclarativeBoundSignal;
 class QDeclarativeContext;
 class QDeclarativeConnectionsPrivate;
-class Q_DECLARATIVE_EXPORT QDeclarativeConnections : public QObject, public QDeclarativeParserStatus
+class Q_AUTOTEST_EXPORT QDeclarativeConnections : public QObject, public QDeclarativeParserStatus
 {
     Q_OBJECT
     Q_DECLARE_PRIVATE(QDeclarativeConnections)
 
     Q_INTERFACES(QDeclarativeParserStatus)
     Q_PROPERTY(QObject *target READ target WRITE setTarget NOTIFY targetChanged)
+    Q_PROPERTY(bool ignoreUnknownSignals READ ignoreUnknownSignals WRITE setIgnoreUnknownSignals)
 
 public:
     QDeclarativeConnections(QObject *parent=0);
@@ -73,11 +74,15 @@ public:
     QObject *target() const;
     void setTarget(QObject *);
 
+    bool ignoreUnknownSignals() const;
+    void setIgnoreUnknownSignals(bool ignore);
+
 Q_SIGNALS:
     void targetChanged();
 
 private:
     void connectSignals();
+    void classBegin();
     void componentComplete();
 };
 

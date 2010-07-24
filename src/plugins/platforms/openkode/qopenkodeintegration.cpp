@@ -42,7 +42,7 @@
 #include "qopenkodeintegration.h"
 #include "qopenkodewindowsurface.h"
 #include "qopenkodewindow.h"
-#include "qopenkodeglintegration.h"
+#include "qopenkodeeventloopintegration.h"
 
 #include <QtOpenGL/private/qpixmapdata_gl_p.h>
 #include <QtOpenGL/private/qwindowsurface_gl_p.h>
@@ -56,6 +56,8 @@
 #include <KD/kd.h>
 #include <KD/NV_display.h>
 #include <KD/NV_initialize.h>
+
+#include <EGL/egl.h>
 
 #include "GLES2/gl2ext.h"
 
@@ -85,6 +87,19 @@ QOpenKODEScreen::QOpenKODEScreen()
         return;
     }
 
+    KDboolean enabled = KD_TRUE;
+    kdSetDisplayPropertybvNV(kdDisplay,
+                             KD_DISPLAYPROPERTY_ENABLED_NV,
+                             &enabled);
+    KDboolean power = KD_DISPLAY_POWER_ON;
+    kdSetDisplayPropertyivNV(kdDisplay,
+                             KD_DISPLAYPROPERTY_POWER_NV,
+                             &power);
+
+    kdSetDisplayPropertycvNV(kdDisplay,
+                             KD_DISPLAYPROPERTY_DESKTOP_NAME_NV,
+                             KD_DEFAULT_DESKTOP_NV);
+
     KDDisplayModeNV mode;
     if (kdGetDisplayModeNV(kdDisplay, &mode)) {
         qErrnoWarning(kdGetError(), "Could not get display mode");
@@ -103,6 +118,17 @@ QOpenKODEScreen::QOpenKODEScreen()
     // Once we've set up the desktop and display we don't need them anymore
     kdReleaseDisplayNV(kdDisplay);
     kdReleaseDesktopNV(kdDesktop);
+
+    mEglDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+    if (mEglDisplay == EGL_NO_DISPLAY) {
+        qErrnoWarning("EGL failed to obtain display");
+    }
+
+    /* Initialize EGL display */
+    EGLBoolean rvbool = eglInitialize(mEglDisplay, 0, 0);
+    if (!rvbool) {
+        qErrnoWarning("EGL failed to initialize display");
+    }
 
     const int defaultDpi = 72;
     mGeometry = QRect(0, 0, mode.width, mode.height);
@@ -159,41 +185,11 @@ static GLuint loadShaders(const QString &vertexShader, const QString &fragmentSh
     return prog;
 }
 
-class QOpenKODEEventLoopHelper : public QThread
-{
-public:
-    QOpenKODEEventLoopHelper(QSemaphore *m)
-            : eventMutex(m)
-    {
-        m->acquire();
-    }
-
-protected:
-    void run()
-    {
-        if (kdInitializeNV() == KD_ENOTINITIALIZED) {
-            qFatal("Did not manage to initialize openkode");
-        }
-        eventMutex->release();
-
-        const KDEvent *event;
-        while ((event = kdWaitEvent(-1)) != 0) {
-            qDebug() << "!!! received event!";
-            kdDefaultEvent(event);
-        }
-    }
-
-private:
-    QSemaphore *eventMutex;
-};
-
 QOpenKODEIntegration::QOpenKODEIntegration()
-    : eventMutex(1)
 {
-    QOpenKODEEventLoopHelper *loop = new QOpenKODEEventLoopHelper(&eventMutex);
-    loop->start();
-    eventMutex.acquire(); // block until initialization done
-
+    if (kdInitializeNV() == KD_ENOTINITIALIZED) {
+        qFatal("Did not manage to initialize openkode");
+    }
     QOpenKODEScreen *mPrimaryScreen = new QOpenKODEScreen();
 
     mScreens.append(mPrimaryScreen);
@@ -212,20 +208,37 @@ QPlatformWindow *QOpenKODEIntegration::createPlatformWindow(QWidget *tlw, WId ) 
 
 QWindowSurface *QOpenKODEIntegration::createWindowSurface(QWidget *widget, WId wid) const
 {
-    return new QGLWindowSurface(widget);
+    QWindowSurface *returnSurface = 0;
+    switch (widget->platformWindowFormat().windowApi()) {
+
+    case QPlatformWindowFormat::Raster:
+        returnSurface = new QOpenKODEWindowSurface(widget, wid);
+        break;
+
+    case QPlatformWindowFormat::OpenGL:
+        returnSurface = new QGLWindowSurface(widget);
+        break;
+
+    case QPlatformWindowFormat::OpenVG:
+//        returnSurface = new QVGWindowSurface(widget);
+        break;
+
+    default:
+        returnSurface = new QGLWindowSurface(widget);
+        break;
+    }
+
+    return returnSurface;
 }
 
 bool QOpenKODEIntegration::hasOpenGL() const
 {
     return true;
 }
-QPlatformGLContext *QOpenKODEIntegration::createGLContext()
+
+QPlatformEventLoopIntegration *QOpenKODEIntegration::createEventLoopIntegration() const
 {
-    return new QEGLPlatformContext;
-}
-QPlatformGLWidgetSurface *QOpenKODEIntegration::createGLWidgetSurface()
-{
-    return new QEGLPlatformWidgetSurface;
+    return new QOpenKODEEventLoopIntegration;
 }
 
 GLuint QOpenKODEIntegration::blitterProgram()

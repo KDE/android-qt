@@ -217,9 +217,7 @@ void Heap::destroy()
 
 NEVER_INLINE CollectorBlock* Heap::allocateBlock()
 {
-    // Disable the use of vm_map for the Qt build on Darwin, because when compiled on 10.4
-    // it crashes on 10.5
-#if OS(DARWIN) && !PLATFORM(QT)
+#if OS(DARWIN)
     vm_address_t address = 0;
     vm_map(current_task(), &address, BLOCK_SIZE, BLOCK_OFFSET_MASK, VM_FLAGS_ANYWHERE | VM_TAG_FOR_COLLECTOR_MEMORY, MEMORY_OBJECT_NULL, 0, FALSE, VM_PROT_DEFAULT, VM_PROT_DEFAULT, VM_INHERIT_DEFAULT);
 #elif OS(SYMBIAN)
@@ -231,7 +229,7 @@ NEVER_INLINE CollectorBlock* Heap::allocateBlock()
 #elif OS(WINCE)
     void* address = VirtualAlloc(NULL, BLOCK_SIZE, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 #elif OS(WINDOWS)
-#if COMPILER(MINGW) && !CPU(X86_64)
+#if COMPILER(MINGW) && !COMPILER(MINGW64)
     void* address = __mingw_aligned_malloc(BLOCK_SIZE, BLOCK_SIZE);
 #else
     void* address = _aligned_malloc(BLOCK_SIZE, BLOCK_SIZE);
@@ -315,16 +313,14 @@ NEVER_INLINE void Heap::freeBlock(size_t block)
 
 NEVER_INLINE void Heap::freeBlockPtr(CollectorBlock* block)
 {
-    // Disable the use of vm_deallocate for the Qt build on Darwin, because when compiled on 10.4
-    // it crashes on 10.5
-#if OS(DARWIN) && !PLATFORM(QT)
+#if OS(DARWIN)    
     vm_deallocate(current_task(), reinterpret_cast<vm_address_t>(block), BLOCK_SIZE);
 #elif OS(SYMBIAN)
     userChunk->Free(reinterpret_cast<TAny*>(block));
 #elif OS(WINCE)
     VirtualFree(block, 0, MEM_RELEASE);
 #elif OS(WINDOWS)
-#if COMPILER(MINGW) && !CPU(X86_64)
+#if COMPILER(MINGW) && !COMPILER(MINGW64)
     __mingw_aligned_free(block);
 #else
     _aligned_free(block);
@@ -637,6 +633,8 @@ static inline void* currentThreadStackBase()
 #elif OS(HPUX)
     return hpux_get_stack_base();
 #elif OS(QNX)
+    AtomicallyInitializedStatic(Mutex&, mutex = *new Mutex);
+    MutexLocker locker(mutex);
     return currentThreadStackBaseQNX();
 #elif OS(SOLARIS)
     stack_t s;
@@ -660,19 +658,17 @@ static inline void* currentThreadStackBase()
     pthread_stackseg_np(thread, &stack);
     return stack.ss_sp;
 #elif OS(SYMBIAN)
-    static void* stackBase = 0;
-    if (stackBase == 0) {
-        TThreadStackInfo info;
-        RThread thread;
-        thread.StackInfo(info);
-        stackBase = (void*)info.iBase;
-    }
-    return (void*)stackBase;
+    TThreadStackInfo info;
+    RThread thread;
+    thread.StackInfo(info);
+    return (void*)info.iBase;
 #elif OS(HAIKU)
     thread_info threadInfo;
     get_thread_info(find_thread(NULL), &threadInfo);
     return threadInfo.stack_end;
 #elif OS(UNIX)
+    AtomicallyInitializedStatic(Mutex&, mutex = *new Mutex);
+    MutexLocker locker(mutex);
     static void* stackBase = 0;
     static size_t stackSize = 0;
     static pthread_t stackThread;
@@ -695,6 +691,8 @@ static inline void* currentThreadStackBase()
     }
     return static_cast<char*>(stackBase) + stackSize;
 #elif OS(WINCE)
+    AtomicallyInitializedStatic(Mutex&, mutex = *new Mutex);
+    MutexLocker locker(mutex);
     if (g_stackBase)
         return g_stackBase;
     else {
