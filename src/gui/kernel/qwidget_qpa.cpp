@@ -61,7 +61,7 @@ void setParentForChildrenOfWidget(QPlatformWindow *window, const QWidget *widget
     for (int i = 0; i < children.size(); i++) {
         if (children.at(i)->isWidgetType()) {
             const QWidget *childWidget = qobject_cast<const QWidget *>(children.at(i));
-            if (childWidget) { // should not be nessesary
+            if (childWidget) { // should not be necessary
                 if (childWidget->platformWindow()) {
                     childWidget->platformWindow()->setParent(window);
                 } else {
@@ -75,7 +75,6 @@ void setParentForChildrenOfWidget(QPlatformWindow *window, const QWidget *widget
 void QWidgetPrivate::create_sys(WId window, bool initializeWindow, bool destroyOldWindow)
 {
     Q_Q(QWidget);
-    qDebug()<<"QWidgetPrivate::create_sys 1";
     Q_UNUSED(window);
     Q_UNUSED(initializeWindow);
     Q_UNUSED(destroyOldWindow);
@@ -89,25 +88,20 @@ void QWidgetPrivate::create_sys(WId window, bool initializeWindow, bool destroyO
     QWindowSurface *surface = q->windowSurface();
     QPlatformWindow *platformWindow = q->platformWindow();
 
-    qDebug()<<"QWidgetPrivate::create_sys 2"<<surface<<platformWindow<<this<<QApplicationPrivate::platformIntegration();
     if (!platformWindow) {
-	qDebug()<<QApplicationPrivate::platformIntegration()<<QApplicationPrivate::platformIntegration()->hasOpenGL()<<QApplicationPrivate::platformIntegration()->createPlatformWindow(0);
 	platformWindow = QApplicationPrivate::platformIntegration()->createPlatformWindow(q);
     }
-    qDebug()<<"QWidgetPrivate::create_sys 2 1"<<surface<<platformWindow;
+
     Q_ASSERT(platformWindow);
 
-    qDebug()<<"QWidgetPrivate::create_sys 3"<<surface<<platformWindow;
     if (!surface) {
         surface = QApplicationPrivate::platformIntegration()->createWindowSurface(q,platformWindow->winId());
     }
 
-    qDebug()<<"QWidgetPrivate::create_sys 4";
     data.window_flags = q->platformWindow()->setWindowFlags(data.window_flags);
 
     setWinId(q->platformWindow()->winId());
 
-    qDebug()<<"QWidgetPrivate::create_sys 5";
     //first check children. then find who for parent.
     setParentForChildrenOfWidget(platformWindow,q);
     if (QWidget *nativeParent = q->nativeParentWidget()) {
@@ -116,9 +110,7 @@ void QWidgetPrivate::create_sys(WId window, bool initializeWindow, bool destroyO
         }
     }
 
-    qDebug()<<"QWidgetPrivate::create_sys 6";
     QApplicationPrivate::platformIntegration()->moveToScreen(q, screenNumber);
-    qDebug() << "QWidgetPrivate::create_sys 7" << q << q->internalWinId();
 }
 
 void QWidget::destroy(bool destroyWindow, bool destroySubWindows)
@@ -136,6 +128,7 @@ void QWidget::destroy(bool destroyWindow, bool destroySubWindows)
 
     if (windowType() != Qt::Desktop) {
         if (destroyWindow && isWindow()) {
+//### jl: delete all child windows...
             QTLWExtra *topData = d->maybeTopData();
             if (topData) {
                 delete topData->platformWindow;
@@ -187,6 +180,12 @@ void QWidgetPrivate::setParent_sys(QWidget *newparent, Qt::WindowFlags f)
     }
 
     bool explicitlyHidden = q->testAttribute(Qt::WA_WState_Hidden) && q->testAttribute(Qt::WA_WState_ExplicitShowHide);
+    
+    // Reparenting toplevel to child    
+    if (!(f&Qt::Window) && (oldFlags&Qt::Window) && !q->testAttribute(Qt::WA_NativeWindow)) {
+        //qDebug() << "setParent_sys() change from toplevel";
+        q->destroy();
+    }
 
     data.window_flags = f;
     q->setAttribute(Qt::WA_WState_Created, false);
@@ -198,12 +197,11 @@ void QWidgetPrivate::setParent_sys(QWidget *newparent, Qt::WindowFlags f)
         if (QPlatformWindow *window = q->platformWindow())
             data.window_flags = window->setWindowFlags(data.window_flags);
     }
-    // XXX Reparenting child to toplevel or vice versa ###
+    
+    // Reparenting child to toplevel 
     if ((f&Qt::Window) && !(oldFlags&Qt::Window)) {
         //qDebug() << "setParent_sys() change to toplevel";
-        q->create(); //### this cannot be right
-    } else if ((f&Qt::Window) && !(oldFlags&Qt::Window)) {
-        qDebug() << "######## setParent_sys() change from toplevel not implemented ########";
+        q->create(); //### too early: this ought to happen at show() time
     }
 
 
