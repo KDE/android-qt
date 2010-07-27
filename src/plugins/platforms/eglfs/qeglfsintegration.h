@@ -4,7 +4,7 @@
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
-** This file is part of the QtGui module of the Qt Toolkit.
+** This file is part of the plugins of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
 ** No Commercial Usage
@@ -38,55 +38,36 @@
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
-#ifndef QPLATFORMWINDOW_H
-#define QPLATFORMWINDOW_H
 
+#ifndef EGLINTEGRATION_H
+#define EGLINTEGRATION_H
 
-#include <QtCore/qscopedpointer.h>
-#include <QtCore/qrect.h>
-#include <QtCore/qstring.h>
-#include <QtGui/qwindowdefs.h>
+#include "qeglfsscreen.h"
 
+#include <QtGui/QPlatformIntegration>
+#include <QtGui/QPlatformScreen>
 
 QT_BEGIN_HEADER
 
 QT_BEGIN_NAMESPACE
 
-class QPlatformWindowPrivate;
-class QWidget;
-class QPlatformGLContext;
-
-class Q_GUI_EXPORT QPlatformWindow
+class QEglFSIntegration : public QPlatformIntegration
 {
-    Q_DECLARE_PRIVATE(QPlatformWindow);
 public:
-    QPlatformWindow(QWidget *tlw);
-    virtual ~QPlatformWindow();
+    QEglFSIntegration();
 
-    QWidget *widget() const;
-    virtual void setGeometry(const QRect &rect);
-    virtual QRect geometry() const;
+    QPixmapData *createPixmapData(QPixmapData::PixelType type) const;
+    QPlatformWindow *createPlatformWindow(QWidget *widget, WId winId) const;
+    QWindowSurface *createWindowSurface(QWidget *widget, WId winId) const;
 
-    virtual void setVisible(bool visible);
-    virtual Qt::WindowFlags setWindowFlags(Qt::WindowFlags flags);
-    virtual Qt::WindowFlags windowFlags() const;
-    virtual WId winId() const;
-    virtual void setParent(const QPlatformWindow *window);
+    QList<QPlatformScreen *> screens() const { return mScreens; }
 
-    virtual void setWindowTitle(const QString &);
-    virtual void raise();
-    virtual void lower();
-
-    virtual void setOpacity(qreal level);
-
-    virtual QPlatformGLContext *glContext() const;
-protected:
-    QScopedPointer<QPlatformWindowPrivate> d_ptr;
 private:
-    Q_DISABLE_COPY(QPlatformWindow);
+    QList<QPlatformScreen *> mScreens;
+    QEglFSScreen *m_primaryScreen;
 };
 
 QT_END_NAMESPACE
-
 QT_END_HEADER
-#endif //QPLATFORMWINDOW_H
+
+#endif

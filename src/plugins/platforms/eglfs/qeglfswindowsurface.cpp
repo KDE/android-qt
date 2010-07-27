@@ -38,43 +38,66 @@
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
+#include "qeglfswindowsurface.h"
 
-#ifndef QOPENKODEWINDOW_H
-#define QOPENKODEWINDOW_H
+#include <QtGui/QPlatformGLContext>
 
-#include <QtGui/QPlatformWindow>
-#include <QtCore/QVector>
+#include <QtOpenGL/private/qgl_p.h>
+#include <QtOpenGL/private/qglpaintdevice_p.h>
 
-#include <KD/kd.h>
-
-QT_BEGIN_HEADER
 QT_BEGIN_NAMESPACE
 
-class QEGLPlatformContext;
-
-class QOpenKODEWindow : public QPlatformWindow
+class QEglFSPaintDevice : public QGLPaintDevice
 {
 public:
-    QOpenKODEWindow(QWidget *tlw);
-    ~QOpenKODEWindow();
+    QEglFSPaintDevice(QEglFSScreen *screen, QWidget *widget)
+        :QGLPaintDevice(), m_screen(screen)
+    {
+    #ifdef QEGL_EXTRA_DEBUG
+        qWarning("QEglPaintDevice %p, %p, %p",this, screen, widget);
+    #endif
+        QGLFormat format;
+        m_context = new QGLContext(format, widget);
+        m_context->create();
+    }
 
-    void setGeometry(const QRect &rect);
-    void setVisible(bool visible);
-    WId winId() const { return WId(m_eglWindow); }
+    QSize size() const { return m_screen->geometry().size(); }
+    QGLContext* context() const { return m_context;}
 
-    QPlatformGLContext *glContext() const;
+    QPaintEngine *paintEngine() const { return qt_qgl_paint_engine(); }
 
+    void  beginPaint(){
+        QGLPaintDevice::beginPaint();
+    }
 private:
-    struct KDWindow *m_kdWindow;
-    EGLNativeWindowType m_eglWindow;
-    EGLConfig m_eglConfig;
-    QVector<EGLint> m_eglWindowAttrs;
-    QVector<EGLint> m_eglContextAttrs;
-    EGLenum m_eglApi;
-    QEGLPlatformContext *m_platformGlContext;
+    QEglFSScreen *m_screen;
+    QGLContext *m_context;
 };
 
-QT_END_NAMESPACE
-QT_END_HEADER
 
-#endif //QOPENKODEWINDOW_H
+QEglFSWindowSurface::QEglFSWindowSurface( QEglFSScreen *screen, QWidget *window )
+    :QWindowSurface(window)
+{
+#ifdef QEGL_EXTRA_DEBUG
+    qWarning("QEglWindowSurface %p, %p", window, screen);
+#endif
+    m_paintDevice = new QEglFSPaintDevice(screen,window);
+}
+
+void QEglFSWindowSurface::flush(QWidget *widget, const QRegion &region, const QPoint &offset)
+{
+    Q_UNUSED(widget);
+    Q_UNUSED(region);
+    Q_UNUSED(offset);
+#ifdef QEGL_EXTRA_DEBUG
+    qWarning("QEglWindowSurface::flush %p",widget);
+#endif
+    widget->platformWindow()->glContext()->swapBuffers();
+}
+
+void QEglFSWindowSurface::resize(const QSize &size)
+{
+    Q_UNUSED(size);
+}
+
+QT_END_NAMESPACE

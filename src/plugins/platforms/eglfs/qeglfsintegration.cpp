@@ -39,32 +39,55 @@
 **
 ****************************************************************************/
 
-#ifndef EGLINTEGRATION_H
-#define EGLINTEGRATION_H
+#include "qeglfsintegration.h"
 
-#include <QtGui/QPlatformIntegration>
-#include <QtGui/QPlatformScreen>
+#include "qeglfswindow.h"
+#include "qeglfswindowsurface.h"
+
+#include <QtGui/QPlatformWindow>
+#include <QtGui/QPlatformWindowFormat>
+#include <QtOpenGL/private/qpixmapdata_gl_p.h>
+
+#include <EGL/egl.h>
 
 QT_BEGIN_NAMESPACE
 
-class QEglScreen;
-class QEglIntegration : public QPlatformIntegration
+QEglFSIntegration::QEglFSIntegration()
 {
-public:
-    QEglIntegration();
+    m_primaryScreen = new QEglFSScreen(EGL_DEFAULT_DISPLAY);
 
-    QPixmapData *createPixmapData(QPixmapData::PixelType type) const;
-    QPlatformWindow *createPlatformWindow(QWidget *widget, WId winId) const;
-    QWindowSurface *createWindowSurface(QWidget *widget, WId winId) const;
+    mScreens.append(m_primaryScreen);
+#ifdef QEGL_EXTRA_DEBUG
+    qWarning("QEglIntegration\n");
+#endif
+}
 
-    QList<QPlatformScreen *> screens() const { return mScreens; }
+QPixmapData *QEglFSIntegration::createPixmapData(QPixmapData::PixelType type) const
+{
+#ifdef QEGL_EXTRA_DEBUG
+    qWarning("QEglIntegration::createPixmapData %d\n", type);
+#endif
+    return new QGLPixmapData(type);
+}
 
-private:
-    QList<QPlatformScreen *> mScreens;
-    QEglScreen *m_primaryScreen;
-};
+QPlatformWindow *QEglFSIntegration::createPlatformWindow(QWidget *widget, WId winId) const
+{
+    Q_UNUSED(winId);
+#ifdef QEGL_EXTRA_DEBUG
+    qWarning("QEglIntegration::createPlatformWindow %p\n",widget);
+#endif
+    return new QEglFSWindow(widget, m_primaryScreen);
+}
+
+
+QWindowSurface *QEglFSIntegration::createWindowSurface(QWidget *widget, WId winId) const
+{
+    Q_UNUSED(winId);
+
+#ifdef QEGL_EXTRA_DEBUG
+    qWarning("QEglIntegration::createWindowSurface %p\n",widget);
+#endif
+    return new QEglFSWindowSurface(m_primaryScreen,widget);
+}
 
 QT_END_NAMESPACE
-
-
-#endif

@@ -38,43 +38,38 @@
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
+#ifndef QEGLSCREEN_H
+#define QEGLSCREEN_H
 
-#ifndef QOPENKODEWINDOW_H
-#define QOPENKODEWINDOW_H
+#include <QPlatformScreen>
 
-#include <QtGui/QPlatformWindow>
-#include <QtCore/QVector>
 
-#include <KD/kd.h>
+#include <EGL/egl.h>
 
-QT_BEGIN_HEADER
 QT_BEGIN_NAMESPACE
 
-class QEGLPlatformContext;
+class QPlatformGLContext;
 
-class QOpenKODEWindow : public QPlatformWindow
+class QEglFSScreen : public QPlatformScreen //huh: FullScreenScreen ;) just to follow namespace
 {
 public:
-    QOpenKODEWindow(QWidget *tlw);
-    ~QOpenKODEWindow();
+    QEglFSScreen(EGLNativeDisplayType display);
+    ~QEglFSScreen() {}
 
-    void setGeometry(const QRect &rect);
-    void setVisible(bool visible);
-    WId winId() const { return WId(m_eglWindow); }
+    QRect geometry() const { return m_geometry; }
+    int depth() const { return m_depth; }
+    QImage::Format format() const { return m_format; }
 
-    QPlatformGLContext *glContext() const;
+    QPlatformGLContext *platformContext() const { return m_platformContext; }
 
 private:
-    struct KDWindow *m_kdWindow;
-    EGLNativeWindowType m_eglWindow;
-    EGLConfig m_eglConfig;
-    QVector<EGLint> m_eglWindowAttrs;
-    QVector<EGLint> m_eglContextAttrs;
-    EGLenum m_eglApi;
-    QEGLPlatformContext *m_platformGlContext;
+    QRect m_geometry;
+    int m_depth;
+    QImage::Format m_format;
+    QPlatformGLContext *m_platformContext;
+    EGLDisplay m_dpy;
+    EGLSurface m_surface;
 };
 
 QT_END_NAMESPACE
-QT_END_HEADER
-
-#endif //QOPENKODEWINDOW_H
+#endif // QEGLSCREEN_H

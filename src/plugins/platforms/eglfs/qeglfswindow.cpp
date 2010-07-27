@@ -38,43 +38,46 @@
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
+#include "qeglfswindow.h"
 
-#ifndef QOPENKODEWINDOW_H
-#define QOPENKODEWINDOW_H
+#include <QtGui/QWindowSystemInterface>
 
-#include <QtGui/QPlatformWindow>
-#include <QtCore/QVector>
-
-#include <KD/kd.h>
-
-QT_BEGIN_HEADER
 QT_BEGIN_NAMESPACE
 
-class QEGLPlatformContext;
-
-class QOpenKODEWindow : public QPlatformWindow
+QEglFSWindow::QEglFSWindow(QWidget *w, QEglFSScreen *screen)
+    : QPlatformWindow(w), m_screen(screen)
 {
-public:
-    QOpenKODEWindow(QWidget *tlw);
-    ~QOpenKODEWindow();
+    static int serialNo = 0;
+    m_winid  = ++serialNo;
+#ifdef QEGL_EXTRA_DEBUG
+    qWarning("QEglWindow %p: %p %p 0x%x\n", this, w, screen, uint(m_winid));
+#endif
+}
 
-    void setGeometry(const QRect &rect);
-    void setVisible(bool visible);
-    WId winId() const { return WId(m_eglWindow); }
 
-    QPlatformGLContext *glContext() const;
+void QEglFSWindow::setGeometry(const QRect &)
+{
+    // We only support full-screen windows
+    QRect rect(m_screen->availableGeometry());
+    QWindowSystemInterface::handleGeometryChange(this->widget(), rect);
 
-private:
-    struct KDWindow *m_kdWindow;
-    EGLNativeWindowType m_eglWindow;
-    EGLConfig m_eglConfig;
-    QVector<EGLint> m_eglWindowAttrs;
-    QVector<EGLint> m_eglContextAttrs;
-    EGLenum m_eglApi;
-    QEGLPlatformContext *m_platformGlContext;
-};
+    QPlatformWindow::setGeometry(rect);
+}
+
+WId QEglFSWindow::winId() const
+{
+    return m_winid;
+}
+
+
+
+QPlatformGLContext *QEglFSWindow::glContext() const
+{
+#ifdef QEGL_EXTRA_DEBUG
+    qWarning("QEglWindow::glContext %p\n", m_screen->platformContext());
+#endif
+    Q_ASSERT(m_screen);
+     return m_screen->platformContext();
+}
 
 QT_END_NAMESPACE
-QT_END_HEADER
-
-#endif //QOPENKODEWINDOW_H

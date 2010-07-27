@@ -38,43 +38,29 @@
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
+#ifndef QEGLWINDOWSURFACE_H
+#define QEGLWINDOWSURFACE_H
 
-#ifndef QOPENKODEWINDOW_H
-#define QOPENKODEWINDOW_H
+#include "qeglfsintegration.h"
+#include "qeglfswindow.h"
 
-#include <QtGui/QPlatformWindow>
-#include <QtCore/QVector>
+#include <QtGui/private/qwindowsurface_p.h>
 
-#include <KD/kd.h>
-
-QT_BEGIN_HEADER
 QT_BEGIN_NAMESPACE
 
-class QEGLPlatformContext;
-
-class QOpenKODEWindow : public QPlatformWindow
+class QEglFSWindowSurface : public QWindowSurface
 {
 public:
-    QOpenKODEWindow(QWidget *tlw);
-    ~QOpenKODEWindow();
+    QEglFSWindowSurface(QEglFSScreen *screen, QWidget *window);
+    ~QEglFSWindowSurface() {}
 
-    void setGeometry(const QRect &rect);
-    void setVisible(bool visible);
-    WId winId() const { return WId(m_eglWindow); }
-
-    QPlatformGLContext *glContext() const;
-
+    QPaintDevice *paintDevice() { return m_paintDevice; }
+    void flush(QWidget *widget, const QRegion &region, const QPoint &offset);
+    void resize(const QSize &size);
 private:
-    struct KDWindow *m_kdWindow;
-    EGLNativeWindowType m_eglWindow;
-    EGLConfig m_eglConfig;
-    QVector<EGLint> m_eglWindowAttrs;
-    QVector<EGLint> m_eglContextAttrs;
-    EGLenum m_eglApi;
-    QEGLPlatformContext *m_platformGlContext;
+    QPaintDevice *m_paintDevice;
 };
 
 QT_END_NAMESPACE
-QT_END_HEADER
 
-#endif //QOPENKODEWINDOW_H
+#endif // QEGLWINDOWSURFACE_H

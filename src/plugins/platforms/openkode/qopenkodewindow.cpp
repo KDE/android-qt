@@ -55,7 +55,7 @@
 #include <QtCore/qvector.h>
 #include <QtCore/QDebug>
 
-
+QT_BEGIN_NAMESPACE
 
 QOpenKODEWindow::QOpenKODEWindow(QWidget *tlw)
     : QPlatformWindow(tlw)
@@ -169,7 +169,8 @@ void QOpenKODEWindow::setVisible(bool visible)
     }
 }
 
-QPlatformGLContext *QOpenKODEWindow::glContext()
+QPlatformGLContext *QOpenKODEWindow::glContext() const
 {
     return m_platformGlContext;
 }
+QT_END_NAMESPACE
