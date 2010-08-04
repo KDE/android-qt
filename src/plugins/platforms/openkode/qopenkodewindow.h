@@ -51,6 +51,7 @@ QT_BEGIN_HEADER
 QT_BEGIN_NAMESPACE
 
 class QEGLPlatformContext;
+class QPlatformEventLoopIntegration;
 
 class QOpenKODEWindow : public QPlatformWindow
 {
@@ -60,9 +61,15 @@ public:
 
     void setGeometry(const QRect &rect);
     void setVisible(bool visible);
-    WId winId() const { return WId(m_eglWindow); }
+    WId winId() const;
 
     QPlatformGLContext *glContext() const;
+
+    void raise();
+    void lower();
+
+    void processKeyEvents( const KDEvent *event );
+    void processMouseEvents( const KDEvent *event );
 
 private:
     struct KDWindow *m_kdWindow;
@@ -72,6 +79,8 @@ private:
     QVector<EGLint> m_eglContextAttrs;
     EGLenum m_eglApi;
     QEGLPlatformContext *m_platformGlContext;
+
+    bool isFullScreen;
 };
 
 QT_END_NAMESPACE
