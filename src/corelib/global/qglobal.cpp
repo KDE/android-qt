@@ -2413,7 +2413,7 @@ void qDebug(const char *msg, ...)
     This syntax inserts a space between each item, and
     appends a newline at the end.
 
-    To supress the output at runtime, install your own message handler
+    To suppress the output at runtime, install your own message handler
     with qInstallMsgHandler().
 
     \sa qDebug(), qCritical(), qFatal(), qInstallMsgHandler(),
@@ -2449,7 +2449,7 @@ void qWarning(const char *msg, ...)
     A space is inserted between the items, and a newline is
     appended at the end.
 
-    To supress the output at runtime, install your own message handler
+    To suppress the output at runtime, install your own message handler
     with qInstallMsgHandler().
 
     \sa qDebug(), qWarning(), qFatal(), qInstallMsgHandler(),
@@ -2514,7 +2514,7 @@ void qErrnoWarning(int code, const char *msg, ...)
     Example:
     \snippet doc/src/snippets/code/src_corelib_global_qglobal.cpp 30
 
-    To supress the output at runtime, install your own message handler
+    To suppress the output at runtime, install your own message handler
     with qInstallMsgHandler().
 
     \sa qDebug(), qCritical(), qWarning(), qInstallMsgHandler(),

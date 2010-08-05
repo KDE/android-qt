@@ -55,21 +55,26 @@
 QT_BEGIN_NAMESPACE
 static QPlatformScreen *qt_screenForWidget(const QWidget *w);
 
-void setParentForChildrenOfWidget(QPlatformWindow *window, const QWidget *widget)
+void q_createNativeChildrenAndSetParent(QPlatformWindow *parentWindow, const QWidget *parentWidget)
 {
-    QObjectList children = widget->children();
+    QObjectList children = parentWidget->children();
     for (int i = 0; i < children.size(); i++) {
         if (children.at(i)->isWidgetType()) {
             const QWidget *childWidget = qobject_cast<const QWidget *>(children.at(i));
             if (childWidget) { // should not be necessary
+                if (childWidget->testAttribute(Qt::WA_NativeWindow)) {
+                    if (!childWidget->platformWindow())
+                        childWidget->winId();
+                }
                 if (childWidget->platformWindow()) {
-                    childWidget->platformWindow()->setParent(window);
+                    childWidget->platformWindow()->setParent(parentWindow);
                 } else {
-                    setParentForChildrenOfWidget(window,childWidget);
+                    q_createNativeChildrenAndSetParent(parentWindow,childWidget);
                 }
             }
         }
     }
+
 }
 
 void QWidgetPrivate::create_sys(WId window, bool initializeWindow, bool destroyOldWindow)
@@ -78,7 +83,6 @@ void QWidgetPrivate::create_sys(WId window, bool initializeWindow, bool destroyO
     Q_UNUSED(window);
     Q_UNUSED(initializeWindow);
     Q_UNUSED(destroyOldWindow);
-    // XXX
 
     Qt::WindowFlags flags = data.window_flags;
 
@@ -102,8 +106,10 @@ void QWidgetPrivate::create_sys(WId window, bool initializeWindow, bool destroyO
 
     setWinId(q->platformWindow()->winId());
 
-    //first check children. then find who for parent.
-    setParentForChildrenOfWidget(platformWindow,q);
+    //first check children. and create them if necessary
+    q_createNativeChildrenAndSetParent(q->platformWindow(),q);
+
+    //if we we have a parent, then set correct parent;
     if (QWidget *nativeParent = q->nativeParentWidget()) {
         if (nativeParent->platformWindow()) {
             platformWindow->setParent(nativeParent->platformWindow());
@@ -116,8 +122,6 @@ void QWidgetPrivate::create_sys(WId window, bool initializeWindow, bool destroyO
 void QWidget::destroy(bool destroyWindow, bool destroySubWindows)
 {
     Q_D(QWidget);
-    //### jl: subwindows now enabled
-    Q_UNUSED(destroySubWindows);
 
     if ((windowType() == Qt::Popup))
         qApp->d_func()->closePopup(this);
@@ -127,12 +131,23 @@ void QWidget::destroy(bool destroyWindow, bool destroySubWindows)
         QApplication::setActiveWindow(0);
 
     if (windowType() != Qt::Desktop) {
-        if (destroyWindow && isWindow()) {
-//### jl: delete all child windows...
+        if (destroySubWindows) {
+            QObjectList childList(children());
+            for (int i = 0; i < childList.size(); i++) {
+                QWidget *widget = qobject_cast<QWidget *>(childList.at(i));
+                if (widget && widget->testAttribute(Qt::WA_NativeWindow)) {
+                    if (widget->platformWindow()) {
+                        widget->destroy();
+                    }
+                }
+            }
+        }
+        if (destroyWindow) {
             QTLWExtra *topData = d->maybeTopData();
             if (topData) {
                 delete topData->platformWindow;
                 topData->platformWindow = 0;
+                d->data.winid = 0;
             }
         } else {
             if (parentWidget() && parentWidget()->testAttribute(Qt::WA_WState_Created)) {
@@ -604,7 +619,7 @@ void QWidgetPrivate::setGeometry_sys(int x, int y, int w, int h, bool isMove)
         if (isResize) {
             QResizeEvent e(r.size(), olds);
             QApplication::sendEvent(q, &e);
-            if (q->isWindow())
+            if (q->platformWindow())
                 q->update();
         }
     } else { // not visible
@@ -732,9 +747,18 @@ QPlatformWindow *QWidget::platformWindow() const
 
 void QWidget::setPlatformWindowFormat(const QPlatformWindowFormat &format)
 {
-    Q_D(QWidget);
-    QTLWExtra *topData = d->topData();
-    topData->platformWindowFormat = format;
+    if (isWindow() || testAttribute(Qt::WA_NativeWindow)) {
+        Q_D(QWidget);
+        QTLWExtra *topData = d->topData();
+        topData->platformWindowFormat = format;
+        if (testAttribute(Qt::WA_WState_Created)) {
+            bool wasVisible = testAttribute(Qt::WA_WState_Visible);
+            destroy();
+            d->create_sys(0,true,true);
+            if (wasVisible)
+                topData->platformWindow->setVisible(true);
+        }
+    }
 }
 
 QPlatformWindowFormat QWidget::platformWindowFormat() const
