@@ -68,21 +68,25 @@ public:
 
     GLXContext glxContext() {return m_context;}
 
+    QPlatformWindowFormat platformWindowFormat() const;
 
+    static XVisualInfo *findVisualInfo(const MyDisplay *xd, const QPlatformWindowFormat &format);
 private:
+    static GLXFBConfig findConfig(const MyDisplay *xd,const QPlatformWindowFormat &format);
     static QVector<int> buildSpec(const QPlatformWindowFormat &format);
-    static GLXFBConfig findConfig(const GLXFBConfig *configs,int configCount, const QPlatformWindowFormat &format, const MyDisplay *xd);
+    static QPlatformWindowFormat platformWindowFromGLXFBConfig(Display *display, GLXFBConfig config, GLXContext context);
+    static QPlatformWindowFormat reducePlatformWindowFormat(const QPlatformWindowFormat &format, bool *reduced);
+
 
     MyDisplay  *m_xd;
     Drawable    m_drawable;
     GLXContext  m_context;
+    QPlatformWindowFormat m_windowFormat;
 
     QGLXGLContext (MyDisplay *display, Drawable drawable, GLXContext context);
     static QMutex m_defaultSharedContextMutex;
     static void createDefaultSharedContex(MyDisplay *xd);
 };
-
-
 
 QT_END_NAMESPACE
 

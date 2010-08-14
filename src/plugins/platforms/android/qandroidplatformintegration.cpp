@@ -108,6 +108,7 @@ QWindowSurface *QAndroidPlatformIntegration::createWindowSurface(QWidget *widget
 
 QPlatformWindow *QAndroidPlatformIntegration::createPlatformWindow(QWidget *widget, WId winId) const
 {
+    Q_UNUSED(winId);
     qDebug()<<"QAndroidPlatformIntegration::createPlatformWindow"<<widget;
     return new QAndroidPlatformWindow(widget);
 }

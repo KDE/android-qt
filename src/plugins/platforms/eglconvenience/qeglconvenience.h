@@ -41,14 +41,18 @@
 #ifndef QEGLCONVENIENCE_H
 #define QEGLCONVENIENCE_H
 
-#include <EGL/egl.h>
 
 #include <QtGui/QPlatformWindowFormat>
 #include <QtCore/QVector>
 
+#include <EGL/egl.h>
+QT_BEGIN_NAMESPACE
+
 QVector<EGLint> q_createConfigAttributesFromFormat(const QPlatformWindowFormat &format);
 bool q_reduceConfigAttributes(QVector<EGLint> *configAttributes);
 EGLConfig q_configFromQPlatformWindowFormat(EGLDisplay display, const QPlatformWindowFormat &format);
+QPlatformWindowFormat qt_qPlatformWindowFormatFromConfig(EGLDisplay display, const EGLConfig config);
 
+QT_END_NAMESPACE
 
 #endif //QEGLCONVENIENCE_H
