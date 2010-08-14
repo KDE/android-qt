@@ -3,6 +3,7 @@
 
 #include <QPlatformGLContext>
 
+class QGLFormat;
 class QAndroidPlatformGLContext : public QPlatformGLContext
 {
 public:
