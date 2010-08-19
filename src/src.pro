@@ -116,6 +116,7 @@ src_android.target = sub-android
    src_declarative.depends = src_gui src_script src_network
    src_plugins.depends = src_gui src_sql src_svg src_multimedia
    src_s60installs.depends = $$TOOLS_SUBDIRS $$SRC_SUBDIRS
+   src_s60installs.depends -= src_s60installs
    src_imports.depends = src_gui src_declarative
    src_android.depends = src_corelib
 

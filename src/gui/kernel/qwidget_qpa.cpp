@@ -110,9 +110,11 @@ void QWidgetPrivate::create_sys(WId window, bool initializeWindow, bool destroyO
     q_createNativeChildrenAndSetParent(q->platformWindow(),q);
 
     //if we we have a parent, then set correct parent;
-    if (QWidget *nativeParent = q->nativeParentWidget()) {
-        if (nativeParent->platformWindow()) {
-            platformWindow->setParent(nativeParent->platformWindow());
+    if (!q->isWindow()) {
+        if (QWidget *nativeParent = q->nativeParentWidget()) {
+            if (nativeParent->platformWindow()) {
+                platformWindow->setParent(nativeParent->platformWindow());
+            }
         }
     }
 
