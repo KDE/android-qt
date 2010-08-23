@@ -2669,7 +2669,7 @@ QT_LICENSED_MODULE(DBus)
 #endif
 
 #ifdef Q_OS_NACL
-#include <qnaclunimplemented.h>
+#include <QtCore/qnaclunimplemented.h>
 #endif
 
 QT_END_NAMESPACE
