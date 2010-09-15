@@ -52,7 +52,7 @@ public class QtApplication
 		}
 	}
 
-	public static void loadApplication(String lib)
+    public static void loadApplication(String lib, Object jniProxyObject)
 	{
 		try
 		{
@@ -65,7 +65,7 @@ public class QtApplication
 
 			//InitializeOpenGL();
 			startQtAndroidPlugin();
-			startQtApp();
+			startQtApp(jniProxyObject);
 		}
 		catch (Exception e)
 		{
@@ -221,7 +221,7 @@ public class QtApplication
 		m_activity.finish();
 	}	
 	// application methods
-	public static native void startQtApp();
+	public static native void startQtApp(Object jniProxyObject);
 	public static native void pauseQtApp();
 	public static native void resumeQtApp();
 	public static native void startQtAndroidPlugin();

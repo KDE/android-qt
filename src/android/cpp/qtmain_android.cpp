@@ -3,8 +3,9 @@
 #include <QSemaphore>
 #include <QDebug>
 
+#include <QtAndroidBridge/QtAndroidBridge>
 #include <stdlib.h>
-#include <jni.h>
+
 
 static JavaVM *m_javaVM = NULL;
 static JNIEnv *m_env = NULL;
@@ -13,6 +14,7 @@ static jmethodID m_quitApp=0;
 
 static QSemaphore m_quitAppSemaphore;
 static const char *QtApplicationClassPathName = "com/nokia/qt/QtApplication";
+
 
 extern "C" int main(int, char **); //use the standard main method to start the application
 static void * startMainMethod(void * /*data*/)
@@ -26,17 +28,17 @@ static void * startMainMethod(void * /*data*/)
     strcpy(params[1],"-platform");
     params[2]=(char*)malloc(20);
     strcpy(params[2],"android");
-
+    
     int ret = main(3, params);
-
+    
     qDebug()<<"MainMethod finished, it's time to cleanup";
-
+    
     free(params[2]);
     free(params[1]);
     free(params[0]);
     free(params);
     Q_UNUSED(ret);
-
+    
     JNIEnv* env;
     if (m_javaVM->AttachCurrentThread(&env, NULL)<0)
     {
@@ -45,37 +47,38 @@ static void * startMainMethod(void * /*data*/)
     }
     env->CallVoidMethod(m_applicationObject, m_quitApp);
     m_javaVM->DetachCurrentThread();
-
+    
     return NULL;
 }
 
-static jboolean startQtApp(JNIEnv* /*env*/, jobject /*object*/)
+static jboolean startQtApp(JNIEnv* env, jobject /*object*/, jobject jniProxyObject)
 {
     qDebug()<<"startQtApp";
+    QtAndroidBridge::setJniProxyObject(env->NewGlobalRef(jniProxyObject));
     pthread_t appThread;
     return pthread_create(&appThread, NULL, startMainMethod, NULL)==0;
 }
 
 
 static JNINativeMethod methods[] = {
-    {"startQtApp", "()V", (void *)startQtApp}
+    {"startQtApp", "(Ljava/lang/Object;)V", (void *)startQtApp}
 };
 
 /*
- * Register several native methods for one class.
- */
+* Register several native methods for one class.
+*/
 static int registerNativeMethods(JNIEnv* env, const char* className,
-    JNINativeMethod* gMethods, int numMethods)
+                                 JNINativeMethod* gMethods, int numMethods)
 {
     jclass clazz;
-
+    
     clazz = env->FindClass(className);
     if (clazz == NULL)
     {
         __android_log_print(ANDROID_LOG_FATAL,"Qt", "Native registration unable to find class '%s'", className);
         return JNI_FALSE;
     }
-
+    
     if (env->RegisterNatives(clazz, gMethods, numMethods) < 0)
     {
         __android_log_print(ANDROID_LOG_FATAL,"Qt", "RegisterNatives failed for '%s'", className);
@@ -87,13 +90,13 @@ static int registerNativeMethods(JNIEnv* env, const char* className,
 }
 
 /*
- * Register native methods for all classes we know about.
- */
+* Register native methods for all classes we know about.
+*/
 static int registerNatives(JNIEnv* env)
 {
     if (!registerNativeMethods(env, QtApplicationClassPathName, methods, sizeof(methods) / sizeof(methods[0])))
         return JNI_FALSE;
-
+    
     return JNI_TRUE;
 }
 
@@ -108,7 +111,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* /*reserved*/)
     UnionJNIEnvToVoid uenv;
     uenv.venv = NULL;
     m_javaVM = 0;
-
+    
     if (vm->GetEnv(&uenv.venv, JNI_VERSION_1_4) != JNI_OK)
     {
         __android_log_print(ANDROID_LOG_FATAL,"Qt","GetEnv failed");
@@ -121,5 +124,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* /*reserved*/)
         return -1;
     }
     m_javaVM = vm;
+    QtAndroidBridge::setJavaVM(m_javaVM);
     return JNI_VERSION_1_4;
 }
+                                 

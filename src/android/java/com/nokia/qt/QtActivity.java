@@ -8,6 +8,7 @@ import android.view.Window;
 
 public class QtActivity extends Activity
 {
+    private Object jniProxyObject = null;
 	private boolean quitApp = true;
 	private String appName = "";
 	private String[] libraries = { "QtCore", "QtNetwork", "QtXml",
@@ -29,6 +30,11 @@ public class QtActivity extends Activity
 	{
 		libraries = libs;
 	}
+	
+    public void setJniProxyObject(Object jniProxyObject)
+    {
+        this.jniProxyObject = jniProxyObject;
+    }
 
 	@Override
 	public boolean onKeyDown(int keyCode, KeyEvent event)
@@ -65,7 +71,7 @@ public class QtActivity extends Activity
 			if (null == getLastNonConfigurationInstance())
 			{
 				QtApplication.loadLibraries(libraries);
-				QtApplication.loadApplication(appName);
+				QtApplication.loadApplication(appName, (jniProxyObject == null) ? this : jniProxyObject);
 				Log.i(QtApplication.QtTAG, "onCreate");
 			}
 			quitApp = true;
