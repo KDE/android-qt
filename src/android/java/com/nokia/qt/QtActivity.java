@@ -12,8 +12,8 @@ public class QtActivity extends Activity
 	private boolean quitApp = true;
 	private String appName = "";
 	private String[] libraries = { "QtCore", "QtNetwork", "QtXml",
-    	/* "QtScript", "QtSql", */"QtGui", "QtOpenGL", "QtSvg"
-    	/* , "QtScriptTools", "QtDeclarative" ,"QtMultimedia", "QtWebKit" */,"QtAndroid"};
+    	 /* "QtScript", "QtSql", */"QtGui", "QtOpenGL", "QtSvg"
+    	 /* , "QtScriptTools", "QtDeclarative" ,"QtMultimedia", "QtWebKit" */, "QtAndroid", "QtAndroidBridge"};
 	// By default try to load all Qt libraries
 
 	public QtActivity()

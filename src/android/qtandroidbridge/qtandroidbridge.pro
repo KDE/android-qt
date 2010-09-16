@@ -3,7 +3,7 @@ TARGET = QtAndroidBridge
 DESTDIR = $$QMAKE_LIBDIR_QT
 QT       =
 
-CONFIG+= static staticlib warn_on
+CONFIG+= warn_on
 CONFIG-= qt shared create_prl
 
 SOURCES= qtandroidbridge.cpp
