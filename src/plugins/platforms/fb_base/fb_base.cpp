@@ -67,7 +67,7 @@ void QPlatformSoftwareCursor::setCursor(Qt::CursorShape shape)
     graphic->set(shape);
 }
 
-void QPlatformSoftwareCursor::setCursor(const QImage & image, int hotx, int hoty)
+void QPlatformSoftwareCursor::setCursor(const QImage * image, int hotx, int hoty)
 {
     graphic->set(&image, hotx, hoty);
 }

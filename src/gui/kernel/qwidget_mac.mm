@@ -1599,12 +1599,14 @@ void QWidgetPrivate::toggleDrawers(bool visible)
             continue;
         QWidget *widget = static_cast<QWidget*>(object);
         if(qt_mac_is_macdrawer(widget)) {
+            bool oldState = widget->testAttribute(Qt::WA_WState_ExplicitShowHide);
             if(visible) {
                 if (!widget->testAttribute(Qt::WA_WState_ExplicitShowHide))
                     widget->show();
             } else {
                 widget->hide();
-                widget->setAttribute(Qt::WA_WState_ExplicitShowHide, false);
+                if(!oldState)
+                    widget->setAttribute(Qt::WA_WState_ExplicitShowHide, false);
             }
         }
     }
@@ -2804,7 +2806,7 @@ void QWidgetPrivate::setSubWindowStacking(bool set)
     QList<QWidget *> widgets = q->findChildren<QWidget *>();
     for (int i=0; i<widgets.size(); ++i) {
         QWidget *child = widgets.at(i);
-        if (child->isWindow() && child->testAttribute(Qt::WA_WState_Created)) {
+        if (child->isWindow() && child->testAttribute(Qt::WA_WState_Created) && child->isVisibleTo(q)) {
             if (set)
                 [qt_mac_window_for(q) addChildWindow:qt_mac_window_for(child) ordered:NSWindowAbove];
             else
@@ -2861,9 +2863,11 @@ void QWidgetPrivate::setParent_sys(QWidget *parent, Qt::WindowFlags f)
         }
         if (wasWindow) {
             oldToolbar = [oldWindow toolbar];
-            [oldToolbar retain];
-            oldToolbarVisible = [oldToolbar isVisible];
-            [oldWindow setToolbar:nil];
+            if (oldToolbar) {
+                [oldToolbar retain];
+                oldToolbarVisible = [oldToolbar isVisible];
+                [oldWindow setToolbar:nil];
+            }
         }
 #endif
     }
@@ -4387,6 +4391,13 @@ void QWidgetPrivate::setGeometry_sys_helper(int x, int y, int w, int h, bool isM
         data.window_state = data.window_state & ~Qt::WindowMaximized;
 
     const bool visible = q->isVisible();
+    // Apply size restrictions, applicable for Windows & Widgets.
+    if (QWExtra *extra = extraData()) {
+        w = qMin(w, extra->maxw);
+        h = qMin(h, extra->maxh);
+        w = qMax(w, extra->minw);
+        h = qMax(h, extra->minh);
+    }
     data.crect = QRect(x, y, w, h);
 
     if (realWindow) {

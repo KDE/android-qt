@@ -73,11 +73,12 @@ public:
     \since 4.7
     \brief The Timer item triggers a handler at a specified interval.
 
-    A timer can be used to trigger an action either once, or repeatedly
+    A Timer can be used to trigger an action either once, or repeatedly
     at a given interval.
 
-    Here is a timer that shows the current date and time, and updates
-    the text every 500 milliseconds:
+    Here is a Timer that shows the current date and time, and updates
+    the text every 500 milliseconds. It uses the JavaScript \c Date
+    object to access the current time.
 
     \qml
     import Qt 4.7
@@ -88,9 +89,7 @@ public:
             onTriggered: time.text = Date().toString()
         }
 
-        Text {
-            id: time
-        }
+        Text { id: time }
     }
     \endqml
 
@@ -103,6 +102,8 @@ public:
     1000ms has its \e repeat property changed 500ms after starting, the
     elapsed time will be reset to 0, and the Timer will be triggered
     1000ms later.
+
+    \sa {declarative/toys/clocks}{Clocks example}
 */
 
 QDeclarativeTimer::QDeclarativeTimer(QObject *parent)

@@ -7,31 +7,30 @@ class QPoint;
 class QThread;
 class QAndroidPlatformIntegration;
 class QString;
-
+class QWidget;
 namespace QtAndroid
 {
     void setAndroidGraphicsSystem(QAndroidPlatformIntegration * androidGraphicsSystem);
-    void quitApplication();
 
-    void flushImage(int surfaceId, const QPoint & pos, const QImage & image, const QRect & rect);
+    void flushImage(int windowId, const QPoint & pos, const QImage & image, const QRect & rect);
 
-    // Surface methods
-    bool createSurface(bool OpenGL, int surfaceId, int l, int t, int r, int b);
-    bool resizeSurface(int surfaceId, int l, int t, int r, int b);
-    bool destroySurface(int surfaceId);
-    void setSurfaceVisiblity(int surfaceId, bool visible);
-    void setSurfaceOpacity(int surfaceId, double level);
-    void setWindowTitle(int surfaceId, const QString & title);
-    void raiseSurface(int surfaceId);
-    // Surface methods
+    // Window methods
+    bool createWindow(bool OpenGL, QWidget * tlw, int windowId, int l, int t, int r, int b);
+    bool resizeWindow(int windowId, int l, int t, int r, int b);
+    bool destroyWindow(int windowId);
+    void setWindowVisiblity(int windowId, bool visible);
+    void setWindowOpacity(int windowId, double level);
+    void setWindowTitle(int windowId, const QString & title);
+    void raiseWindow(int windowId);
+    // Window methods
 
     // Egl methods
-    bool makeCurrent(int surfaceId);
+    bool makeCurrent(int windowId);
     bool doneCurrent();
-    bool swapBuffers(int surfaceId);
-    void* getProcAddress(int surfaceId, const QString& procName);
-    void lockSurface();
-    void unlockSurface();
+    bool swapBuffers(int windowId);
+    void* getProcAddress(int windowId, const QString& procName);
+    void lockWindow();
+    void unlockWindow();
     // Egl methods
 
     bool hasOpenGL();

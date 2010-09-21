@@ -68,37 +68,75 @@ class QByteArray;
 /*!
     \class QDeclarativeComponent
     \since 4.7
-    \brief The QDeclarativeComponent class encapsulates a QML component description.
+    \brief The QDeclarativeComponent class encapsulates a QML component definition.
     \mainclass
+
+    Components are reusable, encapsulated QML elements with well-defined interfaces.
+    They are often defined in \l {qdeclarativedocuments.html}{Component Files}.
+
+    A QDeclarativeComponent instance can be created from a QML file.
+    For example, if there is a \c main.qml file like this:
+
+    \qml
+    import Qt 4.7
+
+    Item {
+        width: 200
+        height: 200
+    }
+    \endqml
+
+    The following code loads this QML file as a component, creates an instance of
+    this component using create(), and then queries the \l Item's \l {Item::}{width}
+    value:
+
+    \code
+    QDeclarativeEngine *engine = new QDeclarativeEngine;
+    QDeclarativeComponent component(engine, QUrl::fromLocalFile("main.qml"));
+
+    QObject *myObject = component.create();
+    QDeclarativeItem *item = qobject_cast<QDeclarativeItem*>(myObject);
+    int width = item->width();  // width = 200
+    \endcode
+
+    \sa {Using QML in C++ Applications}, {Integrating QML with existing Qt UI code}
 */
 
 /*!
     \qmlclass Component QDeclarativeComponent
     \since 4.7
-    \brief The Component element encapsulates a QML component description.
+    \brief The Component element encapsulates a QML component definition.
 
     Components are reusable, encapsulated QML elements with well-defined interfaces.
-    They are often defined in \l {qdeclarativedocuments.html}{Component Files}.
 
-    The \e Component element allows defining components within a QML file.
-    This can be useful for reusing a small component within a single QML
-    file, or for defining a component that logically belongs with the
-    file containing it.
+    Components are often defined by \l {qdeclarativedocuments.html}{component files} -
+    that is, \c .qml files. The \e Component element allows components to be defined
+    within QML items rather than in a separate file. This may be useful for reusing 
+    a small component within a QML file, or for defining a component that logically 
+    belongs with other QML components within a file.
 
-    \qml
-    Item {
-        Component {
-            id: redSquare
-            Rectangle {
-                color: "red"
-                width: 10
-                height: 10
-            }
-        }
-        Loader { sourceComponent: redSquare }
-        Loader { sourceComponent: redSquare; x: 20 }
-    }
-    \endqml
+    For example, here is a component that is used by multiple \l Loader objects.
+    It contains a top level \l Rectangle item:
+
+    \snippet doc/src/snippets/declarative/component.qml 0
+
+    Notice that while a \l Rectangle by itself would be automatically 
+    rendered and displayed, this is not the case for the above rectangle
+    because it is defined inside a \c Component. The component encapsulates the
+    QML elements within, as if they were defined in a separate \c .qml
+    file, and is not loaded until requested (in this case, by the
+    two \l Loader objects).
+
+    A Component cannot contain anything other
+    than an \c id and a single top level item. While the \c id is optional,
+    the top level item is not; you cannot define an empty component.
+
+    The Component element is commonly used to provide graphical components
+    for views. For example, the ListView::delegate property requires a Component
+    to specify how each list item is to be displayed.
+
+    Component objects can also be dynamically created using
+    \l{QML:Qt::createComponent()}{Qt.createComponent()}.
 */
 
 /*!
@@ -448,7 +486,8 @@ void QDeclarativeComponent::loadUrl(const QUrl &url)
 
     d->clear();
 
-    if (url.isRelative() && !url.isEmpty())
+    if ((url.isRelative() && !url.isEmpty())
+    || url.scheme() == QLatin1String("file")) // Workaround QTBUG-11929
         d->url = d->engine->baseUrl().resolved(url);
     else
         d->url = url;
@@ -558,6 +597,9 @@ QDeclarativeComponent::QDeclarativeComponent(QDeclarativeComponentPrivate &dd, Q
     the \a parent value. Note that if the returned object is to be displayed, you 
     must provide a valid \a parent value or set the returned object's \l{Item::parent}{parent} 
     property, or else the object will not be visible.
+
+    Dynamically created instances can be deleted with the \c destroy() method.
+    See \l {Dynamic Object Management} for more information.
 */
 
 /*!
@@ -572,7 +614,9 @@ QScriptValue QDeclarativeComponent::createObject(QObject* parent)
 {
     Q_D(QDeclarativeComponent);
     QDeclarativeContext* ctxt = creationContext();
-    if(!ctxt)
+    if(!ctxt && d->engine)
+        ctxt = d->engine->rootContext();
+    if (!ctxt)
         return QScriptValue(QScriptValue::NullValue);
     QObject* ret = create(ctxt);
     if (!ret)

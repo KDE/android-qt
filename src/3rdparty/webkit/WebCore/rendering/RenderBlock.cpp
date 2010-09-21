@@ -1982,13 +1982,13 @@ void RenderBlock::paintSelection(PaintInfo& paintInfo, int tx, int ty)
 }
 
 #ifndef BUILDING_ON_TIGER
-static void clipOutPositionedObjects(const RenderObject::PaintInfo* paintInfo, int tx, int ty, ListHashSet<RenderBox*>* positionedObjects)
+static void clipOutPositionedObjects(const RenderObject::PaintInfo* paintInfo, int tx, int ty, RenderBlock::PositionedObjectsListHashSet* positionedObjects)
 {
     if (!positionedObjects)
         return;
     
-    ListHashSet<RenderBox*>::const_iterator end = positionedObjects->end();
-    for (ListHashSet<RenderBox*>::const_iterator it = positionedObjects->begin(); it != end; ++it) {
+    RenderBlock::PositionedObjectsListHashSet::const_iterator end = positionedObjects->end();
+    for (RenderBlock::PositionedObjectsListHashSet::const_iterator it = positionedObjects->begin(); it != end; ++it) {
         RenderBox* r = *it;
         paintInfo->context->clipOut(IntRect(tx + r->x(), ty + r->y(), r->width(), r->height()));
     }
@@ -2274,7 +2274,7 @@ void RenderBlock::insertPositionedObject(RenderBox* o)
 {
     // Create the list of special objects if we don't aleady have one
     if (!m_positionedObjects)
-        m_positionedObjects = new ListHashSet<RenderBox*>;
+        m_positionedObjects = new PositionedObjectsListHashSet;
 
     m_positionedObjects->add(o);
 }
@@ -2980,6 +2980,12 @@ void RenderBlock::clearFloats()
         } else
             m_floatingObjects->clear();
     }
+
+    // We should not process floats if the parent node is not a RenderBlock. Otherwise, we will add 
+    // floats in an invalid context. This will cause a crash arising from a bad cast on the parent.
+    // See <rdar://problem/8049753>, where float property is applied on a text node in a SVG.
+    if (!parent() || !parent()->isRenderBlock())
+        return;
 
     // Attempt to locate a previous sibling with overhanging floats.  We skip any elements that are
     // out of flow (like floating/positioned elements), and we also skip over any objects that may have shifted

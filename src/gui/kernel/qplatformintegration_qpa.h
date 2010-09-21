@@ -42,8 +42,9 @@
 #ifndef QPLATFORMINTEGRATION_H
 #define QPLATFORMINTEGRATION_H
 
-#include <QtGui/private/qpixmapdata_p.h>
 #include <QtGui/qwindowdefs.h>
+#include <QtGui/private/qwindowsurface_p.h>
+#include <QtGui/private/qpixmapdata_p.h>
 #include <QtGui/qplatformscreen_qpa.h>
 
 QT_BEGIN_HEADER
@@ -55,6 +56,7 @@ class QPlatformWindow;
 class QWindowSurface;
 class QBlittable;
 class QWidget;
+class QPlatformEventLoopIntegration;
 
 class Q_GUI_EXPORT QPlatformIntegration
 {
@@ -65,7 +67,6 @@ public:
     virtual QPixmapData *createPixmapData(QPixmapData::PixelType type) const = 0;
     virtual QPlatformWindow *createPlatformWindow(QWidget *widget, WId winId = 0) const = 0;
     virtual QWindowSurface *createWindowSurface(QWidget *widget, WId winId) const = 0;
-    virtual QBlittable *createBlittable(const QSize &size) const;
     virtual void moveToScreen(QWidget *window, int screen) {Q_UNUSED(window); Q_UNUSED(screen);}
 
 // Window System functions
@@ -73,7 +74,14 @@ public:
     virtual bool isVirtualDesktop() { return false; }
     virtual QPixmap grabWindow(WId window, int x, int y, int width, int height) const;
 
+// Experimental in mainthread eventloop integration
+// This should only be used if it is only possible to do window system event processing in
+// the gui thread. All of the functions in QWindowSystemInterface are thread safe.
+    virtual QPlatformEventLoopIntegration *createEventLoopIntegration() const;
+
+//jl:XXX should it be hasGLContext and do we need it at all?
     virtual bool hasOpenGL() const;
+
 
 };
 

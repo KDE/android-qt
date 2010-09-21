@@ -102,14 +102,9 @@ void distanceDataForNode(FocusDirection direction, Node* start, FocusCandidate& 
 // FIXME: This function does not behave correctly with transformed frames.
 static IntRect renderRectRelativeToRootDocument(RenderObject* render)
 {
-    ASSERT(render);
+    ASSERT(render && render->node());
 
-    IntRect rect(render->absoluteClippedOverflowRect());
-
-    if (rect.isEmpty()) {
-        Element* e = static_cast<Element*>(render->node());
-        rect = e->getRect();
-    }
+    IntRect rect = render->node()->getRect();
 
     // In cases when the |render|'s associated node is in a scrollable inner
     // document, we only consider its scrollOffset if it is not offscreen.
@@ -516,7 +511,7 @@ static bool checkNegativeCoordsForNode(Node* node, const IntRect& curRect)
 {
     ASSERT(node || node->renderer());
 
-    if (curRect.x() > 0 && curRect.y() > 0)
+    if (curRect.x() >= 0 && curRect.y() >= 0)
         return true;
 
     bool canBeScrolled = false;
@@ -543,6 +538,26 @@ bool isScrollableContainerNode(Node* node)
     }
 
     return false;
+}
+
+bool isNodeDeepDescendantOfDocument(Node* node, Document* baseDocument)
+{
+    if (!node || !baseDocument)
+        return false;
+
+    bool descendant = baseDocument == node->document();
+
+    Element* currentElement = static_cast<Element*>(node);
+    while (!descendant) {
+        Element* documentOwner = currentElement->document()->ownerElement();
+        if (!documentOwner)
+            break;
+
+        descendant = documentOwner->document() == baseDocument;
+        currentElement = documentOwner;
+    }
+
+    return descendant;
 }
 
 } // namespace WebCore

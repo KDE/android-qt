@@ -173,11 +173,14 @@ void tst_qdeclarativevisualdatamodel::objectListModel()
     QDeclarativeListView *listview = qobject_cast<QDeclarativeListView*>(view.rootObject());
     QVERIFY(listview != 0);
 
-    QDeclarativeItem *viewport = listview->viewport();
-    QVERIFY(viewport != 0);
+    QDeclarativeItem *contentItem = listview->contentItem();
+    QVERIFY(contentItem != 0);
 
-    QDeclarativeText *name = findItem<QDeclarativeText>(viewport, "name", 0);
+    QDeclarativeText *name = findItem<QDeclarativeText>(contentItem, "name", 0);
     QCOMPARE(name->text(), QString("Item 1"));
+
+    QDeclarativeText *section = findItem<QDeclarativeText>(contentItem, "section", 0);
+    QCOMPARE(section->text(), QString("Item 1"));
 
     dataList[0]->setProperty("name", QLatin1String("Changed"));
     QCOMPARE(name->text(), QString("Changed"));

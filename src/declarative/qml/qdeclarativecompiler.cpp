@@ -228,10 +228,10 @@ bool QDeclarativeCompiler::testLiteralAssignment(const QMetaProperty &prop,
             }
             break;
         case QMetaType::Float:
-            if (!v->value.isNumber()) COMPILE_EXCEPTION(v, tr("Invalid property assignment: float expected"));
+            if (!v->value.isNumber()) COMPILE_EXCEPTION(v, tr("Invalid property assignment: number expected"));
             break;
         case QVariant::Double:
-            if (!v->value.isNumber()) COMPILE_EXCEPTION(v, tr("Invalid property assignment: double expected"));
+            if (!v->value.isNumber()) COMPILE_EXCEPTION(v, tr("Invalid property assignment: number expected"));
             break;
         case QVariant::Color:
             {
@@ -240,7 +240,7 @@ bool QDeclarativeCompiler::testLiteralAssignment(const QMetaProperty &prop,
             if (!ok) COMPILE_EXCEPTION(v, tr("Invalid property assignment: color expected"));
             }
             break;
-#ifndef QT_NO_TEXTDATE
+#ifndef QT_NO_DATESTRING
         case QVariant::Date:
             {
             bool ok;
@@ -262,7 +262,7 @@ bool QDeclarativeCompiler::testLiteralAssignment(const QMetaProperty &prop,
             if (!ok) COMPILE_EXCEPTION(v, tr("Invalid property assignment: datetime expected"));
             }
             break;
-#endif // QT_NO_TEXTDATE
+#endif // QT_NO_DATESTRING
         case QVariant::Point:
         case QVariant::PointF:
             {
@@ -416,7 +416,7 @@ void QDeclarativeCompiler::genLiteralAssignment(const QMetaProperty &prop,
             instr.storeColor.value = c.rgba();
             }
             break;
-#ifndef QT_NO_TEXTDATE
+#ifndef QT_NO_DATESTRING
         case QVariant::Date:
             {
             QDate d = QDeclarativeStringConverters::dateFromString(string);
@@ -450,7 +450,7 @@ void QDeclarativeCompiler::genLiteralAssignment(const QMetaProperty &prop,
             instr.storeDateTime.valueIndex = index;
             }
             break;
-#endif // QT_NO_TEXTDATE
+#endif // QT_NO_DATESTRING
         case QVariant::Point:
         case QVariant::PointF:
             {
@@ -815,6 +815,10 @@ bool QDeclarativeCompiler::buildObject(Object *obj, const BindingContext &ctxt)
         }
     }
 
+    QDeclarativeCustomParser *cp = 0;
+    if (isCustomParser)
+        cp = output->types.at(obj->type).type->customParser();
+
     // Build all explicit properties specified
     foreach(Property *prop, obj->properties) {
 
@@ -825,7 +829,9 @@ bool QDeclarativeCompiler::buildObject(Object *obj, const BindingContext &ctxt)
 
         bool canDefer = false;
         if (isCustomParser) {
-            if (doesPropertyExist(prop, obj)) {
+            if (doesPropertyExist(prop, obj) && 
+                (!(cp->flags() & QDeclarativeCustomParser::AcceptsAttachedProperties) ||
+                 !isAttachedPropertyName(prop->name))) {
                 int ids = compileState.ids.count();
                 COMPILE_CHECK(buildProperty(prop, obj, objCtxt));
                 canDefer = ids == compileState.ids.count();
@@ -876,8 +882,7 @@ bool QDeclarativeCompiler::buildObject(Object *obj, const BindingContext &ctxt)
         defaultProperty->release();
 
     // Compile custom parser parts
-    if (isCustomParser/* && !customProps.isEmpty()*/) {
-        QDeclarativeCustomParser *cp = output->types.at(obj->type).type->customParser();
+    if (isCustomParser && !customProps.isEmpty()) {
         cp->clearErrors();
         cp->compiler = this;
         cp->object = obj;
@@ -1065,6 +1070,7 @@ void QDeclarativeCompiler::genObjectBody(QDeclarativeParser::Object *obj)
             store.storeSignal.value =
                 output->indexForString(v->value.asScript().trimmed());
             store.storeSignal.context = ctxt.stack;
+            store.storeSignal.name = output->indexForByteArray(prop->name);
             output->bytecode << store;
 
         }
@@ -1356,7 +1362,7 @@ bool QDeclarativeCompiler::buildSignal(QDeclarativeParser::Property *prop, QDecl
     Returns true if (value) property \a prop exists on obj, false otherwise.
 */
 bool QDeclarativeCompiler::doesPropertyExist(QDeclarativeParser::Property *prop,
-                                    QDeclarativeParser::Object *obj)
+                                             QDeclarativeParser::Object *obj)
 {
     if(isAttachedPropertyName(prop->name) || prop->name == "id")
         return true;
@@ -2176,6 +2182,18 @@ int QDeclarativeCompiler::evaluateEnum(const QByteArray& script) const
     return -1;
 }
 
+const QMetaObject *QDeclarativeCompiler::resolveType(const QByteArray& name) const
+{
+    QDeclarativeType *qmltype = 0;
+    if (!enginePrivate->importDatabase.resolveType(unit->imports, name, &qmltype, 
+                                                   0, 0, 0, 0)) 
+        return 0;
+    if (!qmltype)
+        return 0;
+    return qmltype->metaObject();
+}
+
+
 // Ensures that the dynamic meta specification on obj is valid
 bool QDeclarativeCompiler::checkDynamicMeta(QDeclarativeParser::Object *obj)
 {
@@ -2199,6 +2217,10 @@ bool QDeclarativeCompiler::checkDynamicMeta(QDeclarativeParser::Object *obj)
 
         if (QString::fromUtf8(prop.name).at(0).isUpper()) 
             COMPILE_EXCEPTION(&prop, tr("Property names cannot begin with an upper case letter"));
+
+        if (QDeclarativeEnginePrivate::get(engine)->globalClass->illegalNames().contains(prop.name))
+            COMPILE_EXCEPTION(&prop, tr("Illegal property name"));
+
         propNames.insert(prop.name);
     }
 
@@ -2208,6 +2230,8 @@ bool QDeclarativeCompiler::checkDynamicMeta(QDeclarativeParser::Object *obj)
             COMPILE_EXCEPTION(obj, tr("Duplicate signal name"));
         if (QString::fromUtf8(name).at(0).isUpper()) 
             COMPILE_EXCEPTION(obj, tr("Signal names cannot begin with an upper case letter"));
+        if (QDeclarativeEnginePrivate::get(engine)->globalClass->illegalNames().contains(name))
+            COMPILE_EXCEPTION(obj, tr("Illegal signal name"));
         methodNames.insert(name);
     }
     for (int ii = 0; ii < obj->dynamicSlots.count(); ++ii) {
@@ -2216,6 +2240,8 @@ bool QDeclarativeCompiler::checkDynamicMeta(QDeclarativeParser::Object *obj)
             COMPILE_EXCEPTION(obj, tr("Duplicate method name"));
         if (QString::fromUtf8(name).at(0).isUpper()) 
             COMPILE_EXCEPTION(obj, tr("Method names cannot begin with an upper case letter"));
+        if (QDeclarativeEnginePrivate::get(engine)->globalClass->illegalNames().contains(name))
+            COMPILE_EXCEPTION(obj, tr("Illegal method name"));
         methodNames.insert(name);
     }
 
@@ -2424,7 +2450,7 @@ bool QDeclarativeCompiler::buildDynamicMeta(QDeclarativeParser::Object *obj, Dyn
     for (int ii = 0; ii < obj->dynamicSlots.count(); ++ii) {
         Object::DynamicSlot &s = obj->dynamicSlots[ii];
         QByteArray sig(s.name + '(');
-        QString funcScript(QLatin1String("(function("));
+        QString funcScript(QLatin1String("(function ") + s.name + QLatin1Char('('));
 
         for (int jj = 0; jj < s.parameterNames.count(); ++jj) {
             if (jj) { 
@@ -2740,6 +2766,7 @@ bool QDeclarativeCompiler::completeComponentBuild()
         bool isSharable = sharableTest.isSharable(expression);
         
         QDeclarativeRewrite::RewriteBinding rewriteBinding;
+        rewriteBinding.setName('$'+binding.property->name);
         expression = rewriteBinding(expression);
 
         quint32 length = expression.length();

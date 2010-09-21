@@ -1686,9 +1686,14 @@ void CppParser::parseInternal(ConversionData &cd, QSet<QString> &inclusions)
                 HashString ns = HashString(text);
                 yyTok = getToken();
                 if (yyTok == Tok_LeftBrace) {
+                    yyTok = getToken();
                     namespaceDepths.push(namespaces.count());
                     enterNamespace(&namespaces, ns);
-                    yyTok = getToken();
+
+                    functionContext = namespaces;
+                    functionContextUnresolved.clear();
+                    prospectiveContext.clear();
+                    pendingContext.clear();
                 } else if (yyTok == Tok_Equals) {
                     // e.g. namespace Is = OuterSpace::InnerSpace;
                     QList<HashString> fullName;
@@ -1761,7 +1766,7 @@ void CppParser::parseInternal(ConversionData &cd, QSet<QString> &inclusions)
             if (!tor)
                 goto case_default;
             if (!sourcetext.isEmpty())
-                yyMsg() << "//%% cannot be used with tr() / QT_TR_NOOP(). Ignoring\n";
+                yyMsg() << "//% cannot be used with tr() / QT_TR_NOOP(). Ignoring\n";
             utf8 = (yyTok == Tok_trUtf8);
             line = yyLineNo;
             yyTok = getToken();
@@ -1858,6 +1863,7 @@ void CppParser::parseInternal(ConversionData &cd, QSet<QString> &inclusions)
               gotctx:
                 recordMessage(line, context, text, comment, extracomment, msgid, extra, utf8, plural);
             }
+            sourcetext.clear(); // Will have warned about that already
             extracomment.clear();
             msgid.clear();
             extra.clear();
@@ -1867,7 +1873,7 @@ void CppParser::parseInternal(ConversionData &cd, QSet<QString> &inclusions)
             if (!tor)
                 goto case_default;
             if (!sourcetext.isEmpty())
-                yyMsg() << "//%% cannot be used with translate() / QT_TRANSLATE_NOOP(). Ignoring\n";
+                yyMsg() << "//% cannot be used with translate() / QT_TRANSLATE_NOOP(). Ignoring\n";
             utf8 = (yyTok == Tok_translateUtf8);
             line = yyLineNo;
             yyTok = getToken();
@@ -1913,6 +1919,7 @@ void CppParser::parseInternal(ConversionData &cd, QSet<QString> &inclusions)
                 }
                 recordMessage(line, context, text, comment, extracomment, msgid, extra, utf8, plural);
             }
+            sourcetext.clear(); // Will have warned about that already
             extracomment.clear();
             msgid.clear();
             extra.clear();
@@ -2079,9 +2086,13 @@ void CppParser::parseInternal(ConversionData &cd, QSet<QString> &inclusions)
         case Tok_Semicolon:
             prospectiveContext.clear();
             prefix.clear();
-            extracomment.clear();
-            msgid.clear();
-            extra.clear();
+            if (!sourcetext.isEmpty() || !extracomment.isEmpty() || !msgid.isEmpty() || !extra.isEmpty()) {
+                yyMsg() << "Discarding unconsumed meta data\n";
+                sourcetext.clear();
+                extracomment.clear();
+                msgid.clear();
+                extra.clear();
+            }
             yyTokColonSeen = false;
             yyTok = getToken();
             break;

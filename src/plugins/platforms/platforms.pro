@@ -10,4 +10,4 @@ qpa:x11 {
     SUBDIRS += testlite
 }
 
-CONFIG(android): SUBDIRS += android android_sw
+qpa:CONFIG(android): SUBDIRS += android # android_sw

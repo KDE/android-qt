@@ -64,6 +64,10 @@ Item {
             container.labelChanged(textInput.text)
             container.focus = true
         }
+        Keys.onEnterPressed: {
+            container.labelChanged(textInput.text)
+            container.focus = true
+        }
         Keys.onEscapePressed: {
             textInput.text = container.label
             container.focus = true
@@ -77,6 +81,6 @@ Item {
 
     MouseArea {
         anchors { fill: parent; leftMargin: -20; topMargin: -20; rightMargin: -20; bottomMargin: -20 }
-        onClicked: { textInput.forceFocus(); textInput.openSoftwareInputPanel(); }
+        onClicked: { textInput.forceActiveFocus(); textInput.openSoftwareInputPanel(); }
     }
 }

@@ -40,9 +40,8 @@
 ****************************************************************************/
 
 #include "qopenkodeintegration.h"
-#include "qopenkodewindowsurface.h"
 #include "qopenkodewindow.h"
-#include "qopenkodeglintegration.h"
+#include "qopenkodeeventloopintegration.h"
 
 #include <QtOpenGL/private/qpixmapdata_gl_p.h>
 #include <QtOpenGL/private/qwindowsurface_gl_p.h>
@@ -57,6 +56,8 @@
 #include <KD/NV_display.h>
 #include <KD/NV_initialize.h>
 
+#include <EGL/egl.h>
+
 #include "GLES2/gl2ext.h"
 
 #include <nvgl2demo_common.h>
@@ -65,6 +66,7 @@
 QT_BEGIN_NAMESPACE
 
 QOpenKODEScreen::QOpenKODEScreen()
+    : mIsFullScreen(false)
 {
     KDDesktopNV *kdDesktop = KD_NULL;
     KDDisplayNV *kdDisplay = KD_NULL;
@@ -85,6 +87,19 @@ QOpenKODEScreen::QOpenKODEScreen()
         return;
     }
 
+    KDboolean enabled = KD_TRUE;
+    kdSetDisplayPropertybvNV(kdDisplay,
+                             KD_DISPLAYPROPERTY_ENABLED_NV,
+                             &enabled);
+    KDboolean power = KD_DISPLAY_POWER_ON;
+    kdSetDisplayPropertyivNV(kdDisplay,
+                             KD_DISPLAYPROPERTY_POWER_NV,
+                             &power);
+
+    kdSetDisplayPropertycvNV(kdDisplay,
+                             KD_DISPLAYPROPERTY_DESKTOP_NAME_NV,
+                             KD_DEFAULT_DESKTOP_NV);
+
     KDDisplayModeNV mode;
     if (kdGetDisplayModeNV(kdDisplay, &mode)) {
         qErrnoWarning(kdGetError(), "Could not get display mode");
@@ -104,12 +119,24 @@ QOpenKODEScreen::QOpenKODEScreen()
     kdReleaseDisplayNV(kdDisplay);
     kdReleaseDesktopNV(kdDesktop);
 
-    const int defaultDpi = 72;
-    mGeometry = QRect(0, 0, mode.width, mode.height);
-    mPhysicalSize = QSize(mode.width * 25.4 / defaultDpi, mode.height * 25.4 / defaultDpi);
+    mEglDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+    if (mEglDisplay == EGL_NO_DISPLAY) {
+        qErrnoWarning("EGL failed to obtain display");
+    }
 
+    /* Initialize EGL display */
+    EGLBoolean rvbool = eglInitialize(mEglDisplay, 0, 0);
+    if (!rvbool) {
+        qErrnoWarning("EGL failed to initialize display");
+    }
+
+//    cursor = new QOpenKODECursor(this);
+
+    mGeometry = QRect(0, 0, mode.width, mode.height);
     mDepth = 24;
     mFormat = QImage::Format_RGB32;
+
+
 }
 
 static GLuint loadShaders(const QString &vertexShader, const QString &fragmentShader)
@@ -159,45 +186,20 @@ static GLuint loadShaders(const QString &vertexShader, const QString &fragmentSh
     return prog;
 }
 
-class QOpenKODEEventLoopHelper : public QThread
-{
-public:
-    QOpenKODEEventLoopHelper(QSemaphore *m)
-            : eventMutex(m)
-    {
-        m->acquire();
-    }
-
-protected:
-    void run()
-    {
-        if (kdInitializeNV() == KD_ENOTINITIALIZED) {
-            qFatal("Did not manage to initialize openkode");
-        }
-        eventMutex->release();
-
-        const KDEvent *event;
-        while ((event = kdWaitEvent(-1)) != 0) {
-            qDebug() << "!!! received event!";
-            kdDefaultEvent(event);
-        }
-    }
-
-private:
-    QSemaphore *eventMutex;
-};
-
 QOpenKODEIntegration::QOpenKODEIntegration()
-    : eventMutex(1)
+    : mEventLoopIntegration(0)
 {
-    QOpenKODEEventLoopHelper *loop = new QOpenKODEEventLoopHelper(&eventMutex);
-    loop->start();
-    eventMutex.acquire(); // block until initialization done
-
+    if (kdInitializeNV() == KD_ENOTINITIALIZED) {
+        qFatal("Did not manage to initialize openkode");
+    }
     QOpenKODEScreen *mPrimaryScreen = new QOpenKODEScreen();
 
     mScreens.append(mPrimaryScreen);
 
+}
+QOpenKODEIntegration::~QOpenKODEIntegration()
+{
+    delete mEventLoopIntegration;
 }
 
 QPixmapData *QOpenKODEIntegration::createPixmapData(QPixmapData::PixelType type) const
@@ -212,16 +214,38 @@ QPlatformWindow *QOpenKODEIntegration::createPlatformWindow(QWidget *tlw, WId ) 
 
 QWindowSurface *QOpenKODEIntegration::createWindowSurface(QWidget *widget, WId wid) const
 {
-    return new QOpenKODEWindowSurface(widget, wid);
+    QWindowSurface *returnSurface = 0;
+    switch (widget->platformWindowFormat().windowApi()) {
+
+    case QPlatformWindowFormat::Raster:
+    case QPlatformWindowFormat::OpenGL:
+        returnSurface = new QGLWindowSurface(widget);
+        break;
+
+    case QPlatformWindowFormat::OpenVG:
+//        returnSurface = new QVGWindowSurface(widget);
+        break;
+
+    default:
+        returnSurface = new QGLWindowSurface(widget);
+        break;
+    }
+
+    return returnSurface;
 }
 
 bool QOpenKODEIntegration::hasOpenGL() const
 {
     return true;
 }
-QPlatformGLContext *QOpenKODEIntegration::createGLContext()
+
+QPlatformEventLoopIntegration *QOpenKODEIntegration::createEventLoopIntegration() const
 {
-    return new QEGLPlatformContext;
+    if (!mEventLoopIntegration) {
+        QOpenKODEIntegration *that = const_cast<QOpenKODEIntegration *>(this);
+        that->mEventLoopIntegration = new QOpenKODEEventLoopIntegration;
+    }
+    return mEventLoopIntegration;
 }
 
 GLuint QOpenKODEIntegration::blitterProgram()

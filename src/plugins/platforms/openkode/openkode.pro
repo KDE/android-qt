@@ -7,14 +7,17 @@ QTDIR_build:DESTDIR = $$QT_BUILD_TREE/plugins/platforms
 
 SOURCES =   main.cpp \
             qopenkodeintegration.cpp \
-            qopenkodewindowsurface.cpp \
             qopenkodewindow.cpp \
-            qopenkodeglintegration.cpp
+            ../eglconvenience/qeglplatformcontext.cpp \
+            ../eglconvenience/qeglconvenience.cpp \
+            qopenkodeeventloopintegration.cpp
 
 HEADERS =   qopenkodeintegration.h \
-            qopenkodewindowsurface.h \
             qopenkodewindow.h \
-            qopenkodeglintegration.h
+            ../eglconvenience/qeglplatformcontext.h \
+            ../eglconvenience/qeglconvenience.h \
+            qopenkodeeventloopintegration.h \
+            openkodekeytranslator.h
 
 RESOURCES = resources.qrc
 

@@ -57,8 +57,8 @@ symbian: {
         bearerPluginLocation = $${EPOCROOT}epoc32/release/$(PLATFORM)/$(TARGET)
         bearerStubZ = $${EPOCROOT}$${HW_ZDIR}$${QT_PLUGINS_BASE_DIR}/bearer/qsymbianbearer$${QT_LIBINFIX}.qtplugin
         BLD_INF_RULES.prj_exports += \
-            "qsymbianbearer.qtplugin $$bearerStubZ" \
-            "qsymbianbearer.qtplugin $${EPOCROOT}epoc32/winscw/c$${QT_PLUGINS_BASE_DIR}/bearer/qsymbianbearer$${QT_LIBINFIX}.qtplugin"
+            "qsymbianbearer.qtplugin /$${HW_ZDIR}$${QT_PLUGINS_BASE_DIR}/bearer/qsymbianbearer$${QT_LIBINFIX}.qtplugin" \
+            "qsymbianbearer.qtplugin /epoc32/winscw/c$${QT_PLUGINS_BASE_DIR}/bearer/qsymbianbearer$${QT_LIBINFIX}.qtplugin"
     } else {
         pluginLocations = $$QT_BUILD_TREE/plugins/s60
         bearerPluginLocation = $$QT_BUILD_TREE/plugins/bearer
@@ -175,13 +175,6 @@ symbian: {
         particlesImport.path = c:$$QT_IMPORTS_BASE_DIR/Qt/labs/particles
 
         DEPLOYMENT += folderlistmodelImport gesturesImport particlesImport
-
-        contains(QT_CONFIG, webkit): {
-            webkitImport.sources = $$QT_BUILD_TREE/imports/QtWebKit/qmlwebkitplugin$${QT_LIBINFIX}.dll
-            webkitImport.sources += $$QT_SOURCE_TREE/src/3rdparty/webkit/WebKit/qt/declarative/qmldir
-            webkitImport.path = c:$$QT_IMPORTS_BASE_DIR/QtWebKit
-            DEPLOYMENT += webkitImport
-        }
     }
 
     graphicssystems_plugins.path = c:$$QT_PLUGINS_BASE_DIR/graphicssystems

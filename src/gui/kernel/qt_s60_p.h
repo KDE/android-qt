@@ -143,6 +143,14 @@ public:
     int menuBeingConstructed : 1;
     int memoryLimitForHwRendering;
     QApplication::QS60MainApplicationFactory s60ApplicationFactory; // typedef'ed pointer type
+
+    enum ScanCodeState {
+        Unpressed,
+        KeyDown,
+        KeyDownAndKey
+    };
+    QHash<TInt, ScanCodeState> scanCodeStates;
+
     static inline void updateScreenSize();
     inline RWsSession& wsSession();
     static inline RWindowGroup& windowGroup();
@@ -155,7 +163,10 @@ public:
     static inline CAknTitlePane* titlePane();
     static inline CAknContextPane* contextPane();
     static inline CEikButtonGroupContainer* buttonGroupContainer();
+    static void setStatusPaneAndButtonGroupVisibility(bool statusPaneVisible, bool buttonGroupVisible);
+#endif
 
+#ifdef Q_OS_SYMBIAN
     TTrapHandler *s60InstalledTrapHandler;
 #endif
 };
@@ -208,7 +219,7 @@ protected: // from MAknFadedComponent
     TInt CountFadedComponents() {return 1;}
     CCoeControl* FadedComponent(TInt /*aIndex*/) {return this;}
 #else
-    #warning No fallback implementation for QSymbianControl::FadeBehindPopup
+    // #warning No fallback implementation for QSymbianControl::FadeBehindPopup
     void FadeBehindPopup(bool /*fade*/){ }
 #endif
 
@@ -221,7 +232,9 @@ protected:
 private:
     void HandlePointerEvent(const TPointerEvent& aPointerEvent);
     TKeyResponse OfferKeyEvent(const TKeyEvent& aKeyEvent,TEventCode aType);
+    TKeyResponse sendSymbianKeyEvent(const TKeyEvent &keyEvent, QEvent::Type type);
     TKeyResponse sendKeyEvent(QWidget *widget, QKeyEvent *keyEvent);
+    TKeyResponse handleVirtualMouse(const TKeyEvent& keyEvent,TEventCode type);
     bool sendMouseEvent(QWidget *widget, QMouseEvent *mEvent);
     void sendMouseEvent(
             QWidget *receiver,
@@ -234,6 +247,8 @@ private:
 #ifdef QT_SYMBIAN_SUPPORTS_ADVANCED_POINTER
     void translateAdvancedPointerEvent(const TAdvancedPointerEvent *event);
 #endif
+
+public:
     void handleClientAreaChange();
 
 private:
@@ -277,9 +292,9 @@ inline QS60Data::QS60Data()
   avkonComponentsSupportTransparency(0),
   menuBeingConstructed(0),
   memoryLimitForHwRendering(0),
-  s60ApplicationFactory(0),
-#ifdef Q_WS_S60
-  s60InstalledTrapHandler(0)
+  s60ApplicationFactory(0)
+#ifdef Q_OS_SYMBIAN
+  ,s60InstalledTrapHandler(0)
 #endif
 {
 }

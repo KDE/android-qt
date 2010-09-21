@@ -180,6 +180,8 @@ void GraphicsWebView::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 
     When this item has keyboard focus, all keyboard input will be sent directly to the
     web page within.
+
+    \sa {declarative/modelviews/webview}{WebView example}, {demos/declarative/webbrowser}{Web Browser demo}
 */
 
 /*!
@@ -610,7 +612,7 @@ QAction* QDeclarativeWebView::stopAction() const
 #endif // QT_NO_ACTION
 
 /*!
-    \qmlproperty real WebView::title
+    \qmlproperty string WebView::title
     This property holds the title of the web page currently viewed
 
     By default, this property contains an empty string.

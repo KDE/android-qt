@@ -369,25 +369,14 @@ void MenuManager::launchQmlExample(const QString &name)
         dir = QDir(QLibraryInfo::location(QLibraryInfo::DemosPath));
     else
         dir = QDir(QLibraryInfo::location(QLibraryInfo::ExamplesPath));
-    QFile file(dir.path() + "/" + dirName + "/" + fileName + "/" + fileName.split('/').last() + ".qml");
+    QFile file(dir.path() + "/" + dirName + "/" + fileName + "/" + "main.qml");
     if(!file.exists()){
-        //try main.qml as well
-        file.setFileName(dir.path() + "/" + dirName + "/" + fileName + "/" + "main.qml");
+        //try dirname.qml as well
+        file.setFileName(dir.path() + "/" + dirName + "/" + fileName + "/" + fileName.split('/').last() + ".qml");
         if(!file.exists()){
             exampleError(QProcess::UnknownError);
             return;
         }
-    }
-    if(!Colors::noBlur){
-        QImage qmlBgImage(this->window->rect().size(), QImage::Format_ARGB32_Premultiplied);
-        QPainter painter(&qmlBgImage);
-        if(Colors::showFps)
-            this->window->fpsLabel->setOpacity(0);
-        this->window->render(&painter);
-        if(Colors::showFps)
-            this->window->fpsLabel->setOpacity(1.0);
-        Qt::ImageConversionFlags convFlags = Qt::AvoidDither | Qt::NoOpaqueDetection;
-        this->declarativeEngine->rootContext()->setContextProperty("bgAppPixmap", QVariant(QPixmap::fromImage(qmlBgImage, convFlags)));
     }
 
     qmlRoot->setProperty("qmlFile", QVariant(""));//unload component
@@ -439,16 +428,7 @@ void MenuManager::init(MainWindow *window)
     }
 
     // Create QML Loader
-    qmlRegisterType<QGraphicsBlurEffect>("Effects", 1, 0, "Blur");
-    qmlRegisterType<QGraphicsDropShadowEffect>("Effects", 1, 0, "DropShadow");
     declarativeEngine = new QDeclarativeEngine(this);
-
-    // Note that we paint the background into a static image for a theorized performance improvement when blurring
-    // It has not yet been determined what, if any, speed up this gives (but is left in 'cause the QML expects it now)
-    declarativeEngine->rootContext()->setContextProperty("useBlur", !Colors::noBlur);
-    QImage qmlBgImage(this->window->rect().size(), QImage::Format_ARGB32_Premultiplied);
-    qmlBgImage.fill(0);
-    this->declarativeEngine->rootContext()->setContextProperty("bgAppPixmap", QVariant(QPixmap::fromImage(qmlBgImage)));
 
     QDeclarativeComponent component(declarativeEngine, QUrl("qrc:qml/qmlShell.qml"), this);
     qmlRoot = 0;

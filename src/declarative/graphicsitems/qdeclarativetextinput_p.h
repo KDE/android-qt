@@ -48,6 +48,8 @@
 #include <QGraphicsSceneMouseEvent>
 #include <QIntValidator>
 
+#ifndef QT_NO_LINEEDIT
+
 QT_BEGIN_HEADER
 
 QT_BEGIN_NAMESPACE
@@ -56,7 +58,7 @@ QT_MODULE(Declarative)
 
 class QDeclarativeTextInputPrivate;
 class QValidator;
-class Q_DECLARATIVE_EXPORT QDeclarativeTextInput : public QDeclarativePaintedItem
+class Q_AUTOTEST_EXPORT QDeclarativeTextInput : public QDeclarativePaintedItem
 {
     Q_OBJECT
     Q_ENUMS(HAlignment)
@@ -87,7 +89,7 @@ class Q_DECLARATIVE_EXPORT QDeclarativeTextInput : public QDeclarativePaintedIte
 
     Q_PROPERTY(bool acceptableInput READ hasAcceptableInput NOTIFY acceptableInputChanged)
     Q_PROPERTY(EchoMode echoMode READ echoMode WRITE setEchoMode NOTIFY echoModeChanged)
-    Q_PROPERTY(bool focusOnPress READ focusOnPress WRITE setFocusOnPress NOTIFY focusOnPressChanged)
+    Q_PROPERTY(bool activeFocusOnPress READ focusOnPress WRITE setFocusOnPress NOTIFY activeFocusOnPressChanged)
     Q_PROPERTY(QString passwordCharacter READ passwordCharacter WRITE setPasswordCharacter NOTIFY passwordCharacterChanged)
     Q_PROPERTY(QString displayText READ displayText NOTIFY displayTextChanged)
     Q_PROPERTY(bool autoScroll READ autoScroll WRITE setAutoScroll NOTIFY autoScrollChanged)
@@ -187,6 +189,8 @@ public:
     void drawContents(QPainter *p,const QRect &r);
     QVariant inputMethodQuery(Qt::InputMethodQuery property) const;
 
+    QRectF boundingRect() const;
+
 Q_SIGNALS:
     void textChanged();
     void cursorPositionChanged();
@@ -208,8 +212,8 @@ Q_SIGNALS:
     void inputMaskChanged(const QString &inputMask);
     void echoModeChanged(EchoMode echoMode);
     void passwordCharacterChanged();
-    void displayTextChanged(const QString &text);
-    void focusOnPressChanged(bool focusOnPress);
+    void displayTextChanged();
+    void activeFocusOnPressChanged(bool activeFocusOnPress);
     void autoScrollChanged(bool autoScroll);
     void selectByMouseChanged(bool selectByMouse);
 
@@ -230,6 +234,11 @@ public Q_SLOTS:
     void selectAll();
     void selectWord();
     void select(int start, int end);
+#ifndef QT_NO_CLIPBOARD
+    void cut();
+    void copy();
+    void paste();
+#endif
 
 private Q_SLOTS:
     void updateSize(bool needsRedraw = true);
@@ -255,5 +264,7 @@ QML_DECLARE_TYPE(QRegExpValidator)
 #endif
 
 QT_END_HEADER
+
+#endif // QT_NO_LINEEDIT
 
 #endif // QDECLARATIVETEXTINPUT_H

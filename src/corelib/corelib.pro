@@ -48,7 +48,7 @@ symbian: {
     pu_header = "; Partial upgrade package for testing QtCore changes without reinstalling everything" \
                 "$${LITERAL_HASH}{\"Qt corelib\"}, (0x2001E61C), $${QT_MAJOR_VERSION},$${QT_MINOR_VERSION},$${QT_PATCH_VERSION}, TYPE=PU"
     partial_upgrade.pkg_prerules = pu_header vendorinfo
-    partial_upgrade.sources = $$QMAKE_LIBDIR_QT/QtCore.dll
+    partial_upgrade.sources = $$QMAKE_LIBDIR_QT/QtCore$${QT_LIBINFIX}.dll
     partial_upgrade.path = c:/sys/bin
     DEPLOYMENT = partial_upgrade $$DEPLOYMENT
 }
@@ -65,6 +65,21 @@ sse {
 }
 sse2 {
     DEFINES += QT_HAVE_SSE2
+}
+sse3 {
+    DEFINES += QT_HAVE_SSE3
+}
+ssse3 {
+    DEFINES += QT_HAVE_SSSE3
+}
+sse4_1 {
+    DEFINES += QT_HAVE_SSE4_1
+}
+sse4_2 {
+    DEFINES += QT_HAVE_SSE4_2
+}
+avx {
+    DEFINES += QT_HAVE_AVX
 }
 iwmmxt {
     DEFINES += QT_HAVE_IWMMXT

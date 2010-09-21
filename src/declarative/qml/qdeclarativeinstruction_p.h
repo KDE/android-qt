@@ -58,7 +58,7 @@
 QT_BEGIN_NAMESPACE
 
 class QDeclarativeCompiledData;
-class Q_DECLARATIVE_EXPORT QDeclarativeInstruction
+class Q_AUTOTEST_EXPORT QDeclarativeInstruction
 {
 public:
     enum Type { 
@@ -292,7 +292,8 @@ public:
     struct StoreSignalInstruction {
         int signalIndex;
         int value;
-        int context;
+        short context;
+        int name;
     };
     struct AssignSignalObjectInstruction {
         int signal;

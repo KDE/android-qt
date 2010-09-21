@@ -58,7 +58,7 @@ QT_MODULE(Declarative)
 
 
 class QDeclarativeTextEditPrivate;
-class Q_DECLARATIVE_EXPORT QDeclarativeTextEdit : public QDeclarativePaintedItem
+class Q_AUTOTEST_EXPORT QDeclarativeTextEdit : public QDeclarativePaintedItem
 {
     Q_OBJECT
     Q_ENUMS(VAlignment)
@@ -85,7 +85,7 @@ class Q_DECLARATIVE_EXPORT QDeclarativeTextEdit : public QDeclarativePaintedItem
     Q_PROPERTY(int selectionStart READ selectionStart NOTIFY selectionStartChanged)
     Q_PROPERTY(int selectionEnd READ selectionEnd NOTIFY selectionEndChanged)
     Q_PROPERTY(QString selectedText READ selectedText NOTIFY selectionChanged)
-    Q_PROPERTY(bool focusOnPress READ focusOnPress WRITE setFocusOnPress NOTIFY focusOnPressChanged)
+    Q_PROPERTY(bool activeFocusOnPress READ focusOnPress WRITE setFocusOnPress NOTIFY activeFocusOnPressChanged)
     Q_PROPERTY(bool persistentSelection READ persistentSelection WRITE setPersistentSelection NOTIFY persistentSelectionChanged)
     Q_PROPERTY(qreal textMargin READ textMargin WRITE setTextMargin NOTIFY textMarginChanged)
     Q_PROPERTY(Qt::InputMethodHints inputMethodHints READ inputMethodHints WRITE setInputMethodHints)
@@ -195,6 +195,8 @@ public:
     Q_INVOKABLE int positionAt(int x, int y) const;
     Q_INVOKABLE void moveCursorSelection(int pos);
 
+    QRectF boundingRect() const;
+
 Q_SIGNALS:
     void textChanged(const QString &);
     void paintedSizeChanged();
@@ -214,7 +216,7 @@ Q_SIGNALS:
     void readOnlyChanged(bool isReadOnly);
     void cursorVisibleChanged(bool isCursorVisible);
     void cursorDelegateChanged();
-    void focusOnPressChanged(bool focusIsPressed);
+    void activeFocusOnPressChanged(bool activeFocusOnPressed);
     void persistentSelectionChanged(bool isPersistentSelection);
     void textMarginChanged(qreal textMargin);
     void selectByMouseChanged(bool selectByMouse);

@@ -19,8 +19,8 @@ bool QAndroidPlatformGLContext::create(QPaintDevice* device, QGLFormat& /*format
         return false;
     }
     m_surfaceId=widget->winId();
-    qDebug()<<"Surface ID="<<m_surfaceId;
-    return QtAndroid::createSurface(true, m_surfaceId, widget->geometry().left(), widget->geometry().top(),
+    qDebug()<<"Window ID="<<m_surfaceId;
+    return QtAndroid::createWindow(true, widget, m_surfaceId, widget->geometry().left(), widget->geometry().top(),
                                             widget->geometry().right(), widget->geometry().bottom());
 }
 
@@ -42,4 +42,9 @@ void QAndroidPlatformGLContext::swapBuffers()
 void* QAndroidPlatformGLContext::getProcAddress(const QString& procName)
 {
     return QtAndroid::getProcAddress(m_surfaceId, procName);
+}
+
+QPlatformWindowFormat QAndroidPlatformGLContext::platformWindowFormat() const
+{
+    return m_platformWindowFormat;
 }

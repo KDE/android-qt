@@ -3,6 +3,7 @@
 
 #include <QPlatformGLContext>
 
+class QGLFormat;
 class QAndroidPlatformGLContext : public QPlatformGLContext
 {
 public:
@@ -12,8 +13,10 @@ public:
     virtual void doneCurrent();
     virtual void swapBuffers();
     virtual void* getProcAddress(const QString& procName);
+    virtual QPlatformWindowFormat platformWindowFormat() const;
 private:
     WId     m_surfaceId;
+    QPlatformWindowFormat m_platformWindowFormat;
 };
 
 #endif // QANDROIDCONTEXT_H

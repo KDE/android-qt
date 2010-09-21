@@ -62,7 +62,6 @@ int QAndroidPlatformIntegration::mDefaultGeometryHeight=455;
 int QAndroidPlatformIntegration::mDefaultPhysicalSizeWidth=50;
 int QAndroidPlatformIntegration::mDefaultPhysicalSizeHeight=71;
 
-
 QAndroidPlatformIntegration::QAndroidPlatformIntegration(bool useGL)
 {
     mPrimaryScreen = new QAndroidPlatformScreen();
@@ -88,27 +87,29 @@ void QAndroidPlatformIntegration::setDefaultDesktopSize(int gw, int gh)
 
 QPixmapData *QAndroidPlatformIntegration::createPixmapData(QPixmapData::PixelType type) const
 {
-    qDebug()<<"createPixmapData";
+    QPixmapData * pq;
 #ifndef QT_NO_OPENGL
     if (m_useGL)
-        return new QGLPixmapData(type);
+        pq = new QGLPixmapData(type);
 #endif
-     return new QRasterPixmapData(type);
+     pq = new QRasterPixmapData(type);
+     return pq;
 }
 
 QWindowSurface *QAndroidPlatformIntegration::createWindowSurface(QWidget *widget, WId winId) const
 {
-    qDebug()<<"QAndroidPlatformIntegration::createWindowSurface"<<widget<<widget->winId()<<winId;
+    qDebug()<<"QAndroidPlatformIntegration::createWindowSurface"<<widget;
 #ifndef QT_NO_OPENGL
     if (m_useGL)
         return new QAndroidGLWindowSurface(widget);
 #endif
-    return new QAndroidWindowSurface(widget);
+    return new QAndroidWindowSurface(widget,winId);
 }
 
 QPlatformWindow *QAndroidPlatformIntegration::createPlatformWindow(QWidget *widget, WId winId) const
 {
-    qDebug()<<"QAndroidPlatformIntegration::createPlatformWindow"<<widget<<widget->winId()<<winId;
+    Q_UNUSED(winId);
+    qDebug()<<"QAndroidPlatformIntegration::createPlatformWindow"<<widget;
     return new QAndroidPlatformWindow(widget);
 }
 

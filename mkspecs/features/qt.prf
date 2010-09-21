@@ -185,11 +185,10 @@ for(QTLIB, $$list($$lower($$unique(QT)))) {
         }
         else:contains(TEMPLATE, ".*lib"):!CONFIG(plugin):!CONFIG(building-libs){
             QMAKE_LFLAGS += -Wl,--whole-archive
-            CONFIG(android_sw): QMAKE_LFLAGS += $$QMAKE_LIBDIR_QT/libQtAndroid_sw.a
-                         else : QMAKE_LFLAGS += $$QMAKE_LIBDIR_QT/libQtAndroid.a
+            QMAKE_LFLAGS += $$QMAKE_LIBDIR_QT/libQtAndroidMain.a
             QMAKE_LFLAGS += -Wl,--no-whole-archive
         }
-        CONFIG(jnigraphics): QMAKE_LIBS += -ljnigraphics
+
    }
    else:message("Unknown QT: $$QTLIB"):qlib =
    !isEmpty(qlib) {

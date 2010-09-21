@@ -1635,7 +1635,7 @@ bool qSharedBuild()
   \macro Q_WS_S60
   \relates <QtGlobal>
 
-  Defined on S60.
+  Defined on S60 with the Avkon UI framework.
 
   \sa Q_WS_MAC, Q_WS_WIN, Q_WS_X11, Q_WS_QWS
  */
@@ -1826,7 +1826,6 @@ const QSysInfo::WinVersion QSysInfo::WindowsVersion = QSysInfo::windowsVersion()
 #endif
 
 #ifdef Q_OS_SYMBIAN
-# ifdef Q_WS_S60
 static QSysInfo::S60Version cachedS60Version = QSysInfo::S60Version(-1);
 
 QSysInfo::S60Version QSysInfo::s60Version()
@@ -1898,17 +1897,6 @@ QSysInfo::SymbianVersion QSysInfo::symbianVersion()
         return SV_Unknown;
     }
 }
-#else
-QSysInfo::S60Version QSysInfo::s60Version()
-{
-    return SV_S60_None;
-}
-
-QSysInfo::SymbianVersion QSysInfo::symbianVersion()
-{
-    return SV_Unknown;
-}
-# endif // ifdef Q_WS_S60
 #endif // ifdef Q_OS_SYMBIAN
 
 /*!
@@ -2425,7 +2413,7 @@ void qDebug(const char *msg, ...)
     This syntax inserts a space between each item, and
     appends a newline at the end.
 
-    To supress the output at runtime, install your own message handler
+    To suppress the output at runtime, install your own message handler
     with qInstallMsgHandler().
 
     \sa qDebug(), qCritical(), qFatal(), qInstallMsgHandler(),
@@ -2461,7 +2449,7 @@ void qWarning(const char *msg, ...)
     A space is inserted between the items, and a newline is
     appended at the end.
 
-    To supress the output at runtime, install your own message handler
+    To suppress the output at runtime, install your own message handler
     with qInstallMsgHandler().
 
     \sa qDebug(), qWarning(), qFatal(), qInstallMsgHandler(),
@@ -2526,7 +2514,7 @@ void qErrnoWarning(int code, const char *msg, ...)
     Example:
     \snippet doc/src/snippets/code/src_corelib_global_qglobal.cpp 30
 
-    To supress the output at runtime, install your own message handler
+    To suppress the output at runtime, install your own message handler
     with qInstallMsgHandler().
 
     \sa qDebug(), qCritical(), qWarning(), qInstallMsgHandler(),
@@ -2655,55 +2643,6 @@ void qsrand(uint seed)
     // this is also valid for QT_NO_THREAD
     srand(seed);
 #endif
-}
-
-/*! \internal
-    \relates <QtGlobal>
-    \since 4.6
-
-    Seed the PRNG, but only if it has not already been seeded.
-
-    The default seed is a combination of current time, a stack address and a
-    serial counter (since thread stack addresses are re-used).
-*/
-void qsrand()
-{
-#if (defined(Q_OS_UNIX) || defined(Q_OS_WIN)) && !defined(QT_NO_THREAD)
-    SeedStorage *seedStorage = randTLS();
-    if (seedStorage) {
-        SeedStorageType *pseed = seedStorage->localData();
-        if (pseed) {
-            // already seeded
-            return;
-        }
-        seedStorage->setLocalData(pseed = new SeedStorageType);
-        // start beyond 1 to avoid the sequence reset
-        static QBasicAtomicInt serial = Q_BASIC_ATOMIC_INITIALIZER(2);
-        *pseed = QDateTime::currentDateTime().toTime_t()
-                 + quintptr(&pseed)
-                 + serial.fetchAndAddRelaxed(1);
-#if defined(Q_OS_WIN) || defined(Q_OS_SYMBIAN)
-        // for Windows and Symbian the srand function must still be called.
-        srand(*pseed);
-#endif
-    }
-
-//QT_NO_THREAD implementations
-#else
-    static unsigned int seed = 0;
-
-    if (seed)
-        return;
-
-#if defined(Q_OS_SYMBIAN)
-    seed = Math::Random();
-#elif defined(Q_OS_WIN)
-    seed = GetTickCount();
-#else
-    seed = quintptr(&seed) + QDateTime::currentDateTime().toTime_t();
-#endif
-    srand(seed);
-#endif // defined(Q_OS_UNIX) || defined(Q_OS_WIN)) && !defined(QT_NO_THREAD)
 }
 
 /*!

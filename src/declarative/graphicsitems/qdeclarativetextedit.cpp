@@ -99,7 +99,7 @@ TextEdit {
     You can translate between cursor positions (characters from the start of the document) and pixel
     points using positionAt() and positionToRectangle().
 
-    \sa Text, TextInput
+    \sa Text, TextInput, {declarative/text/textselection}{Text Selection example}
 */
 
 /*!
@@ -186,12 +186,6 @@ QString QDeclarativeTextEdit::text() const
 */
 
 /*!
-    \qmlproperty bool TextEdit::font.outline
-
-    Sets whether the font has an outline style.
-*/
-
-/*!
     \qmlproperty bool TextEdit::font.strikeout
 
     Sets whether the font has a strikeout style.
@@ -208,8 +202,9 @@ QString QDeclarativeTextEdit::text() const
 
     Sets the font size in pixels.
 
-    Using this function makes the font device dependent.
-    Use \l pointSize to set the size of the font in a device independent manner.
+    Using this function makes the font device dependent.  Use
+    \l{TextEdit::font.pointSize} to set the size of the font in a
+    device independent manner.
 */
 
 /*!
@@ -218,8 +213,7 @@ QString QDeclarativeTextEdit::text() const
     Sets the letter spacing for the font.
 
     Letter spacing changes the default spacing between individual letters in the font.
-    A value of 100 will keep the spacing unchanged; a value of 200 will enlarge the spacing after a character by
-    the width of the character itself.
+    A positive value increases the letter spacing by the corresponding pixels; a negative value decreases the spacing.
 */
 
 /*!
@@ -262,7 +256,6 @@ void QDeclarativeTextEdit::setText(const QString &text)
     Q_D(QDeclarativeTextEdit);
     if (QDeclarativeTextEdit::text() == text)
         return;
-    d->text = text;
     d->richText = d->format == RichText || (d->format == AutoText && Qt::mightBeRichText(text));
     if (d->richText) {
 #ifndef QT_NO_TEXTHTMLPARSER
@@ -630,7 +623,7 @@ void QDeclarativeTextEdit::moveCursorSelection(int pos)
     \qmlproperty bool TextEdit::cursorVisible
     If true the text edit shows a cursor.
 
-    This property is set and unset when the text edit gets focus, but it can also
+    This property is set and unset when the text edit gets active focus, but it can also
     be set directly (useful, for example, if a KeyProxy might forward keys to it).
 */
 bool QDeclarativeTextEdit::isCursorVisible() const
@@ -789,9 +782,9 @@ QString QDeclarativeTextEdit::selectedText() const
 }
 
 /*!
-    \qmlproperty bool TextEdit::focusOnPress
+    \qmlproperty bool TextEdit::activeFocusOnPress
 
-    Whether the TextEdit should gain focus on a mouse press. By default this is
+    Whether the TextEdit should gain active focus on a mouse press. By default this is
     set to true.
 */
 bool QDeclarativeTextEdit::focusOnPress() const
@@ -806,13 +799,13 @@ void QDeclarativeTextEdit::setFocusOnPress(bool on)
     if (d->focusOnPress == on)
         return;
     d->focusOnPress = on;
-    emit focusOnPressChanged(d->focusOnPress);
+    emit activeFocusOnPressChanged(d->focusOnPress);
 }
 
 /*!
     \qmlproperty bool TextEdit::persistentSelection
 
-    Whether the TextEdit should keep the selection visible when it loses focus to another
+    Whether the TextEdit should keep the selection visible when it loses active focus to another
     item in the scene. By default this is set to true;
 */
 bool QDeclarativeTextEdit::persistentSelection() const
@@ -1112,15 +1105,15 @@ void QDeclarativeTextEdit::mousePressEvent(QGraphicsSceneMouseEvent *event)
 {
     Q_D(QDeclarativeTextEdit);
     if (d->focusOnPress){
-        bool hadFocus = hasFocus();
-        forceFocus();
+        bool hadActiveFocus = hasActiveFocus();
+        forceActiveFocus();
         if (d->showInputPanelOnFocus) {
-            if (hasFocus() && hadFocus && !isReadOnly()) {
+            if (hasActiveFocus() && hadActiveFocus && !isReadOnly()) {
                 // re-open input panel on press if already focused
                 openSoftwareInputPanel();
             }
         } else { // show input panel on click
-            if (hasFocus() && !hadFocus) {
+            if (hasActiveFocus() && !hadActiveFocus) {
                 d->clickCausedFocus = true;
             }
         }
@@ -1231,8 +1224,13 @@ void QDeclarativeTextEdit::updateImgCache(const QRectF &rf)
         r = QRect(0,0,INT_MAX,INT_MAX);
     } else {
         r = rf.toRect();
-        if (r != QRect(0,0,INT_MAX,INT_MAX)) // Don't translate "everything"
+        if (r.height() > INT_MAX/2) {
+            // Take care of overflow when translating "everything"
+            r.setTop(r.y() + d->yoff);
+            r.setBottom(INT_MAX/2);
+        } else {
             r = r.translated(0,d->yoff);
+        }
     }
     dirtyCache(r);
     emit update();
@@ -1264,6 +1262,15 @@ void QDeclarativeTextEditPrivate::init()
     control = new QTextControl(q);
     control->setIgnoreUnusedNavigationEvents(true);
 
+    // QTextControl follows the default text color
+    // defined by the platform, declarative text
+    // should be black by default
+    QPalette pal = control->palette();
+    if (pal.color(QPalette::Text) != color) {
+        pal.setColor(QPalette::Text, color);
+        control->setPalette(pal);
+    }
+
     QObject::connect(control, SIGNAL(updateRequest(QRectF)), q, SLOT(updateImgCache(QRectF)));
 
     QObject::connect(control, SIGNAL(textChanged()), q, SLOT(q_textChanged()));
@@ -1283,8 +1290,11 @@ void QDeclarativeTextEditPrivate::init()
 
 void QDeclarativeTextEdit::q_textChanged()
 {
+    Q_D(QDeclarativeTextEdit);
+    d->text = text();
     updateSize();
-    emit textChanged(text());
+    updateMicroFocus();
+    emit textChanged(d->text);
 }
 
 void QDeclarativeTextEdit::moveCursorDelegate()
@@ -1325,7 +1335,25 @@ void QDeclarativeTextEdit::updateSelectionMarkers()
         d->lastSelectionEnd = d->control->textCursor().selectionEnd();
         emit selectionEndChanged();
     }
+    updateMicroFocus();
 }
+
+QRectF QDeclarativeTextEdit::boundingRect() const
+{
+    Q_D(const QDeclarativeTextEdit);
+    QRectF r = QDeclarativePaintedItem::boundingRect();
+    int cursorWidth = 1;
+    if(d->cursor)
+        cursorWidth = d->cursor->width();
+    if(!d->document->isEmpty())
+        cursorWidth += 3;// ### Need a better way of accounting for space between char and cursor
+
+    // Could include font max left/right bearings to either side of rectangle.
+
+    r.setRight(r.right() + cursorWidth);
+    return r.translated(0,d->yoff);
+}
+
 
 //### we should perhaps be a bit smarter here -- depending on what has changed, we shouldn't
 //    need to do all the calculations each time
@@ -1341,13 +1369,20 @@ void QDeclarativeTextEdit::updateSize()
             d->document->setTextWidth(width());
         dy -= (int)d->document->size().height();
 
+        int nyoff;
         if (heightValid()) {
             if (d->vAlign == AlignBottom)
-                d->yoff = dy;
+                nyoff = dy;
             else if (d->vAlign == AlignVCenter)
-                d->yoff = dy/2;
+                nyoff = dy/2;
+            else
+                nyoff = 0;
         } else {
-            d->yoff = 0;
+            nyoff = 0;
+        }
+        if (nyoff != d->yoff) {
+            prepareGeometryChange();
+            d->yoff = nyoff;
         }
         setBaselineOffset(fm.ascent() + d->yoff + d->textMargin);
 
@@ -1355,12 +1390,6 @@ void QDeclarativeTextEdit::updateSize()
         int newWidth = qCeil(d->document->idealWidth());
         if (!widthValid() && d->document->textWidth() != newWidth)
             d->document->setTextWidth(newWidth); // ### Text does not align if width is not set (QTextDoc bug)
-        int cursorWidth = 1;
-        if(d->cursor)
-            cursorWidth = d->cursor->width();
-        newWidth += cursorWidth;
-        if(!d->document->isEmpty())
-            newWidth += 3;// ### Need a better way of accounting for space between char and cursor
         // ### Setting the implicitWidth triggers another updateSize(), and unless there are bindings nothing has changed.
         setImplicitWidth(newWidth);
         qreal newHeight = d->document->isEmpty() ? fm.height() : (int)d->document->size().height();
@@ -1399,10 +1428,10 @@ void QDeclarativeTextEditPrivate::updateDefaultTextOption()
 
     By default the opening of input panels follows the platform style. On Symbian^1 and
     Symbian^3 -based devices the panels are opened by clicking TextEdit. On other platforms
-    the panels are automatically opened when TextEdit element gains focus. Input panels are
-    always closed if no editor owns focus.
+    the panels are automatically opened when TextEdit element gains active focus. Input panels are
+    always closed if no editor has active focus.
 
-    You can disable the automatic behavior by setting the property \c focusOnPress to false
+    You can disable the automatic behavior by setting the property \c activeFocusOnPress to false
     and use functions openSoftwareInputPanel() and closeSoftwareInputPanel() to implement
     the behavior you want.
 
@@ -1413,12 +1442,12 @@ void QDeclarativeTextEditPrivate::updateDefaultTextOption()
         TextEdit {
             id: textEdit
             text: "Hello world!"
-            focusOnPress: false
+            activeFocusOnPress: false
             MouseArea {
                 anchors.fill: parent
                 onClicked: {
-                    if (!textEdit.focus) {
-                        textEdit.focus = true;
+                    if (!textEdit.activeFocus) {
+                        textEdit.forceActiveFocus();
                         textEdit.openSoftwareInputPanel();
                     } else {
                         textEdit.focus = false;
@@ -1450,10 +1479,10 @@ void QDeclarativeTextEdit::openSoftwareInputPanel()
 
     By default the opening of input panels follows the platform style. On Symbian^1 and
     Symbian^3 -based devices the panels are opened by clicking TextEdit. On other platforms
-    the panels are automatically opened when TextEdit element gains focus. Input panels are
-    always closed if no editor owns focus.
+    the panels are automatically opened when TextEdit element gains active focus. Input panels are
+    always closed if no editor has active focus.
 
-    You can disable the automatic behavior by setting the property \c focusOnPress to false
+    You can disable the automatic behavior by setting the property \c activeFocusOnPress to false
     and use functions openSoftwareInputPanel() and closeSoftwareInputPanel() to implement
     the behavior you want.
 
@@ -1464,12 +1493,12 @@ void QDeclarativeTextEdit::openSoftwareInputPanel()
         TextEdit {
             id: textEdit
             text: "Hello world!"
-            focusOnPress: false
+            activeFocusOnPress: false
             MouseArea {
                 anchors.fill: parent
                 onClicked: {
-                    if (!textEdit.focus) {
-                        textEdit.focus = true;
+                    if (!textEdit.activeFocus) {
+                        textEdit.forceActiveFocus();
                         textEdit.openSoftwareInputPanel();
                     } else {
                         textEdit.focus = false;

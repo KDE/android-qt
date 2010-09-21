@@ -112,6 +112,7 @@ SUBDIRS=\
     qmdisubwindow \
     qmessagebox \
     qmetaobject \
+    qmimedata \
     qmouseevent_modal \
     qmovie \
     qnetworkaccessmanager_and_qprogressdialog \
@@ -219,4 +220,12 @@ win32:SUBDIRS -= qtextpiecetable
            qpathclipper \
            qstylesheetstyle \
            qtextpiecetable \
+
+symbian:SUBDIRS -= \
+    qhelpcontentmodel \
+    qhelpenginecore \
+    qhelpgenerator \
+    qhelpindexmodel \
+    qhelpprojectdata \
+    qsystemtrayicon \
 

@@ -937,7 +937,7 @@ void Element::recalcStyle(StyleChange change)
                 newStyle->setChildrenAffectedByDirectAdjacentRules();
         }
 
-        if (ch != NoChange || pseudoStyleCacheIsInvalid(currentStyle.get(), newStyle.get())) {
+        if (ch != NoChange || pseudoStyleCacheIsInvalid(currentStyle.get(), newStyle.get()) || change == Force && renderer() && renderer()->requiresForcedStyleRecalcPropagation()) {
             setRenderStyle(newStyle);
         } else if (needsStyleRecalc() && (styleChangeType() != SyntheticStyleChange) && (document()->usesSiblingRules() || document()->usesDescendantRules())) {
             // Although no change occurred, we use the new style so that the cousin style sharing code won't get
@@ -1311,8 +1311,12 @@ void Element::focus(bool restorePreviousSelection)
             return;
     }
 
-    if (Page* page = doc->page())
+    RefPtr<Node> protect;
+    if (Page* page = doc->page()) {
+        // Focus and change event handlers can cause us to lose our last ref.
+        protect = this;
         page->focusController()->setFocusedNode(this, doc->frame());
+    }
 
     // Setting the focused node above might have invalidated the layout due to scripts.
     doc->updateLayoutIgnorePendingStylesheets();
@@ -1429,9 +1433,15 @@ void Element::normalizeAttributes()
     NamedNodeMap* attrs = attributes(true);
     if (!attrs)
         return;
-    unsigned numAttrs = attrs->length();
-    for (unsigned i = 0; i < numAttrs; i++) {
-        if (Attr* attr = attrs->attributeItem(i)->attr())
+
+    if (attrs->isEmpty())
+        return;
+
+    Vector<RefPtr<Attribute> > attributeVector;
+    attrs->copyAttributesToVector(attributeVector);
+    size_t numAttrs = attributeVector.size();
+    for (size_t i = 0; i < numAttrs; ++i) {
+        if (Attr* attr = attributeVector[i]->attr())
             attr->normalize();
     }
 }
@@ -1528,5 +1538,16 @@ const QualifiedName& Element::rareIDAttributeName() const
 {
     return rareData()->m_idAttributeName;
 }
+
+#if ENABLE(SVG)
+bool Element::childShouldCreateRenderer(Node* child) const
+{
+    // Only create renderers for SVG elements whose parents are SVG elements, or for proper <svg xmlns="svgNS"> subdocuments.
+    if (child->isSVGElement())
+        return child->hasTagName(SVGNames::svgTag) || isSVGElement();
+
+    return Node::childShouldCreateRenderer(child);
+}
+#endif
 
 } // namespace WebCore

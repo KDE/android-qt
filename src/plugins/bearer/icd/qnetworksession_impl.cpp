@@ -235,7 +235,7 @@ void QNetworkSessionPrivateImpl::updateIdentifier(const QString &newId)
 }
 
 
-quint64 QNetworkSessionPrivateImpl::getStatistics(bool sent) const
+QNetworkSessionPrivateImpl::Statistics QNetworkSessionPrivateImpl::getStatistics() const
 {
     /* This could be also implemented by using the Maemo::Icd::statistics()
      * that gets the statistics data for a specific IAP. Change if
@@ -243,56 +243,51 @@ quint64 QNetworkSessionPrivateImpl::getStatistics(bool sent) const
      */
     Maemo::Icd icd;
     QList<Maemo::IcdStatisticsResult> stats_results;
-    quint64 counter_rx = 0, counter_tx = 0;
+    Statistics stats = { 0, 0, 0};
 
-    if (!icd.statistics(stats_results)) {
-	return 0;
-    }
+    if (!icd.statistics(stats_results))
+        return stats;
 
     foreach (const Maemo::IcdStatisticsResult &res, stats_results) {
-	if (res.params.network_attrs & ICD_NW_ATTR_IAPNAME) {
-	    /* network_id is the IAP UUID */
-	    if (QString(res.params.network_id.data()) == activeConfig.identifier()) {
-		counter_tx = res.bytes_sent;
-		counter_rx = res.bytes_received;
-	    }
-	} else {
-	    /* We probably will never get to this branch */
-        IcdNetworkConfigurationPrivate *icdConfig =
-            toIcdConfig(privateConfiguration(activeConfig));
+        if (res.params.network_attrs & ICD_NW_ATTR_IAPNAME) {
+            /* network_id is the IAP UUID */
+            if (QString(res.params.network_id.data()) == activeConfig.identifier()) {
+                stats.txData = res.bytes_sent;
+                stats.rxData = res.bytes_received;
+                stats.activeTime = res.time_active;
+            }
+        } else {
+            /* We probably will never get to this branch */
+            IcdNetworkConfigurationPrivate *icdConfig =
+                toIcdConfig(privateConfiguration(activeConfig));
 
-        icdConfig->mutex.lock();
-        if (res.params.network_id == icdConfig->network_id) {
-            counter_tx = res.bytes_sent;
-            counter_rx = res.bytes_received;
-	    }
-        icdConfig->mutex.unlock();
-	}
+            icdConfig->mutex.lock();
+            if (res.params.network_id == icdConfig->network_id) {
+                stats.txData = res.bytes_sent;
+                stats.rxData = res.bytes_received;
+                stats.activeTime = res.time_active;
+            }
+            icdConfig->mutex.unlock();
+        }
     }
 
-    if (sent)
-	return counter_tx;
-    else
-	return counter_rx;
+    return stats;
 }
 
 
 quint64 QNetworkSessionPrivateImpl::bytesWritten() const
 {
-    return getStatistics(true);
+    return getStatistics().txData;
 }
 
 quint64 QNetworkSessionPrivateImpl::bytesReceived() const
 {
-    return getStatistics(false);
+    return getStatistics().rxData;
 }
 
 quint64 QNetworkSessionPrivateImpl::activeTime() const
 {
-    if (startTime.isNull()) {
-        return 0;
-    }
-    return startTime.secsTo(QDateTime::currentDateTime());
+    return getStatistics().activeTime;
 }
 
 
@@ -620,6 +615,9 @@ static QString get_network_interface()
 	return iface;
     }
 
+    if (addr_results.first().ip_info.isEmpty())
+	return QString();
+
     const char *address = addr_results.first().ip_info.first().address.toAscii().constData();
     struct in_addr addr;
     if (inet_aton(address, &addr) == 0) {
@@ -879,9 +877,28 @@ void QNetworkSessionPrivateImpl::close()
         lastError = QNetworkSession::OperationNotSupportedError;
         emit QNetworkSessionPrivate::error(lastError);
     } else if (isOpen) {
-        opened = false;
-        isOpen = false;
-        emit closed();
+        if ((activeConfig.state() & QNetworkConfiguration::Active) == QNetworkConfiguration::Active) {
+	    // We will not wait any disconnect from icd as it might never come
+	    Maemo::Icd icd;
+#ifdef BEARER_MANAGEMENT_DEBUG
+	    qDebug() << "closing session" << publicConfig.identifier();
+#endif
+	    state = QNetworkSession::Closing;
+	    emit stateChanged(state);
+
+	    opened = false;
+	    isOpen = false;
+
+	    // we fake a disconnection, session error is not sent
+	    updateState(QNetworkSession::Disconnected);
+
+	    icd.disconnect(ICD_CONNECTION_FLAG_APPLICATION_EVENT);
+	    startTime = QDateTime();
+        } else {
+	    opened = false;
+	    isOpen = false;
+	    emit closed();
+	}
     }
 }
 
@@ -896,33 +913,25 @@ void QNetworkSessionPrivateImpl::stop()
         emit QNetworkSessionPrivate::error(lastError);
     } else {
         if ((activeConfig.state() & QNetworkConfiguration::Active) == QNetworkConfiguration::Active) {
-            if (!m_stopTimer.isActive()) {
-                Maemo::Icd icd;
+	    Maemo::Icd icd;
 #ifdef BEARER_MANAGEMENT_DEBUG
-                qDebug() << "stopping session" << publicConfig.identifier();
+	    qDebug() << "stopping session" << publicConfig.identifier();
 #endif
-                state = QNetworkSession::Closing;
-                emit stateChanged(state);
+	    state = QNetworkSession::Closing;
+	    emit stateChanged(state);
 
-                opened = false;
-                isOpen = false;
+	    // we fake a disconnection, a session error is sent also
+	    updateState(QNetworkSession::Disconnected);
 
-                icd.disconnect(ICD_CONNECTION_FLAG_APPLICATION_EVENT);
-                startTime = QDateTime();
+	    opened = false;
+	    isOpen = false;
 
-                /* Note: Session state will change to disconnected
-                 *       as soon as QNetworkConfigurationManager sends
-                 *       corresponding iapStateChanged signal.
-                 */
-
-                // Make sure that this Session will send closed signal
-                // even though ICD connection will not ever get closed
-                m_stopTimer.start(ICD_SHORT_CONNECT_TIMEOUT); // 10 seconds wait
-            }
+	    icd.disconnect(ICD_CONNECTION_FLAG_APPLICATION_EVENT);
+	    startTime = QDateTime();
         } else {
 	    opened = false;
 	    isOpen = false;
-        emit closed();
+	    emit closed();
 	}
     }
 }

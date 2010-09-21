@@ -48,7 +48,7 @@ HEADERS += \
 	kernel/qgesturemanager_p.h \
 	kernel/qsoftkeymanager_p.h \
     kernel/qsoftkeymanager_common_p.h \
-	kernel/qguiplatformplugin_p.h
+	kernel/qguiplatformplugin_p.h \
 
 SOURCES += \
 	kernel/qaction.cpp \
@@ -117,18 +117,21 @@ symbian {
         kernel/qkeymapper_s60.cpp\
         kernel/qclipboard_s60.cpp\
         kernel/qdnd_s60.cpp \
-        kernel/qsound_s60.cpp \
-        kernel/qsoftkeymanager_s60.cpp
+        kernel/qsound_s60.cpp
 
     HEADERS += \
         kernel/qt_s60_p.h \
-        kernel/qeventdispatcher_s60_p.h \
-        kernel/qsoftkeymanager_s60_p.h
+        kernel/qeventdispatcher_s60_p.h
 
     LIBS += -lbafl -lestor
 
     INCLUDEPATH += $$MW_LAYER_SYSTEMINCLUDE
     INCLUDEPATH += ../3rdparty/s60
+
+    contains(QT_CONFIG, s60) {
+        SOURCES += kernel/qsoftkeymanager_s60.cpp
+        HEADERS += kernel/qsoftkeymanager_s60_p.h
+    }
 }
 
 
@@ -208,15 +211,18 @@ qpa {
 		kernel/qgenericpluginfactory_qpa.h \
                 kernel/qgenericplugin_qpa.h \
                 kernel/qeventdispatcher_qpa_p.h \
-                kernel/qwindowsysteminterface.h \
+                kernel/qwindowsysteminterface_qpa.h \
+                kernel/qwindowsysteminterface_qpa_p.h \
                 kernel/qplatformintegration_qpa.h \
                 kernel/qplatformscreen_qpa.h \
                 kernel/qplatformintegrationfactory_qpa_p.h \
                 kernel/qplatformintegrationplugin_qpa.h \
                 kernel/qplatformwindow_qpa.h \
+                kernel/qplatformwindowformat_qpa.h \
                 kernel/qplatformglcontext_qpa.h \
-                kernel/qdesktopwidget_qpa_p.h
-		
+                kernel/qdesktopwidget_qpa_p.h \
+                kernel/qplatformeventloopintegration_qpa.h
+
 	SOURCES += \
 		kernel/qapplication_qpa.cpp \
 		kernel/qclipboard_qpa.cpp \
@@ -228,12 +234,15 @@ qpa {
 		kernel/qkeymapper_qws.cpp \
                 kernel/qwidget_qpa.cpp \
                 kernel/qeventdispatcher_qpa.cpp \
-                kernel/qwindowsysteminterface.cpp \
+                kernel/qwindowsysteminterface_qpa.cpp \
                 kernel/qplatformintegration_qpa.cpp \
                 kernel/qplatformscreen_qpa.cpp \
                 kernel/qplatformintegrationfactory_qpa.cpp \
                 kernel/qplatformintegrationplugin_qpa.cpp \
-                kernel/qplatformwindow_qpa.cpp
+                kernel/qplatformwindow_qpa.cpp \
+                kernel/qplatformwindowformat_qpa.cpp \
+                kernel/qplatformeventloopintegration_qpa.cpp \
+                kernel/qplatformglcontext_qpa.cpp
 
         contains(QT_CONFIG, glib) {
             SOURCES += \

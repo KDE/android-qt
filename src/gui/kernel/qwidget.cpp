@@ -343,8 +343,10 @@ QInputContext *QWidgetPrivate::inputContext() const
 #ifndef QT_NO_IM
     if (ic)
         return ic;
-#endif
     return qApp->inputContext();
+#else
+    return 0;
+#endif
 }
 
 /*!
@@ -1662,6 +1664,7 @@ void QWidgetPrivate::createTLExtra()
 #endif
 #if defined(Q_WS_QPA)
         x->platformWindow = 0;
+        x->platformWindowFormat = QPlatformWindowFormat::defaultFormat();
 #endif
     }
 }
@@ -2409,7 +2412,9 @@ WId QWidget::winId() const
         qDebug() << "QWidget::winId: creating native window for" << this;
 #endif
         QWidget *that = const_cast<QWidget*>(this);
+#ifndef Q_WS_QPA
         that->setAttribute(Qt::WA_NativeWindow);
+#endif
         that->d_func()->createWinId();
         return that->data->winid;
     }
@@ -2455,6 +2460,7 @@ void QWidgetPrivate::createWinId(WId winid)
             q->create();
         }
 #else
+        Q_UNUSED(winid);
         q->create();
 #endif //Q_WS_QPA
 
@@ -7503,16 +7509,17 @@ void QWidget::setVisible(bool visible)
 
         Q_D(QWidget);
 
+        QWidget *pw = parentWidget();
         // Designer uses a trick to make grabWidget work without showing
-        if (!isWindow() && parentWidget() && parentWidget()->isVisible()
-            && !parentWidget()->testAttribute(Qt::WA_WState_Created))
-            parentWidget()->window()->d_func()->createRecursively();
+        if (!isWindow() && pw && pw->isVisible()
+            && !pw->testAttribute(Qt::WA_WState_Created))
+            pw->window()->d_func()->createRecursively();
+
 
         //we have to at least create toplevels before applyX11SpecificCommandLineArguments
         //but not children of non-visible parents
-        QWidget *pw = parentWidget();
         if (!testAttribute(Qt::WA_WState_Created)
-            && (isWindow() || pw->testAttribute(Qt::WA_WState_Created))) {
+            && (isWindow() || (pw && pw->testAttribute(Qt::WA_WState_Created)) )) {
             create();
         }
 
@@ -7584,7 +7591,6 @@ void QWidget::setVisible(bool visible)
             qApp->d_func()->sendSyntheticEnterLeave(this);
 #endif
         }
-
         QEvent showToParentEvent(QEvent::ShowToParent);
         QApplication::sendEvent(this, &showToParentEvent);
     } else { // hide
@@ -10715,7 +10721,7 @@ void QWidget::setAttribute(Qt::WidgetAttribute attribute, bool on)
 
         break;
     case Qt::WA_AcceptTouchEvents:
-#if defined(Q_WS_WIN) || defined(Q_WS_MAC) || defined(Q_WS_S60)
+#if defined(Q_WS_WIN) || defined(Q_WS_MAC) || defined(Q_OS_SYMBIAN)
         if (on)
             d->registerTouchWindow();
 #endif
@@ -11937,41 +11943,6 @@ QWindowSurface *QWidget::windowSurface() const
     return bs ? bs->windowSurface : 0;
 }
 
-#if defined(Q_WS_QPA)
-/*!
-    \preliminary
-
-    Sets the window to be the \a window specified.
-    The QWidget takes ownership of the \a surface.
-*/
-void QWidget::setPlatformWindow(QPlatformWindow *window)
-{
-    Q_D(QWidget);
-
-    QTLWExtra *topData = d->topData();
-    if (topData->platformWindow == window)
-        return;
-
-    delete topData->platformWindow;
-    topData->platformWindow = window;
-}
-
-/*!
-    \preliminary
-
-    Returns the QPlatformWindow this widget will be drawn into.
-*/
-QPlatformWindow *QWidget::platformWindow() const
-{
-    Q_D(const QWidget);
-    QTLWExtra *extra = d->maybeTopData();
-    if (extra && extra->platformWindow)
-        return extra->platformWindow;
-
-    return 0;
-}
-#endif //defined(Q_WS_QPA)
-
 void QWidgetPrivate::getLayoutItemMargins(int *left, int *top, int *right, int *bottom) const
 {
     if (left)
@@ -12102,8 +12073,8 @@ void QWidget::ungrabGesture(Qt::GestureType gesture)
 {
     Q_D(QWidget);
     if (d->gestureContext.remove(gesture)) {
-        QGestureManager *manager = QGestureManager::instance();
-        manager->cleanupCachedGestures(this, gesture);
+        if (QGestureManager *manager = QGestureManager::instance())
+            manager->cleanupCachedGestures(this, gesture);
     }
 }
 #endif // QT_NO_GESTURES

@@ -42,6 +42,7 @@
 #include "qtestliteintegration.h"
 #include <QWindowSystemInterface>
 #include <private/qwindowsurface_p.h>
+#include <QtGui/private/qapplication_p.h>
 
 #include "qtestlitewindow.h"
 
@@ -56,8 +57,9 @@
 #include <QTimer>
 #include <QApplication>
 
-#include <QtOpenGL/QGLFormat>
+#ifndef QT_NO_OPENGL
 #include "qglxintegration.h"
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -83,8 +85,6 @@ static bool seen_badwindow;
 
 static Atom wmProtocolsAtom;
 static Atom wmDeleteWindowAtom;
-
-
 
 class MyX11CursorNode
 {
@@ -155,14 +155,28 @@ QTestLiteWindow::QTestLiteWindow(const QTestLiteIntegration *platformIntegration
     xd = platformIntegration->xd;
     xd->windowList.append(this);
     {
-        int x = 0;
-        int y = 0;
-        int w = 300;
-        int h = 300; //###
+        int x = window->x();
+        int y = window->y();
+        int w = window->width();
+        int h = window->height();
 
-        x_window = XCreateSimpleWindow(xd->display, xd->rootWindow(),
-                                       x, y, w, h, 0 /*border_width*/,
-                                       xd->blackPixel(), xd->whitePixel());
+        if(window->platformWindowFormat().windowApi() == QPlatformWindowFormat::OpenGL
+           && QApplicationPrivate::platformIntegration()->hasOpenGL() ) {
+#ifndef QT_NO_OPENGL
+            XVisualInfo *visualInfo = QGLXGLContext::findVisualInfo(xd,window->platformWindowFormat());
+            Colormap cmap = XCreateColormap(xd->display,xd->rootWindow(),visualInfo->visual,AllocNone);
+
+            XSetWindowAttributes a;
+            a.colormap = cmap;
+            x_window = XCreateWindow(xd->display, xd->rootWindow(),x, y, w, h,
+                                      0, visualInfo->depth, InputOutput, visualInfo->visual,
+                                      CWColormap, &a);
+#endif //QT_NO_OPENGL
+        } else {
+            x_window = XCreateSimpleWindow(xd->display, xd->rootWindow(),
+                                           x, y, w, h, 0 /*border_width*/,
+                                           xd->blackPixel(), xd->whitePixel());
+        }
 
 #ifdef MYX11_DEBUG
         qDebug() << "QTestLiteWindow::QTestLiteWindow creating" << hex << x_window << window;
@@ -187,16 +201,7 @@ QTestLiteWindow::QTestLiteWindow(const QTestLiteIntegration *platformIntegration
 			   wmProtocolsAtom,
 			   XA_ATOM, 32, PropModeAppend,
 			   (unsigned char *) &wmDeleteWindowAtom, 1);
-
-
-    setWindowTitle(QLatin1String("Qt Lighthouse"));
-
     currentCursor = -1;
-
-    setWindowFlags(window->windowFlags()); //##### This should not be the plugin's responsibility
-
-
-    //xw->windowTL = this;
 }
 
 
@@ -205,6 +210,7 @@ QTestLiteWindow::~QTestLiteWindow()
 #ifdef MYX11_DEBUG
     qDebug() << "~QTestLiteWindow" << hex << x_window;
 #endif
+    delete mGLContext;
     XFreeGC(xd->display, gc);
     XDestroyWindow(xd->display, x_window);
 
@@ -1009,19 +1015,17 @@ void QTestLiteWindow::setCursor(QCursor * cursor)
     XFlush(xd->display);
 }
 
-QPlatformGLContext *QTestLiteWindow::glContext()
+QPlatformGLContext *QTestLiteWindow::glContext() const
 {
+    if (!QApplicationPrivate::platformIntegration()->hasOpenGL())
+        return 0;
     if (!mGLContext) {
-        mGLContext = createGLContext();
+        QTestLiteWindow *that = const_cast<QTestLiteWindow *>(this);
+#ifndef QT_NO_OPENGL
+        that->mGLContext = new QGLXGLContext(x_window, xd, widget()->platformWindowFormat());
+#endif
     }
     return mGLContext;
-}
-
-QPlatformGLContext *QTestLiteWindow::createGLContext()
-{
-    QGLFormat format;
-    QPlatformGLContext *context = new QGLXGLContext(x_window, xd, format, 0);
-    return context;
 }
 
 Cursor QTestLiteWindow::createCursorBitmap(QCursor * cursor)

@@ -634,13 +634,8 @@ QString QFSFileEngine::homePath()
 QString QFSFileEngine::rootPath()
 {
 #if defined(Q_OS_SYMBIAN)
-# ifdef Q_WS_S60
     TFileName symbianPath = PathInfo::PhoneMemoryRootPath();
     return QDir::cleanPath(QDir::fromNativeSeparators(qt_TDesC2QString(symbianPath)));
-# else
-# warning No fallback implementation of QFSFileEngine::rootPath()
-    return QString();
-# endif
 #else
     return QLatin1String("/");
 #endif
@@ -649,17 +644,12 @@ QString QFSFileEngine::rootPath()
 QString QFSFileEngine::tempPath()
 {
 #if defined(Q_OS_SYMBIAN)
-# ifdef Q_WS_S60
     TFileName symbianPath = PathInfo::PhoneMemoryRootPath();
     QString temp = QDir::fromNativeSeparators(qt_TDesC2QString(symbianPath));
     temp += QLatin1String( "temp/");
 
     // Just to verify that folder really exist on hardware
     QT_MKDIR(QFile::encodeName(temp), 0777);
-# else
-# warning No fallback implementation of QFSFileEngine::tempPath()
-    QString temp;
-# endif
 #else
     QString temp = QFile::decodeName(qgetenv("TMPDIR"));
     if (temp.isEmpty())
@@ -1033,7 +1023,7 @@ QString QFSFileEngine::fileName(FileName file) const
 #if !defined(QWS) && defined(Q_OS_MAC)
         QCFType<CFURLRef> url = CFURLCreateWithFileSystemPath(0, QCFString(d->filePath),
                                                               kCFURLPOSIXPathStyle, true);
-        if (CFDictionaryRef dict = CFBundleCopyInfoDictionaryForURL(url)) {
+        if (QCFType<CFDictionaryRef> dict = CFBundleCopyInfoDictionaryForURL(url)) {
             if (CFTypeRef name = (CFTypeRef)CFDictionaryGetValue(dict, kCFBundleNameKey)) {
                 if (CFGetTypeID(name) == CFStringGetTypeID())
                     return QCFString::toQString((CFStringRef)name);
@@ -1151,7 +1141,7 @@ QString QFSFileEngine::fileName(FileName file) const
                 if (FSResolveAliasFile(&fref, true, &isFolder, &isAlias) == noErr && isAlias) {
                     AliasHandle alias;
                     if (FSNewAlias(0, &fref, &alias) == noErr && alias) {
-                        CFStringRef cfstr;
+                        QCFString cfstr;
                         if (FSCopyAliasInfo(alias, 0, 0, &cfstr, 0, 0) == noErr)
                             return QCFString::toQString(cfstr);
                     }

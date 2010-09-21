@@ -62,6 +62,8 @@
 //
 // We mean it.
 
+#ifndef QT_NO_LINEEDIT
+
 QT_BEGIN_NAMESPACE
 
 class QDeclarativeTextInputPrivate : public QDeclarativePaintedItemPrivate
@@ -100,6 +102,7 @@ public:
     void startCreatingCursor();
     void focusChanged(bool hasFocus);
     void updateHorizontalScroll();
+    int calculateTextWidth();
 
     QLineControl* control;
 
@@ -130,6 +133,8 @@ public:
 };
 
 QT_END_NAMESPACE
+
+#endif // QT_NO_LINEEDIT
 
 #endif
 

@@ -42,7 +42,8 @@
 #ifndef QPLATFORM_GL_CONTEXT_H
 #define QPLATFORM_GL_CONTEXT_H
 
-#include <QtOpenGL/qgl.h>
+#include <QtCore/qnamespace.h>
+#include <QPlatformWindowFormat>
 
 QT_BEGIN_HEADER
 
@@ -51,15 +52,20 @@ QT_BEGIN_NAMESPACE
 class Q_OPENGL_EXPORT QPlatformGLContext
 {
 public:
-    //QPlatformGLContext();
-    //virtual ~QPlatformGLContext();
-
-    //virtual bool create(QPaintDevice* device, QPlatformGLContext* shareContext) = 0;
+    virtual ~QPlatformGLContext();
 
     virtual void makeCurrent() = 0;
     virtual void doneCurrent() = 0;
     virtual void swapBuffers() = 0;
     virtual void* getProcAddress(const QString& procName) = 0;
+
+    virtual QPlatformWindowFormat platformWindowFormat() const = 0;
+
+    static QPlatformGLContext *defaultSharedContext();
+
+protected:
+
+    static void setDefaultSharedContext(QPlatformGLContext *sharedContext);
 
 };
 

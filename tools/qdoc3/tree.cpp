@@ -125,24 +125,27 @@ Tree::~Tree()
 
 /*!
  */
-Node *Tree::findNode(const QStringList &path, Node *relative, int findFlags)
+Node *Tree::findNode(const QStringList &path, Node *relative, int findFlags, const Node* self)
 {
     return const_cast<Node*>(const_cast<const Tree*>(this)->findNode(path,
                                                                      relative,
-                                                                     findFlags));
+                                                                     findFlags,
+                                                                     self));
 }
 
 /*!
  */
-const Node *Tree::findNode(const QStringList &path,
-                           const Node *relative,
-                           int findFlags) const
+const Node* Tree::findNode(const QStringList &path,
+                           const Node* start,
+                           int findFlags,
+                           const Node* self) const
 {
-    if (!relative)
-        relative = root();
+    const Node* current = start;
+    if (!current)
+        current = root();
 
     do {
-        const Node *node = relative;
+        const Node *node = current;
         int i;
 
         for (i = 0; i < path.size(); ++i) {
@@ -170,10 +173,13 @@ const Node *Tree::findNode(const QStringList &path,
         }
         if (node && i == path.size()
                 && (!(findFlags & NonFunction) || node->type() != Node::Function
-                    || ((FunctionNode *)node)->metaness() == FunctionNode::MacroWithoutParams))
-            return node;
-        relative = relative->parent();
-    } while (relative);
+                    || ((FunctionNode *)node)->metaness() == FunctionNode::MacroWithoutParams)) {
+            if ((node != self) && (node->subType() != Node::QmlPropertyGroup)) {
+                return node;
+            }
+        }
+        current = current->parent();
+    } while (current);
 
     return 0;
 }
@@ -463,8 +469,9 @@ void Tree::resolveInheritance(NamespaceNode *rootNode)
     for (int pass = 0; pass < 2; pass++) {
         NodeList::ConstIterator c = rootNode->childNodes().begin();
         while (c != rootNode->childNodes().end()) {
-            if ((*c)->type() == Node::Class)
+            if ((*c)->type() == Node::Class) {
                 resolveInheritance(pass, (ClassNode *) *c);
+            }
             else if ((*c)->type() == Node::Namespace) {
                 NamespaceNode *ns = static_cast<NamespaceNode*>(*c);
                 resolveInheritance(ns);
@@ -536,14 +543,16 @@ void Tree::resolveInheritance(int pass, ClassNode *classe)
 	while (b != bounds.end()) {
 	    ClassNode *baseClass = (ClassNode*)findNode((*b).basePath,
                                                         Node::Class);
-            if (!baseClass && (*b).parent)
+            if (!baseClass && (*b).parent) {
                 baseClass = (ClassNode*)findNode((*b).basePath,
                                                  Node::Class,
                                                  (*b).parent);
-	    if (baseClass)
+            }
+	    if (baseClass) {
 		classe->addBaseClass((*b).access,
                                      baseClass,
                                      (*b).dataTypeWithTemplateArgs);
+            }
 	    ++b;
 	}
     }
@@ -1952,9 +1961,13 @@ QString Tree::fullDocumentLocation(const Node *node) const
     else if (node->type() == Node::Fake) {
 #ifdef QDOC_QML
         if ((node->subType() == Node::QmlClass) ||
-            (node->subType() == Node::QmlBasicType))
-            return "qml-" + node->fileBase() + ".html";
-        else
+            (node->subType() == Node::QmlBasicType)) {
+            QString fb = node->fileBase();
+            if (fb.startsWith(QLatin1String("QML:")))
+                return node->fileBase() + ".html";
+            else
+                return "qml-" + node->fileBase() + ".html";
+        } else
 #endif
         parentName = node->fileBase() + ".html";
     }

@@ -43,8 +43,15 @@
 #define QOPENKODEWINDOW_H
 
 #include <QtGui/QPlatformWindow>
+#include <QtCore/QVector>
 
 #include <KD/kd.h>
+
+QT_BEGIN_HEADER
+QT_BEGIN_NAMESPACE
+
+class QEGLPlatformContext;
+class QPlatformEventLoopIntegration;
 
 class QOpenKODEWindow : public QPlatformWindow
 {
@@ -54,11 +61,29 @@ public:
 
     void setGeometry(const QRect &rect);
     void setVisible(bool visible);
-    WId winId() const { return WId(eglWindow); }
+    WId winId() const;
+
+    QPlatformGLContext *glContext() const;
+
+    void raise();
+    void lower();
+
+    void processKeyEvents( const KDEvent *event );
+    void processMouseEvents( const KDEvent *event );
 
 private:
-    struct KDWindow *kdWindow;
-    EGLNativeWindowType eglWindow;
+    struct KDWindow *m_kdWindow;
+    EGLNativeWindowType m_eglWindow;
+    EGLConfig m_eglConfig;
+    QVector<EGLint> m_eglWindowAttrs;
+    QVector<EGLint> m_eglContextAttrs;
+    EGLenum m_eglApi;
+    QEGLPlatformContext *m_platformGlContext;
+
+    bool isFullScreen;
 };
+
+QT_END_NAMESPACE
+QT_END_HEADER
 
 #endif //QOPENKODEWINDOW_H

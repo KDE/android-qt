@@ -42,21 +42,26 @@
 #ifndef QGRAPHICSSYSTEM_OPENKODE_H
 #define QGRAPHICSSYSTEM_OPENKODE_H
 
+#include "qopenkodeeventloopintegration.h"
+
 #include <QtCore/qsemaphore.h>
 
 #include <QtGui/QPlatformIntegration>
 #include <QtGui/QPlatformScreen>
-#include <QtGui/private/qeglcontext_p.h>
-#include <QtGui/qplatformglcontext_lite.h>
+#include <QtGui/QPlatformGLContext>
 
-# include <GLES2/gl2.h>
+#include <GLES2/gl2.h>
+#include <EGL/egl.h>
 
+QT_BEGIN_HEADER
 QT_BEGIN_NAMESPACE
 
 struct KDDesktopNV;
+class QOpenKODECursor;
 
 class QOpenKODEScreen : public QPlatformScreen
 {
+    Q_OBJECT
 public:
     QOpenKODEScreen();
     ~QOpenKODEScreen() {}
@@ -64,26 +69,32 @@ public:
     QRect geometry() const { return mGeometry; }
     int depth() const { return mDepth; }
     QImage::Format format() const { return mFormat; }
-    QSize physicalSize() const { return mPhysicalSize; }
 
-public:
+    EGLDisplay eglDisplay() { return mEglDisplay; }
+
+    bool isFullScreen() const {return mIsFullScreen;}
+    void setFullScreen(bool fullscreen) { mIsFullScreen = fullscreen; }
+private:
     QRect mGeometry;
     int mDepth;
     QImage::Format mFormat;
-    QSize mPhysicalSize;
+    EGLDisplay mEglDisplay;
+    bool mIsFullScreen;
 };
 
 class QOpenKODEIntegration : public QPlatformIntegration
 {
 public:
     QOpenKODEIntegration();
+    ~QOpenKODEIntegration();
 
     QPixmapData *createPixmapData(QPixmapData::PixelType type) const;
     QPlatformWindow *createPlatformWindow(QWidget *widget, WId winId = 0) const;
     QWindowSurface *createWindowSurface(QWidget *widget, WId winId) const;
 
     bool hasOpenGL() const;
-    QPlatformGLContext * createGLContext();
+
+    QPlatformEventLoopIntegration *createEventLoopIntegration() const;
 
     virtual QList<QPlatformScreen *> screens() const { return mScreens; }
 
@@ -91,9 +102,10 @@ public:
 
 private:
     QList<QPlatformScreen *> mScreens;
-    QSemaphore eventMutex;
+    QOpenKODEEventLoopIntegration *mEventLoopIntegration;
 };
 
 QT_END_NAMESPACE
+QT_END_HEADER
 
 #endif

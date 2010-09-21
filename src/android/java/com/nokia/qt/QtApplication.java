@@ -1,11 +1,7 @@
 package com.nokia.qt;
 
 import java.io.File;
-import java.nio.ShortBuffer;
-
 import android.app.Activity;
-import android.graphics.Bitmap;
-import android.graphics.Canvas;
 import android.graphics.Rect;
 import android.util.Log;
 import android.view.View;
@@ -60,12 +56,15 @@ public class QtApplication
 	{
 		try
 		{
-			File f = new File("/data/local/lib/lib" + lib + ".so");
+			String library = "/data/local/lib/lib" + lib + ".so";
+			File f = new File(library);
 			if (f.exists())
-				System.load("/data/local/lib/lib" + lib + ".so");
+				System.load(library);
 			else
 				System.loadLibrary(lib);
+
 			//InitializeOpenGL();
+			startQtAndroidPlugin();
 			startQtApp();
 		}
 		catch (Exception e)
@@ -82,45 +81,24 @@ public class QtApplication
 	}
 
 	@SuppressWarnings("unused")
-	private void flushImage(short[] img, final int id, final int left, final int top, final int right, final int bottom)
-	{
-		if (m_activity == null)
-			return;
-
-		final QtSurface surface = (QtSurface) m_view.findViewById(id);
-		if (surface == null)
-			return;
-
-		ShortBuffer image=ShortBuffer.wrap(img);
-		final Bitmap bmp=Bitmap.createBitmap(right-left+1, bottom-top+1, Bitmap.Config.RGB_565);
-		bmp.copyPixelsFromBuffer(image);
-		m_activity.runOnUiThread(new Runnable() {
-			@Override
-			public void run() {
-				Rect rect = new Rect(left, top, right, bottom);
-				Canvas cv=surface.getHolder().lockCanvas(rect);
-				cv.drawBitmap(bmp, new Rect(0, 0, right-left+1, bottom-top+1), rect, null);
-				surface.getHolder().unlockCanvasAndPost(cv);			
-				}
-		});
-	}
-
-	@SuppressWarnings("unused")
-	private boolean createSurface(final boolean OpenGl, final int id, final int l, final int t, final int r, final int b)
+	private boolean createWindow(final boolean OpenGl, final int id, final int l, final int t, final int r, final int b)
 	{
 		if (m_activity == null)
 			return false;
 		m_activity.runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
-				m_view.addView(new QtSurface(m_activity, OpenGl, id, l, t, r, b), 0);
+				if (OpenGl)
+					m_view.addView(new QtGlWindow(m_activity, id, l, t, r, b));
+				else
+					m_view.addView(new QtWindow(m_activity, id, l, t, r, b));
 			}
 		});
 		return true;
 	}
 
 	@SuppressWarnings("unused")
-	private boolean resizeSurface(final int id, final int l, final int t, final int r, final int b)
+	private boolean resizeWindow(final int id, final int l, final int t, final int r, final int b)
 	{
 		if (m_activity == null)
 			return false;
@@ -128,18 +106,19 @@ public class QtApplication
 		m_activity.runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
-				QtSurface surface = (QtSurface) m_view.findViewById(id);
-				if (surface == null)
+				QtWindowInterface window = (QtWindowInterface) m_view.findViewById(id);
+				if (window == null)
 					return;
-				surface.layout(l, t, r, b);
+				window.Resize(l, t, r, b);
 			}
 		});
 		return true;
 	}
 
 	@SuppressWarnings("unused")
-	private boolean destroySurface(final int id)
+	private boolean destroyWindow(final int id)
 	{
+		Log.i(QtTAG,"destroyWindow "+id);
 		if (m_activity == null)
 			return false;
 
@@ -153,24 +132,25 @@ public class QtApplication
 	}
 
 	@SuppressWarnings("unused")
-	private void setSurfaceVisiblity(final int id, final boolean visible)
+	private void setWindowVisiblity(final int id, final boolean visible)
 	{
+		Log.i(QtTAG,"setSurfaceVisiblity "+id+" visible "+visible);
 		if (m_activity == null)
 			return;
 
 		m_activity.runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
-				QtSurface surface = (QtSurface) m_view.findViewById(id);
-				if (surface == null)
+				QtWindow window = (QtWindow) m_view.findViewById(id);
+				if (window == null)
 					return;
-				surface.setVisibility(visible ? View.VISIBLE : View.GONE);
+				window.setVisibility(visible ? View.VISIBLE : View.INVISIBLE);
 			}
 		});
 	}
 
 	@SuppressWarnings("unused")
-	private void setSurfaceOpacity(final int id, final double alpha)
+	private void setWindowOpacity(final int id, final double alpha)
 	{
 		if (m_activity == null)
 			return;
@@ -178,10 +158,10 @@ public class QtApplication
 		m_activity.runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
-				QtSurface surface = (QtSurface) m_view.findViewById(id);
-				if (surface == null)
+				QtWindow window = (QtWindow) m_view.findViewById(id);
+				if (window == null)
 					return;
-				surface.getHolder().getSurface().setAlpha((float) alpha);
+//				window.getHolder().getSurface().setAlpha((float) alpha);
 			}
 		});
 	}
@@ -201,24 +181,25 @@ public class QtApplication
 	}
 
 	@SuppressWarnings("unused")
-	private void raiseSurface(final int id)
+	private void raiseWindow(final int id)
 	{
+		Log.i(QtTAG,"raiseSurface "+id);
 		if (m_activity == null)
 			return;
 
 		m_activity.runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
-				QtSurface surface = (QtSurface) m_view.findViewById(id);
-				if (surface == null)
+				QtWindow window = (QtWindow) m_view.findViewById(id);
+				if (window == null)
 					return;
-				m_view.bringChildToFront(surface);
+				m_view.bringChildToFront(window);
 			}
 		});
 	}
 
 	@SuppressWarnings("unused")
-	private void redrawSurface(final int id, final int left, final int top, final int right, final int bottom )
+	private void redrawWindow(final int id, final int left, final int top, final int right, final int bottom )
 	{
 		if (m_activity == null)
 			return;
@@ -226,18 +207,25 @@ public class QtApplication
 		m_activity.runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
-				QtSurface surface = (QtSurface) m_view.findViewById(id);
-				if (surface == null)
+				QtWindow window = (QtWindow) m_view.findViewById(id);
+				if (window == null)
 					return;
-				surface.drawBitmap(new Rect(left, top, right, bottom));
+				window.invalidate(new Rect(left, top, right, bottom));
 			}
 		});
 	}
+
+	@SuppressWarnings("unused")
+	private void quitApp()
+	{
+		m_activity.finish();
+	}	
 	// application methods
 	public static native void startQtApp();
 	public static native void pauseQtApp();
 	public static native void resumeQtApp();
-	public static native void quitQtApp();
+	public static native void startQtAndroidPlugin();
+	public static native void quitQtAndroidPlugin();
 	public static native void setEglObject(Object eglObject);
 	// application methods
 
@@ -248,12 +236,12 @@ public class QtApplication
 	// screen methods
 
 	// pointer methods
-	public static native void mouseDown(int x, int y);
-	public static native void mouseUp(int x, int y);
-	public static native void mouseMove(int x, int y);
-	public static native void touchBegin();
-	public static native void touchAdd(int pointerId, int action, boolean primary, int x, int y, float size, float pressure);
-	public static native void touchEnd(int action);
+	public static native void mouseDown(int winId, int x, int y);
+	public static native void mouseUp(int winId, int x, int y);
+	public static native void mouseMove(int winId, int x, int y);
+	public static native void touchBegin(int winId);
+	public static native void touchAdd(int winId, int pointerId, int action, boolean primary, int x, int y, float size, float pressure);
+	public static native void touchEnd(int winId, int action);
 	// pointer methods
 
 	// keyboard methods
@@ -261,11 +249,11 @@ public class QtApplication
 	public static native void keyUp(int key, int unicode, int modifier);
 	// keyboard methods
 
-	// surface methods
-	public static native void surfaceCreated(Object surface, int id);
-	public static native void surfaceChanged(Object surface, int id);
-	public static native void surfaceDestroyed(int id);
-	public static native void lockSurface();
-	public static native void unlockSurface();
-	// surface methods
+	// window methods
+	public static native void windowCreated(Object window, int id);
+	public static native void windowChanged(Object window, int id);
+	public static native void windowDestroyed(int id);
+	public static native void lockWindow();
+	public static native void unlockWindow();
+	// window methods
 }

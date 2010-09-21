@@ -18,12 +18,17 @@ wince* {
 
 include (../xmlpatterns.pri)
 
-wince*|symbian*: {
+wince*|symbian: {
    addFiles.sources = pushBaselines input.xml
    addFiles.path    = .
 
    patternistFiles.sources = ../xmlpatterns/queries
-   patternistFiles.path    = ../xmlpatterns
+   symbian: {
+       #../xmlpatterns resolves to an illegal path for deployment
+       patternistFiles.path    = xmlpatterns
+   } else {
+       patternistFiles.path    = ../xmlpatterns
+   }
 
    DEPLOYMENT += addFiles patternistFiles
 }

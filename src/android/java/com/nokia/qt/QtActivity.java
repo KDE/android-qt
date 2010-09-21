@@ -12,7 +12,7 @@ public class QtActivity extends Activity
 	private String appName = "";
 	private String[] libraries = { "QtCore", "QtNetwork", "QtXml",
     	/* "QtScript", "QtSql", */"QtGui", "QtOpenGL", "QtSvg"
-    	/* , "QtScriptTools", "QtDeclarative" ,"QtMultimedia", "QtWebKit" */};
+    	/* , "QtScriptTools", "QtDeclarative" ,"QtMultimedia", "QtWebKit" */,"QtAndroid"};
 	// By default try to load all Qt libraries
 
 	public QtActivity()
@@ -44,9 +44,8 @@ public class QtActivity extends Activity
 	public boolean onKeyUp(int keyCode, KeyEvent event)
 	{
 		QtApplication.keyUp(keyCode, event.getUnicodeChar(), event.getMetaState());
-		
-		if (keyCode == KeyEvent.KEYCODE_BACK)
-			return super.onKeyUp(keyCode, event);
+//		if (keyCode == KeyEvent.KEYCODE_BACK)
+//			return super.onKeyUp(keyCode, event);
 		return true;
 	}
 
@@ -57,9 +56,11 @@ public class QtActivity extends Activity
 		requestWindowFeature(Window.FEATURE_NO_TITLE);
 		try
 		{
+			String path=getFilesDir().getAbsolutePath();
+			Log.i(QtApplication.QtTAG, path);
 			QtMainView view = new QtMainView(this);
-			QtApplication.setView(view);
 			setContentView(view);
+			QtApplication.setView(view);
 
 			if (null == getLastNonConfigurationInstance())
 			{
@@ -78,18 +79,18 @@ public class QtActivity extends Activity
 //	@Override
 //	protected void onPause()
 //	{
-//		Log.i(QtApplication.QtTAG, "onPause");
-//		QtApplication.pauseQtApp();
-//		super.onPause();
-//	}
-//
+		if (!quitApp)
+		{
+			Log.i(QtApplication.QtTAG, "onPause");
+			QtApplication.pauseQtApp();
+		}
 //	@Override
 //	protected void onResume()
 //	{
 //		Log.i(QtApplication.QtTAG, "onResume");
 //		QtApplication.resumeQtApp();
 //		super.onRestart();
-//	}
+		QtApplication.resumeQtApp();
 
 	@Override
 	public Object onRetainNonConfigurationInstance()
@@ -106,9 +107,7 @@ public class QtActivity extends Activity
 		if (quitApp)
 		{
 			Log.i(QtApplication.QtTAG, "onDestroy");
-			QtApplication.resumeQtApp();
-			QtApplication.unlockSurface();
-			QtApplication.quitQtApp();
+			QtApplication.quitQtAndroidPlugin();
 		}
 	}
 
@@ -121,8 +120,9 @@ public class QtActivity extends Activity
 		outState.putInt("Surfaces", view.getChildCount());
 		for (int i=0;i<view.getChildCount();i++)
 		{
-			QtSurface surface=(QtSurface) view.getChildAt(i);
-			int surfaceInfo[]={surface.isOpenGL(), surface.getId(), surface.getLeft(), surface.getTop(), surface.getRight(), surface.getBottom()};
+			QtWindow surface=(QtWindow) view.getChildAt(i);
+			Log.i(QtApplication.QtTAG,"id"+surface.getId()+","+surface.getLeft()+","+surface.getTop()+","+surface.getRight()+","+surface.getBottom());
+			int surfaceInfo[]={((QtWindowInterface)surface).isOpenGl(), surface.getId(), surface.getLeft(), surface.getTop(), surface.getRight(), surface.getBottom()};
 			outState.putIntArray("Surface_"+i, surfaceInfo);
 		}
 	}
@@ -138,7 +138,10 @@ public class QtActivity extends Activity
 		{
 			int surfaceInfo[]= {0,0,0,0,0,0};
 			surfaceInfo=savedInstanceState.getIntArray("Surface_"+i);
-			view.addView(new QtSurface(this, (surfaceInfo[0]==1)?true:false, surfaceInfo[1], surfaceInfo[2], surfaceInfo[3], surfaceInfo[4], surfaceInfo[5]),i);
-		}		
+			if (surfaceInfo[0]==1) // OpenGl Surface
+				view.addView(new QtGlWindow(this, surfaceInfo[1], surfaceInfo[2], surfaceInfo[3], surfaceInfo[4], surfaceInfo[5]),i);
+			else
+				view.addView(new QtWindow(this, surfaceInfo[1], surfaceInfo[2], surfaceInfo[3], surfaceInfo[4], surfaceInfo[5]), i);
+		}
 	}
 }

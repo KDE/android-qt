@@ -885,8 +885,7 @@ void QGraphicsScenePrivate::removePopup(QGraphicsWidget *widget, bool itemIsDyin
             ungrabKeyboard(static_cast<QGraphicsItem *>(widget), itemIsDying);
         }
         if (!itemIsDying && widget->isVisible()) {
-            widget->hide();
-            widget->QGraphicsItem::d_ptr->explicitlyHidden = 0;
+            widget->QGraphicsItem::d_ptr->setVisibleHelper(false, /* explicit = */ false);
         }
     }
 }
@@ -1336,6 +1335,8 @@ void QGraphicsScenePrivate::mousePressEventHandler(QGraphicsSceneMouseEvent *mou
                 break;
             }
         }
+        if (item->d_ptr->flags & QGraphicsItem::ItemStopsClickFocusPropagation)
+            break;
         if (item->isPanel())
             break;
     }
@@ -4163,6 +4164,25 @@ void QGraphicsScene::wheelEvent(QGraphicsSceneWheelEvent *wheelEvent)
                                                                 wheelEvent->scenePos(),
                                                                 wheelEvent->widget());
 
+#ifdef Q_WS_MAC
+    // On Mac, ignore the event if the first item under the mouse is not the last opened
+    // popup (or one of its descendant)
+    if (!d->popupWidgets.isEmpty() && !wheelCandidates.isEmpty() && wheelCandidates.first() != d->popupWidgets.back() && !d->popupWidgets.back()->isAncestorOf(wheelCandidates.first())) {
+        wheelEvent->accept();
+        return;
+    }
+#else
+    // Find the first popup under the mouse (including the popup's descendants) starting from the last.
+    // Remove all popups after the one found, or all or them if no popup is under the mouse.
+    // Then continue with the event.
+    QList<QGraphicsWidget *>::const_iterator iter = d->popupWidgets.end();
+    while (--iter >= d->popupWidgets.begin() && !wheelCandidates.isEmpty()) {
+        if (wheelCandidates.first() == *iter || (*iter)->isAncestorOf(wheelCandidates.first()))
+            break;
+        d->removePopup(*iter);
+    }
+#endif
+
     bool hasSetFocus = false;
     foreach (QGraphicsItem *item, wheelCandidates) {
         if (!hasSetFocus && item->isEnabled()
@@ -5158,7 +5178,12 @@ void QGraphicsScenePrivate::processDirtyItemsRecursive(QGraphicsItem *item, bool
     // Process children.
     if (itemHasChildren && item->d_ptr->dirtyChildren) {
         const bool itemClipsChildrenToShape = item->d_ptr->flags & QGraphicsItem::ItemClipsChildrenToShape;
-        if (itemClipsChildrenToShape) {
+        // Items with no content are threated as 'dummy' items which means they are never drawn and
+        // 'processed', so the painted view bounding rect is never up-to-date. This means that whenever
+        // such an item changes geometry, its children have to take care of the update regardless
+        // of whether the item clips children to shape or not.
+        const bool bypassUpdateClip = !itemHasContents && wasDirtyParentViewBoundingRects;
+        if (itemClipsChildrenToShape && !bypassUpdateClip) {
             // Make sure child updates are clipped to the item's bounding rect.
             for (int i = 0; i < views.size(); ++i)
                 views.at(i)->d_func()->setUpdateClip(item);

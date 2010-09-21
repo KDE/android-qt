@@ -43,9 +43,6 @@
 
 QT_BEGIN_NAMESPACE
 
-QBlittable *QPlatformIntegration::createBlittable(const QSize &) const
-{ return 0; }
-
 QPixmap QPlatformIntegration::grabWindow(WId window, int x, int y, int width, int height) const
 {
     Q_UNUSED(window);
@@ -54,6 +51,11 @@ QPixmap QPlatformIntegration::grabWindow(WId window, int x, int y, int width, in
     Q_UNUSED(width);
     Q_UNUSED(height);
     return QPixmap();
+}
+
+QPlatformEventLoopIntegration *QPlatformIntegration::createEventLoopIntegration() const
+{
+    return 0;
 }
 
 bool QPlatformIntegration::hasOpenGL() const

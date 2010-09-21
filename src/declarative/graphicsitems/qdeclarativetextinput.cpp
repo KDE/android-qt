@@ -51,6 +51,8 @@
 #include <QFontMetrics>
 #include <QPainter>
 
+#ifndef QT_NO_LINEEDIT
+
 QT_BEGIN_NAMESPACE
 
 /*!
@@ -69,7 +71,7 @@ QT_BEGIN_NAMESPACE
     On Mac OS X, the Up/Down key bindings for Home/End are explicitly disabled.
     If you want such bindings (on any platform), you will need to construct them in QML.
     
-    \sa TextEdit, Text
+    \sa TextEdit, Text, {declarative/text/textselection}{Text Selection example}
 */
 QDeclarativeTextInput::QDeclarativeTextInput(QDeclarativeItem* parent)
     : QDeclarativePaintedItem(*(new QDeclarativeTextInputPrivate), parent)
@@ -100,8 +102,6 @@ void QDeclarativeTextInput::setText(const QString &s)
     if(s == text())
         return;
     d->control->setText(s);
-    d->updateHorizontalScroll();
-    //emit textChanged();
 }
 
 /*!
@@ -152,12 +152,6 @@ void QDeclarativeTextInput::setText(const QString &s)
 */
 
 /*!
-    \qmlproperty bool TextInput::font.outline
-
-    Sets whether the font has an outline style.
-*/
-
-/*!
     \qmlproperty bool TextInput::font.strikeout
 
     Sets whether the font has a strikeout style.
@@ -184,8 +178,7 @@ void QDeclarativeTextInput::setText(const QString &s)
     Sets the letter spacing for the font.
 
     Letter spacing changes the default spacing between individual letters in the font.
-    A value of 100 will keep the spacing unchanged; a value of 200 will enlarge the spacing after a character by
-    the width of the character itself.
+    A positive value increases the letter spacing by the corresponding pixels; a negative value decreases the spacing.
 */
 
 /*!
@@ -283,6 +276,8 @@ void QDeclarativeTextInput::setSelectionColor(const QColor &color)
     QPalette p = d->control->palette();
     p.setColor(QPalette::Highlight, d->selectionColor);
     d->control->setPalette(p);
+    clearCache();
+    update();
     emit selectionColorChanged(color);
 }
 
@@ -307,6 +302,8 @@ void QDeclarativeTextInput::setSelectedTextColor(const QColor &color)
     QPalette p = d->control->palette();
     p.setColor(QPalette::HighlightedText, d->selectedTextColor);
     d->control->setPalette(p);
+    clearCache();
+    update();
     emit selectedTextColorChanged(color);
 }
 
@@ -380,14 +377,14 @@ void QDeclarativeTextInput::setMaxLength(int ml)
     \qmlproperty bool TextInput::cursorVisible
     Set to true when the TextInput shows a cursor.
 
-    This property is set and unset when the TextInput gets focus, so that other
+    This property is set and unset when the TextInput gets active focus, so that other
     properties can be bound to whether the cursor is currently showing. As it
     gets set and unset automatically, when you set the value yourself you must
     keep in mind that your value may be overwritten.
 
     It can be set directly in script, for example if a KeyProxy might
     forward keys to it and you desire it to look active when this happens
-    (but without actually giving it the focus).
+    (but without actually giving it active focus).
 
     It should not be set directly on the element, like in the below QML,
     as the specified value will be overridden an lost on focus changes.
@@ -400,7 +397,7 @@ void QDeclarativeTextInput::setMaxLength(int ml)
     \endcode
 
     In the above snippet the cursor will still become visible when the
-    TextInput gains focus.
+    TextInput gains active focus.
 */
 bool QDeclarativeTextInput::isCursorVisible() const
 {
@@ -515,9 +512,9 @@ QString QDeclarativeTextInput::selectedText() const
 }
 
 /*!
-    \qmlproperty bool TextInput::focusOnPress
+    \qmlproperty bool TextInput::activeFocusOnPress
 
-    Whether the TextInput should gain focus on a mouse press. By default this is
+    Whether the TextInput should gain active focus on a mouse press. By default this is
     set to true.
 */
 bool QDeclarativeTextInput::focusOnPress() const
@@ -534,7 +531,7 @@ void QDeclarativeTextInput::setFocusOnPress(bool b)
 
     d->focusOnPress = b;
 
-    emit focusOnPressChanged(d->focusOnPress);
+    emit activeFocusOnPressChanged(d->focusOnPress);
 }
 
 /*!
@@ -556,9 +553,9 @@ void QDeclarativeTextInput::setAutoScroll(bool b)
         return;
 
     d->autoScroll = b;
-    d->updateHorizontalScroll();
     //We need to repaint so that the scrolling is taking into account.
     updateSize(true);
+    d->updateHorizontalScroll();
     emit autoScrollChanged(d->autoScroll);
 }
 
@@ -832,7 +829,7 @@ void QDeclarativeTextInput::createCursor()
     QDeclarative_setParent_noEvent(d->cursorItem, this);
     d->cursorItem->setParentItem(this);
     d->cursorItem->setX(d->control->cursorToX());
-    d->cursorItem->setHeight(d->control->height());
+    d->cursorItem->setHeight(d->control->height()-1); // -1 to counter QLineControl's +1 which is not consistent with Text.
 }
 
 void QDeclarativeTextInput::moveCursor()
@@ -916,6 +913,7 @@ void QDeclarativeTextInput::keyPressEvent(QKeyEvent* ev)
 void QDeclarativeTextInput::inputMethodEvent(QInputMethodEvent *ev)
 {
     Q_D(QDeclarativeTextInput);
+    ev->ignore();
     inputMethodPreHandler(ev);
     if (ev->isAccepted())
         return;
@@ -949,15 +947,15 @@ void QDeclarativeTextInput::mousePressEvent(QGraphicsSceneMouseEvent *event)
 {
     Q_D(QDeclarativeTextInput);
     if(d->focusOnPress){
-        bool hadFocus = hasFocus();
-        forceFocus();
+        bool hadActiveFocus = hasActiveFocus();
+        forceActiveFocus();
         if (d->showInputPanelOnFocus) {
-            if (hasFocus() && hadFocus && !isReadOnly()) {
+            if (hasActiveFocus() && hadActiveFocus && !isReadOnly()) {
                 // re-open input panel on press if already focused
                 openSoftwareInputPanel();
             }
         } else { // show input panel on click
-            if (hasFocus() && !hadFocus) {
+            if (hasActiveFocus() && !hadActiveFocus) {
                 d->clickCausedFocus = true;
             }
         }
@@ -1026,27 +1024,31 @@ bool QDeclarativeTextInput::event(QEvent* ev)
 void QDeclarativeTextInput::geometryChanged(const QRectF &newGeometry,
                                   const QRectF &oldGeometry)
 {
-    if (newGeometry.width() != oldGeometry.width())
+    Q_D(QDeclarativeTextInput);
+    if (newGeometry.width() != oldGeometry.width()) {
         updateSize();
+        d->updateHorizontalScroll();
+    }
     QDeclarativePaintedItem::geometryChanged(newGeometry, oldGeometry);
+}
+
+int QDeclarativeTextInputPrivate::calculateTextWidth()
+{
+    return qRound(control->naturalTextWidth());
 }
 
 void QDeclarativeTextInputPrivate::updateHorizontalScroll()
 {
     Q_Q(QDeclarativeTextInput);
-    QFontMetrics fm = QFontMetrics(font);
     int cix = qRound(control->cursorToX());
     QRect br(q->boundingRect().toRect());
-    //###Is this using bearing appropriately?
-    int minLB = qMax(0, -fm.minLeftBearing());
-    int minRB = qMax(0, -fm.minRightBearing());
-    int widthUsed = qRound(control->naturalTextWidth()) + 1 + minRB;
+    int widthUsed = calculateTextWidth();
     if (autoScroll) {
-        if ((minLB + widthUsed) <=  br.width()) {
+        if (widthUsed <=  br.width()) {
             // text fits in br; use hscroll for alignment
             switch (hAlign & ~(Qt::AlignAbsolute|Qt::AlignVertical_Mask)) {
             case Qt::AlignRight:
-                hscroll = widthUsed - br.width() + 1;
+                hscroll = widthUsed - br.width() - 1;
                 break;
             case Qt::AlignHCenter:
                 hscroll = (widthUsed - br.width()) / 2;
@@ -1056,7 +1058,6 @@ void QDeclarativeTextInputPrivate::updateHorizontalScroll()
                 hscroll = 0;
                 break;
             }
-            hscroll -= minLB;
         } else if (cix - hscroll >= br.width()) {
             // text doesn't fit, cursor is to the right of br (scroll right)
             hscroll = cix - br.width() + 1;
@@ -1076,7 +1077,6 @@ void QDeclarativeTextInputPrivate::updateHorizontalScroll()
         } else {
             hscroll = 0;
         }
-        hscroll -= minLB;
     }
 }
 
@@ -1101,7 +1101,6 @@ void QDeclarativeTextInput::drawContents(QPainter *p, const QRect &r)
         offset = QPoint(d->hscroll, 0);
     }
     d->control->draw(p, offset, r, flags);
-
     p->restore();
 }
 
@@ -1147,6 +1146,42 @@ void QDeclarativeTextInput::selectAll()
     Q_D(QDeclarativeTextInput);
     d->control->setSelection(0, d->control->text().length());
 }
+
+#ifndef QT_NO_CLIPBOARD
+/*!
+    \qmlmethod TextInput::cut()
+
+    Moves the currently selected text to the system clipboard.
+*/
+void QDeclarativeTextInput::cut()
+{
+    Q_D(QDeclarativeTextInput);
+    d->control->copy();
+    d->control->del();
+}
+
+/*!
+    \qmlmethod TextInput::copy()
+
+    Copies the currently selected text to the system clipboard.
+*/
+void QDeclarativeTextInput::copy()
+{
+    Q_D(QDeclarativeTextInput);
+    d->control->copy();
+}
+
+/*!
+    \qmlmethod TextInput::paste()
+
+    Replaces the currently selected text by the contents of the system clipboard.
+*/
+void QDeclarativeTextInput::paste()
+{
+    Q_D(QDeclarativeTextInput);
+    d->control->paste();
+}
+#endif // QT_NO_CLIPBOARD
 
 /*!
     \qmlmethod void TextInput::selectWord()
@@ -1279,10 +1314,10 @@ void QDeclarativeTextInput::moveCursorSelection(int position)
 
     By default the opening of input panels follows the platform style. On Symbian^1 and
     Symbian^3 -based devices the panels are opened by clicking TextInput. On other platforms
-    the panels are automatically opened when TextInput element gains focus. Input panels are
-    always closed if no editor owns focus.
+    the panels are automatically opened when TextInput element gains active focus. Input panels are
+    always closed if no editor has active focus.
 
-  . You can disable the automatic behavior by setting the property \c focusOnPress to false
+  . You can disable the automatic behavior by setting the property \c activeFocusOnPress to false
     and use functions openSoftwareInputPanel() and closeSoftwareInputPanel() to implement
     the behavior you want.
 
@@ -1293,12 +1328,12 @@ void QDeclarativeTextInput::moveCursorSelection(int position)
         TextInput {
             id: textInput
             text: "Hello world!"
-            focusOnPress: false
+            activeFocusOnPress: false
             MouseArea {
                 anchors.fill: parent
                 onClicked: {
-                    if (!textInput.focus) {
-                        textInput.focus = true;
+                    if (!textInput.activeFocus) {
+                        textInput.forceActiveFocus()
                         textInput.openSoftwareInputPanel();
                     } else {
                         textInput.focus = false;
@@ -1330,10 +1365,10 @@ void QDeclarativeTextInput::openSoftwareInputPanel()
 
     By default the opening of input panels follows the platform style. On Symbian^1 and
     Symbian^3 -based devices the panels are opened by clicking TextInput. On other platforms
-    the panels are automatically opened when TextInput element gains focus. Input panels are
-    always closed if no editor owns focus.
+    the panels are automatically opened when TextInput element gains active focus. Input panels are
+    always closed if no editor has active focus.
 
-  . You can disable the automatic behavior by setting the property \c focusOnPress to false
+  . You can disable the automatic behavior by setting the property \c activeFocusOnPress to false
     and use functions openSoftwareInputPanel() and closeSoftwareInputPanel() to implement
     the behavior you want.
 
@@ -1344,12 +1379,12 @@ void QDeclarativeTextInput::openSoftwareInputPanel()
         TextInput {
             id: textInput
             text: "Hello world!"
-            focusOnPress: false
+            activeFocusOnPress: false
             MouseArea {
                 anchors.fill: parent
                 onClicked: {
-                    if (!textInput.focus) {
-                        textInput.focus = true;
+                    if (!textInput.activeFocus) {
+                        textInput.forceActiveFocus();
                         textInput.openSoftwareInputPanel();
                     } else {
                         textInput.focus = false;
@@ -1398,18 +1433,11 @@ void QDeclarativeTextInputPrivate::init()
     q->connect(control, SIGNAL(selectionChanged()),
                q, SLOT(selectionChanged()));
     q->connect(control, SIGNAL(textChanged(const QString &)),
-               q, SIGNAL(displayTextChanged(const QString &)));
-    q->connect(control, SIGNAL(textChanged(const QString &)),
                q, SLOT(q_textChanged()));
     q->connect(control, SIGNAL(accepted()),
                q, SIGNAL(accepted()));
     q->connect(control, SIGNAL(updateNeeded(QRect)),
                q, SLOT(updateRect(QRect)));
-    q->connect(control, SIGNAL(cursorPositionChanged(int,int)),
-               q, SLOT(updateRect()));//TODO: Only update rect between pos's
-    q->connect(control, SIGNAL(selectionChanged()),
-               q, SLOT(updateRect()));//TODO: Only update rect in selection
-    //Note that above TODOs probably aren't that big a savings
     q->updateSize();
     oldValidity = control->hasAcceptableInput();
     lastSelectionStart = 0;
@@ -1422,6 +1450,8 @@ void QDeclarativeTextInputPrivate::init()
 void QDeclarativeTextInput::cursorPosChanged()
 {
     Q_D(QDeclarativeTextInput);
+    updateRect();//TODO: Only update rect between pos's
+    updateMicroFocus();
     emit cursorPositionChanged();
 
     if(!d->control->hasSelectedText()){
@@ -1439,6 +1469,7 @@ void QDeclarativeTextInput::cursorPosChanged()
 void QDeclarativeTextInput::selectionChanged()
 {
     Q_D(QDeclarativeTextInput);
+    updateRect();//TODO: Only update rect in selection
     emit selectedTextChanged();
 
     if(d->lastSelectionStart != d->control->selectionStart()){
@@ -1458,9 +1489,11 @@ void QDeclarativeTextInput::selectionChanged()
 void QDeclarativeTextInput::q_textChanged()
 {
     Q_D(QDeclarativeTextInput);
-    d->updateHorizontalScroll();
     updateSize();
+    d->updateHorizontalScroll();
+    updateMicroFocus();
     emit textChanged();
+    emit displayTextChanged();
     if(hasAcceptableInput() != d->oldValidity){
         d->oldValidity = hasAcceptableInput();
         emit acceptableInputChanged();
@@ -1477,16 +1510,26 @@ void QDeclarativeTextInput::updateRect(const QRect &r)
     update();
 }
 
+QRectF QDeclarativeTextInput::boundingRect() const
+{
+    Q_D(const QDeclarativeTextInput);
+    QRectF r = QDeclarativePaintedItem::boundingRect();
+
+    int cursorWidth = d->cursorItem ? d->cursorItem->width() : d->control->cursorWidth();
+
+    // Could include font max left/right bearings to either side of rectangle.
+
+    r.setRight(r.right() + cursorWidth);
+    return r;
+}
+
 void QDeclarativeTextInput::updateSize(bool needsRedraw)
 {
     Q_D(QDeclarativeTextInput);
     int w = width();
     int h = height();
-    setImplicitHeight(d->control->height());
-    int cursorWidth = d->control->cursorWidth();
-    if(d->cursorItem)
-        cursorWidth = d->cursorItem->width();
-    setImplicitWidth(d->control->naturalTextWidth() + cursorWidth);
+    setImplicitHeight(d->control->height()-1); // -1 to counter QLineControl's +1 which is not consistent with Text.
+    setImplicitWidth(d->calculateTextWidth());
     setContentsSize(QSize(width(), height()));//Repaints if changed
     if(w==width() && h==height() && needsRedraw){
         clearCache();
@@ -1495,4 +1538,6 @@ void QDeclarativeTextInput::updateSize(bool needsRedraw)
 }
 
 QT_END_NAMESPACE
+
+#endif // QT_NO_LINEEDIT
 

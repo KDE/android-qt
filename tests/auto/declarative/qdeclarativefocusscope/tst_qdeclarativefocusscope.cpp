@@ -68,6 +68,7 @@ private slots:
     void noFocus();
     void textEdit();
     void forceFocus();
+    void noParentFocus();
 };
 
 /*
@@ -97,7 +98,7 @@ void tst_qdeclarativefocusscope::basic()
     QDeclarativeView *view = new QDeclarativeView;
     view->setSource(QUrl::fromLocalFile(SRCDIR "/data/test.qml"));
 
-    QDeclarativeRectangle *item0 = findItem<QDeclarativeRectangle>(view->rootObject(), QLatin1String("item0"));
+    QDeclarativeFocusScope *item0 = findItem<QDeclarativeFocusScope>(view->rootObject(), QLatin1String("item0"));
     QDeclarativeRectangle *item1 = findItem<QDeclarativeRectangle>(view->rootObject(), QLatin1String("item1"));
     QDeclarativeRectangle *item2 = findItem<QDeclarativeRectangle>(view->rootObject(), QLatin1String("item2"));
     QDeclarativeRectangle *item3 = findItem<QDeclarativeRectangle>(view->rootObject(), QLatin1String("item3"));
@@ -117,22 +118,22 @@ void tst_qdeclarativefocusscope::basic()
 
     QVERIFY(view->hasFocus());
     QVERIFY(view->scene()->hasFocus());
-    QVERIFY(item0->wantsFocus() == true);
-    QVERIFY(item1->hasFocus() == true);
-    QVERIFY(item2->hasFocus() == false);
-    QVERIFY(item3->hasFocus() == false);
+    QVERIFY(item0->hasActiveFocus() == true);
+    QVERIFY(item1->hasActiveFocus() == true);
+    QVERIFY(item2->hasActiveFocus() == false);
+    QVERIFY(item3->hasActiveFocus() == false);
 
     QTest::keyClick(view, Qt::Key_Right);
-    QVERIFY(item0->wantsFocus() == true);
-    QVERIFY(item1->hasFocus() == false);
-    QVERIFY(item2->hasFocus() == true);
-    QVERIFY(item3->hasFocus() == false);
+    QVERIFY(item0->hasActiveFocus() == true);
+    QVERIFY(item1->hasActiveFocus() == false);
+    QVERIFY(item2->hasActiveFocus() == true);
+    QVERIFY(item3->hasActiveFocus() == false);
 
     QTest::keyClick(view, Qt::Key_Down);
-    QVERIFY(item0->wantsFocus() == false);
-    QVERIFY(item1->hasFocus() == false);
-    QVERIFY(item2->hasFocus() == false);
-    QVERIFY(item3->hasFocus() == true);
+    QVERIFY(item0->hasActiveFocus() == false);
+    QVERIFY(item1->hasActiveFocus() == false);
+    QVERIFY(item2->hasActiveFocus() == false);
+    QVERIFY(item3->hasActiveFocus() == true);
 
     delete view;
 }
@@ -165,16 +166,11 @@ void tst_qdeclarativefocusscope::nested()
     QVERIFY(view->hasFocus());
     QVERIFY(view->scene()->hasFocus());
 
-    QVERIFY(item1->wantsFocus() == true);
-    QVERIFY(item1->hasFocus() == false);
-    QVERIFY(item2->wantsFocus() == true);
-    QVERIFY(item2->hasFocus() == false);
-    QVERIFY(item3->wantsFocus() == true);
-    QVERIFY(item3->hasFocus() == false);
-    QVERIFY(item4->wantsFocus() == true);
-    QVERIFY(item4->hasFocus() == false);
-    QVERIFY(item5->wantsFocus() == true);
-    QVERIFY(item5->hasFocus() == true);
+    QVERIFY(item1->hasActiveFocus() == true);
+    QVERIFY(item2->hasActiveFocus() == true);
+    QVERIFY(item3->hasActiveFocus() == true);
+    QVERIFY(item4->hasActiveFocus() == true);
+    QVERIFY(item5->hasActiveFocus() == true);
     delete view;
 }
 
@@ -203,22 +199,22 @@ void tst_qdeclarativefocusscope::noFocus()
 
     QVERIFY(view->hasFocus());
     QVERIFY(view->scene()->hasFocus());
-    QVERIFY(item0->wantsFocus() == false);
-    QVERIFY(item1->hasFocus() == false);
-    QVERIFY(item2->hasFocus() == false);
-    QVERIFY(item3->hasFocus() == false);
+    QVERIFY(item0->hasActiveFocus() == false);
+    QVERIFY(item1->hasActiveFocus() == false);
+    QVERIFY(item2->hasActiveFocus() == false);
+    QVERIFY(item3->hasActiveFocus() == false);
 
     QTest::keyClick(view, Qt::Key_Right);
-    QVERIFY(item0->wantsFocus() == false);
-    QVERIFY(item1->hasFocus() == false);
-    QVERIFY(item2->hasFocus() == false);
-    QVERIFY(item3->hasFocus() == false);
+    QVERIFY(item0->hasActiveFocus() == false);
+    QVERIFY(item1->hasActiveFocus() == false);
+    QVERIFY(item2->hasActiveFocus() == false);
+    QVERIFY(item3->hasActiveFocus() == false);
 
     QTest::keyClick(view, Qt::Key_Down);
-    QVERIFY(item0->wantsFocus() == false);
-    QVERIFY(item1->hasFocus() == false);
-    QVERIFY(item2->hasFocus() == false);
-    QVERIFY(item3->hasFocus() == false);
+    QVERIFY(item0->hasActiveFocus() == false);
+    QVERIFY(item1->hasActiveFocus() == false);
+    QVERIFY(item2->hasActiveFocus() == false);
+    QVERIFY(item3->hasActiveFocus() == false);
 
     delete view;
 }
@@ -228,7 +224,7 @@ void tst_qdeclarativefocusscope::textEdit()
     QDeclarativeView *view = new QDeclarativeView;
     view->setSource(QUrl::fromLocalFile(SRCDIR "/data/test5.qml"));
 
-    QDeclarativeRectangle *item0 = findItem<QDeclarativeRectangle>(view->rootObject(), QLatin1String("item0"));
+    QDeclarativeFocusScope *item0 = findItem<QDeclarativeFocusScope>(view->rootObject(), QLatin1String("item0"));
     QDeclarativeTextEdit *item1 = findItem<QDeclarativeTextEdit>(view->rootObject(), QLatin1String("item1"));
     QDeclarativeRectangle *item2 = findItem<QDeclarativeRectangle>(view->rootObject(), QLatin1String("item2"));
     QDeclarativeTextEdit *item3 = findItem<QDeclarativeTextEdit>(view->rootObject(), QLatin1String("item3"));
@@ -248,32 +244,32 @@ void tst_qdeclarativefocusscope::textEdit()
 
     QVERIFY(view->hasFocus());
     QVERIFY(view->scene()->hasFocus());
-    QVERIFY(item0->wantsFocus() == true);
-    QVERIFY(item1->hasFocus() == true);
-    QVERIFY(item2->hasFocus() == false);
-    QVERIFY(item3->hasFocus() == false);
+    QVERIFY(item0->hasActiveFocus() == true);
+    QVERIFY(item1->hasActiveFocus() == true);
+    QVERIFY(item2->hasActiveFocus() == false);
+    QVERIFY(item3->hasActiveFocus() == false);
 
     QTest::keyClick(view, Qt::Key_Right);
-    QVERIFY(item0->wantsFocus() == true);
-    QVERIFY(item1->hasFocus() == true);
-    QVERIFY(item2->hasFocus() == false);
-    QVERIFY(item3->hasFocus() == false);
+    QVERIFY(item0->hasActiveFocus() == true);
+    QVERIFY(item1->hasActiveFocus() == true);
+    QVERIFY(item2->hasActiveFocus() == false);
+    QVERIFY(item3->hasActiveFocus() == false);
 
     QTest::keyClick(view, Qt::Key_Right);
     QTest::keyClick(view, Qt::Key_Right);
     QTest::keyClick(view, Qt::Key_Right);
     QTest::keyClick(view, Qt::Key_Right);
     QTest::keyClick(view, Qt::Key_Right);
-    QVERIFY(item0->wantsFocus() == true);
-    QVERIFY(item1->hasFocus() == false);
-    QVERIFY(item2->hasFocus() == true);
-    QVERIFY(item3->hasFocus() == false);
+    QVERIFY(item0->hasActiveFocus() == true);
+    QVERIFY(item1->hasActiveFocus() == false);
+    QVERIFY(item2->hasActiveFocus() == true);
+    QVERIFY(item3->hasActiveFocus() == false);
 
     QTest::keyClick(view, Qt::Key_Down);
-    QVERIFY(item0->wantsFocus() == false);
-    QVERIFY(item1->hasFocus() == false);
-    QVERIFY(item2->hasFocus() == false);
-    QVERIFY(item3->hasFocus() == true);
+    QVERIFY(item0->hasActiveFocus() == false);
+    QVERIFY(item1->hasActiveFocus() == false);
+    QVERIFY(item2->hasActiveFocus() == false);
+    QVERIFY(item3->hasActiveFocus() == true);
 
     delete view;
 }
@@ -283,10 +279,10 @@ void tst_qdeclarativefocusscope::forceFocus()
     QDeclarativeView *view = new QDeclarativeView;
     view->setSource(QUrl::fromLocalFile(SRCDIR "/data/forcefocus.qml"));
 
-    QDeclarativeRectangle *item0 = findItem<QDeclarativeRectangle>(view->rootObject(), QLatin1String("item0"));
+    QDeclarativeFocusScope *item0 = findItem<QDeclarativeFocusScope>(view->rootObject(), QLatin1String("item0"));
     QDeclarativeRectangle *item1 = findItem<QDeclarativeRectangle>(view->rootObject(), QLatin1String("item1"));
     QDeclarativeRectangle *item2 = findItem<QDeclarativeRectangle>(view->rootObject(), QLatin1String("item2"));
-    QDeclarativeRectangle *item3 = findItem<QDeclarativeRectangle>(view->rootObject(), QLatin1String("item3"));
+    QDeclarativeFocusScope *item3 = findItem<QDeclarativeFocusScope>(view->rootObject(), QLatin1String("item3"));
     QDeclarativeRectangle *item4 = findItem<QDeclarativeRectangle>(view->rootObject(), QLatin1String("item4"));
     QDeclarativeRectangle *item5 = findItem<QDeclarativeRectangle>(view->rootObject(), QLatin1String("item5"));
     QVERIFY(item0 != 0);
@@ -307,32 +303,46 @@ void tst_qdeclarativefocusscope::forceFocus()
 
     QVERIFY(view->hasFocus());
     QVERIFY(view->scene()->hasFocus());
-    QVERIFY(item0->wantsFocus() == true);
-    QVERIFY(item1->hasFocus() == true);
-    QVERIFY(item2->hasFocus() == false);
-    QVERIFY(item3->wantsFocus() == false);
-    QVERIFY(item4->hasFocus() == false);
-    QVERIFY(item5->hasFocus() == false);
+    QVERIFY(item0->hasActiveFocus() == true);
+    QVERIFY(item1->hasActiveFocus() == true);
+    QVERIFY(item2->hasActiveFocus() == false);
+    QVERIFY(item3->hasActiveFocus() == false);
+    QVERIFY(item4->hasActiveFocus() == false);
+    QVERIFY(item5->hasActiveFocus() == false);
 
     QTest::keyClick(view, Qt::Key_4);
-    QVERIFY(item0->wantsFocus() == true);
-    QVERIFY(item1->hasFocus() == true);
-    QVERIFY(item2->hasFocus() == false);
-    QVERIFY(item3->wantsFocus() == false);
-    QVERIFY(item4->hasFocus() == false);
-    QVERIFY(item5->hasFocus() == false);
+    QVERIFY(item0->hasActiveFocus() == true);
+    QVERIFY(item1->hasActiveFocus() == true);
+    QVERIFY(item2->hasActiveFocus() == false);
+    QVERIFY(item3->hasActiveFocus() == false);
+    QVERIFY(item4->hasActiveFocus() == false);
+    QVERIFY(item5->hasActiveFocus() == false);
 
     QTest::keyClick(view, Qt::Key_5);
-    QVERIFY(item0->wantsFocus() == false);
-    QVERIFY(item1->hasFocus() == false);
-    QVERIFY(item2->hasFocus() == false);
-    QVERIFY(item3->wantsFocus() == true);
-    QVERIFY(item4->hasFocus() == false);
-    QVERIFY(item5->hasFocus() == true);
+    QVERIFY(item0->hasActiveFocus() == false);
+    QVERIFY(item1->hasActiveFocus() == false);
+    QVERIFY(item2->hasActiveFocus() == false);
+    QVERIFY(item3->hasActiveFocus() == true);
+    QVERIFY(item4->hasActiveFocus() == false);
+    QVERIFY(item5->hasActiveFocus() == true);
 
     delete view;
 }
 
+void tst_qdeclarativefocusscope::noParentFocus()
+{
+    QDeclarativeView *view = new QDeclarativeView;
+    view->setSource(QUrl::fromLocalFile(SRCDIR "/data/chain.qml"));
+    QVERIFY(view->rootObject());
+
+    QVERIFY(view->rootObject()->property("focus1") == true);
+    QVERIFY(view->rootObject()->property("focus2") == false);
+    QVERIFY(view->rootObject()->property("focus3") == true);
+    QVERIFY(view->rootObject()->property("focus4") == true);
+    QVERIFY(view->rootObject()->property("focus5") == true);
+
+    delete view;
+}
 
 QTEST_MAIN(tst_qdeclarativefocusscope)
 

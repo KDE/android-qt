@@ -53,6 +53,8 @@ static void to_tis620(const HB_UChar16 *string, hb_uint32 len, const char *cstr)
         else
             result[i] = '?';
     }
+
+    result[len] = 0;
 }
 
 static void thaiWordBreaks(const HB_UChar16 *string, hb_uint32 len, HB_CharAttributes *attributes)
@@ -70,8 +72,8 @@ static void thaiWordBreaks(const HB_UChar16 *string, hb_uint32 len, HB_CharAttri
     if (!th_brk)
         return;
 
-    if (len > 128)
-        cstr = (char *)malloc(len*sizeof(char));
+    if (len >= 128)
+        cstr = (char *)malloc(len*sizeof(char) + 1);
 
     to_tis620(string, len, cstr);
 
@@ -89,14 +91,14 @@ static void thaiWordBreaks(const HB_UChar16 *string, hb_uint32 len, HB_CharAttri
     for (i = 0; i < numbreaks; ++i) {
         if (break_positions[i] > 0) {
             attributes[break_positions[i]-1].lineBreakType = HB_Break;
-            attributes[i].wordBoundary = TRUE;
+            attributes[break_positions[i]-1].wordBoundary = TRUE;
         }
     }
 
     if (break_positions != brp)
         free(break_positions);
 
-    if (len > 128)
+    if (len >= 128)
         free(cstr);
 }
 

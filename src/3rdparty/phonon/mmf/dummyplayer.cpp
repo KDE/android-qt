@@ -92,11 +92,15 @@ qint64 MMF::DummyPlayer::totalTime() const
     return 0;
 }
 
-void MMF::DummyPlayer::open(const Phonon::MediaSource &, RFile &)
+void MMF::DummyPlayer::open()
 {
 
 }
 
+void MMF::DummyPlayer::close()
+{
+
+}
 
 //-----------------------------------------------------------------------------
 // AbstractPlayer

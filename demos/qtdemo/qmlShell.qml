@@ -40,26 +40,13 @@
 ****************************************************************************/
 
 import Qt 4.7
-import Effects 1.0
 
-/* Vars exposed from C++
-   pixmap bgAppPixmap
-   bool useBlur (to turn on, pass -use-blur on the cmd line. Off by default 'cause it's too slow)
-*/
 Item {
     id: main
     //height and width set by program to fill window
     //below properties are sometimes set from C++
     property url qmlFile: ''
     property bool show: false
-    Image{
-        id: bg
-        opacity: 0
-        anchors.fill: parent
-        z: -1
-        pixmap: bgAppPixmap
-        effect: Blur { id: blurEffect; enabled: useBlur; blurRadius: 8;}
-    }
 
     Item{ id:embeddedViewer
         width: parent.width
@@ -99,6 +86,7 @@ Item {
             }
             MouseArea{
                 anchors.fill: parent
+                acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
                 onClicked: loader.focus=true;/* and don't propogate to the 'exit' area*/
             }
 
@@ -111,13 +99,6 @@ Item {
                 anchors.fill:parent
             }
 
-            effect: DropShadow  {
-                enabled: useBlur;
-                blurRadius: 9;
-                color: "#88000000";
-                xOffset:0
-                yOffset:0
-            }
         }
 
         Text{
@@ -130,9 +111,35 @@ Item {
             textFormat: Text.RichText
             //Note that if loader is Error, it is because the file was found but there was an error creating the component
             //This means either we have a bug in our demos, or the required modules (which ship with Qt) did not deploy correctly
-            text: "The example has failed to load.<br />If you installed Qt's QML modules this is a bug!<br />"
+            text: "The example has failed to load.<br />If you installed all Qt's C++ and QML modules then this is a bug!<br />"
                 + 'Report it at <a href="http://bugreports.qt.nokia.com">http://bugreports.qt.nokia.com</a>';
             onLinkActivated: Qt.openUrlExternally(link);
+        }
+    }
+    Rectangle{
+        id: helpLabel
+        property bool timedOut: false
+        z: 9
+        //Positioned in the top left corner
+        x: 8 
+        y: 8
+        color: "white"
+        border.color: "black"
+        border.width: 1
+        width: helpText.width + 16
+        height: helpText.height + 8
+        Text{
+            id: helpText
+            color: "black"
+            anchors.centerIn: parent
+            text: "Click outside the example to exit it."
+        }
+        opacity: 0
+        Behavior on opacity{ NumberAnimation{duration:500} }
+        Timer{
+            id: helpTimer
+            interval: 5000
+            onTriggered: {helpLabel.timedOut=true}
         }
     }
     Rectangle{ id: blackout //Maybe use a colorize effect instead?
@@ -145,6 +152,7 @@ Item {
         z: 8
         enabled: main.show
         hoverEnabled: main.show //To steal focus from the buttons
+        acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
         anchors.fill: parent
         onClicked: main.show=false;
     }
@@ -158,8 +166,8 @@ Item {
                 opacity: 1
             }
             PropertyChanges {
-                target: bg
-                opacity: 1
+                target: helpLabel
+                opacity: helpLabel.timedOut?0:1
             }
             PropertyChanges {
                 target: blackout
@@ -169,9 +177,9 @@ Item {
     ]
     transitions: [//Should not be too long, because the component has already started running
         Transition { from: ''; to: "show"; reversible: true
-            SequentialAnimation{
-                PropertyAction { target: bg; property: useBlur?"y":"opacity";}//fade in blurred background only if blurred
-                NumberAnimation{ properties: "opacity"; easing.type: Easing.InQuad; duration: 500}
+            ParallelAnimation{
+                ScriptAction{ script: {helpLabel.timedOut = false; helpTimer.restart();} }
+                NumberAnimation{ exclude: helpLabel; properties: "opacity"; easing.type: Easing.InQuad; duration: 500}
                 PropertyAction { target: loader; property: "focus"; value: true}//Might be needed to ensure the focus stays with us
             }
         }
