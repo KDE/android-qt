@@ -68,6 +68,7 @@ contains(QT_CONFIG, declarative): SUBDIRS += declarative
 win32: SUBDIRS += activeqt
 contains(QT_CONFIG, xmlpatterns):!contains(QT_CONFIG, no-gui): SUBDIRS += xmlpatterns
 contains(DEFINES, QT_NO_CURSOR): SUBDIRS -= mainwindows
+contains(QT_CONFIG, concurrent): SUBDIRS += qtconcurrent
 
 # install
 sources.files = README *.pro

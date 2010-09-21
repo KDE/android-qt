@@ -129,7 +129,13 @@ void QS60Data::setStatusPaneAndButtonGroupVisibility(bool statusPaneVisible, boo
         statusPaneVisibilityChanged = (s->IsVisible() != statusPaneVisible);
         s->MakeVisible(statusPaneVisible);
     }
-    if (buttonGroupVisibilityChanged  && !statusPaneVisibilityChanged)
+    if (buttonGroupVisibilityChanged  || statusPaneVisibilityChanged) {
+        const QSize size = qt_TRect2QRect(static_cast<CEikAppUi*>(S60->appUi())->ClientRect()).size();
+        const QSize oldSize; // note that QDesktopWidget::resizeEvent ignores the QResizeEvent contents
+        QResizeEvent event(size, oldSize);
+        QApplication::instance()->sendEvent(QApplication::desktop(), &event);
+    }
+    if (buttonGroupVisibilityChanged  && !statusPaneVisibilityChanged && QApplication::activeWindow())
         // Ensure that control rectangle is updated
         static_cast<QSymbianControl *>(QApplication::activeWindow()->winId())->handleClientAreaChange();
 }
@@ -1107,17 +1113,19 @@ void QSymbianControl::Draw(const TRect& controlRect) const
         CFbsBitmap *bitmap = s60Surface->symbianBitmap();
         CWindowGc &gc = SystemGc();
 
-        switch(qwidget->d_func()->extraData()->nativePaintMode) {
+        QWExtra::NativePaintMode nativePaintMode = qwidget->d_func()->extraData()->nativePaintMode;
+        if(qwidget->d_func()->paintOnScreen())
+            nativePaintMode = QWExtra::Disable;
+
+        switch(nativePaintMode) {
         case QWExtra::Disable:
             // Do nothing
             break;
-
         case QWExtra::Blit:
             if (qwidget->d_func()->isOpaque)
                 gc.SetDrawMode(CGraphicsContext::EDrawModeWriteAlpha);
             gc.BitBlt(controlRect.iTl, bitmap, backingStoreRect);
             break;
-
         case QWExtra::ZeroFill:
             if (Window().DisplayMode() == EColor16MA
                 || Window().DisplayMode() == Q_SYMBIAN_ECOLOR16MAP) {
@@ -1130,7 +1138,6 @@ void QSymbianControl::Draw(const TRect& controlRect) const
                 gc.Clear(controlRect);
             };
             break;
-
         default:
             Q_ASSERT(false);
         }
@@ -1241,17 +1248,28 @@ void QSymbianControl::FocusChanged(TDrawNow /* aDrawNow */)
         S60->setStatusPaneAndButtonGroupVisibility(statusPaneVisibility, buttonGroupVisibility);
 #endif
     } else if (QApplication::activeWindow() == qwidget->window()) {
-        if (CCoeEnv::Static()->AppUi()->IsDisplayingMenuOrDialog() || S60->menuBeingConstructed) {
-            QWidget *fw = QApplication::focusWidget();
-            if (fw) {
-                QFocusEvent event(QEvent::FocusOut, Qt::PopupFocusReason);
-                QCoreApplication::sendEvent(fw, &event);
-            }
-            m_symbianPopupIsOpen = true;
-            return;
+        bool focusedControlFound = false;
+        WId winId = 0;
+        for (QWidget *w = qwidget->parentWidget(); w && (winId = w->internalWinId()); w = w->parentWidget()) {
+            if (winId->IsFocused() && winId->IsVisible()) {
+                focusedControlFound = true;
+                break;
+            } else if (w->isWindow())
+                break;
         }
+        if (!focusedControlFound) {
+            if (CCoeEnv::Static()->AppUi()->IsDisplayingMenuOrDialog() || S60->menuBeingConstructed) {
+                QWidget *fw = QApplication::focusWidget();
+                if (fw) {
+                    QFocusEvent event(QEvent::FocusOut, Qt::PopupFocusReason);
+                    QCoreApplication::sendEvent(fw, &event);
+                }
+                m_symbianPopupIsOpen = true;
+                return;
+            }
 
-        QApplication::setActiveWindow(0);
+            QApplication::setActiveWindow(0);
+        }
     }
     // else { We don't touch the active window unless we were explicitly activated or deactivated }
 }
@@ -1341,6 +1359,11 @@ void QSymbianControl::setFocusSafely(bool focus)
             lastFocusedControl = 0;
         this->SetFocus(false);
     }
+}
+
+bool QSymbianControl::isControlActive()
+{
+    return IsActivated() ? true : false;
 }
 
 /*!

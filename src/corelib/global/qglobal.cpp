@@ -1841,6 +1841,7 @@ QSysInfo::S60Version QSysInfo::s60Version()
     CDir* contents;
     TInt err = fileFinder.FindWildByDir(qt_S60Filter, qt_S60SystemInstallDir, contents);
     if (err == KErrNone) {
+        QScopedPointer<CDir> contentsDeleter(contents);
         err = contents->Sort(EDescending|ESortByName);
         if (err == KErrNone && contents->Count() > 0 && (*contents)[0].iName.Length() >= 12) {
             TInt major = (*contents)[0].iName[9] - '0';
@@ -1863,7 +1864,6 @@ QSysInfo::S60Version QSysInfo::s60Version()
                 }
             }
         }
-        delete contents;
     }
 
 #  ifdef Q_CC_NOKIAX86

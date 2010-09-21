@@ -172,6 +172,12 @@ private slots:
     void itemChangeEvents();
     void itemSendGeometryPosChangesDeactivated();
 
+    void fontPropagatesResolveToChildren();
+    void fontPropagatesResolveToGrandChildren();
+    void fontPropagatesResolveInParentChange();
+    void fontPropagatesResolveViaNonWidget();
+    void fontPropagatesResolveFromScene();
+
     // Task fixes
     void task236127_bspTreeIndexFails();
     void task243004_setStyleCrash();
@@ -622,6 +628,192 @@ void tst_QGraphicsWidget::font()
     QCOMPARE(widget.font().family(), font.family());
 }
 
+void tst_QGraphicsWidget::fontPropagatesResolveToChildren()
+{
+    QGraphicsWidget *root = new QGraphicsWidget();
+    QGraphicsWidget *child1 = new QGraphicsWidget(root);
+
+    QGraphicsScene scene;
+    scene.addItem(root);
+
+    QFont font;
+    font.setItalic(true);
+    root->setFont(font);
+
+    QGraphicsWidget *child2 = new QGraphicsWidget(root);
+    QGraphicsWidget *child3 = new QGraphicsWidget();
+    child3->setParentItem(root);
+
+    QGraphicsView view;
+    view.setScene(&scene);
+    view.show();
+    QTest::qWaitForWindowShown(&view);
+
+    QCOMPARE(font.resolve(), uint(QFont::StyleResolved));
+    QCOMPARE(root->font().resolve(), uint(QFont::StyleResolved));
+    QCOMPARE(child1->font().resolve(), uint(QFont::StyleResolved));
+    QCOMPARE(child2->font().resolve(), uint(QFont::StyleResolved));
+    QCOMPARE(child3->font().resolve(), uint(QFont::StyleResolved));
+}
+
+void tst_QGraphicsWidget::fontPropagatesResolveToGrandChildren()
+{
+    QGraphicsWidget *root = new QGraphicsWidget();
+    QGraphicsWidget *child1 = new QGraphicsWidget(root);
+    QGraphicsWidget *grandChild1 = new QGraphicsWidget(child1);
+
+    QGraphicsScene scene;
+    scene.addItem(root);
+
+    QFont font;
+    font.setItalic(true);
+    root->setFont(font);
+
+    QGraphicsWidget *child2 = new QGraphicsWidget(root);
+    QGraphicsWidget *grandChild2 = new QGraphicsWidget(child2);
+    QGraphicsWidget *grandChild3 = new QGraphicsWidget(child2);
+
+    QGraphicsWidget *child3 = new QGraphicsWidget();
+    QGraphicsWidget *grandChild4 = new QGraphicsWidget(child3);
+    QGraphicsWidget *grandChild5 = new QGraphicsWidget(child3);
+    child3->setParentItem(root);
+    grandChild5->setParentItem(child3);
+
+    QGraphicsView view;
+    view.setScene(&scene);
+    view.show();
+    QTest::qWaitForWindowShown(&view);
+
+    QCOMPARE(font.resolve(), uint(QFont::StyleResolved));
+    QCOMPARE(grandChild1->font().resolve(), uint(QFont::StyleResolved));
+    QCOMPARE(grandChild2->font().resolve(), uint(QFont::StyleResolved));
+    QCOMPARE(grandChild3->font().resolve(), uint(QFont::StyleResolved));
+    QCOMPARE(grandChild4->font().resolve(), uint(QFont::StyleResolved));
+    QCOMPARE(grandChild5->font().resolve(), uint(QFont::StyleResolved));
+}
+
+void tst_QGraphicsWidget::fontPropagatesResolveViaNonWidget()
+{
+    QGraphicsWidget *root = new QGraphicsWidget();
+    QGraphicsPixmapItem *child1 = new QGraphicsPixmapItem(root);
+    QGraphicsWidget *grandChild1 = new QGraphicsWidget(child1);
+
+    QGraphicsScene scene;
+    scene.addItem(root);
+
+    QFont font;
+    font.setItalic(true);
+    root->setFont(font);
+
+    QGraphicsPixmapItem *child2 = new QGraphicsPixmapItem(root);
+    QGraphicsWidget *grandChild2 = new QGraphicsWidget(child2);
+    QGraphicsWidget *grandChild3 = new QGraphicsWidget(child2);
+
+    QGraphicsPixmapItem *child3 = new QGraphicsPixmapItem();
+    QGraphicsWidget *grandChild4 = new QGraphicsWidget(child3);
+    QGraphicsWidget *grandChild5 = new QGraphicsWidget(child3);
+    child3->setParentItem(root);
+    grandChild5->setParentItem(child3);
+
+    QGraphicsView view;
+    view.setScene(&scene);
+    view.show();
+    QTest::qWaitForWindowShown(&view);
+
+    QCOMPARE(font.resolve(), uint(QFont::StyleResolved));
+    QCOMPARE(grandChild1->font().resolve(), uint(QFont::StyleResolved));
+    QCOMPARE(grandChild2->font().resolve(), uint(QFont::StyleResolved));
+    QCOMPARE(grandChild3->font().resolve(), uint(QFont::StyleResolved));
+    QCOMPARE(grandChild4->font().resolve(), uint(QFont::StyleResolved));
+    QCOMPARE(grandChild5->font().resolve(), uint(QFont::StyleResolved));
+}
+
+void tst_QGraphicsWidget::fontPropagatesResolveFromScene()
+{
+    QGraphicsWidget *root = new QGraphicsWidget();
+    QGraphicsWidget *child1 = new QGraphicsWidget(root);
+    QGraphicsWidget *grandChild1 = new QGraphicsWidget(child1);
+
+    QGraphicsScene scene;
+    scene.addItem(root);
+
+    QFont font;
+    font.setItalic(true);
+    scene.setFont(font);
+
+    QGraphicsWidget *child2 = new QGraphicsWidget(root);
+    QGraphicsWidget *grandChild2 = new QGraphicsWidget(child2);
+    QGraphicsWidget *grandChild3 = new QGraphicsWidget(child2);
+
+    QGraphicsWidget *child3 = new QGraphicsWidget();
+    QGraphicsWidget *grandChild4 = new QGraphicsWidget(child3);
+    QGraphicsWidget *grandChild5 = new QGraphicsWidget(child3);
+    child3->setParentItem(root);
+    grandChild5->setParentItem(child3);
+
+    QGraphicsView view;
+    view.setScene(&scene);
+    view.show();
+    QTest::qWaitForWindowShown(&view);
+
+    QCOMPARE(font.resolve(), uint(QFont::StyleResolved));
+    QCOMPARE(root->font().resolve(), uint(QFont::StyleResolved));
+    QCOMPARE(child1->font().resolve(), uint(QFont::StyleResolved));
+    QCOMPARE(child2->font().resolve(), uint(QFont::StyleResolved));
+    QCOMPARE(child3->font().resolve(), uint(QFont::StyleResolved));
+    QCOMPARE(grandChild1->font().resolve(), uint(QFont::StyleResolved));
+    QCOMPARE(grandChild2->font().resolve(), uint(QFont::StyleResolved));
+    QCOMPARE(grandChild3->font().resolve(), uint(QFont::StyleResolved));
+    QCOMPARE(grandChild4->font().resolve(), uint(QFont::StyleResolved));
+    QCOMPARE(grandChild5->font().resolve(), uint(QFont::StyleResolved));
+}
+
+void tst_QGraphicsWidget::fontPropagatesResolveInParentChange()
+{
+    QGraphicsWidget *root = new QGraphicsWidget();
+
+    QGraphicsWidget *child1 = new QGraphicsWidget(root);
+    QGraphicsWidget *grandChild1 = new QGraphicsWidget(child1);
+
+    QGraphicsWidget *child2 = new QGraphicsWidget(root);
+    QGraphicsWidget *grandChild2 = new QGraphicsWidget(child2);
+
+    QGraphicsScene scene;
+    scene.addItem(root);
+
+    QFont italicFont;
+    italicFont.setItalic(true);
+    child1->setFont(italicFont);
+
+    QFont boldFont;
+    boldFont.setBold(true);
+    child2->setFont(boldFont);
+
+    QVERIFY(grandChild1->font().italic());
+    QVERIFY(!grandChild1->font().bold());
+    QVERIFY(!grandChild2->font().italic());
+    QVERIFY(grandChild2->font().bold());
+
+    QCOMPARE(grandChild1->font().resolve(), uint(QFont::StyleResolved));
+    QCOMPARE(grandChild2->font().resolve(), uint(QFont::WeightResolved));
+
+    grandChild2->setParentItem(child1);
+
+    QGraphicsView view;
+    view.setScene(&scene);
+    view.show();
+    QTest::qWaitForWindowShown(&view);
+
+    QVERIFY(grandChild1->font().italic());
+    QVERIFY(!grandChild1->font().bold());
+    QVERIFY(grandChild2->font().italic());
+    QVERIFY(!grandChild2->font().bold());
+
+    QCOMPARE(grandChild1->font().resolve(), uint(QFont::StyleResolved));
+    QCOMPARE(grandChild2->font().resolve(), uint(QFont::StyleResolved));
+
+}
+
 void tst_QGraphicsWidget::fontPropagation()
 {
     QGraphicsWidget *root = new QGraphicsWidget;
@@ -728,11 +920,12 @@ void tst_QGraphicsWidget::fontPropagationWidgetItemWidget()
     widget->setFont(font);
 
     QCOMPARE(widget2->font().pointSize(), 43);
-    QCOMPARE(widget2->font().resolve(), QFont().resolve());
+    QCOMPARE(widget2->font().resolve(), uint(QFont::SizeResolved));
 
     widget->setFont(QFont());
 
     QCOMPARE(widget2->font().pointSize(), qApp->font().pointSize());
+    QCOMPARE(widget2->font().resolve(), QFont().resolve());
 }
 
 void tst_QGraphicsWidget::fontPropagationSceneChange()
@@ -890,7 +1083,7 @@ void tst_QGraphicsWidget::initStyleOption()
     qt_x11_wait_for_window_manager(&view);
 #endif
     QApplication::setActiveWindow(&view);
-    QTRY_COMPARE(QApplication::activeWindow(), &view);
+    QTRY_COMPARE(QApplication::activeWindow(), (QWidget*)&view);
 
     view.setAlignment(Qt::AlignTop | Qt::AlignLeft);
     SubQGraphicsWidget *widget = new SubQGraphicsWidget;
@@ -1222,7 +1415,7 @@ void tst_QGraphicsWidget::setTabOrder()
     qt_x11_wait_for_window_manager(&view);
 #endif
     QApplication::setActiveWindow(&view);
-    QTRY_COMPARE(QApplication::activeWindow(), &view);
+    QTRY_COMPARE(QApplication::activeWindow(), (QWidget*)&view);
 
     QGraphicsWidget *lastItem = 0;
     QTest::ignoreMessage(QtWarningMsg, "QGraphicsWidget::setTabOrder(0, 0) is undefined");
@@ -1285,7 +1478,7 @@ void tst_QGraphicsWidget::setTabOrderAndReparent()
     view.show();
     QApplication::setActiveWindow(&view);
     QTest::qWaitForWindowShown(&view);
-    QTRY_COMPARE(QApplication::activeWindow(), &view);
+    QTRY_COMPARE(QApplication::activeWindow(), (QWidget*)&view);
 
     int i;
     QGraphicsWidget *w1, *w2, *w3, *w4;
@@ -1425,7 +1618,7 @@ void tst_QGraphicsWidget::verifyFocusChain()
     view.show();
     QApplication::setActiveWindow(&view);
     QTest::qWaitForWindowShown(&view);
-    QTRY_COMPARE(QApplication::activeWindow(), &view);
+    QTRY_COMPARE(QApplication::activeWindow(), (QWidget*)&view);
 
     {
         // parent/child focus
@@ -1552,7 +1745,7 @@ void tst_QGraphicsWidget::updateFocusChainWhenChildDie()
     qt_x11_wait_for_window_manager(&view);
 #endif
     QApplication::setActiveWindow(&view);
-    QTRY_COMPARE(QApplication::activeWindow(), &view);
+    QTRY_COMPARE(QApplication::activeWindow(), (QWidget*)&view);
 
     // delete item in focus chain with no focus and verify chain
     SubQGraphicsWidget *parent = new SubQGraphicsWidget(0, Qt::Window);
@@ -2503,7 +2696,7 @@ void tst_QGraphicsWidget::task250119_shortcutContext()
     view.setScene(&scene);
     view.show();
     QApplication::setActiveWindow(&view);
-    QTRY_COMPARE(QApplication::activeWindow(), &view);
+    QTRY_COMPARE(QApplication::activeWindow(), (QWidget*)&view);
 
 
     // *** Event: ***
