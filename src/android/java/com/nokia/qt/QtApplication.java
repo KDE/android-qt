@@ -5,6 +5,7 @@ import android.app.Activity;
 import android.graphics.Rect;
 import android.util.Log;
 import android.view.View;
+import java.util.List;
 
 public class QtApplication
 {
@@ -33,13 +34,13 @@ public class QtApplication
 		m_view = view;
 	}
 
-	public static void loadLibraries(String[] libraries)
+	public static void loadLibraries(List<String> libraries)
 	{
-		for (int i = 0; i < libraries.length; i++)
+		for (int i = 0; i < libraries.size(); i++)
 		{
 			try
 			{
-				String library = "/data/local/qt/lib/lib" + libraries[i] + ".so";
+				String library = "/data/local/qt/lib/lib" + libraries.get(i) + ".so";
 				File f = new File(library);
 				if (f.exists())
 					System.load(library);
@@ -47,7 +48,7 @@ public class QtApplication
 			catch (Exception e)
 			{
 				Log.i(QtTAG, "Can't load '/data/local/qt/lib/lib"
-						+ libraries[i] + ".so'", e);
+						+ libraries.get(i) + ".so'", e);
 			}
 		}
 	}
