@@ -2,10 +2,12 @@ TARGET = QtAndroid
 
 include(../../qpluginbase.pri)
 
+DEFINES = QT_STATICPLUGIN
+
+include(../fontdatabases/basicunix/basicunix.pri)
+
 CONFIG += dll
 DESTDIR = $$QMAKE_LIBDIR_QT
-
-DEFINES = QT_STATICPLUGIN
 
 CONFIG(android-8) : LIBS += -ljnigraphics
 else{
