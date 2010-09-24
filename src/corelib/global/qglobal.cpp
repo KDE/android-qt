@@ -1841,6 +1841,7 @@ QSysInfo::S60Version QSysInfo::s60Version()
     CDir* contents;
     TInt err = fileFinder.FindWildByDir(qt_S60Filter, qt_S60SystemInstallDir, contents);
     if (err == KErrNone) {
+        QScopedPointer<CDir> contentsDeleter(contents);
         err = contents->Sort(EDescending|ESortByName);
         if (err == KErrNone && contents->Count() > 0 && (*contents)[0].iName.Length() >= 12) {
             TInt major = (*contents)[0].iName[9] - '0';
@@ -1863,7 +1864,6 @@ QSysInfo::S60Version QSysInfo::s60Version()
                 }
             }
         }
-        delete contents;
     }
 
 #  ifdef Q_CC_NOKIAX86
@@ -1890,9 +1890,9 @@ QSysInfo::SymbianVersion QSysInfo::symbianVersion()
     case SV_S60_5_0:
         return SV_9_4;
     case SV_S60_5_1:
-        return SV_9_4;
+        return SV_SF_2;
     case SV_S60_5_2:
-        return SV_9_4;
+        return SV_SF_3;
     default:
         return SV_Unknown;
     }
@@ -2953,8 +2953,9 @@ int qrand()
     \relates <QtGlobal>
 
     You can use this macro to specify information about a custom type
-    \a Type. With accurate type information, Qt's \l{generic
-    containers} can choose appropriate storage methods and algorithms.
+    \a Type. With accurate type information, Qt's \l{Container Classes}
+    {generic containers} can choose appropriate storage methods and
+    algorithms.
 
     \a Flags can be one of the following:
 

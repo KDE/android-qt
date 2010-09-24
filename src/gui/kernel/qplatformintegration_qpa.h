@@ -51,12 +51,14 @@ QT_BEGIN_HEADER
 
 QT_BEGIN_NAMESPACE
 
-//QT_MODULE(Gui)
+QT_MODULE(Gui)
+
 class QPlatformWindow;
 class QWindowSurface;
 class QBlittable;
 class QWidget;
 class QPlatformEventLoopIntegration;
+class QPlatformFontDatabase;
 
 class Q_GUI_EXPORT QPlatformIntegration
 {
@@ -73,6 +75,9 @@ public:
     virtual QList<QPlatformScreen *> screens() const = 0;
     virtual bool isVirtualDesktop() { return false; }
     virtual QPixmap grabWindow(WId window, int x, int y, int width, int height) const;
+
+//Fontdatabase integration.
+    virtual QPlatformFontDatabase *fontDatabase() const;
 
 // Experimental in mainthread eventloop integration
 // This should only be used if it is only possible to do window system event processing in

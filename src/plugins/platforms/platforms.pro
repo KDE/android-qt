@@ -1,13 +1,6 @@
 TEMPLATE = subdirs
-contains(QT_CONFIG, openvg):contains(QT_CONFIG, egl) {
-    SUBDIRS += openvglite
-}
 
-    SUBDIRS += minimal
+SUBDIRS += minimal
 
-#this don't work. but leave it for now
-qpa:x11 {
-    SUBDIRS += testlite
-}
 
 qpa:CONFIG(android): SUBDIRS += android # android_sw

@@ -68,7 +68,7 @@
 QT_BEGIN_NAMESPACE
 
 static QString appName;
-static const char *appFont = 0;                  // application font
+static QString appFont;
 
 QWidget *qt_button_down = 0;                     // widget got last button-down
 
@@ -523,7 +523,7 @@ void qt_init(QApplicationPrivate *priv, int type)
         QByteArray arg = argv[i];
         if (arg == "-fn" || arg == "-font") {
             if (++i < argc)
-                appFont = argv[i];
+                appFont = QString::fromLocal8Bit(argv[i]);
         } else if (arg == "-platform") {
             if (++i < argc)
                 platformName = QLatin1String(argv[i]);
@@ -801,9 +801,6 @@ void QApplicationPrivate::processKeyEvent(QWindowSystemInterfacePrivate::KeyEven
         return;
     if (app_do_modal && !qt_try_modal(focusW, e->keyType))
         return;
-
-    if (!focusW->isWindow())
-        focusW = focusW->window();
 
     modifiers = e->modifiers;
     QKeyEvent ev(e->keyType, e->key, e->modifiers, e->unicode, e->repeat, e->repeatCount);

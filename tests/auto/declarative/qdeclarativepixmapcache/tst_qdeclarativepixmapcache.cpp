@@ -42,6 +42,7 @@
 #include <QtTest/QtTest>
 #include <private/qdeclarativepixmapcache_p.h>
 #include <QtDeclarative/qdeclarativeengine.h>
+#include <QtDeclarative/qdeclarativeimageprovider.h>
 #include <QNetworkReply>
 #include "testhttpserver.h"
 #include "../../../shared/util.h"
@@ -71,6 +72,8 @@ private slots:
     void parallel();
     void parallel_data();
     void massive();
+    void cancelcrash();
+    void shrinkcache();
 
 private:
     QDeclarativeEngine engine;
@@ -313,6 +316,40 @@ void tst_qdeclarativepixmapcache::massive()
     QVERIFY(p2.pixmap().size() == QSize(10000, 1000));
 
     QVERIFY(p2.pixmap().cacheKey() != cachekey);
+    }
+}
+
+// QTBUG-12729
+void tst_qdeclarativepixmapcache::cancelcrash()
+{
+    QUrl url("http://127.0.0.1:14452/cancelcrash_notexist.png");
+    for (int ii = 0; ii < 1000; ++ii) {
+        QDeclarativePixmap pix(&engine, url);
+    }
+}
+
+class MyPixmapProvider : public QDeclarativeImageProvider
+{
+public:
+    MyPixmapProvider()
+    : QDeclarativeImageProvider(Pixmap) {}
+
+    virtual QPixmap requestPixmap(const QString &d, QSize *, const QSize &) {
+        QPixmap pix(800, 600);
+        pix.fill(Qt::red);
+        return pix;
+    }
+};
+
+// QTBUG-13345
+void tst_qdeclarativepixmapcache::shrinkcache()
+{
+    QDeclarativeEngine engine;
+    engine.addImageProvider(QLatin1String("mypixmaps"), new MyPixmapProvider);
+
+    for (int ii = 0; ii < 4000; ++ii) {
+        QUrl url("image://mypixmaps/" + QString::number(ii));
+        QDeclarativePixmap p(&engine, url);
     }
 }
 

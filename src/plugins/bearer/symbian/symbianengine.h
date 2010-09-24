@@ -73,22 +73,8 @@ class AccessPointsAvailabilityScanner;
 class SymbianNetworkConfigurationPrivate : public QNetworkConfigurationPrivate
 {
 public:
-    enum Bearer {
-        BearerEthernet,
-        BearerWLAN,
-        Bearer2G,
-        BearerCDMA2000,
-        BearerWCDMA,
-        BearerHSPA,
-        BearerBluetooth,
-        BearerWiMAX,
-        BearerUnknown = -1
-    };
-
     SymbianNetworkConfigurationPrivate();
     ~SymbianNetworkConfigurationPrivate();
-
-    QString bearerName() const;
 
     inline TUint32 numericIdentifier() const
     {
@@ -109,8 +95,6 @@ public:
     }
 
     QString mappingName;
-
-    Bearer bearer;
 
     // So called IAP id from the platform. Remains constant as long as the
     // platform is aware of the configuration ie. it is stored in the databases
@@ -154,10 +138,15 @@ public:
 
     QStringList accessPointConfigurationIdentifiers();
 
+    QNetworkConfigurationPrivatePointer configurationFromSsid(const QString &ssid);
+
+    // For QNetworkSessionPrivateImpl to indicate about state changes
+    void configurationStateChangeReport(TUint32 accessPointId, QNetworkSession::State newState);
+
 Q_SIGNALS:
     void onlineStateChanged(bool isOnline);
     
-    void configurationStateChanged(TUint32 accessPointId, TUint32 connMonId,
+    void configurationStateChanged(quint32 accessPointId, quint32 connMonId,
                                    QNetworkSession::State newState);
     
 public Q_SLOTS:
@@ -203,12 +192,9 @@ protected:
 private:
     // MConnectionMonitorObserver
     void EventL(const CConnMonEventBase& aEvent);
-    // For QNetworkSessionPrivate to indicate about state changes
-    void configurationStateChangeReport(TUint32 accessPointId,
-                                   QNetworkSession::State newState);
-#ifdef OCC_FUNCTIONALITY_AVAILABLE
-    QNetworkConfigurationPrivatePointer configurationFromEasyWlan(TUint32 apId, TUint connectionId);
-    bool easyWlanTrueIapId(TUint32& trueIapId);
+#ifdef SNAP_FUNCTIONALITY_AVAILABLE
+    QNetworkConfigurationPrivatePointer configurationFromEasyWlan(TUint32 apId,
+                                                                  TUint connectionId);
 #endif
 
 private: // Data
@@ -228,7 +214,6 @@ private: // Data
 
     friend class QNetworkSessionPrivate;
     friend class AccessPointsAvailabilityScanner;
-    friend class QNetworkSessionPrivateImpl;
 
 #ifdef SNAP_FUNCTIONALITY_AVAILABLE
     RCmManager iCmManager;

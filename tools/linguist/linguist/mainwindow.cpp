@@ -142,10 +142,13 @@ static Ending ending(QString str, QLocale::Language lang)
     case 0x2048: // question exclamation mark
     case 0x2049: // exclamation question mark
     case 0x2762: // heavy exclamation mark ornament
+    case 0xff01: // full width exclamation mark
+    case 0xff1f: // full width question mark
         return End_Interrobang;
     case 0x003b: // greek 'compatibility' questionmark
         return lang == QLocale::Greek ? End_Interrobang : End_None;
     case 0x003a: // colon
+    case 0xff1a: // full width colon
         return End_Colon;
     case 0x2026: // horizontal ellipsis
         return End_Ellipsis;
@@ -1027,6 +1030,8 @@ void MainWindow::findAgain()
                             break;
                         if (searchItem(m->extraComment()))
                             break;
+                        if (searchItem(m->translatorComment()))
+                            break;
                         m_foundWhere = DataModel::NoLocation;
                         // did not find the search string in this message
                     }
@@ -1347,7 +1352,7 @@ void MainWindow::manual()
         << (QT_VERSION >> 16) << ((QT_VERSION >> 8) & 0xFF)
         << (QT_VERSION & 0xFF)
         << QLatin1String("/qdoc/linguist-manual.html")
-        << QLatin1Char('\0') << endl;
+        << QLatin1Char('\n') << endl;
 }
 
 void MainWindow::about()

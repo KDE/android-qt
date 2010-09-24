@@ -1628,7 +1628,7 @@ void QDeclarativeBindingCompiler::dump(const QByteArray &programData)
 
 /*!
 Clear the state associated with attempting to compile a specific binding.
-This does not clear the global "commited binding" states.
+This does not clear the global "committed binding" states.
 */
 void QDeclarativeBindingCompilerPrivate::resetInstanceState()
 {
@@ -1874,7 +1874,7 @@ bool QDeclarativeBindingCompilerPrivate::parseName(AST::Node *node, Result &type
                 return false;
 
             QDeclarativeImportedNamespace *ns = 0;
-            if (!engine->importDatabase.resolveType(imports, name.toUtf8(), &attachType, 0, 0, 0, &ns))
+            if (!imports.resolveType(name.toUtf8(), &attachType, 0, 0, 0, &ns))
                 return false;
             if (ns || !attachType || !attachType->attachedPropertiesType())
                 return false;

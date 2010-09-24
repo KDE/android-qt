@@ -80,8 +80,6 @@ public:
     virtual QString getInterfaceFromId(const QString &id);
     bool hasIdentifier(const QString &id);
 
-    virtual QString bearerName(const QString &id);
-
     virtual void connectToId(const QString &id);
     virtual void disconnectFromId(const QString &id);
 
@@ -125,7 +123,7 @@ private:
     QString networkFromId(const QString &id);
 
     QNetworkConfiguration::StateFlags getStateForService(const QString &service);
-    QString typeToBearer(const QString &type);
+    QNetworkConfiguration::BearerType typeToBearer(const QString &type);
 
     void removeConfiguration(const QString &servicePath);
     void addServiceConfiguration(const QString &servicePath);
@@ -139,7 +137,8 @@ private:
     QMap<QString,QStringList> deviceMap; //tech path,  device path
     QMap<QString, QString> serviceNetworks; //service, network
 
-
+    QNetworkConfiguration::BearerType ofonoTechToBearerType(const QString &type);
+    bool isRoamingAllowed(const QString &context);
 protected:
     bool requiresPolling() const;
     QConnmanConnectThread *connThread;
