@@ -3259,8 +3259,12 @@ void QGraphicsItemPrivate::setFocusHelper(Qt::FocusReason focusReason, bool clim
     QGraphicsItem *p = parent;
     while (p) {
         if (p->flags() & QGraphicsItem::ItemIsFocusScope) {
+            QGraphicsItem *oldFocusScopeItem = p->d_ptr->focusScopeItem;
             p->d_ptr->focusScopeItem = q_ptr;
             if (!p->focusItem() && !focusFromShow) {
+                if (oldFocusScopeItem)
+                    oldFocusScopeItem->d_ptr->focusScopeItemChange(false);
+                focusScopeItemChange(true);
                 // If you call setFocus on a child of a focus scope that
                 // doesn't currently have a focus item, then stop.
                 return;
@@ -5595,6 +5599,7 @@ void QGraphicsItemPrivate::subFocusItemChange()
 */
 void QGraphicsItemPrivate::focusScopeItemChange(bool isSubFocusItem)
 {
+    Q_UNUSED(isSubFocusItem);
 }
 
 /*!
@@ -5660,9 +5665,6 @@ void QGraphicsItem::update(const QRectF &rect)
         if (d_ptr->fullUpdatePending)
             return;
     }
-
-    if (d_ptr->discardUpdateRequest())
-        return;
 
     if (d_ptr->scene)
         d_ptr->scene->d_func()->markDirty(this, rect);
@@ -7751,6 +7753,24 @@ void QGraphicsItemPrivate::setHeight(qreal h)
 void QGraphicsItemPrivate::resetHeight()
 {
 }
+
+/*!
+    \property QGraphicsObject::children
+    \since 4.7
+    \internal
+*/
+
+/*!
+    \property QGraphicsObject::width
+    \since 4.7
+    \internal
+*/
+
+/*!
+    \property QGraphicsObject::height
+    \since 4.7
+    \internal
+*/
 
 /*!
   \property QGraphicsObject::parent
@@ -10880,8 +10900,8 @@ QVariant QGraphicsSimpleTextItem::extension(const QVariant &variant) const
 
 /*!
     \class QGraphicsItemGroup
-    \brief The QGraphicsItemGroup class provides treating a group of items as
-    one.
+    \brief The QGraphicsItemGroup class provides a container that treats
+    a group of items as a single item.
     \since 4.2
     \ingroup graphicsview-api
 

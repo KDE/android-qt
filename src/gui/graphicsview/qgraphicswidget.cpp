@@ -385,12 +385,12 @@ void QGraphicsWidget::setGeometry(const QRectF &rect)
         if (wd->inSetPos) {
             //set the new pos
             d->geom.moveTopLeft(pos());
+            emit geometryChanged();
             return;
         }
     }
     QSizeF oldSize = size();
     QGraphicsLayoutItem::setGeometry(newGeom);
-    emit geometryChanged();
     // Send resize event
     bool resized = newGeom.size() != oldSize;
     if (resized) {
@@ -403,6 +403,7 @@ void QGraphicsWidget::setGeometry(const QRectF &rect)
             emit heightChanged();
         QApplication::sendEvent(this, &re);
     }
+    emit geometryChanged();
 }
 
 /*!
@@ -936,7 +937,9 @@ void QGraphicsWidget::setStyle(QStyle *style)
 QFont QGraphicsWidget::font() const
 {
     Q_D(const QGraphicsWidget);
-    return d->font;
+    QFont fnt = d->font;
+    fnt.resolve(fnt.resolve() | d->inheritedFontResolveMask);
+    return fnt;
 }
 void QGraphicsWidget::setFont(const QFont &font)
 {

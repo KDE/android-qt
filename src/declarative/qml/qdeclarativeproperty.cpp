@@ -42,7 +42,6 @@
 #include "qdeclarativeproperty.h"
 #include "private/qdeclarativeproperty_p.h"
 
-#include "private/qdeclarativecompositetypedata_p.h"
 #include "qdeclarative.h"
 #include "private/qdeclarativebinding_p.h"
 #include "qdeclarativecontext.h"
@@ -640,7 +639,7 @@ QDeclarativePropertyPrivate::binding(const QDeclarativeProperty &that)
     is assumed by the caller.
 
     \a flags is passed through to the binding and is used for the initial update (when
-    the binding sets the intial value, it will use these flags for the write).
+    the binding sets the initial value, it will use these flags for the write).
 */
 QDeclarativeAbstractBinding *
 QDeclarativePropertyPrivate::setBinding(const QDeclarativeProperty &that,

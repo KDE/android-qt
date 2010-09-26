@@ -38,8 +38,10 @@
 **
 ****************************************************************************/
 
+//! [imports]
 import Qt 4.7
 import "content"
+//! [imports]
 
 //! [0]
 Rectangle {
@@ -85,6 +87,11 @@ Rectangle {
                 drag.minimumX: 2; drag.maximumX: container.width - 32
             }
         }
+    }
+    QuitButton {
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.margins: 10
     }
 }
 //! [0]

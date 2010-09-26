@@ -96,7 +96,7 @@
 
 QT_BEGIN_NAMESPACE
 
-#if defined(Q_WS_X11) || defined(Q_WS_MAC) || defined(Q_WS_QWS) || defined(Q_WS_QPA)
+#if defined(Q_WS_X11) || defined(Q_WS_MAC) || defined(Q_WS_QWS) || defined(Q_WS_QPA) || defined(Q_OS_SYMBIAN)
 QGLExtensionFuncs QGLContextPrivate::qt_extensionFuncs;
 #endif
 
@@ -1695,6 +1695,10 @@ void QGLContextPrivate::init(QPaintDevice *dev, const QGLFormat &format)
     workaround_needsFullClearOnEveryFrame = false;
     workaround_brokenFBOReadBack = false;
     workaroundsCached = false;
+
+    workaround_brokenTextureFromPixmap = false;
+    workaround_brokenTextureFromPixmap_init = false;
+
     for (int i = 0; i < QT_GL_VERTEX_ARRAY_TRACKED_COUNT; ++i)
         vertexAttributeArraysEnabledState[i] = false;
 }
@@ -1998,7 +2002,7 @@ struct DDSFormat {
     option helps preserve this default behavior.
 
     \omitvalue CanFlipNativePixmapBindOption Used by x11 from pixmap to choose
-    wether or not it can bind the pixmap upside down or not.
+    whether or not it can bind the pixmap upside down or not.
 
     \omitvalue MemoryManagedBindOption Used by paint engines to
     indicate that the pixmap should be memory managed along side with
@@ -2106,11 +2110,8 @@ void QGLContextPrivate::syncGlState()
 #ifdef QT_NO_EGL
 void QGLContextPrivate::swapRegion(const QRegion *)
 {
-    static bool firstWarning = true;
-    if (firstWarning) {
-        qWarning() << "::swapRegion called but not supported!";
-        firstWarning = false;
-    }
+    Q_Q(QGLContext);
+    q->swapBuffers();
 }
 #endif
 
@@ -2267,7 +2268,7 @@ static void convertToGLFormatHelper(QImage &dst, const QImage &img, GLenum textu
     }
 }
 
-#if defined(Q_WS_X11) || defined(Q_WS_MAC) || defined(Q_WS_QWS) || defined(Q_WS_QPA)
+#if defined(Q_WS_X11) || defined(Q_WS_MAC) || defined(Q_WS_QWS) || defined(Q_WS_QPA) || defined(Q_OS_SYMBIAN)
 QGLExtensionFuncs& QGLContextPrivate::extensionFuncs(const QGLContext *)
 {
     return qt_extensionFuncs;
@@ -2290,11 +2291,19 @@ QImage QGLContextPrivate::convertToGLFormat(const QImage &image, bool force_prem
 QGLTexture *QGLContextPrivate::bindTexture(const QImage &image, GLenum target, GLint format,
                                            QGLContext::BindOptions options)
 {
+    Q_Q(QGLContext);
+
     const qint64 key = image.cacheKey();
     QGLTexture *texture = textureCacheLookup(key, target);
     if (texture) {
-        glBindTexture(target, texture->id);
-        return texture;
+        if (image.paintingActive()) {
+            // A QPainter is active on the image - take the safe route and replace the texture.
+            q->deleteTexture(texture->id);
+            texture = 0;
+        } else {
+            glBindTexture(target, texture->id);
+            return texture;
+        }
     }
 
     if (!texture)
@@ -2560,14 +2569,19 @@ QGLTexture *QGLContextPrivate::bindTexture(const QPixmap &pixmap, GLenum target,
     }
 #else
     Q_UNUSED(pd);
-    Q_UNUSED(q);
 #endif
 
     const qint64 key = pixmap.cacheKey();
     QGLTexture *texture = textureCacheLookup(key, target);
     if (texture) {
-        glBindTexture(target, texture->id);
-        return texture;
+        if (pixmap.paintingActive()) {
+            // A QPainter is active on the pixmap - take the safe route and replace the texture.
+            q->deleteTexture(texture->id);
+            texture = 0;
+        } else {
+            glBindTexture(target, texture->id);
+            return texture;
+        }
     }
 
 #if defined(Q_WS_X11)
@@ -2577,11 +2591,27 @@ QGLTexture *QGLContextPrivate::bindTexture(const QPixmap &pixmap, GLenum target,
         && xinfo && xinfo->screen() == pixmap.x11Info().screen()
         && target == GL_TEXTURE_2D)
     {
-        texture = bindTextureFromNativePixmap(const_cast<QPixmap*>(&pixmap), key, options);
-        if (texture) {
-            texture->options |= QGLContext::MemoryManagedBindOption;
-            texture->boundPixmap = pd;
-            boundPixmaps.insert(pd, QPixmap(pixmap));
+        if (!workaround_brokenTextureFromPixmap_init) {
+            workaround_brokenTextureFromPixmap_init = true;
+
+            const QByteArray versionString(reinterpret_cast<const char*>(glGetString(GL_VERSION)));
+            const int pos = versionString.indexOf("NVIDIA ");
+
+            if (pos >= 0) {
+                const QByteArray nvidiaVersionString = versionString.mid(pos + strlen("NVIDIA "));
+
+                if (nvidiaVersionString.startsWith("195") || nvidiaVersionString.startsWith("256"))
+                    workaround_brokenTextureFromPixmap = true;
+            }
+        }
+
+        if (!workaround_brokenTextureFromPixmap) {
+            texture = bindTextureFromNativePixmap(const_cast<QPixmap*>(&pixmap), key, options);
+            if (texture) {
+                texture->options |= QGLContext::MemoryManagedBindOption;
+                texture->boundPixmap = pd;
+                boundPixmaps.insert(pd, QPixmap(pixmap));
+            }
         }
     }
 #endif
@@ -4184,6 +4214,34 @@ bool QGLWidget::event(QEvent *e)
         d->glcx->d_ptr->clearDrawable();
 #  endif
     }
+#elif defined(Q_OS_SYMBIAN)
+    // prevents errors on some systems, where we get a flush to a
+    // hidden widget
+    if (e->type() == QEvent::Hide) {
+        makeCurrent();
+        glFinish();
+        doneCurrent();
+    } else if (e->type() == QEvent::ParentChange) {
+        // if we've reparented a window that has the current context
+        // bound, we need to rebind that context to the new window id
+        if (d->glcx == QGLContext::currentContext())
+            makeCurrent();
+
+        if (testAttribute(Qt::WA_TranslucentBackground))
+            setContext(new QGLContext(d->glcx->requestedFormat(), this));
+    }
+
+    // A re-parent is likely to destroy the Symbian window and re-create it. It is important
+    // that we free the EGL surface _before_ the winID changes - otherwise we can leak.
+    if (e->type() == QEvent::ParentAboutToChange)
+        d->glcx->d_func()->destroyEglSurfaceForDevice();
+
+    if ((e->type() == QEvent::ParentChange) || (e->type() == QEvent::WindowStateChange)) {
+        // The window may have been re-created during re-parent or state change - if so, the EGL
+        // surface will need to be re-created.
+        d->recreateEglSurface();
+    }
+
 #endif
 
     return QWidget::event(e);
@@ -4391,6 +4449,11 @@ void QGLWidget::glDraw()
     Q_D(QGLWidget);
     if (!isValid())
         return;
+#ifdef Q_OS_SYMBIAN
+    // Crashes on Symbian if trying to render to invisible surfaces
+    if (!isVisible() && d->glcx->device()->devType() == QInternal::Widget)
+        return;
+#endif
     makeCurrent();
 #ifndef QT_OPENGL_ES
     if (d->glcx->deviceIsPixmap())
@@ -5203,6 +5266,10 @@ QGLExtensions::Extensions QGLExtensions::currentContextExtensions()
         glExtensions |= FragmentProgram;
     if (extensions.match("GL_ARB_fragment_shader"))
         glExtensions |= FragmentShader;
+    if (extensions.match("GL_ARB_shader_objects"))
+        glExtensions |= FragmentShader;
+    if (extensions.match("GL_ARB_ES2_compatibility"))
+        glExtensions |= ES2Compatibility;
     if (extensions.match("GL_ARB_texture_mirrored_repeat"))
         glExtensions |= MirroredRepeat;
     if (extensions.match("GL_EXT_framebuffer_object"))
@@ -5223,6 +5290,7 @@ QGLExtensions::Extensions QGLExtensions::currentContextExtensions()
     glExtensions |= FramebufferObject;
     glExtensions |= GenerateMipmap;
     glExtensions |= FragmentShader;
+    glExtensions |= ES2Compatibility;
 #endif
 #if defined(QT_OPENGL_ES_1)
     if (extensions.match("GL_OES_framebuffer_object"))

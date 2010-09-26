@@ -183,6 +183,7 @@ private slots:
     void ignoreSslErrorsListWithSlot();
     void readFromClosedSocket();
     void writeBigChunk();
+    void setEmptyDefaultConfiguration();
 
     static void exitLoop()
     {
@@ -1072,6 +1073,7 @@ void tst_QSslSocket::wildcardCertificateNames()
     QCOMPARE( QSslSocketBackendPrivate::isMatchingHostname(QString("*.example.com"), QString("www.example.com")), true );
     QCOMPARE( QSslSocketBackendPrivate::isMatchingHostname(QString("xxx*.example.com"), QString("xxxwww.example.com")), true );
     QCOMPARE( QSslSocketBackendPrivate::isMatchingHostname(QString("f*.example.com"), QString("foo.example.com")), true );
+    QCOMPARE( QSslSocketBackendPrivate::isMatchingHostname(QString("192.168.0.0"), QString("192.168.0.0")), true );
 
     // Failing CN matches
     QCOMPARE( QSslSocketBackendPrivate::isMatchingHostname(QString("xxx.example.com"), QString("www.example.com")), false );
@@ -1085,6 +1087,7 @@ void tst_QSslSocket::wildcardCertificateNames()
     QCOMPARE( QSslSocketBackendPrivate::isMatchingHostname(QString("*.example."), QString("www.example")), false );
     QCOMPARE( QSslSocketBackendPrivate::isMatchingHostname(QString(""), QString("www")), false );
     QCOMPARE( QSslSocketBackendPrivate::isMatchingHostname(QString("*"), QString("www")), false );
+    QCOMPARE( QSslSocketBackendPrivate::isMatchingHostname(QString("*.168.0.0"), QString("192.168.0.0")), false );
 }
 
 void tst_QSslSocket::wildcard()
@@ -1831,6 +1834,21 @@ void tst_QSslSocket::writeBigChunk()
     QVERIFY(socket->bytesToWrite() == 0);
 
     socket->close();
+}
+
+void tst_QSslSocket::setEmptyDefaultConfiguration()
+{
+    // used to produce a crash in QSslConfigurationPrivate::deepCopyDefaultConfiguration, QTBUG-13265
+
+    if (!QSslSocket::supportsSsl())
+        return;
+
+    QSslConfiguration emptyConf;
+    QSslConfiguration::setDefaultConfiguration(emptyConf);
+
+    QSslSocketPtr socket = newSocket();
+    socket->connectToHostEncrypted(QtNetworkSettings::serverName(), 443);
+
 }
 
 #endif // QT_NO_OPENSSL
