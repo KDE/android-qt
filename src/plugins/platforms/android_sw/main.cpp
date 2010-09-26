@@ -40,6 +40,7 @@
 ****************************************************************************/
 
 #include <QPlatformIntegrationPlugin>
+#include <QDebug>
 #include "qandroidplatformintegration.h"
 
 QT_BEGIN_NAMESPACE

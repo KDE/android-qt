@@ -110,9 +110,11 @@ void QWidgetPrivate::create_sys(WId window, bool initializeWindow, bool destroyO
     q_createNativeChildrenAndSetParent(q->platformWindow(),q);
 
     //if we we have a parent, then set correct parent;
-    if (QWidget *nativeParent = q->nativeParentWidget()) {
-        if (nativeParent->platformWindow()) {
-            platformWindow->setParent(nativeParent->platformWindow());
+    if (!q->isWindow()) {
+        if (QWidget *nativeParent = q->nativeParentWidget()) {
+            if (nativeParent->platformWindow()) {
+                platformWindow->setParent(nativeParent->platformWindow());
+            }
         }
     }
 
@@ -143,12 +145,7 @@ void QWidget::destroy(bool destroyWindow, bool destroySubWindows)
             }
         }
         if (destroyWindow) {
-            QTLWExtra *topData = d->maybeTopData();
-            if (topData) {
-                delete topData->platformWindow;
-                topData->platformWindow = 0;
-                d->data.winid = 0;
-            }
+            d->deleteTLSysExtra();
         } else {
             if (parentWidget() && parentWidget()->testAttribute(Qt::WA_WState_Created)) {
                 d->hide_sys();
@@ -401,9 +398,10 @@ void QWidgetPrivate::show_sys()
              window->setGeometry(geomRect);
          }
          if (q->isWindow()) {
-             if (QWindowSurface *surface = q->windowSurface())
+             if (QWindowSurface *surface = q->windowSurface()) {
                  if (windowRect.size() != geomRect.size()) {
-                 surface->resize(geomRect.size());
+                     surface->resize(geomRect.size());
+                 }
              }
 
              if (window)
@@ -779,6 +777,7 @@ void QWidgetPrivate::createSysExtra()
 
 void QWidgetPrivate::deleteSysExtra()
 {
+
 }
 
 void QWidgetPrivate::createTLSysExtra()
@@ -787,6 +786,11 @@ void QWidgetPrivate::createTLSysExtra()
 
 void QWidgetPrivate::deleteTLSysExtra()
 {
+    if (extra && extra->topextra) {
+        delete extra->topextra->platformWindow;
+        extra->topextra->platformWindow = 0;
+        extra->topextra->backingStore.destroy();
+    }
 }
 
 void QWidgetPrivate::registerDropSite(bool on)

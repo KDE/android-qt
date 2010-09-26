@@ -76,24 +76,21 @@ public class QtActivity extends Activity
 		}
 	}
 
-	@Override
-	protected void onPause()
-	{
+//	@Override
+//	protected void onPause()
+//	{
 		if (!quitApp)
 		{
 			Log.i(QtApplication.QtTAG, "onPause");
 			QtApplication.pauseQtApp();
 		}
-		super.onPause();
-	}
-
-	@Override
-	protected void onResume()
-	{
-		Log.i(QtApplication.QtTAG, "onResume");
+//	@Override
+//	protected void onResume()
+//	{
+//		Log.i(QtApplication.QtTAG, "onResume");
+//		QtApplication.resumeQtApp();
+//		super.onRestart();
 		QtApplication.resumeQtApp();
-		super.onRestart();
-	}
 
 	@Override
 	public Object onRetainNonConfigurationInstance()

@@ -48,7 +48,7 @@ int main(int argc, char **argv)
     QApplication app(argc, argv);
     Window win;
 
-    bool smallScreen = QApplication::arguments().contains("-small-screen");
+    bool smallScreen = true;// QApplication::arguments().contains("-small-screen");
     if (!smallScreen) {
         win.show();
     } else {

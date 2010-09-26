@@ -87,7 +87,7 @@ const TInt KInternalStatusPaneChange = 0x50000000;
 //this macro exists because EColor16MAP enum value doesn't exist in Symbian OS 9.2
 #define Q_SYMBIAN_ECOLOR16MAP TDisplayMode(13)
 
-class QS60ThreadLocalData
+class Q_AUTOTEST_EXPORT QS60ThreadLocalData
 {
 public:
     QS60ThreadLocalData();
@@ -141,7 +141,6 @@ public:
     int supportsPremultipliedAlpha : 1;
     int avkonComponentsSupportTransparency : 1;
     int menuBeingConstructed : 1;
-    int memoryLimitForHwRendering;
     QApplication::QS60MainApplicationFactory s60ApplicationFactory; // typedef'ed pointer type
 
     enum ScanCodeState {
@@ -165,13 +164,14 @@ public:
     static inline CEikButtonGroupContainer* buttonGroupContainer();
     static void setStatusPaneAndButtonGroupVisibility(bool statusPaneVisible, bool buttonGroupVisible);
 #endif
+    static void controlVisibilityChanged(CCoeControl *control, bool visible);
 
 #ifdef Q_OS_SYMBIAN
     TTrapHandler *s60InstalledTrapHandler;
 #endif
 };
 
-QS60Data* qGlobalS60Data();
+Q_AUTOTEST_EXPORT QS60Data* qGlobalS60Data();
 #define S60 qGlobalS60Data()
 
 class QAbstractLongTapObserver
@@ -210,6 +210,8 @@ public:
     void CancelLongTapTimer();
 
     void setFocusSafely(bool focus);
+
+    bool isControlActive();
 
 #ifdef Q_WS_S60
     void FadeBehindPopup(bool fade){ popupFader.FadeBehindPopup( this, this, fade); }
@@ -291,7 +293,6 @@ inline QS60Data::QS60Data()
   supportsPremultipliedAlpha(0),
   avkonComponentsSupportTransparency(0),
   menuBeingConstructed(0),
-  memoryLimitForHwRendering(0),
   s60ApplicationFactory(0)
 #ifdef Q_OS_SYMBIAN
   ,s60InstalledTrapHandler(0)

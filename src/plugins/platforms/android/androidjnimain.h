@@ -8,6 +8,7 @@ class QThread;
 class QAndroidPlatformIntegration;
 class QString;
 class QWidget;
+
 namespace QtAndroid
 {
     void setAndroidGraphicsSystem(QAndroidPlatformIntegration * androidGraphicsSystem);

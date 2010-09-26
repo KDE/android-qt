@@ -74,6 +74,8 @@ static inline QFixed leadingSpaceWidth(QTextEngine *eng, const QScriptLine &line
 
     int pos = line.length;
     const HB_CharAttributes *attributes = eng->attributes();
+    if (!attributes)
+        return QFixed();
     while (pos > 0 && attributes[line.from + pos - 1].whiteSpace)
         --pos;
     return eng->width(line.from + pos, line.length - pos);
@@ -601,7 +603,7 @@ bool QTextLayout::cacheEnabled() const
 void QTextLayout::beginLayout()
 {
 #ifndef QT_NO_DEBUG
-    if (d->layoutData && d->layoutData->inLayout) {
+    if (d->layoutData && d->layoutData->layoutState == QTextEngine::InLayout) {
         qWarning("QTextLayout::beginLayout: Called while already doing layout");
         return;
     }
@@ -609,7 +611,7 @@ void QTextLayout::beginLayout()
     d->invalidate();
     d->clearLineData();
     d->itemize();
-    d->layoutData->inLayout = true;
+    d->layoutData->layoutState = QTextEngine::InLayout;
 }
 
 /*!
@@ -618,7 +620,7 @@ void QTextLayout::beginLayout()
 void QTextLayout::endLayout()
 {
 #ifndef QT_NO_DEBUG
-    if (!d->layoutData || !d->layoutData->inLayout) {
+    if (!d->layoutData || d->layoutData->layoutState == QTextEngine::LayoutEmpty) {
         qWarning("QTextLayout::endLayout: Called without beginLayout()");
         return;
     }
@@ -627,7 +629,7 @@ void QTextLayout::endLayout()
     if (l && d->lines.at(l-1).length < 0) {
         QTextLine(l-1, d).setNumColumns(INT_MAX);
     }
-    d->layoutData->inLayout = false;
+    d->layoutData->layoutState = QTextEngine::LayoutEmpty;
     if (!d->cacheGlyphs)
         d->freeMemory();
 }
@@ -757,11 +759,14 @@ bool QTextLayout::isValidCursorPosition(int pos) const
 QTextLine QTextLayout::createLine()
 {
 #ifndef QT_NO_DEBUG
-    if (!d->layoutData || !d->layoutData->inLayout) {
+    if (!d->layoutData || d->layoutData->layoutState == QTextEngine::LayoutEmpty) {
         qWarning("QTextLayout::createLine: Called without layouting");
         return QTextLine();
     }
 #endif
+    if (d->layoutData->layoutState == QTextEngine::LayoutFailed)
+        return QTextLine();
+
     int l = d->lines.size();
     if (l && d->lines.at(l-1).length < 0) {
         QTextLine(l-1, d).setNumColumns(INT_MAX);
@@ -1212,7 +1217,7 @@ void QTextLayout::draw(QPainter *p, const QPointF &pos, const QVector<FormatRang
 
         bool hasText = (selection.format.foreground().style() != Qt::NoBrush);
         bool hasBackground= (selection.format.background().style() != Qt::NoBrush);
-        
+
         if (hasBackground) {
             selection.format.setProperty(ObjectSelectionBrush, selection.format.property(QTextFormat::BackgroundBrush));
             // don't just clear the property, set an empty brush that overrides a potential
@@ -1704,14 +1709,18 @@ namespace {
             return glyphs.glyphs[logClusters[currentPosition - 1]];
         }
 
+        inline void adjustRightBearing(glyph_t glyph)
+        {
+            qreal rb;
+            fontEngine->getGlyphBearings(glyph, 0, &rb);
+            rightBearing = qMin(QFixed(), QFixed::fromReal(rb));
+        }
+
         inline void adjustRightBearing()
         {
             if (currentPosition <= 0)
                 return;
-
-            qreal rb;
-            fontEngine->getGlyphBearings(currentGlyph(), 0, &rb);
-            rightBearing = qMin(QFixed(), QFixed::fromReal(rb));
+            adjustRightBearing(currentGlyph());
         }
 
         inline void resetRightBearing()
@@ -1722,7 +1731,7 @@ namespace {
     };
 
 inline bool LineBreakHelper::checkFullOtherwiseExtend(QScriptLine &line)
-{        
+{
     LB_DEBUG("possible break width %f, spacew=%f", tmpData.textWidth.toReal(), spaceData.textWidth.toReal());
 
     QFixed newWidth = calculateNewWidth(line);
@@ -1788,19 +1797,31 @@ void QTextLine::layout_helper(int maxGlyphs)
     bool breakany = (wrapMode == QTextOption::WrapAnywhere);
     lbh.manualWrap = (wrapMode == QTextOption::ManualWrap || wrapMode == QTextOption::NoWrap);
 
-    // #### binary search!
     int item = -1;
-    int newItem;
-    for (newItem = eng->layoutData->items.size()-1; newItem > 0; --newItem) {
-        if (eng->layoutData->items[newItem].position <= line.from)
+    int newItem = -1;
+    int left = 0;
+    int right = eng->layoutData->items.size()-1;
+    while(left <= right) {
+        int middle = ((right-left)/2)+left;
+        if (line.from > eng->layoutData->items[middle].position)
+            left = middle+1;
+        else if(line.from < eng->layoutData->items[middle].position)
+            right = middle-1;
+        else {
+            newItem = middle;
             break;
+        }
     }
+    if (newItem == -1)
+        newItem = right;
 
     LB_DEBUG("from: %d: item=%d, total %d, width available %f", line.from, newItem, eng->layoutData->items.size(), line.width.toReal());
 
     Qt::Alignment alignment = eng->option.alignment();
 
     const HB_CharAttributes *attributes = eng->attributes();
+    if (!attributes)
+        return;
     lbh.currentPosition = line.from;
     int end = 0;
     lbh.logClusters = eng->layoutData->logClustersPtr;
@@ -1814,6 +1835,8 @@ void QTextLine::layout_helper(int maxGlyphs)
             if (!current.num_glyphs) {
                 eng->shape(item);
                 attributes = eng->attributes();
+                if (!attributes)
+                    return;
                 lbh.logClusters = eng->layoutData->logClustersPtr;
             }
             lbh.currentPosition = qMax(line.from, current.position);
@@ -1892,6 +1915,9 @@ void QTextLine::layout_helper(int maxGlyphs)
         } else {
             lbh.whiteSpaceOrObject = false;
             bool sb_or_ws = false;
+            glyph_t previousGlyph = 0;
+            if (lbh.currentPosition > 0 && lbh.logClusters[lbh.currentPosition - 1] <lbh.glyphs.numGlyphs)
+                previousGlyph = lbh.currentGlyph(); // needed to calculate right bearing later
             do {
                 addNextCluster(lbh.currentPosition, end, lbh.tmpData, lbh.glyphCount,
                                current, lbh.logClusters, lbh.glyphs);
@@ -1935,9 +1961,17 @@ void QTextLine::layout_helper(int maxGlyphs)
             // We ignore the right bearing if the minimum negative bearing is too little to
             // expand the text beyond the edge.
             if (sb_or_ws|breakany) {
+                QFixed rightBearing = lbh.rightBearing; // store previous right bearing
+#if !defined(Q_WS_MAC)
                 if (lbh.calculateNewWidth(line) - lbh.minimumRightBearing > line.width)
+#endif
                     lbh.adjustRightBearing();
                 if (lbh.checkFullOtherwiseExtend(line)) {
+                    // we are too wide, fix right bearing
+                    if (rightBearing <= 0)
+                        lbh.rightBearing = rightBearing; // take from cache
+                    else if (previousGlyph > 0)
+                        lbh.adjustRightBearing(previousGlyph);
                     if (!breakany) {
                         line.textWidth += lbh.softHyphenWidth;
                     }
@@ -1951,7 +1985,7 @@ void QTextLine::layout_helper(int maxGlyphs)
     }
     LB_DEBUG("reached end of line");
     lbh.checkFullOtherwiseExtend(line);
-found:       
+found:
     if (lbh.rightBearing > 0 && !lbh.whiteSpaceOrObject) // If right bearing has not yet been adjusted
         lbh.adjustRightBearing();
     line.textAdvance = line.textWidth;
