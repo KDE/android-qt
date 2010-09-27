@@ -1,6 +1,9 @@
 
 DESTDIR = ../../../../bin
 QT += xml network
+android-g++ {
+    QT -= android
+}
 contains(QT_CONFIG, script): QT += script
 build_all:!build_pass {
     CONFIG -= build_all
