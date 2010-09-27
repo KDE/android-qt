@@ -42,6 +42,7 @@
 #include "qwindowsvistastyle.h"
 #include "qwindowsvistastyle_p.h"
 #include <private/qstylehelper_p.h>
+#include <private/qsystemlibrary_p.h>
 
 #if !defined(QT_NO_STYLE_WINDOWSVISTA) || defined(QT_PLUGIN)
 
@@ -841,10 +842,10 @@ void QWindowsVistaStyle::drawPrimitive(PrimitiveElement element, const QStyleOpt
             const QDialogButtonBox *buttonBox = 0;
 
             if (qobject_cast<const QMessageBox *> (widget))
-                buttonBox = qFindChild<const QDialogButtonBox *>(widget,QLatin1String("qt_msgbox_buttonbox"));
+                buttonBox = widget->findChild<const QDialogButtonBox *>(QLatin1String("qt_msgbox_buttonbox"));
 #ifndef QT_NO_INPUTDIALOG
             else if (qobject_cast<const QInputDialog *> (widget))
-                buttonBox = qFindChild<const QDialogButtonBox *>(widget,QLatin1String("qt_inputdlg_buttonbox"));
+                buttonBox = widget->findChild<const QDialogButtonBox *>(QLatin1String("qt_inputdlg_buttonbox"));
 #endif // QT_NO_INPUTDIALOG
 
             if (buttonBox) {
@@ -2395,14 +2396,14 @@ void QWindowsVistaStyle::polish(QWidget *widget)
         }
     } else if (qobject_cast<QMessageBox *> (widget)) {
         widget->setAttribute(Qt::WA_StyledBackground);
-        QDialogButtonBox *buttonBox = qFindChild<QDialogButtonBox *>(widget,QLatin1String("qt_msgbox_buttonbox"));
+        QDialogButtonBox *buttonBox = widget->findChild<QDialogButtonBox *>(QLatin1String("qt_msgbox_buttonbox"));
         if (buttonBox)
             buttonBox->setContentsMargins(0, 9, 0, 0);
     }
 #ifndef QT_NO_INPUTDIALOG
     else if (qobject_cast<QInputDialog *> (widget)) {
         widget->setAttribute(Qt::WA_StyledBackground);
-        QDialogButtonBox *buttonBox = qFindChild<QDialogButtonBox *>(widget,QLatin1String("qt_inputdlg_buttonbox"));
+        QDialogButtonBox *buttonBox = widget->findChild<QDialogButtonBox *>(QLatin1String("qt_inputdlg_buttonbox"));
         if (buttonBox)
             buttonBox->setContentsMargins(0, 9, 0, 0);
     }
@@ -2434,14 +2435,14 @@ void QWindowsVistaStyle::unpolish(QWidget *widget)
         widget->setAttribute(Qt::WA_Hover, false);
     else if (qobject_cast<QMessageBox *> (widget)) {
         widget->setAttribute(Qt::WA_StyledBackground, false);
-        QDialogButtonBox *buttonBox = qFindChild<QDialogButtonBox *>(widget,QLatin1String("qt_msgbox_buttonbox"));
+        QDialogButtonBox *buttonBox = widget->findChild<QDialogButtonBox *>(QLatin1String("qt_msgbox_buttonbox"));
         if (buttonBox)
             buttonBox->setContentsMargins(0, 0, 0, 0);
     }
 #ifndef QT_NO_INPUTDIALOG
     else if (qobject_cast<QInputDialog *> (widget)) {
         widget->setAttribute(Qt::WA_StyledBackground, false);
-        QDialogButtonBox *buttonBox = qFindChild<QDialogButtonBox *>(widget,QLatin1String("qt_inputdlg_buttonbox"));
+        QDialogButtonBox *buttonBox = widget->findChild<QDialogButtonBox *>(QLatin1String("qt_inputdlg_buttonbox"));
         if (buttonBox)
             buttonBox->setContentsMargins(0, 0, 0, 0);
     }
@@ -2574,7 +2575,7 @@ bool QWindowsVistaStylePrivate::resolveSymbols()
     static bool tried = false;
     if (!tried) {
         tried = true;
-        QLibrary themeLib(QLatin1String("uxtheme"));
+        QSystemLibrary themeLib(QLatin1String("uxtheme"));
         pSetWindowTheme         = (PtrSetWindowTheme        )themeLib.resolve("SetWindowTheme");
         pIsThemePartDefined     = (PtrIsThemePartDefined    )themeLib.resolve("IsThemePartDefined");
         pGetThemePartSize       = (PtrGetThemePartSize      )themeLib.resolve("GetThemePartSize");

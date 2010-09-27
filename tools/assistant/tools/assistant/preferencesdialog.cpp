@@ -379,6 +379,10 @@ void PreferencesDialog::applyChanges()
     if (filtersWereChanged || !m_regDocs.isEmpty() || !m_unregDocs.isEmpty())
         helpEngine.setupData();
 
+    helpEngine.setShowTabs(m_ui.showTabs->isChecked());
+    if (m_showTabs != m_ui.showTabs->isChecked())
+        emit updateUserInterface();
+
     accept();
 }
 
@@ -421,13 +425,13 @@ void PreferencesDialog::updateFontSettingsPage()
     connect(m_browserFontPanel, SIGNAL(toggled(bool)), this,
         SLOT(browserFontSettingToggled(bool)));
 
-    QList<QComboBox*> allCombos = qFindChildren<QComboBox*>(m_appFontPanel);
+    QList<QComboBox*> allCombos = m_appFontPanel->findChildren<QComboBox*>();
     foreach (QComboBox* box, allCombos) {
         connect(box, SIGNAL(currentIndexChanged(int)), this,
             SLOT(appFontSettingChanged(int)));
     }
 
-    allCombos = qFindChildren<QComboBox*>(m_browserFontPanel);
+    allCombos = m_browserFontPanel->findChildren<QComboBox*>();
     foreach (QComboBox* box, allCombos) {
         connect(box, SIGNAL(currentIndexChanged(int)), this,
             SLOT(browserFontSettingChanged(int)));
@@ -469,6 +473,9 @@ void PreferencesDialog::updateOptionsPage()
 
     int option = helpEngine.startOption();
     m_ui.helpStartComboBox->setCurrentIndex(option);
+
+    m_showTabs = helpEngine.showTabs();
+    m_ui.showTabs->setChecked(m_showTabs);
 
     connect(m_ui.blankPageButton, SIGNAL(clicked()), this, SLOT(setBlankPage()));
     connect(m_ui.currentPageButton, SIGNAL(clicked()), this, SLOT(setCurrentPage()));

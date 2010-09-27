@@ -61,7 +61,8 @@ Q_CORE_EXPORT HBufC* qt_QString2HBufC(const QString& aString)
 #else
     TPtrC16 ptr(qt_QString2TPtrC(aString));
 #endif
-    buffer = q_check_ptr(HBufC::New(ptr.Length()));
+    buffer = HBufC::New(ptr.Length());
+    Q_CHECK_PTR(buffer);
     buffer->Des().Copy(ptr);
     return buffer;
 }
@@ -81,8 +82,9 @@ QHBufC::QHBufC()
 }
 
 QHBufC::QHBufC(const QHBufC &src)
-	: m_hBufC(q_check_ptr(src.m_hBufC->Alloc()))
+	: m_hBufC(src.m_hBufC->Alloc())
 {
+    Q_CHECK_PTR(m_hBufC);
 }
 
 /*!
@@ -131,7 +133,6 @@ public:
 private:
     void init()
     {
-#ifdef Q_OS_SYMBIAN
         _LIT(KLibName_3_1, "qts60plugin_3_1" QT_LIBINFIX_UNICODE L".dll");
         _LIT(KLibName_3_2, "qts60plugin_3_2" QT_LIBINFIX_UNICODE L".dll");
         _LIT(KLibName_5_0, "qts60plugin_5_0" QT_LIBINFIX_UNICODE L".dll");
@@ -157,7 +158,12 @@ private:
 
         TUidType libUid(KDynamicLibraryUid, KSharedLibraryUid, TUid::Uid(uidValue));
         lib.Load(libName, libUid);
-#endif
+
+        // Duplicate lib handle to enable process wide access to it. Since Duplicate overwrites
+        // existing handle without closing it, store original for subsequent closing.
+        RLibrary origHandleCloser = lib;
+        lib.Duplicate(RThread(), EOwnerProcess);
+        origHandleCloser.Close();
     }
 
     RLibrary lib;

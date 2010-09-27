@@ -107,7 +107,6 @@ template <class Key> inline bool qMapLessThanKey(const Key &key1, const Key &key
     return key1 < key2;
 }
 
-#ifndef QT_NO_PARTIAL_TEMPLATE_SPECIALIZATION
 template <class Ptr> inline bool qMapLessThanKey(Ptr *key1, Ptr *key2)
 {
     Q_ASSERT(sizeof(quintptr) == sizeof(Ptr *));
@@ -119,7 +118,6 @@ template <class Ptr> inline bool qMapLessThanKey(const Ptr *key1, const Ptr *key
     Q_ASSERT(sizeof(quintptr) == sizeof(const Ptr *));
     return quintptr(key1) < quintptr(key2);
 }
-#endif // QT_NO_PARTIAL_TEMPLATE_SPECIALIZATION
 
 template <class Key, class T>
 struct QMapNode {
@@ -187,6 +185,10 @@ public:
     inline ~QMap() { if (!d) return; if (!d->ref.deref()) freeData(d); }
 
     QMap<Key, T> &operator=(const QMap<Key, T> &other);
+#ifdef Q_COMPILER_RVALUE_REFS
+    inline QMap<Key, T> &operator=(QMap<Key, T> &&other)
+    { qSwap(d, other.d); return *this; }
+#endif
 #ifndef QT_NO_STL
     explicit QMap(const typename std::map<Key, T> &other);
     std::map<Key, T> toStdMap() const;
@@ -426,10 +428,11 @@ template <class Key, class T>
 Q_INLINE_TEMPLATE QMap<Key, T> &QMap<Key, T>::operator=(const QMap<Key, T> &other)
 {
     if (d != other.d) {
-        other.d->ref.ref();
+        QMapData* o = other.d;
+        o->ref.ref();
         if (!d->ref.deref())
             freeData(d);
-        d = other.d;
+        d = o;
         if (!d->sharable)
             detach_helper();
     }
@@ -639,13 +642,13 @@ Q_OUTOFLINE_TEMPLATE void QMap<Key, T>::freeData(QMapData *x)
         while (next != x) {
             cur = next;
             next = cur->forward[0];
-#if defined(_MSC_VER) && (_MSC_VER >= 1300)
+#if defined(_MSC_VER)
 #pragma warning(disable:4189)
 #endif
             Node *concreteNode = concrete(reinterpret_cast<QMapData::Node *>(cur));
             concreteNode->key.~Key();
             concreteNode->value.~T();
-#if defined(_MSC_VER) && (_MSC_VER >= 1300)
+#if defined(_MSC_VER)
 #pragma warning(default:4189)
 #endif
         }

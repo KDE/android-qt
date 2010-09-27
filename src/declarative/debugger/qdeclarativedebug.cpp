@@ -194,7 +194,7 @@ void QDeclarativeEngineDebugPrivate::decode(QDataStream &ds, QDeclarativeDebugOb
             {
                 QDeclarativeDebugObjectReference obj;
                 obj.m_debugId = prop.m_value.toInt();
-                prop.m_value = qVariantFromValue(obj);
+                prop.m_value = QVariant::fromValue(obj);
                 break;
             }
             case QDeclarativeEngineDebugServer::QDeclarativeObjectProperty::Unknown:
@@ -340,6 +340,8 @@ void QDeclarativeEngineDebugPrivate::message(const QByteArray &data)
         if (!watch)
             return;
         emit watch->valueChanged(name, value);
+    } else if (type == "OBJECT_CREATED") {
+        emit q_func()->newObjects();
     }
 }
 
@@ -507,7 +509,7 @@ QDeclarativeDebugObjectQuery *QDeclarativeEngineDebug::queryObject(const QDeclar
         QByteArray message;
         QDataStream ds(&message, QIODevice::WriteOnly);
         ds << QByteArray("FETCH_OBJECT") << queryId << object.debugId() 
-           << false;
+           << false << true;
         d->client->sendMessage(message);
     } else {
         query->m_state = QDeclarativeDebugQuery::Error;
@@ -530,7 +532,7 @@ QDeclarativeDebugObjectQuery *QDeclarativeEngineDebug::queryObjectRecursive(cons
         QByteArray message;
         QDataStream ds(&message, QIODevice::WriteOnly);
         ds << QByteArray("FETCH_OBJECT") << queryId << object.debugId() 
-           << true;
+           << true << true;
         d->client->sendMessage(message);
     } else {
         query->m_state = QDeclarativeDebugQuery::Error;

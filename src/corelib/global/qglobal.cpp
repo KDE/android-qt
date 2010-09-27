@@ -1841,6 +1841,7 @@ QSysInfo::S60Version QSysInfo::s60Version()
     CDir* contents;
     TInt err = fileFinder.FindWildByDir(qt_S60Filter, qt_S60SystemInstallDir, contents);
     if (err == KErrNone) {
+        QScopedPointer<CDir> contentsDeleter(contents);
         err = contents->Sort(EDescending|ESortByName);
         if (err == KErrNone && contents->Count() > 0 && (*contents)[0].iName.Length() >= 12) {
             TInt major = (*contents)[0].iName[9] - '0';
@@ -1863,7 +1864,6 @@ QSysInfo::S60Version QSysInfo::s60Version()
                 }
             }
         }
-        delete contents;
     }
 
 #  ifdef Q_CC_NOKIAX86
@@ -1890,9 +1890,9 @@ QSysInfo::SymbianVersion QSysInfo::symbianVersion()
     case SV_S60_5_0:
         return SV_9_4;
     case SV_S60_5_1:
-        return SV_9_4;
+        return SV_SF_2;
     case SV_S60_5_2:
-        return SV_9_4;
+        return SV_SF_3;
     default:
         return SV_Unknown;
     }
@@ -1997,7 +1997,7 @@ QSysInfo::SymbianVersion QSysInfo::symbianVersion()
 */
 void qt_check_pointer(const char *n, int l)
 {
-    qWarning("In file %s, line %d: Out of memory", n, l);
+    qFatal("In file %s, line %d: Out of memory", n, l);
 }
 
 /* \internal
@@ -2252,7 +2252,8 @@ void qt_message_output(QtMsgType msgType, const char *buf)
         _LIT(format, "[Qt Message] %S");
         const int maxBlockSize = 256 - ((const TDesC &)format).Length();
         const TPtrC8 ptr(reinterpret_cast<const TUint8*>(buf));
-        HBufC* hbuffer = q_check_ptr(HBufC::New(qMin(maxBlockSize, ptr.Length())));
+        HBufC* hbuffer = HBufC::New(qMin(maxBlockSize, ptr.Length()));
+        Q_CHECK_PTR(hbuffer);
         for (int i = 0; i < ptr.Length(); i += hbuffer->Length()) {
             hbuffer->Des().Copy(ptr.Mid(i, qMin(maxBlockSize, ptr.Length()-i)));
             RDebug::Print(format, hbuffer);
@@ -2953,8 +2954,9 @@ int qrand()
     \relates <QtGlobal>
 
     You can use this macro to specify information about a custom type
-    \a Type. With accurate type information, Qt's \l{generic
-    containers} can choose appropriate storage methods and algorithms.
+    \a Type. With accurate type information, Qt's \l{Container Classes}
+    {generic containers} can choose appropriate storage methods and
+    algorithms.
 
     \a Flags can be one of the following:
 

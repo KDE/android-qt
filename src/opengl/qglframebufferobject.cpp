@@ -445,11 +445,11 @@ void QGLFramebufferObjectPrivate::init(QGLFramebufferObject *q, const QSize &sz,
         GLint maxSamples;
         glGetIntegerv(GL_MAX_SAMPLES_EXT, &maxSamples);
 
-        samples = qBound(1, int(samples), int(maxSamples));
+        samples = qBound(0, int(samples), int(maxSamples));
 
         glGenRenderbuffers(1, &color_buffer);
         glBindRenderbuffer(GL_RENDERBUFFER_EXT, color_buffer);
-        if (glRenderbufferStorageMultisampleEXT) {
+        if (glRenderbufferStorageMultisampleEXT && samples > 0) {
             glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER_EXT, samples,
                 internal_format, size.width(), size.height());
         } else {
@@ -615,6 +615,13 @@ void QGLFramebufferObjectPrivate::init(QGLFramebufferObject *q, const QSize &sz,
     If you want to use a framebuffer object with multisampling enabled
     as a texture, you first need to copy from it to a regular framebuffer
     object using QGLContext::blitFramebuffer().
+
+    \section Threading
+
+    As of Qt 4.8, it's possible to draw into a QGLFramebufferObject
+    using a QPainter in a separate thread. Note that OpenGL 2.0 or
+    OpenGL ES 2.0 is required for this to work. Also, under X11, it's
+    necessary to set the Qt::AA_X11InitThreads application attribute.
 
     \sa {Framebuffer Object Example}
 */

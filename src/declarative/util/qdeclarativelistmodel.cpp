@@ -58,9 +58,6 @@ Q_DECLARE_METATYPE(QListModelInterface *)
 
 QT_BEGIN_NAMESPACE
 
-#define DATA_ROLE_ID 1
-#define DATA_ROLE_NAME "data"
-
 QDeclarativeListModelParser::ListInstruction *QDeclarativeListModelParser::ListModelData::instructions() const
 {
     return (QDeclarativeListModelParser::ListInstruction *)((char *)this + sizeof(ListModelData));
@@ -68,6 +65,7 @@ QDeclarativeListModelParser::ListInstruction *QDeclarativeListModelParser::ListM
 
 /*!
     \qmlclass ListModel QDeclarativeListModel
+    \ingroup qml-working-with-data
     \since 4.7
     \brief The ListModel element defines a free-form list data source.
 
@@ -108,9 +106,9 @@ QDeclarativeListModelParser::ListInstruction *QDeclarativeListModelParser::ListM
     
     \snippet doc/src/snippets/declarative/listmodel-modify.qml delegate
 
-    When creating content dynamically, note that the set of available properties cannot be changed
-    except by first clearing the model. Whatever properties are first added to the model are then the
-    only permitted properties in the model until it is cleared.
+    Note that when creating content dynamically the set of available properties cannot be changed
+    once set. Whatever properties are first added to the model are the
+    only permitted properties in the model.
 
 
     \section2 Using threaded list models with WorkerScript
@@ -129,7 +127,7 @@ QDeclarativeListModelParser::ListInstruction *QDeclarativeListModelParser::ListM
 
     \snippet examples/declarative/threading/threadedlistmodel/dataloader.js 0
 
-    The application's \tt Timer object periodically sends a message to the
+working-with-data
     worker script by calling \l WorkerScript::sendMessage(). When this message
     is received, \l {WorkerScript::onMessage}{WorkerScript.onMessage()} is invoked in
     \tt dataloader.js, which appends the current time to the list model.
@@ -283,8 +281,7 @@ int QDeclarativeListModel::count() const
 /*!
     \qmlmethod ListModel::clear()
 
-    Deletes all content from the model. The properties are cleared such that
-    different properties may be set on subsequent additions.
+    Deletes all content from the model.
 
     \sa append() remove()
 */
@@ -570,7 +567,7 @@ bool QDeclarativeListModelParser::compileProperty(const QDeclarativeCustomParser
             QList<QDeclarativeCustomParserProperty> props = node.properties();
             for(int jj = 0; jj < props.count(); ++jj) {
                 const QDeclarativeCustomParserProperty &nodeProp = props.at(jj);
-                if (nodeProp.name() == "") {
+                if (nodeProp.name().isEmpty()) {
                     error(nodeProp, QDeclarativeListModel::tr("ListElement: cannot contain nested elements"));
                     return false;
                 }
@@ -658,7 +655,7 @@ QByteArray QDeclarativeListModelParser::compile(const QList<QDeclarativeCustomPa
 
     for(int ii = 0; ii < customProps.count(); ++ii) {
         const QDeclarativeCustomParserProperty &prop = customProps.at(ii);
-        if(prop.name() != "") { // isn't default property
+        if(!prop.name().isEmpty()) { // isn't default property
             error(prop, QDeclarativeListModel::tr("ListModel: undefined property '%1'").arg(QString::fromUtf8(prop.name())));
             return QByteArray();
         }
@@ -708,7 +705,7 @@ void QDeclarativeListModelParser::setCustomData(QObject *obj, const QByteArray &
             {
                 ModelNode *n = nodes.top();
                 ModelNode *n2 = new ModelNode;
-                n->values << qVariantFromValue(n2);
+                n->values << QVariant::fromValue(n2);
                 nodes.push(n2);
                 if (processingSet)
                     n->isArray = true;
@@ -769,7 +766,8 @@ bool QDeclarativeListModelParser::definesEmptyList(const QString &s)
 }
 
 /*!
-    \qmlclass ListElement
+    \qmlclass ListElement QDeclarativeListElement
+    \ingroup qml-working-with-data
     \since 4.7
     \brief The ListElement element defines a data item in a ListModel.
 
@@ -864,7 +862,7 @@ QScriptValue FlatListModel::get(int index) const
 
     QHash<int, QVariant> row = m_values.at(index);
     for (QHash<int, QVariant>::ConstIterator iter = row.begin(); iter != row.end(); ++iter)
-        rv.setProperty(m_roles.value(iter.key()), qScriptValueFromValue(scriptEngine, iter.value()));
+        rv.setProperty(m_roles.value(iter.key()), scriptEngine->toScriptValue(iter.value()));
 
     return rv;
 }
@@ -945,13 +943,14 @@ bool FlatListModel::addValue(const QScriptValue &value, QHash<int, QVariant> *ro
 }
 
 NestedListModel::NestedListModel(QDeclarativeListModel *base)
-    : _root(0), m_listModel(base), _rolesOk(false)
+    : _root(0), m_ownsRoot(false), m_listModel(base), _rolesOk(false)
 {
 }
 
 NestedListModel::~NestedListModel()
 {
-    delete _root;
+    if (m_ownsRoot)
+        delete _root;
 }
 
 QVariant NestedListModel::valueForNode(ModelNode *node, bool *hasNested) const
@@ -1051,8 +1050,8 @@ void NestedListModel::clear()
     _rolesOk = false;
     roleStrings.clear();
 
-    delete _root;
-    _root = 0;
+    if (_root)
+        _root->clear();
 }
 
 void NestedListModel::remove(int index)
@@ -1067,12 +1066,14 @@ void NestedListModel::remove(int index)
 
 bool NestedListModel::insert(int index, const QScriptValue& valuemap)
 {
-    if (!_root)
+    if (!_root) {
         _root = new ModelNode;
+        m_ownsRoot = true;
+    }
 
     ModelNode *mn = new ModelNode;
     mn->setObjectValue(valuemap);
-    _root->values.insert(index,qVariantFromValue(mn));
+    _root->values.insert(index,QVariant::fromValue(mn));
     return true;
 }
 
@@ -1099,11 +1100,13 @@ void NestedListModel::move(int from, int to, int n)
 
 bool NestedListModel::append(const QScriptValue& valuemap)
 {
-    if (!_root)
+    if (!_root) {
         _root = new ModelNode;
+        m_ownsRoot = true;
+    }
     ModelNode *mn = new ModelNode;
     mn->setObjectValue(valuemap);
-    _root->values << qVariantFromValue(mn);
+    _root->values << QVariant::fromValue(mn);
     return true;
 }
 
@@ -1205,16 +1208,22 @@ ModelNode::ModelNode()
 
 ModelNode::~ModelNode()
 {
-    qDeleteAll(properties.values());
+    clear();
+    if (modelCache) { modelCache->m_nested->_root = 0/* ==this */; delete modelCache; modelCache = 0; }
+    if (objectCache) { delete objectCache; objectCache = 0; }
+}
 
+void ModelNode::clear()
+{
     ModelNode *node;
     for (int ii = 0; ii < values.count(); ++ii) {
         node = qvariant_cast<ModelNode *>(values.at(ii));
         if (node) { delete node; node = 0; }
     }
+    values.clear();
 
-    if (modelCache) { modelCache->m_nested->_root = 0/* ==this */; delete modelCache; modelCache = 0; }
-    if (objectCache) { delete objectCache; objectCache = 0; }
+    qDeleteAll(properties.values());
+    properties.clear();
 }
 
 void ModelNode::setObjectValue(const QScriptValue& valuemap) {
@@ -1238,7 +1247,6 @@ void ModelNode::setObjectValue(const QScriptValue& valuemap) {
 }
 
 void ModelNode::setListValue(const QScriptValue& valuelist) {
-    QScriptValueIterator it(valuelist);
     values.clear();
     int size = valuelist.property(QLatin1String("length")).toInt32();
     for (int i=0; i<size; i++) {
@@ -1252,7 +1260,7 @@ void ModelNode::setListValue(const QScriptValue& valuelist) {
         } else {
             value->values << v.toVariant();
         }
-        values.append(qVariantFromValue(value));
+        values.append(QVariant::fromValue(value));
     }
 }
 

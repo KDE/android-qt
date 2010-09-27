@@ -6,7 +6,6 @@ win32:SRC_SUBDIRS += src_winmain
 symbian:SRC_SUBDIRS += src_s60main
 SRC_SUBDIRS += src_corelib src_xml src_network src_sql src_testlib
 nacl: SRC_SUBDIRS -= src_network src_testlib
-win32:SRC_SUBDIRS += src_activeqt
 !symbian:contains(QT_CONFIG, dbus):SRC_SUBDIRS += src_dbus
 !contains(QT_CONFIG, no-gui): SRC_SUBDIRS += src_gui
 !wince*:!symbian:!vxworks:contains(QT_CONFIG, qt3support): SRC_SUBDIRS += src_qt3support
@@ -116,6 +115,7 @@ src_android.target = sub-android
    src_declarative.depends = src_gui src_script src_network
    src_plugins.depends = src_gui src_sql src_svg src_multimedia
    src_s60installs.depends = $$TOOLS_SUBDIRS $$SRC_SUBDIRS
+   src_s60installs.depends -= src_s60installs
    src_imports.depends = src_gui src_declarative
    src_android.depends = src_corelib
 

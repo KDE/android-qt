@@ -331,7 +331,7 @@ QVariant QDeclarativeWorkerScriptEnginePrivate::scriptValueToVariant(const QScri
             QDeclarativeListModelWorkerAgent *agent = lm->agent();
             if (agent) {
                 QDeclarativeListModelWorkerAgent::VariantRef v(agent);
-                return qVariantFromValue(v);
+                return QVariant::fromValue(v);
             } else {
                 return QVariant();
             }
@@ -514,6 +514,7 @@ void QDeclarativeWorkerScriptEngine::run()
 
 /*!
     \qmlclass WorkerScript QDeclarativeWorkerScript
+  \ingroup qml-utility-elements
     \brief The WorkerScript element enables the use of threads in QML.
 
     Use WorkerScript to run operations in a new thread.

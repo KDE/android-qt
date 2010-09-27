@@ -207,6 +207,7 @@ static int qCocoaViewCount = 0;
 
     composing = false;
     sendKeyEvents = true;
+    fromKeyDownEvent = false;
     [self setHidden:YES];
     return self;
 }
@@ -548,8 +549,11 @@ static int qCocoaViewCount = 0;
             qwidgetprivate->syncBackingStore(qwidget->rect());
         }
 
-        // Since we don't want to use the native engine, we must exit.
-        return;
+        // Since we don't want to use the native engine, we must exit, however
+        // widgets that are set to paint on screen, spesifically QGLWidget,
+        // requires the following code to execute in order to be drawn.
+        if (!qwidget->testAttribute(Qt::WA_PaintOnScreen))
+            return;
     }
 
     CGContextRef cg = (CGContextRef)[[NSGraphicsContext currentContext] graphicsPort];
@@ -1215,7 +1219,9 @@ static int qCocoaViewCount = 0;
             && !(widgetToGetKey->inputMethodHints() & Qt::ImhDigitsOnly
                  || widgetToGetKey->inputMethodHints() & Qt::ImhFormattedNumbersOnly
                  || widgetToGetKey->inputMethodHints() & Qt::ImhHiddenText)) {
+        fromKeyDownEvent = true;
         [qt_mac_nativeview_for(widgetToGetKey) interpretKeyEvents:[NSArray arrayWithObject: theEvent]];
+        fromKeyDownEvent = false;
     }
     if (sendKeyEvents && !composing) {
         bool keyOK = qt_dispatchKeyEvent(theEvent, widgetToGetKey);
@@ -1285,7 +1291,10 @@ static int qCocoaViewCount = 0;
         };
     }
 
-    if ([aString length] && composing) {
+    // When entering characters through Character Viewer or Keyboard Viewer, the text is passed
+    // through this insertText method. Since we dont receive a keyDown Event in such cases, the
+    // composing flag will be false.
+    if (([aString length] && composing) ||  !fromKeyDownEvent) {
         // Send the commit string to the widget.
         composing = false;
         sendKeyEvents = false;

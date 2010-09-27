@@ -542,12 +542,14 @@ QByteArray qUncompress(const uchar* data, int nbytes)
 
     forever {
         ulong alloc = len;
-        d.reset(q_check_ptr(static_cast<QByteArray::Data *>(qRealloc(d.take(), sizeof(QByteArray::Data) + alloc))));
-        if (!d) {
+        QByteArray::Data *p = static_cast<QByteArray::Data *>(qRealloc(d.data(), sizeof(QByteArray::Data) + alloc));
+        if (!p) {
             // we are not allowed to crash here when compiling with QT_NO_EXCEPTIONS
             qWarning("qUncompress: could not allocate enough memory to uncompress data");
             return QByteArray();
         }
+        d.take(); // realloc was successful
+        d.reset(p);
 
         int res = ::uncompress((uchar*)d->array, &len,
                                (uchar*)data+4, nbytes-4);
@@ -555,12 +557,14 @@ QByteArray qUncompress(const uchar* data, int nbytes)
         switch (res) {
         case Z_OK:
             if (len != alloc) {
-                d.reset(q_check_ptr(static_cast<QByteArray::Data *>(qRealloc(d.take(), sizeof(QByteArray::Data) + len))));
-                if (!d) {
+                QByteArray::Data *p = static_cast<QByteArray::Data *>(qRealloc(d.data(), sizeof(QByteArray::Data) + len));
+                if (!p) {
                     // we are not allowed to crash here when compiling with QT_NO_EXCEPTIONS
                     qWarning("qUncompress: could not allocate enough memory to uncompress data");
                     return QByteArray();
                 }
+                d.take(); // realloc was successful
+                d.reset(p);
             }
             d->ref = 1;
             d->alloc = d->size = len;
@@ -850,7 +854,7 @@ QByteArray::Data QByteArray::shared_empty = { Q_BASIC_ATOMIC_INITIALIZER(1),
     This operation takes \l{constant time}, because QByteArray is
     \l{implicitly shared}. This makes returning a QByteArray from a
     function very fast. If a shared instance is modified, it will be
-    copied (copy-on-write), and that takes \l{linear time}.
+    copied (copy-on-write), taking \l{linear time}.
 
     \sa operator=()
 */
@@ -1186,10 +1190,18 @@ void QByteArray::chop(int n)
     Example:
     \snippet doc/src/snippets/code/src_corelib_tools_qbytearray.cpp 12
 
-    This operation is typically very fast (\l{constant time}),
-    because QByteArray preallocates extra space at the end of the
-    character data so it can grow without reallocating the entire
-    data each time.
+    Note: QByteArray is an \l{implicitly shared} class. Consequently,
+    if \e this is an empty QByteArray, then \e this will just share
+    the data held in \a ba. In this case, no copying of data is done,
+    taking \l{constant time}. If a shared instance is modified, it will
+    be copied (copy-on-write), taking \l{linear time}.
+
+    If \e this is not an empty QByteArray, a deep copy of the data is
+    performed, taking \l{linear time}.
+
+    This operation typically does not suffer from allocation overhead,
+    because QByteArray preallocates extra space at the end of the data
+    so that it may grow without reallocating for each append operation.
 
     \sa append(), prepend()
 */
@@ -1474,7 +1486,12 @@ QByteArray QByteArray::nulTerminated() const
 
     Note: QByteArray is an \l{implicitly shared} class. Consequently,
     if \e this is an empty QByteArray, then \e this will just share
-    the data held in \a ba. In this case, no copying of data is done.
+    the data held in \a ba. In this case, no copying of data is done,
+    taking \l{constant time}. If a shared instance is modified, it will
+    be copied (copy-on-write), taking \l{linear time}.
+
+    If \e this is not an empty QByteArray, a deep copy of the data is
+    performed, taking \l{linear time}.
 
     \sa append(), insert()
 */
@@ -1547,14 +1564,18 @@ QByteArray &QByteArray::prepend(char ch)
 
     This is the same as insert(size(), \a ba).
 
-    This operation is typically very fast (\l{constant time}),
-    because QByteArray preallocates extra space at the end of the
-    character data so it can grow without reallocating the entire
-    data each time.
-
     Note: QByteArray is an \l{implicitly shared} class. Consequently,
     if \e this is an empty QByteArray, then \e this will just share
-    the data held in \a ba. In this case, no copying of data is done.
+    the data held in \a ba. In this case, no copying of data is done,
+    taking \l{constant time}. If a shared instance is modified, it will
+    be copied (copy-on-write), taking \l{linear time}.
+
+    If \e this is not an empty QByteArray, a deep copy of the data is
+    performed, taking \l{linear time}.
+
+    This operation typically does not suffer from allocation overhead,
+    because QByteArray preallocates extra space at the end of the data
+    so that it may grow without reallocating for each append operation.
 
     \sa operator+=(), prepend(), insert()
 */

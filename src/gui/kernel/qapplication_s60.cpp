@@ -87,6 +87,10 @@
 #include <hal.h>
 #include <hal_data.h>
 
+#ifdef SYMBIAN_GRAPHICS_WSERV_QT_EFFECTS
+#include <graphics/wstfxconst.h>
+#endif
+
 QT_BEGIN_NAMESPACE
 
 // Goom Events through Window Server
@@ -125,11 +129,49 @@ void QS60Data::setStatusPaneAndButtonGroupVisibility(bool statusPaneVisible, boo
         statusPaneVisibilityChanged = (s->IsVisible() != statusPaneVisible);
         s->MakeVisible(statusPaneVisible);
     }
-    if (buttonGroupVisibilityChanged  && !statusPaneVisibilityChanged)
+    if (buttonGroupVisibilityChanged  || statusPaneVisibilityChanged) {
+        const QSize size = qt_TRect2QRect(static_cast<CEikAppUi*>(S60->appUi())->ClientRect()).size();
+        const QSize oldSize; // note that QDesktopWidget::resizeEvent ignores the QResizeEvent contents
+        QResizeEvent event(size, oldSize);
+        QApplication::instance()->sendEvent(QApplication::desktop(), &event);
+    }
+    if (buttonGroupVisibilityChanged  && !statusPaneVisibilityChanged && QApplication::activeWindow())
         // Ensure that control rectangle is updated
         static_cast<QSymbianControl *>(QApplication::activeWindow()->winId())->handleClientAreaChange();
 }
 #endif
+
+void QS60Data::controlVisibilityChanged(CCoeControl *control, bool visible)
+{
+    if (QWidgetPrivate::mapper && QWidgetPrivate::mapper->contains(control)) {
+        QWidget *const widget = QWidgetPrivate::mapper->value(control);
+        QWidget *const window = widget->window();
+        if (QTLWExtra *topData = qt_widget_private(window)->maybeTopData()) {
+            QWidgetBackingStoreTracker &backingStore = topData->backingStore;
+            if (visible) {
+                if (backingStore.data()) {
+                    backingStore.registerWidget(widget);
+                } else {
+#ifdef SYMBIAN_GRAPHICS_WSERV_QT_EFFECTS
+                    S60->wsSession().SendEffectCommand(ETfxCmdRestoreLayer);
+#endif
+                    backingStore.create(window);
+                    backingStore.registerWidget(widget);
+                    qt_widget_private(widget)->invalidateBuffer(widget->rect());
+                    widget->repaint();
+                }
+            } else {
+#ifdef  SYMBIAN_GRAPHICS_WSERV_QT_EFFECTS
+                S60->wsSession().SendEffectCommand(ETfxCmdDeallocateLayer);
+#endif
+                backingStore.unregisterWidget(widget);
+                // In order to ensure that any resources used by the window surface
+                // are immediately freed, we flush the WSERV command buffer.
+                S60->wsSession().Flush();
+            }
+        }
+    }
+}
 
 bool qt_nograb()                                // application no-grab option
 {
@@ -372,7 +414,7 @@ void QSymbianControl::ConstructL(bool isWindowOwning, bool desktop)
 {
     if (!desktop)
     {
-        if (isWindowOwning or !qwidget->parentWidget())
+        if (isWindowOwning || !qwidget->parentWidget())
             CreateWindowL(S60->windowGroup());
         else
             /**
@@ -395,6 +437,34 @@ void QSymbianControl::ConstructL(bool isWindowOwning, bool desktop)
 
         DrawableWindow()->SetPointerGrab(ETrue);
     }
+
+#ifdef SYMBIAN_GRAPHICS_WSERV_QT_EFFECTS
+    if (OwnsWindow()) {
+        TTfxWindowPurpose windowPurpose(ETfxPurposeNone);
+        switch (qwidget->windowType()) {
+        case Qt::Dialog:
+            windowPurpose = ETfxPurposeDialogWindow;
+            break;
+        case Qt::Popup:
+            windowPurpose = ETfxPurposePopupWindow;
+            break;
+        case Qt::Tool:
+            windowPurpose = ETfxPurposeToolWindow;
+            break;
+        case Qt::ToolTip:
+            windowPurpose = ETfxPurposeToolTipWindow;
+            break;
+        case Qt::SplashScreen:
+            windowPurpose = ETfxPurposeSplashScreenWindow;
+            break;
+        default:
+            windowPurpose = (isWindowOwning || !qwidget->parentWidget())
+                            ? ETfxPurposeWindow : ETfxPurposeChildWindow;
+            break;
+        }
+        Window().SetPurpose(windowPurpose);
+    }
+#endif
 }
 
 QSymbianControl::~QSymbianControl()
@@ -1035,7 +1105,7 @@ void QSymbianControl::Draw(const TRect& controlRect) const
         if (QApplicationPrivate::runtime_graphics_system) {
             QRuntimeWindowSurface *rtSurface =
                     static_cast<QRuntimeWindowSurface*>(qwidget->windowSurface());
-            s60Surface = static_cast<QS60WindowSurface *>(rtSurface->m_windowSurface);
+            s60Surface = static_cast<QS60WindowSurface *>(rtSurface->m_windowSurface.data());
         } else
 #endif
             s60Surface = static_cast<QS60WindowSurface *>(qwidget->windowSurface());
@@ -1043,19 +1113,22 @@ void QSymbianControl::Draw(const TRect& controlRect) const
         CFbsBitmap *bitmap = s60Surface->symbianBitmap();
         CWindowGc &gc = SystemGc();
 
-        switch(qwidget->d_func()->extraData()->nativePaintMode) {
+        QWExtra::NativePaintMode nativePaintMode = qwidget->d_func()->extraData()->nativePaintMode;
+        if(qwidget->d_func()->paintOnScreen())
+            nativePaintMode = QWExtra::Disable;
+
+        switch(nativePaintMode) {
         case QWExtra::Disable:
             // Do nothing
             break;
-
         case QWExtra::Blit:
             if (qwidget->d_func()->isOpaque)
                 gc.SetDrawMode(CGraphicsContext::EDrawModeWriteAlpha);
             gc.BitBlt(controlRect.iTl, bitmap, backingStoreRect);
             break;
-
         case QWExtra::ZeroFill:
-            if (Window().DisplayMode() == EColor16MA) {
+            if (Window().DisplayMode() == EColor16MA
+                || Window().DisplayMode() == Q_SYMBIAN_ECOLOR16MAP) {
                 gc.SetBrushStyle(CGraphicsContext::ESolidBrush);
                 gc.SetDrawMode(CGraphicsContext::EDrawModeWriteAlpha);
                 gc.SetBrushColor(TRgb::Color16MA(0));
@@ -1065,7 +1138,6 @@ void QSymbianControl::Draw(const TRect& controlRect) const
                 gc.Clear(controlRect);
             };
             break;
-
         default:
             Q_ASSERT(false);
         }
@@ -1176,17 +1248,28 @@ void QSymbianControl::FocusChanged(TDrawNow /* aDrawNow */)
         S60->setStatusPaneAndButtonGroupVisibility(statusPaneVisibility, buttonGroupVisibility);
 #endif
     } else if (QApplication::activeWindow() == qwidget->window()) {
-        if (CCoeEnv::Static()->AppUi()->IsDisplayingMenuOrDialog() || S60->menuBeingConstructed) {
-            QWidget *fw = QApplication::focusWidget();
-            if (fw) {
-                QFocusEvent event(QEvent::FocusOut, Qt::PopupFocusReason);
-                QCoreApplication::sendEvent(fw, &event);
-            }
-            m_symbianPopupIsOpen = true;
-            return;
+        bool focusedControlFound = false;
+        WId winId = 0;
+        for (QWidget *w = qwidget->parentWidget(); w && (winId = w->internalWinId()); w = w->parentWidget()) {
+            if (winId->IsFocused() && winId->IsVisible()) {
+                focusedControlFound = true;
+                break;
+            } else if (w->isWindow())
+                break;
         }
+        if (!focusedControlFound) {
+            if (CCoeEnv::Static()->AppUi()->IsDisplayingMenuOrDialog() || S60->menuBeingConstructed) {
+                QWidget *fw = QApplication::focusWidget();
+                if (fw) {
+                    QFocusEvent event(QEvent::FocusOut, Qt::PopupFocusReason);
+                    QCoreApplication::sendEvent(fw, &event);
+                }
+                m_symbianPopupIsOpen = true;
+                return;
+            }
 
-        QApplication::setActiveWindow(0);
+            QApplication::setActiveWindow(0);
+        }
     }
     // else { We don't touch the active window unless we were explicitly activated or deactivated }
 }
@@ -1278,6 +1361,11 @@ void QSymbianControl::setFocusSafely(bool focus)
     }
 }
 
+bool QSymbianControl::isControlActive()
+{
+    return IsActivated() ? true : false;
+}
+
 /*!
     \typedef QApplication::QS60MainApplicationFactory
     \since 4.6
@@ -1328,7 +1416,7 @@ void qt_init(QApplicationPrivate * /* priv */, int)
         // framework destruction.
         TTrapHandler *origTrapHandler = User::TrapHandler();
 
-        // The S60 framework has not been initalized. We need to do it.
+        // The S60 framework has not been initialized. We need to do it.
         TApaApplicationFactory factory(S60->s60ApplicationFactory ?
                 S60->s60ApplicationFactory : newS60Application);
         CApaCommandLine* commandLine = 0;
@@ -1442,6 +1530,8 @@ void qt_init(QApplicationPrivate * /* priv */, int)
             S60->avkonComponentsSupportTransparency = (value==1) ? true : false;
         }
     }
+    delete repository;
+    repository = 0;
 #endif
 
 #ifdef QT_KEYPAD_NAVIGATION
@@ -1483,6 +1573,10 @@ void qt_init(QApplicationPrivate * /* priv */, int)
     systemFont.setFamily(systemFont.defaultFamily());
     QApplicationPrivate::setSystemFont(systemFont);
 
+#ifdef SYMBIAN_GRAPHICS_WSERV_QT_EFFECTS
+    QObject::connect(qApp, SIGNAL(aboutToQuit()), qApp, SLOT(_q_aboutToQuit()));
+#endif
+
 /*
  ### Commented out for now as parameter handling not needed in SOS(yet). Code below will break testlib with -o flag
     int argc = priv->argc;
@@ -1506,7 +1600,7 @@ void qt_init(QApplicationPrivate * /* priv */, int)
 */
 
     // Register WId with the metatype system.  This is to enable
-    // QWidgetPrivate::create_sys to used delayed slot invokation in order
+    // QWidgetPrivate::create_sys to used delayed slot invocation in order
     // to destroy WId objects during reparenting.
     qRegisterMetaType<WId>("WId");
 }
@@ -1572,6 +1666,9 @@ bool QApplicationPrivate::modalState()
 
 void QApplicationPrivate::enterModal_sys(QWidget *widget)
 {
+#ifdef SYMBIAN_GRAPHICS_WSERV_QT_EFFECTS
+    S60->wsSession().SendEffectCommand(ETfxCmdAppModalModeEnter);
+#endif
     if (widget) {
         static_cast<QSymbianControl *>(widget->effectiveWinId())->FadeBehindPopup(ETrue);
         // Modal partial screen dialogs (like queries) capture pointer events.
@@ -1587,6 +1684,9 @@ void QApplicationPrivate::enterModal_sys(QWidget *widget)
 
 void QApplicationPrivate::leaveModal_sys(QWidget *widget)
 {
+#ifdef SYMBIAN_GRAPHICS_WSERV_QT_EFFECTS
+    S60->wsSession().SendEffectCommand(ETfxCmdAppModalModeExit);
+#endif
     if (widget) {
         static_cast<QSymbianControl *>(widget->effectiveWinId())->FadeBehindPopup(EFalse);
         // ### FixMe: Add specialized behaviour for fullscreen modal dialogs
@@ -1877,29 +1977,10 @@ int QApplicationPrivate::symbianProcessWsEvent(const QSymbianEvent *symbianEvent
             if (callSymbianEventFilters(symbianEvent))
                 return 1;
             const TWsVisibilityChangedEvent *visChangedEvent = event->VisibilityChanged();
-            QWidget *w = QWidgetPrivate::mapper->value(control);
-            QWidget *const window = w->window();
-            if (!window->d_func()->maybeTopData())
-                break;
-            QRefCountedWidgetBackingStore &backingStore = window->d_func()->maybeTopData()->backingStore;
-            if (visChangedEvent->iFlags & TWsVisibilityChangedEvent::ENotVisible) {
-                // Decrement backing store reference count
-                backingStore.deref();
-                // In order to ensure that any resources used by the window surface
-                // are immediately freed, we flush the WSERV command buffer.
-                S60->wsSession().Flush();
-            } else if (visChangedEvent->iFlags & TWsVisibilityChangedEvent::EPartiallyVisible) {
-                if (backingStore.data()) {
-                    // Increment backing store reference count
-                    backingStore.ref();
-                } else {
-                    // Create backing store with an initial reference count of 1
-                    backingStore.create(window);
-                    backingStore.ref();
-                    w->d_func()->invalidateBuffer(w->rect());
-                    w->repaint();
-                }
-            }
+            if (visChangedEvent->iFlags & TWsVisibilityChangedEvent::ENotVisible)
+                S60->controlVisibilityChanged(control, false);
+            else if (visChangedEvent->iFlags & TWsVisibilityChangedEvent::EPartiallyVisible)
+                S60->controlVisibilityChanged(control, true);
             return 1;
         }
         break;
@@ -1953,13 +2034,6 @@ int QApplicationPrivate::symbianProcessWsEvent(const QSymbianEvent *symbianEvent
             if (switchToSwRendering) {
                 QRuntimeGraphicsSystem *gs =
                    static_cast<QRuntimeGraphicsSystem*>(QApplicationPrivate::graphics_system);
-
-                uint memoryUsage = gs->memoryUsage();
-                uint memoryForFullscreen = ( S60->screenDepth / 8 )
-                                           * S60->screenWidthInPixels
-                                           * S60->screenHeightInPixels;
-
-                S60->memoryLimitForHwRendering = memoryUsage - memoryForFullscreen;
                 gs->setGraphicsSystem(QLatin1String("raster"));
             }
         }
@@ -1975,8 +2049,7 @@ int QApplicationPrivate::symbianProcessWsEvent(const QSymbianEvent *symbianEvent
         if(QApplicationPrivate::runtime_graphics_system) {
             QRuntimeGraphicsSystem *gs =
                    static_cast<QRuntimeGraphicsSystem*>(QApplicationPrivate::graphics_system);
-            gs->setGraphicsSystem(QLatin1String("openvg"), S60->memoryLimitForHwRendering);
-            S60->memoryLimitForHwRendering = 0;
+            gs->setGraphicsSystem(QLatin1String("openvg"));
         }
 #endif
         break;
@@ -2275,6 +2348,14 @@ void QApplication::restoreOverrideCursor()
 }
 
 #endif // QT_NO_CURSOR
+
+void QApplicationPrivate::_q_aboutToQuit()
+{
+#ifdef SYMBIAN_GRAPHICS_WSERV_QT_EFFECTS
+    // Send the shutdown tfx command
+    S60->wsSession().SendEffectCommand(ETfxCmdAppShutDown);
+#endif
+}
 
 QS60ThreadLocalData::QS60ThreadLocalData()
 {

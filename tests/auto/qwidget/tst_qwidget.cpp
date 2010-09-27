@@ -402,6 +402,8 @@ private slots:
 #endif // QT_MAC_USE_COCOA
 #endif
 
+    void nativeChildFocus();
+
 private:
     bool ensureScreenSize(int width, int height);
     QWidget *testWidget;
@@ -456,11 +458,7 @@ void tst_QWidget::getSetCheck()
     QCOMPARE(obj1.minimumWidth(), 0); // A widgets width can never be less than 0
     obj1.setMinimumWidth(INT_MAX);
 #ifndef Q_WS_QWS  //QWS doesn't allow toplevels to be bigger than the screen
-#if defined(Q_CC_MSVC) && !defined(Q_CC_MSVC_NET)
-    QCOMPARE((long)obj1.minimumWidth(), QWIDGETSIZE_MAX); // The largest minimum size should only be as big as the maximium
-#else
     QCOMPARE(obj1.minimumWidth(), QWIDGETSIZE_MAX); // The largest minimum size should only be as big as the maximium
-#endif
 #endif
 
     child1.setMinimumWidth(0);
@@ -468,11 +466,7 @@ void tst_QWidget::getSetCheck()
     child1.setMinimumWidth(INT_MIN);
     QCOMPARE(child1.minimumWidth(), 0); // A widgets width can never be less than 0
     child1.setMinimumWidth(INT_MAX);
-#if defined(Q_CC_MSVC) && !defined(Q_CC_MSVC_NET)
-    QCOMPARE((long)child1.minimumWidth(), QWIDGETSIZE_MAX); // The largest minimum size should only be as big as the maximium
-#else
     QCOMPARE(child1.minimumWidth(), QWIDGETSIZE_MAX); // The largest minimum size should only be as big as the maximium
-#endif
 
     // int QWidget::minimumHeight()
     // void QWidget::setMinimumHeight(int)
@@ -482,11 +476,7 @@ void tst_QWidget::getSetCheck()
     QCOMPARE(obj1.minimumHeight(), 0); // A widgets height can never be less than 0
     obj1.setMinimumHeight(INT_MAX);
 #ifndef Q_WS_QWS    //QWS doesn't allow toplevels to be bigger than the screen
-#if defined(Q_CC_MSVC) && !defined(Q_CC_MSVC_NET)
-    QCOMPARE((long)obj1.minimumHeight(), QWIDGETSIZE_MAX); // The largest minimum size should only be as big as the maximium
-#else
     QCOMPARE(obj1.minimumHeight(), QWIDGETSIZE_MAX); // The largest minimum size should only be as big as the maximium
-#endif
 #endif
 
     child1.setMinimumHeight(0);
@@ -494,26 +484,16 @@ void tst_QWidget::getSetCheck()
     child1.setMinimumHeight(INT_MIN);
     QCOMPARE(child1.minimumHeight(), 0); // A widgets height can never be less than 0
     child1.setMinimumHeight(INT_MAX);
-#if defined(Q_CC_MSVC) && !defined(Q_CC_MSVC_NET)
-    QCOMPARE((long)child1.minimumHeight(), QWIDGETSIZE_MAX); // The largest minimum size should only be as big as the maximium
-#else
     QCOMPARE(child1.minimumHeight(), QWIDGETSIZE_MAX); // The largest minimum size should only be as big as the maximium
-#endif
 
-
-
-// int QWidget::maximumWidth()
+    // int QWidget::maximumWidth()
     // void QWidget::setMaximumWidth(int)
     obj1.setMaximumWidth(0);
     QCOMPARE(obj1.maximumWidth(), 0);
     obj1.setMaximumWidth(INT_MIN);
     QCOMPARE(obj1.maximumWidth(), 0); // A widgets width can never be less than 0
     obj1.setMaximumWidth(INT_MAX);
-#if defined(Q_CC_MSVC) && !defined(Q_CC_MSVC_NET)
-    QCOMPARE((long)obj1.maximumWidth(), QWIDGETSIZE_MAX); // QWIDGETSIZE_MAX is the abs max, not INT_MAX
-#else
     QCOMPARE(obj1.maximumWidth(), QWIDGETSIZE_MAX); // QWIDGETSIZE_MAX is the abs max, not INT_MAX
-#endif
 
     // int QWidget::maximumHeight()
     // void QWidget::setMaximumHeight(int)
@@ -522,11 +502,7 @@ void tst_QWidget::getSetCheck()
     obj1.setMaximumHeight(INT_MIN);
     QCOMPARE(obj1.maximumHeight(), 0); // A widgets height can never be less than 0
     obj1.setMaximumHeight(INT_MAX);
-#if defined(Q_CC_MSVC) && !defined(Q_CC_MSVC_NET)
-    QCOMPARE((long)obj1.maximumHeight(), QWIDGETSIZE_MAX); // QWIDGETSIZE_MAX is the abs max, not INT_MAX
-#else
     QCOMPARE(obj1.maximumHeight(), QWIDGETSIZE_MAX); // QWIDGETSIZE_MAX is the abs max, not INT_MAX
-#endif
 
     // back to normal
     obj1.setMinimumWidth(0);
@@ -9758,7 +9734,6 @@ void tst_QWidget::destroyBackingStoreWhenHidden()
     QVERIFY(0 != backingStore(child));
 
     // Parent is obscured, therefore its backing store should be destroyed
-    QEXPECT_FAIL("", "QTBUG-12406", Continue);
     QVERIFY(0 == backingStore(parent));
 
     // Disable full screen
@@ -9773,6 +9748,80 @@ void tst_QWidget::destroyBackingStoreWhenHidden()
     // Native child widget should once again share parent's backing store
     QVERIFY(0 != backingStore(parent));
     QVERIFY(0 == backingStore(child));
+    }
+
+    // 6. Partial reveal followed by full reveal
+    {
+    QWidget upper;
+    upper.setAutoFillBackground(true);
+    upper.setPalette(Qt::red);
+    upper.setGeometry(50, 50, 100, 100);
+
+    QWidget lower;
+    lower.setAutoFillBackground(true);
+    lower.setPalette(Qt::green);
+    lower.setGeometry(50, 50, 100, 100);
+
+    lower.show();
+    QTest::qWaitForWindowShown(&lower);
+    upper.show();
+    QTest::qWaitForWindowShown(&upper);
+    upper.raise();
+
+    QVERIFY(0 != backingStore(upper));
+    QVERIFY(0 == backingStore(lower));
+
+    // Check that upper obscures lower
+    QVERIFY(lower.visibleRegion().subtracted(upper.visibleRegion()).isEmpty());
+
+    // Partially reveal lower
+    upper.move(100, 100);
+
+    // Completely reveal lower
+    upper.hide();
+
+    // Hide lower widget - this should cause its backing store to be deleted
+    lower.hide();
+
+    // Check that backing store was deleted
+    WAIT_AND_VERIFY(0 == backingStore(lower));
+    }
+
+    // 7. Reparenting of visible native child widget
+    {
+    QWidget parent1;
+    parent1.setAutoFillBackground(true);
+    parent1.setPalette(Qt::green);
+    parent1.setGeometry(50, 50, 100, 100);
+
+    QWidget *child = new QWidget(&parent1);
+    child->winId();
+    child->setAutoFillBackground(true);
+    child->setPalette(Qt::red);
+    child->setGeometry(10, 10, 30, 30);
+
+    QWidget parent2;
+    parent2.setAutoFillBackground(true);
+    parent2.setPalette(Qt::blue);
+    parent2.setGeometry(150, 150, 100, 100);
+
+    parent1.show();
+    QTest::qWaitForWindowShown(&parent1);
+    QVERIFY(0 != backingStore(parent1));
+
+    parent2.show();
+    QTest::qWaitForWindowShown(&parent2);
+    QVERIFY(0 != backingStore(parent2));
+
+    child->setParent(&parent2);
+    child->setGeometry(10, 10, 30, 30);
+    child->show();
+
+    parent1.hide();
+    WAIT_AND_VERIFY(0 == backingStore(parent1));
+
+    parent2.hide();
+    WAIT_AND_VERIFY(0 == backingStore(parent2));
     }
 }
 
@@ -10473,6 +10522,29 @@ void tst_QWidget::taskQTBUG_11373()
 }
 #endif // QT_MAC_USE_COCOA
 #endif
+
+void tst_QWidget::nativeChildFocus()
+{
+    QWidget w;
+    QLayout *layout = new QVBoxLayout;
+    w.setLayout(layout);
+    QLineEdit *p1 = new QLineEdit;
+    QLineEdit *p2 = new QLineEdit;
+    layout->addWidget(p1);
+    layout->addWidget(p2);
+    p1->setObjectName("p1");
+    p2->setObjectName("p2");
+    w.show();
+    w.activateWindow();
+    p1->setFocus();
+    p1->setAttribute(Qt::WA_NativeWindow);
+    p2->setAttribute(Qt::WA_NativeWindow);
+    QApplication::processEvents();
+    QTest::qWaitForWindowShown(&w);
+
+    QCOMPARE(QApplication::activeWindow(), &w);
+    QCOMPARE(QApplication::focusWidget(), p1);
+}
 
 QTEST_MAIN(tst_QWidget)
 #include "tst_qwidget.moc"

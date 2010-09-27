@@ -714,6 +714,9 @@ QDBusCallDeliveryEvent* QDBusConnectionPrivate::prepareReply(QDBusConnectionPriv
     if (metaTypes[n] == QDBusMetaTypeId::message)
         --n;
 
+    if (msg.arguments().count() < n)
+        return 0;               // too few arguments
+
     // check that types match
     for (int i = 0; i < n; ++i)
         if (metaTypes.at(i + 1) != msg.arguments().at(i).userType() &&
@@ -806,14 +809,14 @@ bool QDBusConnectionPrivate::activateCall(QObject* object, int flags, const QDBu
                 slotData.slotIdx = -1;
                 slotData.metaTypes.clear();
                 slotCache.hash.insert(cacheKey, slotData);
-                object->setProperty(cachePropertyName, qVariantFromValue(slotCache));
+                object->setProperty(cachePropertyName, QVariant::fromValue(slotCache));
                 return false;
             }
         }
 
         // save to the cache
         slotCache.hash.insert(cacheKey, slotData);
-        object->setProperty(cachePropertyName, qVariantFromValue(slotCache));
+        object->setProperty(cachePropertyName, QVariant::fromValue(slotCache));
 
         // found the slot to be called
         deliverCall(object, flags, msg, slotData.metaTypes, slotData.slotIdx);

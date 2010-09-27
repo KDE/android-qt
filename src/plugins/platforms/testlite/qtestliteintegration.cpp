@@ -49,13 +49,13 @@
 #include <QPlatformCursor>
 
 #include "qtestlitewindow.h"
+#include "qgenericunixfontdatabase.h"
 
 #ifndef QT_NO_OPENGL
 #include <GL/glx.h>
-#include "qglxintegration.h"
 #include <private/qwindowsurface_gl_p.h>
 #include <private/qpixmapdata_gl_p.h>
-#endif
+#endif //QT_NO_OPENGL
 
 QT_BEGIN_NAMESPACE
 
@@ -84,11 +84,9 @@ public:
 
 
 QTestLiteIntegration::QTestLiteIntegration(bool useOpenGL)
-#ifndef QT_NO_OPENGL
     : mUseOpenGL(useOpenGL)
-#endif
+    , mFontDb(new QGenericUnixFontDatabase())
 {
-
     xd = new MyDisplay;
 
     mPrimaryScreen = new QTestLiteScreen();
@@ -137,6 +135,11 @@ QPixmap QTestLiteIntegration::grabWindow(WId window, int x, int y, int width, in
 {
     QImage img = xd->grabWindow(window, x, y, width, height);
     return QPixmap::fromImage(img);
+}
+
+QPlatformFontDatabase *QTestLiteIntegration::fontDatabase() const
+{
+    return mFontDb;
 }
 
 bool QTestLiteIntegration::hasOpenGL() const

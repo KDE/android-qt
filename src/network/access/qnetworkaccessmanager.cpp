@@ -201,7 +201,7 @@ static void ensureInitialized()
     deleteResource())
 
     \value CustomOperation      custom operation (created with
-    sendCustomRequest())
+    sendCustomRequest())    \since 4.7
 
     \omitvalue UnknownOperation
 
@@ -450,6 +450,8 @@ QNetworkAccessManager::QNetworkAccessManager(QObject *parent)
     : QObject(*new QNetworkAccessManagerPrivate, parent)
 {
     ensureInitialized();
+
+    qRegisterMetaType<QNetworkReply::NetworkError>("QNetworkReply::NetworkError");
 }
 
 /*!
@@ -991,7 +993,7 @@ QNetworkReply *QNetworkAccessManager::createRequest(QNetworkAccessManager::Opera
         if (d->cookieJar) {
             QList<QNetworkCookie> cookies = d->cookieJar->cookiesForUrl(request.url());
             if (!cookies.isEmpty())
-                request.setHeader(QNetworkRequest::CookieHeader, qVariantFromValue(cookies));
+                request.setHeader(QNetworkRequest::CookieHeader, QVariant::fromValue(cookies));
         }
     }
 

@@ -20,10 +20,12 @@ wince*: {
 }
 
 symbian: {
-   libDep.sources = mylib.dll
+   libDep.sources = tst_qpluginloaderlib.dll
    libDep.path = /sys/bin
    pluginDep.sources = theplugin.dll
    pluginDep.path = bin
 
    DEPLOYMENT += libDep pluginDep
 }
+
+DEFINES += SRCDIR=\\\"$$PWD/../\\\"

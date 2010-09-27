@@ -39,17 +39,12 @@
 **
 ****************************************************************************/
 
-#if defined Q_CC_MSVC && _MSC_VER <=1300
-//VC.net 2002 support for templates doesn't match some PSDK requirements
-#define _WSPIAPI_COUNTOF(_Array) (sizeof(_Array) / sizeof(_Array[0]))
-#endif
-
 #include <winsock2.h>
 
 #include "qhostinfo_p.h"
 #include "private/qnativesocketengine_p.h"
 #include <ws2tcpip.h>
-#include <qlibrary.h>
+#include <private/qsystemlibrary_p.h>
 #include <qmutex.h>
 #include <qurl.h>
 #include <private/qmutexpool_p.h>
@@ -90,13 +85,13 @@ static void resolveLibrary()
     // Attempt to resolve getaddrinfo(); without it we'll have to fall
     // back to gethostbyname(), which has no IPv6 support.
 #if !defined(Q_OS_WINCE)
-    local_getaddrinfo = (getaddrinfoProto) QLibrary::resolve(QLatin1String("ws2_32.dll"), "getaddrinfo");
-    local_freeaddrinfo = (freeaddrinfoProto) QLibrary::resolve(QLatin1String("ws2_32.dll"), "freeaddrinfo");
-    local_getnameinfo = (getnameinfoProto) QLibrary::resolve(QLatin1String("ws2_32.dll"), "getnameinfo");
+    local_getaddrinfo = (getaddrinfoProto) QSystemLibrary::resolve(QLatin1String("ws2_32"), "getaddrinfo");
+    local_freeaddrinfo = (freeaddrinfoProto) QSystemLibrary::resolve(QLatin1String("ws2_32"), "freeaddrinfo");
+    local_getnameinfo = (getnameinfoProto) QSystemLibrary::resolve(QLatin1String("ws2_32"), "getnameinfo");
 #else
-    local_getaddrinfo = (getaddrinfoProto) QLibrary::resolve(QLatin1String("ws2.dll"), "getaddrinfo");
-    local_freeaddrinfo = (freeaddrinfoProto) QLibrary::resolve(QLatin1String("ws2.dll"), "freeaddrinfo");
-    local_getnameinfo = (getnameinfoProto) QLibrary::resolve(QLatin1String("ws2.dll"), "getnameinfo");
+    local_getaddrinfo = (getaddrinfoProto) QSystemLibrary::resolve(QLatin1String("ws2"), "getaddrinfo");
+    local_freeaddrinfo = (freeaddrinfoProto) QSystemLibrary::resolve(QLatin1String("ws2"), "freeaddrinfo");
+    local_getnameinfo = (getnameinfoProto) QSystemLibrary::resolve(QLatin1String("ws2"), "getnameinfo");
 #endif
 }
 

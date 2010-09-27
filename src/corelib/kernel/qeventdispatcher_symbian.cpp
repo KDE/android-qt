@@ -232,8 +232,12 @@ void QTimerActiveObject::DoCancel()
 
 void QTimerActiveObject::RunL()
 {
-    int error;
-    QT_TRYCATCH_ERROR(error, Run());
+    int error = KErrNone;
+    if (iStatus == KErrNone) {
+        QT_TRYCATCH_ERROR(error, Run());
+    } else {
+        error = iStatus.Int();
+    }
     // All Symbian error codes are negative.
     if (error < 0) {
         CActiveScheduler::Current()->Error(error);  // stop and report here, as this timer will be deleted on scope exit
@@ -1009,7 +1013,8 @@ bool QEventDispatcherSymbian::hasPendingEvents()
 
 void QEventDispatcherSymbian::registerSocketNotifier ( QSocketNotifier * notifier )
 {
-    QSocketActiveObject *socketAO = q_check_ptr(new QSocketActiveObject(this, notifier));
+    QSocketActiveObject *socketAO = new QSocketActiveObject(this, notifier);
+    Q_CHECK_PTR(socketAO);
     m_notifiers.insert(notifier, socketAO);
     selectThread().requestSocketEvents(notifier, &socketAO->iStatus);
 }

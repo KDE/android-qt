@@ -46,7 +46,7 @@
 #include <QtCore/qstring.h>
 #include <QtCore/qsharedpointer.h>
 
-#if defined(Q_WS_X11) || defined(Q_WS_QWS) || defined(Q_WS_QPA)
+#if defined(Q_WS_X11) || defined(Q_WS_QWS)
 typedef struct FT_FaceRec_* FT_Face;
 #endif
 
@@ -226,7 +226,10 @@ public:
     bool operator<(const QFont &) const;
     operator QVariant() const;
     bool isCopyOf(const QFont &) const;
-
+#ifdef Q_COMPILER_RVALUE_REFS
+    inline QFont &operator=(QFont &&other)
+    { qSwap(d, other.d); return *this; }
+#endif
 
 #ifdef Q_WS_WIN
     HFONT handle() const;
@@ -236,7 +239,7 @@ public:
 #ifdef Q_WS_MAC
     quint32 macFontID() const;
 #endif
-#if defined(Q_WS_X11) || defined(Q_WS_QWS) || defined(Q_WS_QPA)
+#if defined(Q_WS_X11) || defined(Q_WS_QWS)
     FT_Face freetypeFace() const;
 #endif
 

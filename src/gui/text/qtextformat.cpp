@@ -925,7 +925,7 @@ qreal QTextFormat::doubleProperty(int propertyId) const
     const QVariant prop = d->property(propertyId);
     if (prop.userType() != QVariant::Double && prop.userType() != QMetaType::Float)
         return 0.;
-    return qVariantValue<qreal>(prop);
+    return qvariant_cast<qreal>(prop);
 }
 
 /*!
@@ -1895,7 +1895,7 @@ void QTextBlockFormat::setTabPositions(const QList<QTextOption::Tab> &tabs)
     QList<QTextOption::Tab>::ConstIterator iter = tabs.constBegin();
     while (iter != tabs.constEnd()) {
         QVariant v;
-        qVariantSetValue<QTextOption::Tab>(v, *iter);
+        v.setValue<QTextOption::Tab>(*iter);
         list.append(v);
         ++iter;
     }
@@ -1917,7 +1917,7 @@ QList<QTextOption::Tab> QTextBlockFormat::tabPositions() const
     QList<QVariant> variantsList = qvariant_cast<QList<QVariant> >(variant);
     QList<QVariant>::Iterator iter = variantsList.begin();
     while(iter != variantsList.end()) {
-        answer.append( qVariantValue<QTextOption::Tab>(*iter));
+        answer.append( qvariant_cast<QTextOption::Tab>(*iter));
         ++iter;
     }
     return answer;
@@ -2227,6 +2227,44 @@ QTextListFormat::QTextListFormat(const QTextFormat &fmt)
     \sa setIndent()
 */
 
+/*!
+    \fn void QTextListFormat::setNumberPrefix(const QString &numberPrefix)
+    \since 4.8
+
+    Sets the list format's number prefix. This can be used with all
+    sorted list types. It does not have any effect on unsorted list types.
+
+    \sa numberPrefix()
+*/
+
+/*!
+    \fn int QTextListFormat::numberPrefix() const
+    \since 4.8
+
+    Returns the list format's number prefix.
+
+    \sa setNumberPrefix()
+*/
+
+/*!
+    \fn void QTextListFormat::setNumberSuffix(const QString &numberSuffix)
+    \since 4.8
+
+    Sets the list format's number suffix. This can be used with all
+    sorted list types. It does not have any effect on unsorted list types.
+    The default suffix is ".".
+
+    \sa numberSuffix()
+*/
+
+/*!
+    \fn int QTextListFormat::numberSuffix() const
+    \since 4.8
+
+    Returns the list format's number suffix.
+
+    \sa setNumberSuffix()
+*/
 
 /*!
     \class QTextFrameFormat

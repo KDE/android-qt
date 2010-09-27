@@ -341,7 +341,7 @@ Configure::Configure(int& argc, char** argv)
     dictionary[ "ACCESSIBILITY" ]   = "yes";
     dictionary[ "OPENGL" ]          = "yes";
     dictionary[ "OPENVG" ]          = "no";
-    dictionary[ "IPV6" ]            = "yes"; // Always, dynamicly loaded
+    dictionary[ "IPV6" ]            = "yes"; // Always, dynamically loaded
     dictionary[ "OPENSSL" ]         = "auto";
     dictionary[ "DBUS" ]            = "auto";
     dictionary[ "S60" ]             = "yes";
@@ -381,6 +381,7 @@ Configure::Configure(int& argc, char** argv)
     dictionary[ "INCREDIBUILD_XGE" ] = "auto";
     dictionary[ "LTCG" ]            = "no";
     dictionary[ "NATIVE_GESTURES" ] = "yes";
+    dictionary[ "MSVC_MP" ] = "no";
 }
 
 Configure::~Configure()
@@ -534,6 +535,13 @@ void Configure::parseCmdLine()
         else if (configCmdLine.at(i) == "-no-ltcg") {
             dictionary[ "LTCG" ] = "no";
         }
+        else if (configCmdLine.at(i) == "-mp") {
+            dictionary[ "MSVC_MP" ] = "yes";
+        }
+        else if (configCmdLine.at(i) == "-no-mp") {
+            dictionary[ "MSVC_MP" ] = "no";
+        }
+
 #endif
 
         else if (configCmdLine.at(i) == "-platform") {
@@ -988,7 +996,6 @@ void Configure::parseCmdLine()
             ++i;
             if (i == argCount)
                 break;
-            qmakeDefines += "QT_NAMESPACE="+configCmdLine.at(i);
             dictionary[ "QT_NAMESPACE" ] = configCmdLine.at(i);
         } else if (configCmdLine.at(i) == "-qtlibinfix") {
             ++i;
@@ -1029,6 +1036,10 @@ void Configure::parseCmdLine()
             opensslLibs = configCmdLine.at(i);
         } else if (configCmdLine.at(i).startsWith("PSQL_LIBS=")) {
             psqlLibs = configCmdLine.at(i);
+        } else if (configCmdLine.at(i).startsWith("SYBASE=")) {
+            sybase = configCmdLine.at(i);
+        } else if (configCmdLine.at(i).startsWith("SYBASE_LIBS=")) {
+            sybaseLibs = configCmdLine.at(i);
         }
 
         else if ((configCmdLine.at(i) == "-override-version") || (configCmdLine.at(i) == "-version-override")){
@@ -1157,6 +1168,13 @@ void Configure::parseCmdLine()
                 || system == QLatin1String("openvg")
                 || system == QLatin1String("runtime"))
                 dictionary["GRAPHICS_SYSTEM"] = configCmdLine.at(i);
+        }
+
+        else if (configCmdLine.at(i) == "-runtimegraphicssystem") {
+            ++i;
+            if (i == argCount)
+                break;
+            dictionary["RUNTIME_SYSTEM"] = configCmdLine.at(i);
         }
 
         else if (configCmdLine.at(i).indexOf(QRegExp("^-(en|dis)able-")) != -1) {
@@ -1499,6 +1517,10 @@ void Configure::applySpecSpecifics()
         dictionary[ "QT3SUPPORT" ]          = "no";
         dictionary[ "OPENGL" ]              = "no";
         dictionary[ "OPENSSL" ]             = "yes";
+        // We accidently enabled IPv6 for Qt Symbian in 4.6.x. However the underlying OpenC does not fully support IPV6.
+        // Therefore for 4.7.1 and following we disable it until OpenC either supports it or we have the native Qt
+        // symbian socket engine.
+        dictionary[ "IPV6" ]                = "no";
         dictionary[ "STL" ]                 = "yes";
         dictionary[ "EXCEPTIONS" ]          = "yes";
         dictionary[ "RTTI" ]                = "yes";
@@ -1624,7 +1646,7 @@ bool Configure::displayHelp()
                     "[-phonon] [-no-phonon-backend] [-phonon-backend]\n"
                     "[-no-multimedia] [-multimedia] [-no-audio-backend] [-audio-backend]\n"
                     "[-no-script] [-script] [-no-scripttools] [-scripttools]\n"
-                    "[-no-webkit] [-webkit] [-graphicssystem raster|opengl|openvg|runtime]\n\n", 0, 7);
+                    "[-no-webkit] [-webkit] [-graphicssystem raster|opengl|openvg]\n\n", 0, 7);
 
         desc("Installation options:\n\n");
 
@@ -1729,9 +1751,7 @@ bool Configure::displayHelp()
                                 "Available values for <sys>:");
         desc("GRAPHICS_SYSTEM", "raster", "",  "  raster - Software rasterizer", ' ');
         desc("GRAPHICS_SYSTEM", "opengl", "",  "  opengl - Using OpenGL acceleration, experimental!", ' ');
-        desc("GRAPHICS_SYSTEM", "openvg", "",  "  openvg - Using OpenVG acceleration, experimental!", ' ');
-        desc("GRAPHICS_SYSTEM", "runtime", "", "  runtime - Runtime switching of graphics sytems", ' ');
-
+        desc("GRAPHICS_SYSTEM", "openvg", "",  "  openvg - Using OpenVG acceleration, experimental!\n", ' ');
 
         desc(                   "-help, -h, -?",        "Display this information.\n");
 
@@ -1840,6 +1860,8 @@ bool Configure::displayHelp()
         desc("STYLE_S60" , "yes", "",                   "  s60\n", ' ');
         desc("NATIVE_GESTURES", "no", "-no-native-gestures", "Do not use native gestures on Windows 7.");
         desc("NATIVE_GESTURES", "yes", "-native-gestures", "Use native gestures on Windows 7.");
+        desc("MSVC_MP", "no", "-no-mp",                 "Do not use multiple processors for compiling with MSVC");
+        desc("MSVC_MP", "yes", "-mp",                   "Use multiple processors for compiling with MSVC (-MP)");
 
 /*      We do not support -qconfig on Windows yet
 
@@ -2098,12 +2120,7 @@ bool Configure::checkAvailability(const QString &part)
     else if (part == "INCREDIBUILD_XGE")
         available = findFile("BuildConsole.exe") && findFile("xgConsole.exe");
     else if (part == "XMLPATTERNS")
-    {
-        /* MSVC 6.0 and MSVC 2002/7.0 has too poor C++ support for QtXmlPatterns. */
-        return dictionary.value("QMAKESPEC") != "win32-msvc"
-               && dictionary.value("QMAKESPEC") != "win32-msvc.net" // Leave for now, since we can't be sure if they are using 2002 or 2003 with this spec
-               && dictionary.value("QMAKESPEC") != "win32-msvc2002"
-               && dictionary.value("EXCEPTIONS") == "yes";
+        available = dictionary.value("EXCEPTIONS") == "yes";
     } else if (part == "PHONON") {
         if (dictionary.contains("XQMAKESPEC") && dictionary["XQMAKESPEC"].startsWith("symbian")) {
             available = true;
@@ -2161,7 +2178,7 @@ bool Configure::checkAvailability(const QString &part)
 
                 available = (paths.size() == 0);
                 if (!available) {
-                    if (epocRoot.isNull() || epocRoot == "")
+                    if (epocRoot.isEmpty())
                         epocRoot = "<empty string>";
                     cout << endl
                          << "The QtMultimedia audio backend will not be built because required" << endl
@@ -2679,8 +2696,13 @@ void Configure::generateOutputVars()
             qtConfig += "audio-backend";
     }
 
-    if (dictionary["WEBKIT"] == "yes")
-        qtConfig += "webkit";
+    QString dst = buildPath + "/mkspecs/modules/qt_webkit_version.pri";
+    QFile::remove(dst);
+    if (dictionary["WEBKIT"] == "yes") {
+        // This include takes care of adding "webkit" to QT_CONFIG.
+        QString src = sourcePath + "/src/3rdparty/webkit/WebKit/qt/qt_webkit_version.pri";
+        QFile::copy(src, dst);
+    }
 
     if (dictionary["DECLARATIVE"] == "yes") {
         if (dictionary[ "SCRIPT" ] == "no") {
@@ -2707,7 +2729,7 @@ void Configure::generateOutputVars()
 
     QString set_config = dictionary["QCONFIG"];
     if (possible_configs.contains(set_config)) {
-        foreach(QString cfg, possible_configs) {
+        foreach (const QString &cfg, possible_configs) {
             qtConfig += (cfg + "-config");
             if (cfg == set_config)
                 break;
@@ -2767,6 +2789,17 @@ void Configure::generateOutputVars()
         }
     if (!psqlLibs.isEmpty())
         qmakeVars += QString("QT_LFLAGS_PSQL=") + psqlLibs.section("=", 1);
+
+    {
+        QStringList lflagsTDS;
+        if (!sybase.isEmpty())
+            lflagsTDS += QString("-L") + fixSeparators(sybase.section("=", 1) + "/lib");
+        if (!sybaseLibs.isEmpty())
+            lflagsTDS += sybaseLibs.section("=", 1);
+        if (!lflagsTDS.isEmpty())
+            qmakeVars += QString("QT_LFLAGS_TDS=") + lflagsTDS.join(" ");
+    }
+
     if (!qmakeSql.isEmpty())
         qmakeVars += QString("sql-drivers    += ") + qmakeSql.join(" ");
     if (!qmakeSqlPlugins.isEmpty())
@@ -2818,11 +2851,11 @@ void Configure::generateCachefile()
         for (QStringList::Iterator var = qmakeVars.begin(); var != qmakeVars.end(); ++var) {
             cacheStream << (*var) << endl;
         }
-        cacheStream << "CONFIG         += " << qmakeConfig.join(" ") << " incremental create_prl link_prl depend_includepath QTDIR_build" << endl;
+        cacheStream << "CONFIG         += " << qmakeConfig.join(" ") << " incremental msvc_mp create_prl link_prl depend_includepath QTDIR_build" << endl;
 
         QStringList buildParts;
         buildParts << "libs" << "tools" << "examples" << "demos" << "docs" << "translations";
-        foreach(QString item, disabledBuildParts) {
+        foreach (const QString &item, disabledBuildParts) {
             buildParts.removeAll(item);
         }
         cacheStream << "QT_BUILD_PARTS  = " << buildParts.join(" ") << endl;
@@ -2881,6 +2914,8 @@ void Configure::generateCachefile()
 
         if (dictionary[ "LTCG" ] == "yes")
             configStream << " ltcg";
+        if (dictionary[ "MSVC_MP" ] == "yes")
+            configStream << " msvc_mp";
         if (dictionary[ "STL" ] == "yes")
             configStream << " stl";
         if (dictionary[ "EXCEPTIONS" ] == "yes")
@@ -2944,8 +2979,6 @@ void Configure::generateCachefile()
         if (!dictionary["QT_NAMESPACE"].isEmpty()) {
             configStream << "#namespaces" << endl << "QT_NAMESPACE = " << dictionary["QT_NAMESPACE"] << endl;
         }
-
-        configStream << "#modules" << endl << "for(mod,$$list($$files($$[QMAKE_MKSPECS]/modules/qt_*.pri))):include($$mod)" << endl;
 
         configStream.flush();
         configFile.close();
@@ -3045,6 +3078,9 @@ void Configure::generateConfigfiles()
 
         tmpStream << endl << "// Compile time features" << endl;
         tmpStream << "#define QT_ARCH_" << dictionary["ARCHITECTURE"].toUpper() << endl;
+        if (dictionary["GRAPHICS_SYSTEM"] == "runtime" && dictionary["RUNTIME_SYSTEM"] != "runtime")
+            tmpStream << "#define QT_DEFAULT_RUNTIME_SYSTEM \"" << dictionary["RUNTIME_SYSTEM"] << "\"" << endl;
+
         QStringList qconfigList;
         if (dictionary["STL"] == "no")                qconfigList += "QT_NO_STL";
         if (dictionary["STYLE_WINDOWS"] != "yes")     qconfigList += "QT_NO_STYLE_WINDOWS";
@@ -3134,7 +3170,7 @@ void Configure::generateConfigfiles()
             QStringList kbdDrivers = dictionary["KBD_DRIVERS"].split(" ");;
             QStringList allKbdDrivers;
             allKbdDrivers<<"tty"<<"usb"<<"sl5000"<<"yopy"<<"vr41xx"<<"qvfb"<<"um";
-            foreach(QString kbd, allKbdDrivers) {
+            foreach (const QString &kbd, allKbdDrivers) {
                 if (!kbdDrivers.contains(kbd))
                     tmpStream<<"#define QT_NO_QWS_KBD_"<<kbd.toUpper()<<endl;
             }
@@ -3142,7 +3178,7 @@ void Configure::generateConfigfiles()
             QStringList mouseDrivers = dictionary["MOUSE_DRIVERS"].split(" ");
             QStringList allMouseDrivers;
             allMouseDrivers << "pc"<<"bus"<<"linuxtp"<<"yopy"<<"vr41xx"<<"tslib"<<"qvfb";
-            foreach(QString mouse, allMouseDrivers) {
+            foreach (const QString &mouse, allMouseDrivers) {
                 if (!mouseDrivers.contains(mouse))
                     tmpStream<<"#define QT_NO_QWS_MOUSE_"<<mouse.toUpper()<<endl;
             }
@@ -3150,7 +3186,7 @@ void Configure::generateConfigfiles()
             QStringList gfxDrivers = dictionary["GFX_DRIVERS"].split(" ");
             QStringList allGfxDrivers;
             allGfxDrivers<<"linuxfb"<<"transformed"<<"qvfb"<<"vnc"<<"multiscreen"<<"ahi";
-            foreach(QString gfx, allGfxDrivers) {
+            foreach (const QString &gfx, allGfxDrivers) {
                 if (!gfxDrivers.contains(gfx))
                     tmpStream<<"#define QT_NO_QWS_"<<gfx.toUpper()<<endl;
             }
@@ -3158,7 +3194,7 @@ void Configure::generateConfigfiles()
             tmpStream<<"#define Q_WS_QWS"<<endl;
 
             QStringList depths = dictionary[ "QT_QWS_DEPTH" ].split(" ");
-            foreach(QString depth, depths)
+            foreach (const QString &depth, depths)
               tmpStream<<"#define QT_QWS_DEPTH_"+depth<<endl;
         }
 
@@ -3607,7 +3643,10 @@ void Configure::buildHostTools()
         // generate Makefile
         QStringList args;
         args << QDir::toNativeSeparators(buildPath + "/bin/qmake");
-        args << "-spec" << dictionary["QMAKESPEC"] << "-r";
+        // override .qmake.cache because we are not cross-building these.
+        // we need a full path so that a build with -prefix will still find it.
+        args << "-spec" << QDir::toNativeSeparators(buildPath + "/mkspecs/" + dictionary["QMAKESPEC"]);
+        args << "-r";
         args << "-o" << QDir::toNativeSeparators(toolBuildPath + "/Makefile");
 
         QDir().mkpath(toolBuildPath);
@@ -3745,8 +3784,7 @@ void Configure::generateMakefiles()
                     printf("Generating Makefiles...\n");
                     generate = false; // Now Makefiles will be done
                 }
-                args << "-spec";
-                args << spec;
+                // don't pass -spec - .qmake.cache has it already
                 args << "-r";
                 args << (sourcePath + "/projects.pro");
                 args << "-o";

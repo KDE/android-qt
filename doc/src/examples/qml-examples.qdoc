@@ -137,6 +137,7 @@
     \o \l {declarative/cppextensions/referenceexamples/grouped}{Grouped Properties}
     \o \l {declarative/cppextensions/referenceexamples/attached}{Attached Properties}
     \o \l {declarative/cppextensions/referenceexamples/signal}{Signal Support}
+    \o \l {declarative/cppextensions/referenceexamples/methods}{Methods Support}
     \o \l {declarative/cppextensions/referenceexamples/valuesource}{Property Value Source}
     \o \l {declarative/cppextensions/referenceexamples/binding}{Binding}
     \endlist
@@ -229,7 +230,7 @@
 */
 
 /*!
-    \title Internationlization Example
+    \title Internationalization Example
     \example declarative/i18n
 
     This example shows how to enable text translation in QML.
@@ -374,7 +375,7 @@
     \title Models and Views: WebView Example
     \example declarative/modelviews/webview
 
-    These examples shows how to use the WebView element.
+    These examples show how to use the WebView element.
 
     \table
     \row
@@ -562,7 +563,7 @@
     \example declarative/ui-components/dialcontrol
 
     This example shows how to create a dial-type control. It combines
-    \l Image elements with \l Rotation transforms and \l SpringAnimatino behaviors
+    \l Image elements with \l Rotation transforms and \l SpringAnimation behaviors
     to produce an interactive speedometer-type dial.
 
     \image qml-dialcontrol-example.png

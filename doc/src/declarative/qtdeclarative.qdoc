@@ -48,7 +48,7 @@
   \endcode
 
   For more information on the Qt Declarative module, see the
-  \l{declarativeui.html}{Qt Quick} documentation.
+  \l{Qt Quick} documentation.
 */
 
 
@@ -57,6 +57,16 @@
   \relates QDeclarativeEngine
 
   Equivalent to  Q_DECLARE_METATYPE(TYPE) and Q_DECLARE_METATYPE(QDeclarativeListProperty<TYPE>)
+*/
+
+/*!
+  \macro QML_DECLARE_TYPEINFO(Type,Flags)
+  \relates QDeclarativeEngine
+
+  Declares additional properties of a type.
+  
+  Current the only supported type info is \c QML_HAS_ATTACHED_PROPERTIES which
+  declares that the \c Type supports \l {Attached Properties}.
 */
 
 
