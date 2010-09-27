@@ -3,7 +3,7 @@
 #include <QSemaphore>
 #include <QDebug>
 
-#include <QtAndroidBridge/QtAndroidBridge>
+#include <QtAndroidBridge/private/qtandroidbridge_p.h>
 #include <stdlib.h>
 
 

@@ -1,4 +1,5 @@
 #include "qtandroidbridge.h"
+#include "qtandroidbridge_p.h"
 
 namespace QtAndroidBridge
 {
