@@ -46,5 +46,5 @@ void* QAndroidPlatformGLContext::getProcAddress(const QString& procName)
 
 QPlatformWindowFormat QAndroidPlatformGLContext::platformWindowFormat() const
 {
-    return m_windowFormat;
+    return m_platformWindowFormat;
 }

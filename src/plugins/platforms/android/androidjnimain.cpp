@@ -25,10 +25,46 @@ Q_IMPORT_PLUGIN (QtAndroid)
 
 static JavaVM *m_javaVM = NULL;
 static JNIEnv *m_env = NULL;
-static jobject m_applicationObject  = NULL;
-static jobject m_EglObject  = NULL;
-static QList<QWindowSystemInterface::TouchPoint> m_touchPoints;
 
+template <class T>
+class GolbalObject
+{
+    public:
+        GolbalObject(const T & value= NULL)
+        {
+            if (m_env)
+                m_value=m_env->NewGlobalRef(value);
+            else
+                m_value=value;
+        };
+        virtual ~GolbalObject()
+        {
+            if (m_value && m_env)
+                m_env->DeleteGlobalRef(m_value);
+        };
+        T& operator =(const T& value)
+        {
+            if (m_value && m_env)
+                m_env->DeleteGlobalRef(m_value);
+            if (m_env)
+                m_value=m_env->NewGlobalRef(value);
+            else
+                m_value=value;
+            return m_value;
+        }
+        T& operator()()
+        {
+            return m_value;
+        }
+
+private:
+        T m_value;
+};
+
+static GolbalObject<jobject> m_EglObject = NULL;
+static GolbalObject<jobject> m_applicationObject = NULL;
+
+static QList<QWindowSystemInterface::TouchPoint> m_touchPoints;
 struct ApplicationControl
 {
     // Application semaphores
@@ -66,7 +102,7 @@ static jmethodID m_swapBuffersMethodID=0;
 //static jmethodID m_getProcAddressMethodID=0;
 // Java EGL methods
 
-static QMap<int,QPair<jobject,QWidget *> > m_windows;
+static QMap<int,QPair<GolbalObject<jobject>,QWidget *> > m_windows;
 static bool   m_pauseApplication;
 static QAndroidPlatformIntegration * mAndroidGraphicsSystem=0;
 
@@ -112,7 +148,7 @@ namespace QtAndroid
         AndroidBitmapInfo  info;
         int ret;
 
-    if ((ret = AndroidBitmap_getInfo(env, m_windows[windowId].first, &info)) < 0)
+        if ((ret = AndroidBitmap_getInfo(env, m_windows[windowId].first(), &info)) < 0)
         {
             qWarning()<<"AndroidBitmap_getInfo() failed ! error="<<ret;
             m_javaVM->DetachCurrentThread();
@@ -128,7 +164,7 @@ namespace QtAndroid
         void * pixels;
         unsigned char * screenBits;
 
-    if ((ret = AndroidBitmap_lockPixels(env, m_windows[windowId].first, &pixels)) < 0)
+        if ((ret = AndroidBitmap_lockPixels(env, m_windows[windowId].first(), &pixels)) < 0)
         {
             qWarning()<<"AndroidBitmap_lockPixels() failed ! error="<<ret;
             m_javaVM->DetachCurrentThread();
@@ -155,12 +191,12 @@ namespace QtAndroid
         unsigned width=swidth-sposx<(unsigned)destinationRect.width()?swidth-sposx:destinationRect.width();
         unsigned height=sheight-sposy<(unsigned)destinationRect.height()?sheight-sposy:destinationRect.height();
 
-        jclass object=env->GetObjectClass(m_applicationObject);
+        jclass object=env->GetObjectClass(m_applicationObject());
         for (unsigned y=0;y<height;y++)
             memcpy(screenBits+y*sbpl+sposx*bpp,
                     imageBits+y*ibpl+iposx*bpp,
                    width*bpp);
-    AndroidBitmap_unlockPixels(env, m_windows[windowId].first);
+        AndroidBitmap_unlockPixels(env, m_windows[windowId].first());
         env->CallVoidMethod(object, m_redrawWindowMethodID, (jint)windowId,
                             (jint)destinationRect.left(),
                             (jint)destinationRect.top(),
@@ -184,19 +220,19 @@ namespace QtAndroid
             return false;
         }
 
-        bool res=env->CallBooleanMethod(m_applicationObject, m_createWindowMethodID,
+        bool res=env->CallBooleanMethod(m_applicationObject(), m_createWindowMethodID,
                             (jboolean)openGl, (jint)windowId, (jint)l, (jint)t, (jint)r, (jint)b);
 
         m_javaVM->DetachCurrentThread();
         if (!res)
             return false;
         m_applicationControl->m_createWindowSemaphore.acquire(); //wait until window is created
-    if (m_windows.contains(windowId))
-    {
-        m_windows[windowId].second=tlw;
-        return true;
-    }
-    return false;
+        if (m_windows.contains(windowId))
+        {
+            m_windows[windowId].second=tlw;
+            return true;
+        }
+        return false;
     }
 
     bool resizeWindow(int windowId, int l, int t, int r, int b)
@@ -209,7 +245,7 @@ namespace QtAndroid
             return false;
         }
 
-        bool res=env->CallBooleanMethod(m_applicationObject, m_resizeWindowMethodID,
+        bool res=env->CallBooleanMethod(m_applicationObject(), m_resizeWindowMethodID,
                             (jint)windowId, (jint)l, (jint)t, (jint)r, (jint)b);
 
         m_javaVM->DetachCurrentThread();
@@ -229,7 +265,7 @@ namespace QtAndroid
             return false;
         }
 
-        bool res=env->CallBooleanMethod(m_applicationObject, m_destroyWindowMethodID, (jint)windowId);
+        bool res=env->CallBooleanMethod(m_applicationObject(), m_destroyWindowMethodID, (jint)windowId);
 
         m_javaVM->DetachCurrentThread();
 
@@ -248,7 +284,7 @@ namespace QtAndroid
             return;
         }
 
-        env->CallVoidMethod(m_applicationObject, m_setWindowVisiblityMethodID, (jint)windowId, (jboolean)visible);
+        env->CallVoidMethod(m_applicationObject(), m_setWindowVisiblityMethodID, (jint)windowId, (jboolean)visible);
 
         m_javaVM->DetachCurrentThread();
     }
@@ -261,7 +297,7 @@ namespace QtAndroid
             qCritical()<<"AttachCurrentThread failed";
             return;
         }
-        jclass object=env->GetObjectClass(m_applicationObject);
+        jclass object=env->GetObjectClass(m_applicationObject());
         env->CallVoidMethod(object, m_setWindowOpacityMethodID, (jint)windowId, (jdouble)level);
         m_javaVM->DetachCurrentThread();
     }
@@ -277,7 +313,7 @@ namespace QtAndroid
             return;
         }
         jstring jtitle = env->NewStringUTF(title.toUtf8().data());
-        env->CallVoidMethod(m_applicationObject, m_setWindowTitleMethodID, (jint)windowId, (jstring)jtitle);
+        env->CallVoidMethod(m_applicationObject(), m_setWindowTitleMethodID, (jint)windowId, (jstring)jtitle);
         env->DeleteLocalRef(jtitle);
         m_javaVM->DetachCurrentThread();
     }
@@ -290,7 +326,7 @@ namespace QtAndroid
             qCritical()<<"AttachCurrentThread failed";
             return;
         }
-        jclass object=env->GetObjectClass(m_applicationObject);
+        jclass object=env->GetObjectClass(m_applicationObject());
         env->CallVoidMethod(object, m_raiseWindowMethodID, (jint)windowId);
         m_javaVM->DetachCurrentThread();
     }
@@ -304,7 +340,7 @@ namespace QtAndroid
             qCritical()<<"AttachCurrentThread failed";
             return false;
         }
-        jboolean res=env->CallBooleanMethod(m_EglObject, m_makeCurrentMethodID, (jint)windowId);
+        jboolean res=env->CallBooleanMethod(m_EglObject(), m_makeCurrentMethodID, (jint)windowId);
         m_javaVM->DetachCurrentThread();
         return res;
     }
@@ -318,7 +354,7 @@ namespace QtAndroid
             qCritical()<<"AttachCurrentThread failed";
             return false;
         }
-        env->CallVoidMethod(m_EglObject, m_doneCurrentMethodID);
+        env->CallVoidMethod(m_EglObject(), m_doneCurrentMethodID);
         m_javaVM->DetachCurrentThread();
         return true;
     }
@@ -332,7 +368,7 @@ namespace QtAndroid
             qCritical()<<"AttachCurrentThread failed";
             return false;
         }
-        jboolean res=env->CallBooleanMethod(m_EglObject, m_swapBuffersMethodID, (jint)windowId);
+        jboolean res=env->CallBooleanMethod(m_EglObject(), m_swapBuffersMethodID, (jint)windowId);
         m_javaVM->DetachCurrentThread();
         return res;
     }
@@ -367,7 +403,7 @@ namespace QtAndroid
 
     bool hasOpenGL()
     {
-        return (bool)m_EglObject;
+        return (bool)m_EglObject();
     }
 
 }
@@ -713,7 +749,7 @@ static void windowCreated(JNIEnv *env, jobject /*thiz*/, jobject jWindow, jint w
 {
     qDebug()<<"windowCreated"<<windowId;
     Q_UNUSED(env);
-    m_windows[windowId].first = env->NewGlobalRef(jWindow);
+    m_windows[windowId].first = jWindow;
     m_applicationControl->m_createWindowSemaphore.release();
 }
 
@@ -721,7 +757,7 @@ static void windowChanged(JNIEnv *env, jobject /*thiz*/, jobject jWindow, jint w
 {
     qDebug()<<"windowChanged"<<windowId;
     Q_UNUSED(env);
-    m_windows[windowId].first = env->NewGlobalRef(jWindow);
+    m_windows[windowId].first = jWindow;
     m_applicationControl->m_resizeWindowSemaphore.release();
 }
 
@@ -747,7 +783,7 @@ static void setEglObject(JNIEnv *env, jobject /*thiz*/,  jobject eglObject)
         return;
     }
 
-    m_EglObject=env->NewGlobalRef(eglObject);
+    m_EglObject=eglObject;
     m_makeCurrentMethodID = env->GetMethodID((jclass)clazz, "makeCurrent", "(I)Z");
     m_doneCurrentMethodID = env->GetMethodID((jclass)clazz, "doneCurrent", "()V");
     m_swapBuffersMethodID = env->GetMethodID((jclass)clazz, "swapBuffers", "(I)Z");
@@ -806,15 +842,15 @@ static int registerNativeMethods(JNIEnv* env, const char* className,
         __android_log_print(ANDROID_LOG_FATAL,"Qt", "RegisterNatives failed for '%s'", className);
         return JNI_FALSE;
     }
-    m_applicationObject = env->NewGlobalRef(clazz);
-    m_createWindowMethodID = env->GetMethodID((jclass)m_applicationObject, "createWindow", "(ZIIIII)Z");
-    m_resizeWindowMethodID = env->GetMethodID((jclass)m_applicationObject, "resizeWindow", "(IIIII)Z");
-    m_destroyWindowMethodID = env->GetMethodID((jclass)m_applicationObject, "destroyWindow", "(I)Z");
-    m_setWindowVisiblityMethodID = env->GetMethodID((jclass)m_applicationObject, "setWindowVisiblity", "(IZ)V");
-    m_setWindowOpacityMethodID = env->GetMethodID((jclass)m_applicationObject, "setWindowOpacity", "(ID)V");
-    m_setWindowTitleMethodID = env->GetMethodID((jclass)m_applicationObject, "setWindowTitle", "(ILjava/lang/String;)V");
-    m_raiseWindowMethodID = env->GetMethodID((jclass)m_applicationObject, "raiseWindow", "(I)V");
-    m_redrawWindowMethodID = env->GetMethodID((jclass)m_applicationObject, "redrawWindow", "(IIIII)V");
+    m_applicationObject = clazz;
+    m_createWindowMethodID = env->GetMethodID((jclass)m_applicationObject(), "createWindow", "(ZIIIII)Z");
+    m_resizeWindowMethodID = env->GetMethodID((jclass)m_applicationObject(), "resizeWindow", "(IIIII)Z");
+    m_destroyWindowMethodID = env->GetMethodID((jclass)m_applicationObject(), "destroyWindow", "(I)Z");
+    m_setWindowVisiblityMethodID = env->GetMethodID((jclass)m_applicationObject(), "setWindowVisiblity", "(IZ)V");
+    m_setWindowOpacityMethodID = env->GetMethodID((jclass)m_applicationObject(), "setWindowOpacity", "(ID)V");
+    m_setWindowTitleMethodID = env->GetMethodID((jclass)m_applicationObject(), "setWindowTitle", "(ILjava/lang/String;)V");
+    m_raiseWindowMethodID = env->GetMethodID((jclass)m_applicationObject(), "raiseWindow", "(I)V");
+    m_redrawWindowMethodID = env->GetMethodID((jclass)m_applicationObject(), "redrawWindow", "(IIIII)V");
     return JNI_TRUE;
 }
 

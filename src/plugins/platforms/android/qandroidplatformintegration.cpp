@@ -45,8 +45,11 @@
 #include "qandroidwindowsurface.h"
 #include "androidjnimain.h"
 #include "qabstracteventdispatcher.h"
+#include "qbasicunixfontdatabase.h"
 #include <QtGui/private/qpixmap_raster_p.h>
 #include <QThread>
+#include <QFile>
+#include <QDir>
 #include <QDebug>
 
 #ifndef QT_NO_OPENGL
@@ -61,6 +64,31 @@ int QAndroidPlatformIntegration::mDefaultGeometryWidth=320;
 int QAndroidPlatformIntegration::mDefaultGeometryHeight=455;
 int QAndroidPlatformIntegration::mDefaultPhysicalSizeWidth=50;
 int QAndroidPlatformIntegration::mDefaultPhysicalSizeHeight=71;
+class QAndroidPlatformFontDatabase: public QBasicUnixFontDatabase
+{
+    public:
+            virtual QString fontDir() const
+            {
+                return QLatin1String("/system/fonts");
+            }
+
+            virtual void populateFontDatabase()
+            {
+                QPlatformFontDatabase::populateFontDatabase();
+                QString fontpath = fontDir();
+
+                if(!QFile::exists(fontpath)) {
+                    qFatal("QFontDatabase: Cannot find font directory %s - is Qt installed correctly?",
+                        qPrintable(fontpath));
+                }
+
+                QDir dir(fontpath, QLatin1String("Droid*.ttf"));
+                for (int i = 0; i < int(dir.count()); ++i) {
+                    const QByteArray file = QFile::encodeName(dir.absoluteFilePath(dir[i]));
+                    addTTFile(QByteArray(), file);
+                }
+            }
+};
 
 QAndroidPlatformIntegration::QAndroidPlatformIntegration(bool useGL)
 {
@@ -69,7 +97,12 @@ QAndroidPlatformIntegration::QAndroidPlatformIntegration(bool useGL)
     m_mainThread=QThread::currentThread();
     QtAndroid::setAndroidGraphicsSystem(this);
     m_useGL=useGL;
-    qDebug()<<"QAndroidPlatformIntegration::QAndroidPlatformIntegration"<<this;
+    mAndroidFDB = new QAndroidPlatformFontDatabase();
+}
+
+QAndroidPlatformIntegration::~QAndroidPlatformIntegration()
+{
+    delete mAndroidFDB;
 }
 
 void QAndroidPlatformIntegration::setDefaultDisplayMetrics(int gw, int gh, int sw, int sh)
@@ -109,8 +142,14 @@ QWindowSurface *QAndroidPlatformIntegration::createWindowSurface(QWidget *widget
 
 QPlatformWindow *QAndroidPlatformIntegration::createPlatformWindow(QWidget *widget, WId winId) const
 {
+    Q_UNUSED(winId);
     qDebug()<<"QAndroidPlatformIntegration::createPlatformWindow"<<widget;
     return new QAndroidPlatformWindow(widget);
+}
+
+QPlatformFontDatabase *QAndroidPlatformIntegration::fontDatabase() const
+{
+    return mAndroidFDB;
 }
 
 void QAndroidPlatformIntegration::setDesktopSize(int width, int height)

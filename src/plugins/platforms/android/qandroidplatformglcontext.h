@@ -3,6 +3,7 @@
 
 #include <QPlatformGLContext>
 
+class QGLFormat;
 class QAndroidPlatformGLContext : public QPlatformGLContext
 {
 public:
@@ -16,6 +17,7 @@ public:
 private:
     QPlatformWindowFormat m_windowFormat;
     WId     m_surfaceId;
+    QPlatformWindowFormat m_platformWindowFormat;
 };
 
 #endif // QANDROIDCONTEXT_H

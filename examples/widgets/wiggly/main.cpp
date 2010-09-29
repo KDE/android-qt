@@ -52,6 +52,6 @@ int main(int argc, char *argv[])
     if (!smallScreen)
         dialog.show();
     else
-    dialog.showFullScreen();
+        dialog.showFullScreen();
     return app.exec();
 }

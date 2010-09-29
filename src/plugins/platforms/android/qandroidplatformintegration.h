@@ -47,11 +47,12 @@ QT_BEGIN_NAMESPACE
 
 class QAndroidPlatformScreen;
 class QPlatformGLContext;
+
 class QAndroidPlatformIntegration : public QPlatformIntegration
 {
 public:
     explicit QAndroidPlatformIntegration(bool useGL=false);
-
+    ~QAndroidPlatformIntegration();
     virtual QPlatformWindow *createPlatformWindow(QWidget *widget, WId winId = 0) const;
     virtual QPixmapData *createPixmapData(QPixmapData::PixelType type) const;
     virtual QWindowSurface *createWindowSurface(QWidget *widget, WId winId) const;
@@ -59,6 +60,8 @@ public:
     virtual QList<QPlatformScreen *> screens() const { return mScreens; }
 
     virtual QAndroidPlatformScreen * getPrimaryScreen(){return mPrimaryScreen;}
+
+    QPlatformFontDatabase *fontDatabase() const;
 
     virtual void setDesktopSize(int width, int height);
     virtual void setDisplayMetrics(int width, int height);
@@ -80,6 +83,7 @@ private:
     QList<QPlatformScreen *> mScreens;
     static int mDefaultGeometryWidth,mDefaultGeometryHeight,mDefaultPhysicalSizeWidth,mDefaultPhysicalSizeHeight;
     friend class QAndroidPlatformScreen;
+    QPlatformFontDatabase *mAndroidFDB;
 };
 
 QT_END_NAMESPACE

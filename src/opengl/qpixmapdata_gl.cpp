@@ -505,9 +505,10 @@ void QGLPixmapData::copy(const QPixmapData *data, const QRect &rect)
             glBindFramebuffer(GL_READ_FRAMEBUFFER_EXT, other->m_renderFbo->handle());
 
         glDisable(GL_SCISSOR_TEST);
+#ifdef QT_OPENGL_ES_2
         if (ctx->d_ptr->active_engine && ctx->d_ptr->active_engine->type() == QPaintEngine::OpenGL2)
             static_cast<QGL2PaintEngineEx *>(ctx->d_ptr->active_engine)->invalidateState();
-
+#endif
         glBlitFramebufferEXT(rect.x(), rect.y(), rect.x() + rect.width(), rect.y() + rect.height(),
                 0, 0, w, h,
                 GL_COLOR_BUFFER_BIT,
