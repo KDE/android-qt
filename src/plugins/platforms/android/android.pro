@@ -22,13 +22,15 @@ SOURCES +=  main.cpp \
             qandroidplatformintegration.cpp \
             qandroidplatformscreen.cpp \
             qandroidplatformwindow.cpp \
-            qandroidwindowsurface.cpp
+            qandroidwindowsurface.cpp \
+            qandroidinputcontext.cpp
 
 HEADERS =   androidjnimain.h \
             qandroidplatformintegration.h \
             qandroidplatformscreen.h \
             qandroidplatformwindow.h \
-            qandroidwindowsurface.h
+            qandroidwindowsurface.h \
+            qandroidinputcontext.h
 
 
 contains(QT_CONFIG, opengl) {
