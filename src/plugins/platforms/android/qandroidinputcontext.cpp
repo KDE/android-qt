@@ -25,7 +25,7 @@ bool QAndroidInputContext::isComposing() const
 
 QString QAndroidInputContext::language()
 {
-    return "en_US";
+    return "";
 }
 
 void QAndroidInputContext::reset()

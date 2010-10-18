@@ -109,6 +109,21 @@ public class QtActivity extends Activity
     }
     
     @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        if (event.getAction() == KeyEvent.ACTION_MULTIPLE && 
+            event.getCharacters() != null && 
+            event.getCharacters().length() == 1 &&
+            event.getKeyCode() == 0) {
+            Log.i(QtApplication.QtTAG, "dispatchKeyEvent at MULTIPLE with one character: "+event.getCharacters());
+            QtApplication.keyDown(0, event.getCharacters().charAt(0), event.getMetaState());
+            QtApplication.keyUp(0, event.getCharacters().charAt(0), event.getMetaState());
+        }
+    
+        return super.dispatchKeyEvent(event);
+    }
+
+   
+    @Override
     public boolean onKeyDown(int keyCode, KeyEvent event)
     {
     	metaState = MetaKeyKeyListener.handleKeyDown(metaState,
