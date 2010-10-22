@@ -11,7 +11,6 @@ import android.util.Log;
 import android.view.KeyCharacterMap;
 import android.view.KeyEvent;
 import android.view.Window;
-import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
 
 public class QtActivity extends Activity
@@ -145,9 +144,11 @@ public class QtActivity extends Activity
         return true;
     }
 
+   
     @Override
     public boolean onKeyUp(int keyCode, KeyEvent event)
     {
+    	metaState = MetaKeyKeyListener.handleKeyUp(metaState, keyCode, event);
         QtApplication.keyUp(keyCode, event.getUnicodeChar(), event.getMetaState());
 //		if (keyCode == KeyEvent.KEYCODE_BACK)
 //			return super.onKeyUp(keyCode, event);
