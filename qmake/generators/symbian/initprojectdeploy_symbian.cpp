@@ -59,7 +59,12 @@
 static QString fixPathToEpocOS(const QString &src)
 {
     QString ret = Option::fixPathToTargetOS(src);
-    return ret.replace('/', '\\');
+
+    bool pathHasDriveLetter = false;
+    if (ret.size() > 1)
+        pathHasDriveLetter = (ret.at(1) == QLatin1Char(':'));
+
+    return pathHasDriveLetter ? ret.replace('/', '\\') : QDir::toNativeSeparators(ret);
 }
 
 static bool isPlugin(const QFileInfo& info, const QString& devicePath)
@@ -248,7 +253,10 @@ void initProjectDeploySymbian(QMakeProject* project,
             continue;
         }
 
-        foreach(QString source, project->values(item + ".sources")) {
+        QStringList flags = project->values(item + ".flags");
+
+        // ### Qt 5: remove .sources, inconsistent with INSTALLS
+        foreach(QString source, project->values(item + ".sources") + project->values(item + ".files")) {
             source = Option::fixPathToLocalOS(source);
             QString nameFilter;
             QFileInfo info(source);
@@ -279,13 +287,15 @@ void initProjectDeploySymbian(QMakeProject* project,
                                     Option::fixPathToLocalOS(targetPath.absolutePath() + "/" + info.fileName(),
                                     false, true),
                                     fixPathToEpocOS(devicePath.left(2) + QLatin1String(SYSBIN_DIR "/")
-                                    + info.fileName())));
+                                    + info.fileName()),
+                                    flags));
                             } else {
                                 deploymentList.append(CopyItem(
                                     Option::fixPathToLocalOS(targetPath.absolutePath() + "/" + info.fileName(),
                                     false, true),
                                     fixPathToEpocOS(deploymentDrive + QLatin1String("/" SYSBIN_DIR "/")
-                                    + info.fileName())));
+                                    + info.fileName()),
+                                    flags));
                             }
                         }
                         if (isPlugin(info, devicePath)) {
@@ -296,7 +306,8 @@ void initProjectDeploySymbian(QMakeProject* project,
                         // Generate deployment even if file doesn't exist, as this may be the case
                         // when generating .pkg files.
                         deploymentList.append(CopyItem(Option::fixPathToLocalOS(info.absoluteFilePath()),
-                                                       fixPathToEpocOS(devicePath + "/" + info.fileName())));
+                                                       fixPathToEpocOS(devicePath + "/" + info.fileName()),
+                                                       flags));
                         continue;
                     }
                 }
@@ -323,12 +334,14 @@ void initProjectDeploySymbian(QMakeProject* project,
                                 deploymentList.append(CopyItem(
                                     Option::fixPathToLocalOS(absoluteItemPath + "/" + iterator.fileName()),
                                     fixPathToEpocOS(devicePath.left(2) + QLatin1String(SYSBIN_DIR "/")
-                                    + iterator.fileName())));
+                                    + iterator.fileName()),
+                                    flags));
                             } else {
                                 deploymentList.append(CopyItem(
                                     Option::fixPathToLocalOS(absoluteItemPath + "/" + iterator.fileName()),
                                     fixPathToEpocOS(deploymentDrive + QLatin1String("/" SYSBIN_DIR "/")
-                                    + iterator.fileName())));
+                                    + iterator.fileName()),
+                                    flags));
                             }
                         }
                         createPluginStub(info, devicePath + "/" + absoluteItemPath.right(diffSize),
@@ -338,7 +351,8 @@ void initProjectDeploySymbian(QMakeProject* project,
                         deploymentList.append(CopyItem(
                             Option::fixPathToLocalOS(absoluteItemPath + "/" + iterator.fileName()),
                             fixPathToEpocOS(devicePath + "/" + absoluteItemPath.right(diffSize)
-                            + "/" + iterator.fileName())));
+                            + "/" + iterator.fileName()),
+                            flags));
                     }
                 }
             }

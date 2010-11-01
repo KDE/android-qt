@@ -518,6 +518,9 @@ QGLFormat::~QGLFormat()
     exchange the screen contents with the buffer. The result is
     flicker-free drawing and often better performance.
 
+    Note that single buffered contexts are currently not supported
+    with EGL.
+
     \sa doubleBuffer(), QGLContext::swapBuffers(),
     QGLWidget::swapBuffers()
 */
@@ -2125,7 +2128,7 @@ void QGLContextPrivate::syncGlState()
 #undef ctx
 
 #ifdef QT_NO_EGL
-void QGLContextPrivate::swapRegion(const QRegion *)
+void QGLContextPrivate::swapRegion(const QRegion &)
 {
     Q_Q(QGLContext);
     q->swapBuffers();
@@ -5332,8 +5335,6 @@ QGLExtensions::Extensions QGLExtensions::currentContextExtensions()
         glExtensions |= FragmentShader;
     if (extensions.match("GL_ARB_shader_objects"))
         glExtensions |= FragmentShader;
-    if (extensions.match("GL_ARB_ES2_compatibility"))
-        glExtensions |= ES2Compatibility;
     if (extensions.match("GL_ARB_texture_mirrored_repeat"))
         glExtensions |= MirroredRepeat;
     if (extensions.match("GL_EXT_framebuffer_object"))
@@ -5354,7 +5355,6 @@ QGLExtensions::Extensions QGLExtensions::currentContextExtensions()
     glExtensions |= FramebufferObject;
     glExtensions |= GenerateMipmap;
     glExtensions |= FragmentShader;
-    glExtensions |= ES2Compatibility;
 #endif
 #if defined(QT_OPENGL_ES_1)
     if (extensions.match("GL_OES_framebuffer_object"))
@@ -5363,6 +5363,12 @@ QGLExtensions::Extensions QGLExtensions::currentContextExtensions()
 #if defined(QT_OPENGL_ES)
     if (extensions.match("GL_OES_packed_depth_stencil"))
         glExtensions |= PackedDepthStencil;
+    if (extensions.match("GL_OES_element_index_uint"))
+        glExtensions |= ElementIndexUint;
+    if (extensions.match("GL_OES_depth24"))
+        glExtensions |= Depth24;
+#else
+    glExtensions |= ElementIndexUint;
 #endif
     if (extensions.match("GL_ARB_framebuffer_object")) {
         // ARB_framebuffer_object also includes EXT_framebuffer_blit.

@@ -1,3 +1,4 @@
+
 /****************************************************************************
 **
 ** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
@@ -385,7 +386,7 @@ static bool qt_unix_query(const QString &library, uint *version, bool *debug, QB
         }
     } else if (r != QElfParser::Ok) {
         if (lib && qt_debug_component()) {
-            qWarning(qPrintable(lib->errorString));
+            qWarning("QElfParser: %s",qPrintable(lib->errorString));
         }
         return false;
     }
@@ -410,9 +411,6 @@ struct LibraryData {
     LibraryData() : settings(0) { }
     ~LibraryData() {
         delete settings;
-        foreach(QLibraryPrivate *lib, loadedLibs) {
-            lib->unload();
-        }
     }
 
     QSettings *settings;

@@ -1383,6 +1383,8 @@ void QDeclarativeViewer::appAboutToQuit()
     // avoid crashes if messages are received after app has closed
     delete loggerWindow;
     loggerWindow = 0;
+    delete tester;
+    tester = 0;
 }
 
 void QDeclarativeViewer::autoStartRecording()
@@ -1518,6 +1520,7 @@ void QDeclarativeViewer::updateSizeHints(bool initial)
     //qWarning() << "USH: R2V: setting free size ";
     layout()->setSizeConstraint(QLayout::SetNoConstraint);
     layout()->activate();
+    setMinimumSize(QSize(1,1));
     setMaximumSize(QSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX));
     canvas->setMinimumSize(QSize(0,0));
     canvas->setMaximumSize(QSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX));
@@ -1532,6 +1535,7 @@ void QDeclarativeViewer::registerTypes()
     if (!registered) {
         // registering only for exposing the DeviceOrientation::Orientation enum
         qmlRegisterUncreatableType<DeviceOrientation>("Qt",4,7,"Orientation","");
+        qmlRegisterUncreatableType<DeviceOrientation>("QtQuick",1,0,"Orientation","");
         registered = true;
     }
 }

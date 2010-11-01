@@ -244,6 +244,7 @@ private slots:
     void QTBUG_4151_clipAndIgnore();
     void QTBUG_5859_exposedRect();
     void QTBUG_7438_cursor();
+    void hoverLeave();
 
 public slots:
     void dummySlot() {}
@@ -2492,25 +2493,31 @@ void tst_QGraphicsView::optimizationFlags_dontSavePainterState()
 void tst_QGraphicsView::optimizationFlags_dontSavePainterState2_data()
 {
     QTest::addColumn<bool>("savePainter");
-    QTest::newRow("With painter state protection") << true;
-    QTest::newRow("Without painter state protection") << false;
+    QTest::addColumn<bool>("indirectPainting");
+    QTest::newRow("With painter state protection, without indirect painting") << true << false;
+    QTest::newRow("Without painter state protection, without indirect painting") << false << false;
+    QTest::newRow("With painter state protectionm, with indirect painting") << true << true;
+    QTest::newRow("Without painter state protection, with indirect painting") << false << true;
 }
 
 void tst_QGraphicsView::optimizationFlags_dontSavePainterState2()
 {
     QFETCH(bool, savePainter);
+    QFETCH(bool, indirectPainting);
 
     class MyScene : public QGraphicsScene
     {
     public:
         void drawBackground(QPainter *p, const QRectF &)
-        { transformInDrawBackground = p->worldTransform(); }
+        { transformInDrawBackground = p->worldTransform(); opacityInDrawBackground = p->opacity(); }
 
         void drawForeground(QPainter *p, const QRectF &)
-        { transformInDrawForeground = p->worldTransform(); }
+        { transformInDrawForeground = p->worldTransform(); opacityInDrawForeground = p->opacity(); }
 
         QTransform transformInDrawBackground;
         QTransform transformInDrawForeground;
+        qreal opacityInDrawBackground;
+        qreal opacityInDrawForeground;
     };
 
     MyScene scene;
@@ -2518,9 +2525,13 @@ void tst_QGraphicsView::optimizationFlags_dontSavePainterState2()
     scene.addRect(0, 0, 20, 20)->setTransform(QTransform::fromScale(2, 2));
     scene.addRect(50, 50, 20, 20)->setTransform(QTransform::fromTranslate(200, 200));
 
+    foreach (QGraphicsItem *item, scene.items())
+        item->setOpacity(0.6);
+
     CustomView view(&scene);
     if (!savePainter)
         view.setOptimizationFlag(QGraphicsView::DontSavePainterState);
+    view.setOptimizationFlag(QGraphicsView::IndirectPainting, indirectPainting);
     view.rotate(45);
     view.scale(1.5, 1.5);
     view.show();
@@ -2534,10 +2545,38 @@ void tst_QGraphicsView::optimizationFlags_dontSavePainterState2()
     QVERIFY(view.painted);
 
     // Make sure the painter's world transform is preserved after drawItems.
-    const QTransform expectedTransform = view.viewportTransform();
+    QTransform expectedTransform = view.viewportTransform();
     QVERIFY(!expectedTransform.isIdentity());
     QCOMPARE(scene.transformInDrawForeground, expectedTransform);
     QCOMPARE(scene.transformInDrawBackground, expectedTransform);
+
+    qreal expectedOpacity = 1.0;
+    QCOMPARE(scene.opacityInDrawBackground, expectedOpacity);
+    QCOMPARE(scene.opacityInDrawForeground, expectedOpacity);
+
+    // Trigger more painting, this time from QGraphicsScene::render.
+    QImage image(scene.sceneRect().size().toSize(), QImage::Format_RGB32);
+    QPainter painter(&image);
+    scene.render(&painter);
+    painter.end();
+
+    expectedTransform = QTransform();
+    QCOMPARE(scene.transformInDrawForeground, expectedTransform);
+    QCOMPARE(scene.transformInDrawBackground, expectedTransform);
+    QCOMPARE(scene.opacityInDrawBackground, expectedOpacity);
+    QCOMPARE(scene.opacityInDrawForeground, expectedOpacity);
+
+    // Trigger more painting with another opacity on the painter.
+    painter.begin(&image);
+    painter.setOpacity(0.4);
+    expectedOpacity = 0.4;
+    scene.render(&painter);
+    painter.end();
+
+    QCOMPARE(scene.transformInDrawForeground, expectedTransform);
+    QCOMPARE(scene.transformInDrawBackground, expectedTransform);
+    QCOMPARE(scene.opacityInDrawBackground, expectedOpacity);
+    QCOMPARE(scene.opacityInDrawForeground, expectedOpacity);
 }
 
 class LodItem : public QGraphicsRectItem
@@ -4354,6 +4393,60 @@ void tst_QGraphicsView::QTBUG_7438_cursor()
     sendMouseRelease(view.viewport(), view.mapFromScene(0, 0));
     QCOMPARE(view.viewport()->cursor().shape(), Qt::PointingHandCursor);
 #endif
+}
+
+class GraphicsItemWithHover : public QGraphicsRectItem
+{
+public:
+    GraphicsItemWithHover()
+        : receivedEnterEvent(false), receivedLeaveEvent(false),
+          enterWidget(0), leaveWidget(0)
+    {
+        setRect(0, 0, 100, 100);
+        setAcceptHoverEvents(true);
+    }
+
+    bool sceneEvent(QEvent *event)
+    {
+        if (event->type() == QEvent::GraphicsSceneHoverEnter) {
+            receivedEnterEvent = true;
+            enterWidget = static_cast<QGraphicsSceneHoverEvent *>(event)->widget();
+        } else if (event->type() == QEvent::GraphicsSceneHoverLeave) {
+            receivedLeaveEvent = true;
+            leaveWidget = static_cast<QGraphicsSceneHoverEvent *>(event)->widget();
+        }
+        return QGraphicsRectItem::sceneEvent(event);
+    }
+
+    bool receivedEnterEvent;
+    bool receivedLeaveEvent;
+    QWidget *enterWidget;
+    QWidget *leaveWidget;
+};
+
+void tst_QGraphicsView::hoverLeave()
+{
+    QGraphicsScene scene;
+    QGraphicsView view(&scene);
+    GraphicsItemWithHover *item = new GraphicsItemWithHover;
+    scene.addItem(item);
+
+    // move the cursor out of the way
+    QCursor::setPos(1,1);
+
+    view.show();
+    QTest::qWaitForWindowShown(&view);
+
+    QPoint pos = view.viewport()->mapToGlobal(view.mapFromScene(item->mapToScene(10, 10)));
+    QCursor::setPos(pos);
+    QTest::qWait(200);
+    QVERIFY(item->receivedEnterEvent);
+    QCOMPARE(item->enterWidget, view.viewport());
+
+    QCursor::setPos(0,0);
+    QTest::qWait(200);
+    QVERIFY(item->receivedLeaveEvent);
+    QCOMPARE(item->leaveWidget, view.viewport());
 }
 
 QTEST_MAIN(tst_QGraphicsView)

@@ -238,6 +238,7 @@ public:
         pendingPolish(0),
         mayHaveChildWithGraphicsEffect(0),
         isDeclarativeItem(0),
+        sendParentChangeNotification(0),
         globalStackingOrder(-1),
         q_ptr(0)
     {
@@ -476,7 +477,7 @@ public:
 
     inline void markParentDirty(bool updateBoundingRect = false);
 
-    void setFocusHelper(Qt::FocusReason focusReason, bool climb, bool focusFromShow);
+    void setFocusHelper(Qt::FocusReason focusReason, bool climb, bool focusFromHide);
     void clearFocusHelper(bool giveFocusToParent);
     void setSubFocus(QGraphicsItem *rootItem = 0);
     void clearSubFocus(QGraphicsItem *rootItem = 0);
@@ -584,7 +585,8 @@ public:
     quint32 pendingPolish : 1;
     quint32 mayHaveChildWithGraphicsEffect : 1;
     quint32 isDeclarativeItem : 1;
-    quint32 padding : 23;
+    quint32 sendParentChangeNotification : 1;
+    quint32 padding : 22;
 
     // Optional stacking order
     int globalStackingOrder;
@@ -720,7 +722,7 @@ public:
 
 /*!
     Returns true if \a item1 is on top of \a item2.
-    The items dont need to be siblings.
+    The items don't need to be siblings.
 
     \internal
 */
@@ -774,7 +776,7 @@ inline bool qt_closestItemFirst(const QGraphicsItem *item1, const QGraphicsItem 
 
 /*!
     Returns true if \a item2 is on top of \a item1.
-    The items dont need to be siblings.
+    The items don't need to be siblings.
 
     \internal
 */

@@ -590,8 +590,6 @@ void Configure::parseCmdLine()
         // Image formats --------------------------------------------
         else if (configCmdLine.at(i) == "-no-gif")
             dictionary[ "GIF" ] = "no";
-        else if (configCmdLine.at(i) == "-qt-gif")
-            dictionary[ "GIF" ] = "plugin";
 
         else if (configCmdLine.at(i) == "-no-libtiff") {
             dictionary[ "TIFF"] = "no";
@@ -1642,7 +1640,7 @@ bool Configure::displayHelp()
                     "[-no-qmake] [-qmake] [-dont-process] [-process]\n"
                     "[-no-style-<style>] [-qt-style-<style>] [-redo]\n"
                     "[-saveconfig <config>] [-loadconfig <config>]\n"
-                    "[-qt-zlib] [-system-zlib] [-no-gif] [-qt-gif] [-no-libpng]\n"
+                    "[-qt-zlib] [-system-zlib] [-no-gif] [-no-libpng]\n"
                     "[-qt-libpng] [-system-libpng] [-no-libtiff] [-qt-libtiff]\n"
                     "[-system-libtiff] [-no-libjpeg] [-qt-libjpeg] [-system-libjpeg]\n"
                     "[-no-libmng] [-qt-libmng] [-system-libmng] [-no-qt3support] [-mmx]\n"
@@ -1770,7 +1768,6 @@ bool Configure::displayHelp()
         desc("ZLIB", "system",  "-system-zlib",         "Use zlib from the operating system.\nSee http://www.gzip.org/zlib\n");
 
         desc("GIF", "no",       "-no-gif",              "Do not compile GIF reading support.");
-        desc("GIF", "auto",     "-qt-gif",              "Compile GIF reading support.\nSee also src/gui/image/qgifhandler_p.h\n");
 
         desc("LIBPNG", "no",    "-no-libpng",           "Do not compile PNG support.");
         desc("LIBPNG", "qt",    "-qt-libpng",           "Use the libpng bundled with Qt.");
@@ -2131,7 +2128,7 @@ bool Configure::checkAvailability(const QString &part)
         available = findFile("BuildConsole.exe") && findFile("xgConsole.exe");
     else if (part == "XMLPATTERNS")
         available = dictionary.value("EXCEPTIONS") == "yes";
-    } else if (part == "PHONON") {
+    else if (part == "PHONON") {
         if (dictionary.contains("XQMAKESPEC") && dictionary["XQMAKESPEC"].startsWith("symbian")) {
             available = true;
         } else {
@@ -2436,7 +2433,7 @@ void Configure::generateBuildKey()
                        + buildSymbianKey + "\"\n"
                        "#else\n"
                        // Debug builds
-                       "# if (!QT_NO_DEBUG)\n"
+                       "# if !defined(QT_NO_DEBUG)\n"
                        "#  if (defined(WIN64) || defined(_WIN64) || defined(__WIN64__))\n"
                        + build64Key.arg("debug") + "\"\n"
                        "#  else\n"

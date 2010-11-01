@@ -143,6 +143,7 @@ void qt_glformat_from_eglconfig(QGLFormat& format, const EGLConfig config)
     format.setRgba(true);            // EGL doesn't support colour index rendering
     format.setStereo(false);         // EGL doesn't support stereo buffers
     format.setAccumBufferSize(0);    // EGL doesn't support accululation buffers
+    format.setDoubleBuffer(true);    // We don't support single buffered EGL contexts
 
     // Clear the EGL error state because some of the above may
     // have errored out because the attribute is not applicable
@@ -275,12 +276,12 @@ EGLSurface QGLContextPrivate::eglSurfaceForDevice() const
     return eglSurface;
 }
 
-void QGLContextPrivate::swapRegion(const QRegion *region)
+void QGLContextPrivate::swapRegion(const QRegion &region)
 {
     if (!valid || !eglContext)
         return;
 
-    eglContext->swapBuffersRegion2NOK(eglSurfaceForDevice(), region);
+    eglContext->swapBuffersRegion2NOK(eglSurfaceForDevice(), &region);
 }
 
 void QGLWidget::setMouseTracking(bool enable)

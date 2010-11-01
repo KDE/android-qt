@@ -417,7 +417,11 @@ void QDeclarativeTextInput::setCursorVisible(bool on)
         return;
     d->cursorVisible = on;
     d->control->setCursorBlinkPeriod(on?QApplication::cursorFlashTime():0);
-    //d->control should emit the cursor update regions
+    QRect r = d->control->cursorRect();
+    if (d->control->inputMask().isEmpty())
+        updateRect(r);
+    else
+        updateRect();
     emit cursorVisibleChanged(d->cursorVisible);
 }
 
@@ -651,7 +655,7 @@ void QDeclarativeTextInput::setAutoScroll(bool b)
     input of integers between 11 and 31 into the text input:
 
     \code
-    import Qt 4.7
+    import QtQuick 1.0
     TextInput{
         validator: IntValidator{bottom: 11; top: 31;}
         focus: true
@@ -788,7 +792,7 @@ void QDeclarativeTextInput::setCursorDelegate(QDeclarativeComponent* c)
     d->cursorComponent = c;
     if(!c){
         //note that the components are owned by something else
-        disconnect(d->control, SIGNAL(cursorPositionChanged(int, int)),
+        disconnect(d->control, SIGNAL(cursorPositionChanged(int,int)),
                 this, SLOT(moveCursor()));
         delete d->cursorItem;
     }else{
@@ -801,7 +805,7 @@ void QDeclarativeTextInput::setCursorDelegate(QDeclarativeComponent* c)
 void QDeclarativeTextInputPrivate::startCreatingCursor()
 {
     Q_Q(QDeclarativeTextInput);
-    q->connect(control, SIGNAL(cursorPositionChanged(int, int)),
+    q->connect(control, SIGNAL(cursorPositionChanged(int,int)),
             q, SLOT(moveCursor()));
     if(cursorComponent->isReady()){
         q->createCursor();
@@ -1334,7 +1338,7 @@ void QDeclarativeTextInput::moveCursorSelection(int position)
     Only relevant on platforms, which provide virtual keyboards.
 
     \qml
-        import Qt 4.7
+        import QtQuick 1.0
         TextInput {
             id: textInput
             text: "Hello world!"
@@ -1385,7 +1389,7 @@ void QDeclarativeTextInput::openSoftwareInputPanel()
     Only relevant on platforms, which provide virtual keyboards.
 
     \qml
-        import Qt 4.7
+        import QtQuick 1.0
         TextInput {
             id: textInput
             text: "Hello world!"
@@ -1442,7 +1446,7 @@ void QDeclarativeTextInputPrivate::init()
                q, SLOT(cursorPosChanged()));
     q->connect(control, SIGNAL(selectionChanged()),
                q, SLOT(selectionChanged()));
-    q->connect(control, SIGNAL(textChanged(const QString &)),
+    q->connect(control, SIGNAL(textChanged(QString)),
                q, SLOT(q_textChanged()));
     q->connect(control, SIGNAL(accepted()),
                q, SIGNAL(accepted()));
@@ -1460,6 +1464,7 @@ void QDeclarativeTextInputPrivate::init()
 void QDeclarativeTextInput::cursorPosChanged()
 {
     Q_D(QDeclarativeTextInput);
+    d->updateHorizontalScroll();
     updateRect();//TODO: Only update rect between pos's
     updateMicroFocus();
     emit cursorPositionChanged();

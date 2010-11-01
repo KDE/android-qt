@@ -302,7 +302,7 @@ HWND QWindowsXPStylePrivate::winId(const QWidget *widget)
         limboWidget = new QWidget(0);
         limboWidget->createWinId();
         limboWidget->setObjectName(QLatin1String("xp_limbo_widget"));
-        // We dont need this internal widget to appear in QApplication::topLevelWidgets()
+        // We don't need this internal widget to appear in QApplication::topLevelWidgets()
         if (QWidgetPrivate::allWidgets)
             QWidgetPrivate::allWidgets->remove(limboWidget);
     }
@@ -2154,7 +2154,7 @@ void QWindowsXPStyle::drawControl(ControlElement element, const QStyleOption *op
                 p->setPen(menuitem->palette.text().color());
                 p->setBrush(Qt::NoBrush);
                 if (checked)
-                    p->drawRect(vIconRect.adjusted(-1, -2, 1, 1));
+                    p->drawRect(vIconRect.adjusted(-1, -1, 0, 0));
                 p->drawPixmap(vIconRect.topLeft(), pixmap);
 
             // draw checkmark -------------------------------------------------

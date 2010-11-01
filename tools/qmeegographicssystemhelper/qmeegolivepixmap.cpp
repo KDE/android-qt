@@ -40,44 +40,41 @@
 ****************************************************************************/
 
 #include "qmeegolivepixmap.h"
-#include <private/qimage_p.h>
-#include <private/qpixmap_raster_p.h>
 #include "qmeegolivepixmap_p.h"
-#include "qmeegoliveimage_p.h"
-#include <QSharedMemory>
+#include "qmeegoruntime.h"
 
 /* QMeeGoLivePixmapPrivate */
 
-QMeeGoLivePixmapPrivate::QMeeGoLivePixmapPrivate() : shm(0), shmSerial(0), owns(true), parentImage(0)
+QMeeGoLivePixmapPrivate::QMeeGoLivePixmapPrivate()
 {
-}
-
-void QMeeGoLivePixmapPrivate::copyBackFrom(const void *raw)
-{
-    Q_Q(QMeeGoLivePixmap);
-    
-    q->detach();
-    shm->lock();
-    uchar *dest = ((uchar *) shm->data()) + (2 * sizeof(int));
-    memcpy(dest, raw, q->width() * q->height() * 4);
-    shm->unlock();
 }
 
 QMeeGoLivePixmapPrivate::~QMeeGoLivePixmapPrivate()
 {
-    Q_Q(QMeeGoLivePixmap);
-    
-    if (parentImage)
-        parentImage->d_ptr->detachPixmap(q);
-
-    if (shm)
-        shm->detach();
-        
-    if (owns)
-        delete shm;        
 }
 
 /* QMeeGoLivePixmap */
+
+QMeeGoLivePixmap* QMeeGoLivePixmap::livePixmapWithSize(int w, int h, Format format)
+{
+    QImage::Format qtFormat;
+    if (format == Format_RGB16)
+        qtFormat = QImage::Format_RGB16;
+    else if (format == Format_ARGB32_Premultiplied)
+        qtFormat = QImage::Format_ARGB32_Premultiplied;
+    else {
+        qWarning("Unsupported live pixmap format!");
+            return 0;
+    }
+
+    QPixmapData *pmd = QMeeGoRuntime::pixmapDataWithNewLiveTexture(w, h, qtFormat);
+    if (! pmd) {
+        qWarning("Failed to create a live texture with given size!");
+        return NULL;
+    }
+
+    return new QMeeGoLivePixmap(pmd);
+}
 
 QMeeGoLivePixmap::QMeeGoLivePixmap(QPixmapData *p) : QPixmap(p), d_ptr(new QMeeGoLivePixmapPrivate())
 {
@@ -85,79 +82,33 @@ QMeeGoLivePixmap::QMeeGoLivePixmap(QPixmapData *p) : QPixmap(p), d_ptr(new QMeeG
     d->q_ptr = this;
 }
 
-QMeeGoLivePixmap* QMeeGoLivePixmap::fromLiveImage(QMeeGoLiveImage *liveImage)
+QMeeGoLivePixmap* QMeeGoLivePixmap::fromHandle(Qt::HANDLE liveTextureHandle)
 {
-    static int counter = 100;
-    QSharedMemory *shm = NULL;
-    uchar* imgData = NULL;
-    int *header = NULL;
-    int w = liveImage->width();
-    int h = liveImage->height();
-    
-    counter++;
-    shm = new QSharedMemory(QString(QLatin1String("QMeeGoLivePixmap%1")).arg(counter));
-    shm->create((w * h * 4) + 2 * sizeof(int)); // +2 to store width & height
-    shm->attach();
-    
-    imgData = ((uchar *) shm->data()) + (2 * sizeof(int));
-    header = (int *) shm->data();
-    
-    header[0] = w;
-    header[1] = h;
-    
-    QImage img(imgData, w, h, QImage::Format_ARGB32_Premultiplied);
-    
-    QPixmapData *pmd = new QRasterPixmapData(QPixmapData::PixmapType);
-    pmd->fromImage(img, Qt::NoOpaqueDetection);
-    
-    QMeeGoLivePixmap *livePixmap = new QMeeGoLivePixmap(pmd);
-    livePixmap->d_ptr->shm = shm;
-    livePixmap->d_ptr->owns = true;
-    livePixmap->d_ptr->shmSerial = counter;
-    livePixmap->d_ptr->parentImage = liveImage;
-    
-    liveImage->d_ptr->attachPixmap(livePixmap);
+    QPixmapData *pmd = QMeeGoRuntime::pixmapDataFromLiveTextureHandle(liveTextureHandle);
+    if (! pmd) {
+        qWarning("Failed to create a live texture from given handle!");
+        return NULL;
+    }
 
-    return livePixmap;    
+    return new QMeeGoLivePixmap(pmd);
 }
 
-QMeeGoLivePixmap* QMeeGoLivePixmap::fromHandle(Qt::HANDLE handle)
+Qt::HANDLE QMeeGoLivePixmap::handle()
 {
-    QSharedMemory *shm = NULL;
-    int *header;
-    int width;
-    int height;
-    uchar* imgData;
-    
-    shm = new QSharedMemory(QString(QLatin1String("QMeeGoLivePixmap%1")).arg(handle));
-    shm->attach();
-    
-    shm->lock();
-    header = (int *) shm->data();
-    width = header[0];
-    height = header[1];
-    shm->unlock();
-    
-    imgData = ((uchar *) shm->data()) + (2 * sizeof(int));
-    QImage img(imgData, width, height, QImage::Format_ARGB32_Premultiplied);
-    
-    QPixmapData *pmd = new QRasterPixmapData(QPixmapData::PixmapType);
-    pmd->fromImage(img, Qt::NoOpaqueDetection);
-
-    QMeeGoLivePixmap *livePixmap = new QMeeGoLivePixmap(pmd);
-    livePixmap->d_ptr->shm = shm;
-    livePixmap->d_ptr->owns = false;
-    livePixmap->d_ptr->shmSerial = handle;
-
-    return livePixmap;
+    return QMeeGoRuntime::getLiveTextureHandle(this);
 }
 
 QMeeGoLivePixmap::~QMeeGoLivePixmap()
 {
 }
 
-Qt::HANDLE QMeeGoLivePixmap::handle()
+QImage* QMeeGoLivePixmap::lock()
 {
-    Q_D(QMeeGoLivePixmap);
-    return d->shmSerial;
+    return QMeeGoRuntime::lockLiveTexture(this);
+
+}
+
+void QMeeGoLivePixmap::release(QImage *img)
+{
+    QMeeGoRuntime::releaseLiveTexture(this, img);
 }

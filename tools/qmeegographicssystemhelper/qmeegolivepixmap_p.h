@@ -49,18 +49,9 @@ class QMeeGoLivePixmapPrivate
 public:
     Q_DECLARE_PUBLIC(QMeeGoLivePixmap);
     QMeeGoLivePixmapPrivate();
-    void copyBackFrom(const void *raw);
     virtual ~QMeeGoLivePixmapPrivate();
-    
-    QSharedMemory *shm;
-    int shmSerial;
-    bool owns;
-    QMeeGoLiveImage *parentImage;
-    
+
     QMeeGoLivePixmap *q_ptr;
-    
-    friend class QMeeGoLiveImage;
-    friend class QMeeGoLiveImagePrivate;
 };
 
 #endif

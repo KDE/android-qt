@@ -178,8 +178,15 @@ void SymbianCommonGenerator::generatePkgFile(const QString &iconFile, bool epocB
     QTextStream ts(&stubPkgFile);
 
     QString installerSisHeader = project->values("DEPLOYMENT.installer_header").join("\n");
-    if (installerSisHeader.isEmpty())
-        installerSisHeader = "0xA000D7CE"; // Use default self-signable UID if not defined
+    if (installerSisHeader.isEmpty()) {
+        // Use correct protected UID for publishing if application UID is in protected range,
+        // otherwise use self-signable test UID.
+        QRegExp protUidMatcher("0[xX][0-7].*");
+        if (protUidMatcher.exactMatch(uid3))
+            installerSisHeader = QLatin1String("0x2002CCCF");
+        else
+            installerSisHeader = QLatin1String("0xA000D7CE"); // Use default self-signable UID
+    }
 
     QString wrapperStreamBuffer;
     QTextStream tw(&wrapperStreamBuffer);
@@ -313,7 +320,9 @@ void SymbianCommonGenerator::generatePkgFile(const QString &iconFile, bool epocB
 
     // Package header
     QString sisHeader = "; SIS header: name, uid, version\n#{\"%1\"},(%2),%3\n\n";
-    QString visualTarget = generator->escapeFilePath(project->first("TARGET"));
+    QString visualTarget = project->values("DEPLOYMENT.display_name").join(" ");
+    if (visualTarget.isEmpty())
+        visualTarget = generator->escapeFilePath(project->first("TARGET"));
 
     visualTarget = removePathSeparators(visualTarget);
     QString wrapperTarget = visualTarget + " installer";
@@ -376,87 +385,7 @@ void SymbianCommonGenerator::generatePkgFile(const QString &iconFile, bool epocB
         t << manufacturerStr << endl;
     }
 
-    // Install paths on the phone *** should be dynamic at some point
-    QString installPathBin = "!:\\sys\\bin";
-    QString installPathResource = "!:\\resource\\apps";
-    QString installPathRegResource = "!:\\private\\10003a3f\\import\\apps";
-
-    // Find location of builds
-    QString destDirBin;
-    QString destDirResource;
-    QString destDirRegResource;
-    if (epocBuild) {
-        destDirBin = QString("%1epoc32/release/$(PLATFORM)/$(TARGET)").arg(epocRoot());
-        destDirResource = QString("%1epoc32/data/z/resource/apps").arg(epocRoot());
-        destDirRegResource = QString("%1epoc32/data/z/private/10003a3f/import/apps").arg(epocRoot());
-    } else {
-        destDirBin = project->first("DESTDIR");
-        if (destDirBin.isEmpty())
-            destDirBin = ".";
-        else if (destDirBin.endsWith('/') || destDirBin.endsWith('\\'))
-            destDirBin.chop(1);
-        destDirResource = destDirBin;
-        destDirRegResource = destDirBin;
-    }
-
-    if (targetType == TypeExe) {
-        // deploy .exe file
-        t << "; Executable and default resource files" << endl;
-        QString exeFile = fixedTarget + ".exe";
-        t << QString("\"%1/%2\" - \"%3\\%4\"")
-             .arg(destDirBin)
-             .arg(exeFile)
-             .arg(installPathBin)
-             .arg(exeFile) << endl;
-        ts << QString("\"\" - \"%1\\%2\"")
-             .arg(romPath(installPathBin))
-             .arg(exeFile) << endl;
-
-        // deploy rsc & reg_rsc file
-        if (!project->isActiveConfig("no_icon")) {
-            t << QString("\"%1/%2\" - \"%3\\%4\"")
-                 .arg(destDirResource)
-                 .arg(fixedTarget + ".rsc")
-                 .arg(installPathResource)
-                 .arg(fixedTarget + ".rsc") << endl;
-            ts << QString("\"\" - \"%1\\%2\"")
-                 .arg(romPath(installPathResource))
-                 .arg(fixedTarget + ".rsc") << endl;
-
-            t << QString("\"%1/%2\" - \"%3\\%4\"")
-                 .arg(destDirRegResource)
-                 .arg(fixedTarget + "_reg.rsc")
-                 .arg(installPathRegResource)
-                 .arg(fixedTarget + "_reg.rsc") << endl;
-            ts << QString("\"\" - \"%1\\%2\"")
-                 .arg(romPath(installPathRegResource))
-                 .arg(fixedTarget + "_reg.rsc") << endl;
-
-            if (!iconFile.isEmpty())  {
-                if (epocBuild) {
-                    t << QString("\"%1epoc32/data/z%2\" - \"!:%3\"")
-                         .arg(epocRoot())
-                         .arg(iconFile)
-                         .arg(QDir::toNativeSeparators(iconFile)) << endl << endl;
-                    ts << QString("\"\" - \"%1\"")
-                         .arg(romPath(QDir::toNativeSeparators(iconFile))) << endl << endl;
-                } else {
-                    QDir mifIconDir(project->first("DESTDIR"));
-                    QFileInfo mifIcon(mifIconDir.relativeFilePath(project->first("TARGET")));
-                    QString mifIconFileName = mifIcon.fileName();
-                    mifIconFileName.append(".mif");
-                    t << QString("\"%1/%2\" - \"!:%3\"")
-                         .arg(mifIcon.path())
-                         .arg(mifIconFileName)
-                         .arg(QDir::toNativeSeparators(iconFile)) << endl << endl;
-                    ts << QString("\"\" - \"%1\"")
-                         .arg(romPath(QDir::toNativeSeparators(iconFile))) << endl << endl;
-                }
-            }
-        }
-    }
-
-    // deploy any additional DEPLOYMENT  files
+    // deploy files specified by DEPLOYMENT variable
     QString remoteTestPath;
     QString zDir;
     remoteTestPath = QString("!:\\private\\%1").arg(privateDirUid);
@@ -470,6 +399,15 @@ void SymbianCommonGenerator::generatePkgFile(const QString &iconFile, bool epocB
     for (int i = 0; i < depList.size(); ++i)  {
         QString from = depList.at(i).from;
         QString to = depList.at(i).to;
+        QString flags;
+        bool showOnlyFile = false;
+        foreach(QString flag, depList.at(i).flags) {
+            if (flag == QLatin1String("FT")
+                || flag == QLatin1String("FILETEXT")) {
+                showOnlyFile = true;
+            }
+            flags.append(QLatin1Char(',')).append(flag);
+        }
 
         if (epocBuild) {
             // Deploy anything not already deployed from under epoc32 instead from under
@@ -483,8 +421,15 @@ void SymbianCommonGenerator::generatePkgFile(const QString &iconFile, bool epocB
             }
         }
 
-        t << QString("\"%1\" - \"%2\"").arg(from.replace('\\','/')).arg(to) << endl;
-        ts << QString("\"\" - \"%1\"").arg(romPath(to)) << endl;
+        // Files with "FILETEXT"/"FT" flag are meant for showing only at installation time
+        // and therefore do not belong to the stub package and will not install the file into phone.
+        if (showOnlyFile)
+            to.clear();
+        else
+            ts << QString("\"\" - \"%1\"").arg(romPath(to)) << endl;
+
+        t << QString("\"%1\" - \"%2\"%3").arg(from.replace('\\','/')).arg(to).arg(flags) << endl;
+
     }
     t << endl;
     ts << endl;
@@ -545,7 +490,7 @@ void SymbianCommonGenerator::generatePkgFile(const QString &iconFile, bool epocB
         // Wrapped files deployment
         QString currentPath = qmake_getpwd();
         QString sisName = QString("%1.sis").arg(fixedTarget);
-        twf << "\"" << currentPath << "/" << sisName << "\" - \"c:\\private\\2002CCCE\\import\\" << sisName << "\"" << endl;
+        twf << "\"" << currentPath << "/" << sisName << "\" - \"!:\\private\\2002CCCE\\import\\" << sisName << "\"" << endl;
 
         QString bootStrapPath = QLibraryInfo::location(QLibraryInfo::PrefixPath);
         bootStrapPath.append("/smartinstaller.sis");
@@ -698,6 +643,11 @@ void SymbianCommonGenerator::writeLocFile(QStringList &symbianLangCodes)
     if (ft.open(QIODevice::WriteOnly)) {
         generatedFiles << ft.fileName();
         QTextStream t(&ft);
+
+        QString displayName = generator->project->values("DEPLOYMENT.display_name").join(" ");
+        if (displayName.isEmpty())
+            displayName = generator->escapeFilePath(generator->project->first("TARGET"));
+
         t << "// ============================================================================" << endl;
         t << "// * Generated by qmake (" << qmake_version() << ") (Qt " QT_VERSION_STR ") on: ";
         t << QDateTime::currentDateTime().toString(Qt::ISODate) << endl;
@@ -706,16 +656,16 @@ void SymbianCommonGenerator::writeLocFile(QStringList &symbianLangCodes)
         t << "// ============================================================================" << endl;
         t << endl;
         t << "#ifdef LANGUAGE_SC" << endl;
-        t << "#define STRING_r_short_caption \"" << fixedTarget  << "\"" << endl;
-        t << "#define STRING_r_caption \"" << fixedTarget  << "\"" << endl;
+        t << "#define STRING_r_short_caption \"" << displayName  << "\"" << endl;
+        t << "#define STRING_r_caption \"" << displayName  << "\"" << endl;
         foreach(QString lang, symbianLangCodes) {
             t << "#elif defined LANGUAGE_" << lang << endl;
-            t << "#define STRING_r_short_caption \"" << fixedTarget  << "\"" << endl;
-            t << "#define STRING_r_caption \"" << fixedTarget  << "\"" << endl;
+            t << "#define STRING_r_short_caption \"" << displayName  << "\"" << endl;
+            t << "#define STRING_r_caption \"" << displayName  << "\"" << endl;
         }
         t << "#else" << endl;
-        t << "#define STRING_r_short_caption \"" << fixedTarget  << "\"" << endl;
-        t << "#define STRING_r_caption \"" << fixedTarget  << "\"" << endl;
+        t << "#define STRING_r_short_caption \"" << displayName  << "\"" << endl;
+        t << "#define STRING_r_caption \"" << displayName  << "\"" << endl;
         t << "#endif" << endl;
     } else {
         PRINT_FILE_CREATE_ERROR(filename);

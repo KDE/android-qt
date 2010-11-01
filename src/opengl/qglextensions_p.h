@@ -472,7 +472,6 @@ struct QGLExtensionFuncs
     _glEGLImageTargetTexture2DOES qt_glEGLImageTargetTexture2DOES;
     _glEGLImageTargetRenderbufferStorageOES qt_glEGLImageTargetRenderbufferStorageOES;
 #endif
-
 };
 
 
@@ -562,6 +561,14 @@ struct QGLExtensionFuncs
 
 #ifndef GL_TEXTURE1
 #define GL_TEXTURE1 0x84C1
+#endif
+
+#ifndef GL_DEPTH_COMPONENT16
+#define GL_DEPTH_COMPONENT16 0x81A5
+#endif
+
+#ifndef GL_DEPTH_COMPONENT24_OES
+#define GL_DEPTH_COMPONENT24_OES 0x81A6
 #endif
 
 #ifndef GL_EXT_framebuffer_object

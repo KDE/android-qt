@@ -1366,7 +1366,7 @@ bool QAbstractItemView::dragEnabled() const
 
     Note that the model used needs to provide support for drag and drop operations.
 
-    \sa setDragDropMode() {Using drag & drop with item views}
+    \sa setDragDropMode() {Using drag and drop with item views}
 */
 
 /*!
@@ -4101,12 +4101,12 @@ bool QAbstractItemViewPrivate::openEditor(const QModelIndex &index, QEvent *even
     if (!w)
         return false;
 
-    if (event)
-        QApplication::sendEvent(w->focusProxy() ? w->focusProxy() : w, event);
-
     q->setState(QAbstractItemView::EditingState);
     w->show();
     w->setFocus();
+
+    if (event)
+        QApplication::sendEvent(w->focusProxy() ? w->focusProxy() : w, event);
 
     return true;
 }

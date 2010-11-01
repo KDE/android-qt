@@ -547,7 +547,7 @@ bool QVariantToVARIANT(const QVariant &var, VARIANT &arg, const QByteArray &type
             SAFEARRAY *array = 0;
             bool is2D = false;
             // If the first element in the array is a list the whole list is 
-            // treated as a 2D array. The colum count is taken from the 1st element.
+            // treated as a 2D array. The column count is taken from the 1st element.
             if (count) {
                 QVariantList col = list.at(0).toList();
                 int maxColumns = col.count();
@@ -1376,8 +1376,10 @@ QVariant VARIANTToQVariant(const VARIANT &arg, const QByteArray &typeName, uint 
     }
     
     QVariant::Type proptype = (QVariant::Type)type;
-    if (proptype == QVariant::Invalid && !typeName.isEmpty())
-        proptype = QVariant::nameToType(typeName);
+    if (proptype == QVariant::Invalid && !typeName.isEmpty()) {
+        if (typeName != "QVariant")
+            proptype = QVariant::nameToType(typeName);
+    }
     if (proptype != QVariant::LastType && proptype != QVariant::Invalid && var.type() != proptype) {
         if (var.canConvert(proptype)) {
             QVariant oldvar = var;

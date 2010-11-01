@@ -39,7 +39,7 @@
 **
 ****************************************************************************/
 
-import Qt 4.7
+import QtQuick 1.0
 import "TwitterCore" 1.0 as Twitter
 
 Item {
@@ -78,7 +78,7 @@ Item {
             id: views
             x: 2; width: parent.width - 4
             y:60 //Below the title bars
-            height: 380
+            height: parent.height - 100
 
             Text {
                 id:title

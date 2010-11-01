@@ -65,9 +65,9 @@
 QT_BEGIN_NAMESPACE
 
 
-#define QT_QPA_EXPERIMENTAL_MULTITOUCH
+//#define QT_QPA_EXPERIMENTAL_TOUCHEVENT
 
-#ifdef QT_QPA_EXPERIMENTAL_MULTITOUCH
+#ifdef QT_QPA_EXPERIMENTAL_TOUCHEVENT
 class QLinuxInputMouseHandlerData
 {
 public:
@@ -131,7 +131,7 @@ private:
 
 QLinuxInputMouseHandler::QLinuxInputMouseHandler(const QString &key,
                                                  const QString &specification)
-    : m_notify(0), m_x(0), m_y(0), m_buttons(0), d(0)
+    : m_notify(0), m_x(0), m_y(0), m_prevx(0), m_prevy(0), m_xoffset(0), m_yoffset(0), m_buttons(0), d(0)
 {
     qDebug() << "QLinuxInputMouseHandler" << key << specification;
 
@@ -139,9 +139,25 @@ QLinuxInputMouseHandler::QLinuxInputMouseHandler(const QString &key,
     setObjectName(QLatin1String("LinuxInputSubsystem Mouse Handler"));
 
     QString dev = QLatin1String("/dev/input/event0");
-    if (specification.startsWith(QLatin1String("/dev/")))
-        dev = specification;
-
+    m_compression = true;
+    m_smooth = false;
+    int jitterLimit = 0;
+    
+    QStringList args = specification.split(QLatin1Char(':'));
+    foreach (const QString &arg, args) {
+        if (arg == "nocompress")
+            m_compression = false;
+        else if (arg.startsWith("dejitter="))
+            jitterLimit = arg.mid(9).toInt();
+        else if (arg.startsWith("xoffset="))
+            m_xoffset = arg.mid(8).toInt();
+        else if (arg.startsWith("yoffset="))
+            m_yoffset = arg.mid(8).toInt();
+        else if (arg.startsWith(QLatin1String("/dev/")))
+            dev = arg;
+    }
+    m_jitterLimitSquared = jitterLimit*jitterLimit; 
+    
     m_fd = QT_OPEN(dev.toLocal8Bit().constData(), O_RDONLY | O_NDELAY, 0);
     if (m_fd >= 0) {
         m_notify = new QSocketNotifier(m_fd, QSocketNotifier::Read, this);
@@ -150,7 +166,7 @@ QLinuxInputMouseHandler::QLinuxInputMouseHandler(const QString &key,
         qWarning("Cannot open mouse input device '%s': %s", qPrintable(dev), strerror(errno));
         return;
     }
-#ifdef QT_QPA_EXPERIMENTAL_MULTITOUCH
+#ifdef QT_QPA_EXPERIMENTAL_TOUCHEVENT
     d = new QLinuxInputMouseHandlerData;
 #endif    
 }
@@ -160,7 +176,17 @@ QLinuxInputMouseHandler::~QLinuxInputMouseHandler()
 {
     if (m_fd >= 0)
         QT_CLOSE(m_fd);
+#ifdef QT_QPA_EXPERIMENTAL_TOUCHEVENT
     delete d;
+#endif
+}
+
+void QLinuxInputMouseHandler::sendMouseEvent(int x, int y, Qt::MouseButtons buttons)
+{
+    QPoint pos(x+m_xoffset, y+m_yoffset);
+    QWindowSystemInterface::handleMouseEvent(0, pos, pos, m_buttons);
+    m_prevx = x;
+    m_prevy = y;
 }
 
 void QLinuxInputMouseHandler::readMouseData()
@@ -168,7 +194,8 @@ void QLinuxInputMouseHandler::readMouseData()
     struct ::input_event buffer[32];
     int n = 0;
     bool posChanged = false;
-
+    bool pendingMouseEvent = false;
+    int eventCompressCount = 0;
     forever {
         n = QT_READ(m_fd, reinterpret_cast<char *>(buffer) + n, sizeof(buffer) - n);
 
@@ -204,7 +231,7 @@ void QLinuxInputMouseHandler::readMouseData()
                 //ignore for now...
             } else if (data->code == ABS_HAT0Y) {
                 //ignore for now...
-#ifdef QT_QPA_EXPERIMENTAL_MULTITOUCH
+#ifdef QT_QPA_EXPERIMENTAL_TOUCHEVENT
             } else if (data->code == ABS_MT_POSITION_X) {
                 d->currentX = data->value;
                 d->seenMT = true;
@@ -246,8 +273,8 @@ void QLinuxInputMouseHandler::readMouseData()
         } else if (data->type == EV_KEY && data->code == BTN_TOUCH) {
             m_buttons = data->value ? Qt::LeftButton : Qt::NoButton;
 
-            QWindowSystemInterface::handleMouseEvent(0, QPoint(m_x, m_y),
-                                                  QPoint(m_x, m_y), m_buttons);
+            sendMouseEvent(m_x, m_y, m_buttons);
+            pendingMouseEvent = false;
         } else if (data->type == EV_KEY && data->code >= BTN_LEFT && data->code <= BTN_MIDDLE) {
             Qt::MouseButton button = Qt::NoButton;
             switch (data->code) {
@@ -259,19 +286,21 @@ void QLinuxInputMouseHandler::readMouseData()
                 m_buttons |= button;
             else
                 m_buttons &= ~button;
-
-            QWindowSystemInterface::handleMouseEvent(0, QPoint(m_x, m_y),
-                                                  QPoint(m_x, m_y), m_buttons);
+            sendMouseEvent(m_x, m_y, m_buttons);
+            pendingMouseEvent = false;
         } else if (data->type == EV_SYN && data->code == SYN_REPORT) {
             if (posChanged) {
                 posChanged = false;
-                QPoint pos(m_x, m_y);
-
-                QWindowSystemInterface::handleMouseEvent(0, pos, pos, m_buttons);
+                if (m_compression) {
+                    pendingMouseEvent = true;
+                    eventCompressCount++;
+                } else {
+                    sendMouseEvent(m_x, m_y, m_buttons);
+                }
             }
-#ifdef QT_QPA_EXPERIMENTAL_MULTITOUCH
+#ifdef QT_QPA_EXPERIMENTAL_TOUCHEVENT
             if (d->state == QEvent::TouchBegin && !d->seenMT) {
-                //no multi-touch events to send
+                //no multipoint-touch events to send
             } else {
                 if (!d->seenMT)
                     d->state = QEvent::TouchEnd;
@@ -316,9 +345,16 @@ void QLinuxInputMouseHandler::readMouseData()
         } else {
             unknown = true;
         }
+#ifdef QLINUXINPUT_EXTRA_DEBUG
         if (unknown) {
             qWarning("unknown mouse event type=%x, code=%x, value=%x", data->type, data->code, data->value);
         }
+#endif        
+    }
+    if (m_compression && pendingMouseEvent) {
+        int distanceSquared = (m_x - m_prevx)*(m_x - m_prevx) + (m_y - m_prevy)*(m_y - m_prevy);
+        if (distanceSquared > m_jitterLimitSquared)
+            sendMouseEvent(m_x, m_y, m_buttons);
     }
 }
 
@@ -368,12 +404,16 @@ QLinuxInputKeyboardHandler::QLinuxInputKeyboardHandler(const QString &key, const
     int repeat_delay = -1;
     int repeat_rate = -1;
 
+    bool ttymode = false;
+
     QStringList args = specification.split(QLatin1Char(':'));
     foreach (const QString &arg, args) {
         if (arg.startsWith(QLatin1String("repeat-delay=")))
             repeat_delay = arg.mid(13).toInt();
         else if (arg.startsWith(QLatin1String("repeat-rate=")))
             repeat_rate = arg.mid(12).toInt();
+        else if (arg.startsWith(QLatin1String("ttymode")))
+            ttymode = true;
         else if (arg.startsWith(QLatin1String("/dev/")))
             dev = arg;
     }
@@ -391,34 +431,36 @@ QLinuxInputKeyboardHandler::QLinuxInputKeyboardHandler(const QString &key, const
         notifier = new QSocketNotifier(m_fd, QSocketNotifier::Read, this);
         connect(notifier, SIGNAL(activated(int)), this, SLOT(readKeycode()));
 
-        // play nice in case we are started from a shell (e.g. for debugging)
-        m_tty_fd = isatty(0) ? 0 : -1;
+        if (ttymode) {
+            // play nice in case we are started from a shell (e.g. for debugging)
+            m_tty_fd = isatty(0) ? 0 : -1;
 
-        if (m_tty_fd >= 0) {
-            // save tty config for restore.
-            tcgetattr(m_tty_fd, &m_tty_attr);
+            if (m_tty_fd >= 0) {
+                // save tty config for restore.
+                tcgetattr(m_tty_fd, &m_tty_attr);
 
-            struct ::termios termdata;
-            tcgetattr(m_tty_fd, &termdata);
+                struct ::termios termdata;
+                tcgetattr(m_tty_fd, &termdata);
 
-            // record the original mode so we can restore it again in the destructor.
-            ::ioctl(m_tty_fd, KDGKBMODE, &m_orig_kbmode);
+                // record the original mode so we can restore it again in the destructor.
+                ::ioctl(m_tty_fd, KDGKBMODE, &m_orig_kbmode);
 
-            // setting this tranlation mode is even needed in INPUT mode to prevent
-            // the shell from also interpreting codes, if the process has a tty
-            // attached: e.g. Ctrl+C wouldn't copy, but kill the application.
-            ::ioctl(m_tty_fd, KDSKBMODE, K_MEDIUMRAW);
+                // setting this translation mode is even needed in INPUT mode to prevent
+                // the shell from also interpreting codes, if the process has a tty
+                // attached: e.g. Ctrl+C wouldn't copy, but kill the application.
+                ::ioctl(m_tty_fd, KDSKBMODE, K_MEDIUMRAW);
 
-            // set the tty layer to pass-through
-            termdata.c_iflag = (IGNPAR | IGNBRK) & (~PARMRK) & (~ISTRIP);
-            termdata.c_oflag = 0;
-            termdata.c_cflag = CREAD | CS8;
-            termdata.c_lflag = 0;
-            termdata.c_cc[VTIME]=0;
-            termdata.c_cc[VMIN]=1;
-            cfsetispeed(&termdata, 9600);
-            cfsetospeed(&termdata, 9600);
-            tcsetattr(m_tty_fd, TCSANOW, &termdata);
+                // set the tty layer to pass-through
+                termdata.c_iflag = (IGNPAR | IGNBRK) & (~PARMRK) & (~ISTRIP);
+                termdata.c_oflag = 0;
+                termdata.c_cflag = CREAD | CS8;
+                termdata.c_lflag = 0;
+                termdata.c_cc[VTIME]=0;
+                termdata.c_cc[VMIN]=1;
+                cfsetispeed(&termdata, 9600);
+                cfsetospeed(&termdata, 9600);
+                tcsetattr(m_tty_fd, TCSANOW, &termdata);
+            }
         }
     } else {
         qWarning("Cannot open keyboard input device '%s': %s", qPrintable(dev), strerror(errno));
@@ -512,3 +554,4 @@ void QLinuxInputKeyboardHandler::readKeycode()
 
 
 QT_END_NAMESPACE
+

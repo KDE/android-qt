@@ -478,11 +478,14 @@ bool Q_GUI_EXPORT qt_tab_all_widgets = true;
 bool qt_in_tab_key_event = false;
 int qt_antialiasing_threshold = -1;
 static int drag_time = 500;
+#ifndef QT_GUI_DRAG_DISTANCE
+#define QT_GUI_DRAG_DISTANCE 4
+#endif
 #ifdef Q_OS_SYMBIAN
 // The screens are a bit too small to for your thumb when using only 4 pixels drag distance.
-static int drag_distance = 12;
+static int drag_distance = 12; //XXX move to qplatformdefs.h
 #else
-static int drag_distance = 4;
+static int drag_distance = QT_GUI_DRAG_DISTANCE;
 #endif
 static Qt::LayoutDirection layout_direction = Qt::LeftToRight;
 QSize QApplicationPrivate::app_strut = QSize(0,0); // no default application strut
@@ -711,6 +714,12 @@ void QApplicationPrivate::process_cmdline()
             floating over the widget and is not inserted until the editing is
             done.
     \endlist
+
+    \section1 X11 Notes
+
+    If QApplication fails to open the X11 display, it will terminate
+    the process. This behavior is consistent with most X11
+    applications.
 
     \sa arguments()
 */
@@ -2404,8 +2413,13 @@ static const char *application_menu_strings[] = {
     };
 QString qt_mac_applicationmenu_string(int type)
 {
-    return qApp->translate("MAC_APPLICATION_MENU",
-                           application_menu_strings[type]);
+    QString menuString = QString::fromLatin1(application_menu_strings[type]);
+    QString translated = qApp->translate("QMenuBar", application_menu_strings[type]);
+    if (translated != menuString)
+        return translated;
+    else
+        return qApp->translate("MAC_APPLICATION_MENU",
+                               application_menu_strings[type]);
 }
 #endif
 #endif

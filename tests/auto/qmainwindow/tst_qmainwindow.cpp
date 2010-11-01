@@ -109,6 +109,7 @@ private slots:
     void centralWidgetSize();
     void dockWidgetSize();
     void QTBUG2774_stylechange();
+    void toggleUnifiedTitleAndToolBarOnMac();
 };
 
 // Testing get/set functions
@@ -700,10 +701,12 @@ void tst_QMainWindow::statusBar()
         // deleting the status bar should remove it from the main window
         QMainWindow mw;
         QStatusBar *sb = mw.statusBar();
-        int indexOfSb = mw.layout()->indexOf(sb);
+        QMainWindowLayout *l = qFindChild<QMainWindowLayout *>(&mw);
+        QVERIFY(l);
+        int indexOfSb = l->indexOf(sb);
         QVERIFY(indexOfSb != -1);
         delete sb;
-        indexOfSb = mw.layout()->indexOf(sb);
+        indexOfSb = l->indexOf(sb);
         QVERIFY(indexOfSb == -1);
     }
 }
@@ -1747,6 +1750,24 @@ void tst_QMainWindow::QTBUG2774_stylechange()
     }
 }
 
+void tst_QMainWindow::toggleUnifiedTitleAndToolBarOnMac()
+{
+#ifdef Q_OS_MAC
+    QMainWindow mw;
+    QToolBar *tb = new QToolBar;
+    tb->addAction("Test");
+    mw.addToolBar(tb);
+    mw.setUnifiedTitleAndToolBarOnMac(true);
+    mw.show();
+    QRect frameGeometry = mw.frameGeometry();
+    mw.setUnifiedTitleAndToolBarOnMac(false);
+    QVERIFY(frameGeometry.topLeft() == mw.frameGeometry().topLeft());
+    mw.setUnifiedTitleAndToolBarOnMac(true);
+    QVERIFY(frameGeometry.topLeft() == mw.frameGeometry().topLeft());
+#else
+    QSKIP("Mac specific test", SkipAll);
+#endif
+}
 
 
 QTEST_MAIN(tst_QMainWindow)

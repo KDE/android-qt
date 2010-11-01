@@ -38,7 +38,7 @@
 **
 ****************************************************************************/
 
-import Qt 4.7
+import QtQuick 1.0
 
 //
 // The QML runtime automatically loads a translation from the i18n subdirectory of the root
@@ -65,7 +65,8 @@ Rectangle {
         anchors.fill: parent; spacing: 20
 
         Text {
-            text: "If a translation is available for the system language (eg. French) then the string below will translated (eg. 'Bonjour'). Otherwise it will show 'Hello'."
+            text: "If a translation is available for the system language (eg. French) then the
+			string below will translated (eg. 'Bonjour'). Otherwise it will show 'Hello'."
             width: parent.width; wrapMode: Text.WordWrap
         }
 

@@ -51,12 +51,16 @@
 #include <private/qimage_p.h>
 #include <private/qeglproperties_p.h>
 #include <private/qeglcontext_p.h>
+#include <private/qpixmap_x11_p.h>
 
 #include "qmeegopixmapdata.h"
+#include "qmeegolivepixmapdata.h"
 #include "qmeegographicssystem.h"
 #include "qmeegoextensions.h"
 
 bool QMeeGoGraphicsSystem::surfaceWasCreated = false;
+
+QHash <Qt::HANDLE, QPixmap*> QMeeGoGraphicsSystem::liveTexturePixmaps;
 
 QMeeGoGraphicsSystem::QMeeGoGraphicsSystem()
 {
@@ -147,8 +151,9 @@ void QMeeGoGraphicsSystem::setTranslucent(bool translucent)
 QPixmapData *QMeeGoGraphicsSystem::pixmapDataFromEGLSharedImage(Qt::HANDLE handle, const QImage &softImage)
 {
     if (softImage.format() != QImage::Format_ARGB32_Premultiplied &&
-        softImage.format() != QImage::Format_ARGB32) {
-        qFatal("For egl shared images, the soft image has to be ARGB32 or ARGB32_Premultiplied");
+        softImage.format() != QImage::Format_ARGB32 &&
+        softImage.format() != QImage::Format_RGB32) {
+        qFatal("For egl shared images, the soft image has to be ARGB32, ARGB32_Premultiplied or RGB32");
         return NULL;
     }
     
@@ -204,6 +209,34 @@ bool QMeeGoGraphicsSystem::meeGoRunning()
     return (name == "meego");
 }
 
+QPixmapData* QMeeGoGraphicsSystem::pixmapDataWithNewLiveTexture(int w, int h, QImage::Format format)
+{
+    return new QMeeGoLivePixmapData(w, h, format);
+}
+
+QPixmapData* QMeeGoGraphicsSystem::pixmapDataFromLiveTextureHandle(Qt::HANDLE handle)
+{
+    return new QMeeGoLivePixmapData(handle);
+}
+
+QImage* QMeeGoGraphicsSystem::lockLiveTexture(QPixmap* pixmap)
+{
+    QMeeGoLivePixmapData *pixmapData = static_cast<QMeeGoLivePixmapData*>(pixmap->data_ptr().data());
+    return pixmapData->lock();
+}
+
+bool QMeeGoGraphicsSystem::releaseLiveTexture(QPixmap *pixmap, QImage *image)
+{
+    QMeeGoLivePixmapData *pixmapData = static_cast<QMeeGoLivePixmapData*>(pixmap->data_ptr().data());
+    return pixmapData->release(image);
+}
+
+Qt::HANDLE QMeeGoGraphicsSystem::getLiveTextureHandle(QPixmap *pixmap)
+{
+    QMeeGoLivePixmapData *pixmapData = static_cast<QMeeGoLivePixmapData*>(pixmap->data_ptr().data());
+    return pixmapData->handle();
+}
+
 /* C API */
 
 int qt_meego_image_to_egl_shared_image(const QImage &image)
@@ -244,4 +277,29 @@ void qt_meego_set_translucent(bool translucent)
 void qt_meego_update_egl_shared_image_pixmap(QPixmap *pixmap)
 {
     QMeeGoGraphicsSystem::updateEGLSharedImagePixmap(pixmap);
+}
+
+QPixmapData* qt_meego_pixmapdata_with_new_live_texture(int w, int h, QImage::Format format)
+{
+    return QMeeGoGraphicsSystem::pixmapDataWithNewLiveTexture(w, h, format);
+}
+
+QPixmapData* qt_meego_pixmapdata_from_live_texture_handle(Qt::HANDLE handle)
+{
+    return QMeeGoGraphicsSystem::pixmapDataFromLiveTextureHandle(handle);
+}
+
+QImage* qt_meego_live_texture_lock(QPixmap *pixmap)
+{
+    return QMeeGoGraphicsSystem::lockLiveTexture(pixmap);
+}
+
+bool qt_meego_live_texture_release(QPixmap *pixmap, QImage *image)
+{
+    return QMeeGoGraphicsSystem::releaseLiveTexture(pixmap, image);
+}
+
+Qt::HANDLE qt_meego_live_texture_get_handle(QPixmap *pixmap)
+{
+    return QMeeGoGraphicsSystem::getLiveTextureHandle(pixmap);
 }

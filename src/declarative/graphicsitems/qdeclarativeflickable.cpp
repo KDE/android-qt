@@ -85,7 +85,11 @@ qreal QDeclarativeFlickableVisibleArea::yPosition() const
 void QDeclarativeFlickableVisibleArea::updateVisible()
 {
     QDeclarativeFlickablePrivate *p = static_cast<QDeclarativeFlickablePrivate *>(QGraphicsItemPrivate::get(flickable));
-    bool pageChange = false;
+
+    bool changeX = false;
+    bool changeY = false;
+    bool changeWidth = false;
+    bool changeHeight = false;
 
     // Vertical
     const qreal viewheight = flickable->height();
@@ -95,11 +99,11 @@ void QDeclarativeFlickableVisibleArea::updateVisible()
 
     if (pageSize != m_heightRatio) {
         m_heightRatio = pageSize;
-        pageChange = true;
+        changeHeight = true;
     }
     if (pagePos != m_yPosition) {
         m_yPosition = pagePos;
-        pageChange = true;
+        changeY = true;
     }
 
     // Horizontal
@@ -110,14 +114,21 @@ void QDeclarativeFlickableVisibleArea::updateVisible()
 
     if (pageSize != m_widthRatio) {
         m_widthRatio = pageSize;
-        pageChange = true;
+        changeWidth = true;
     }
     if (pagePos != m_xPosition) {
         m_xPosition = pagePos;
-        pageChange = true;
+        changeX = true;
     }
-    if (pageChange)
-        emit pageChanged();
+
+    if (changeX)
+        emit xPositionChanged(m_xPosition);
+    if (changeY)
+        emit yPositionChanged(m_yPosition);
+    if (changeWidth)
+        emit widthRatioChanged(m_widthRatio);
+    if (changeHeight)
+        emit heightRatioChanged(m_heightRatio);
 }
 
 
@@ -456,8 +467,8 @@ QDeclarativeFlickable::~QDeclarativeFlickable()
 }
 
 /*!
-    \qmlproperty int Flickable::contentX
-    \qmlproperty int Flickable::contentY
+    \qmlproperty real Flickable::contentX
+    \qmlproperty real Flickable::contentY
 
     These properties hold the surface coordinate currently at the top-left
     corner of the Flickable. For example, if you flick an image up 100 pixels,
@@ -466,15 +477,15 @@ QDeclarativeFlickable::~QDeclarativeFlickable()
 qreal QDeclarativeFlickable::contentX() const
 {
     Q_D(const QDeclarativeFlickable);
-    return -d->hData.move.value();
+    return -d->contentItem->x();
 }
 
 void QDeclarativeFlickable::setContentX(qreal pos)
 {
     Q_D(QDeclarativeFlickable);
-    pos = qRound(pos);
     d->timeline.reset(d->hData.move);
     d->vTime = d->timeline.time();
+    movementXEnding();
     if (-pos != d->hData.move.value()) {
         d->hData.move.setValue(-pos);
         viewportMoved();
@@ -484,15 +495,15 @@ void QDeclarativeFlickable::setContentX(qreal pos)
 qreal QDeclarativeFlickable::contentY() const
 {
     Q_D(const QDeclarativeFlickable);
-    return -d->vData.move.value();
+    return -d->contentItem->y();
 }
 
 void QDeclarativeFlickable::setContentY(qreal pos)
 {
     Q_D(QDeclarativeFlickable);
-    pos = qRound(pos);
     d->timeline.reset(d->vData.move);
     d->vTime = d->timeline.time();
+    movementYEnding();
     if (-pos != d->vData.move.value()) {
         d->vData.move.setValue(-pos);
         viewportMoved();
@@ -1046,10 +1057,16 @@ void QDeclarativeFlickable::cancelFlick()
 void QDeclarativeFlickablePrivate::data_append(QDeclarativeListProperty<QObject> *prop, QObject *o)
 {
     QGraphicsObject *i = qobject_cast<QGraphicsObject *>(o);
-    if (i)
-        i->setParentItem(static_cast<QDeclarativeFlickablePrivate*>(prop->data)->contentItem);
-    else
+    if (i) {
+        QGraphicsItemPrivate *d = QGraphicsItemPrivate::get(i);
+        if (static_cast<QDeclarativeItemPrivate*>(d)->componentComplete) {
+            i->setParentItem(static_cast<QDeclarativeFlickablePrivate*>(prop->data)->contentItem);
+        } else {
+            d->setParentItemHelper(static_cast<QDeclarativeFlickablePrivate*>(prop->data)->contentItem, 0, 0);
+        }
+    } else {
         o->setParent(prop->object);
+    }
 }
 
 int QDeclarativeFlickablePrivate::data_count(QDeclarativeListProperty<QObject> *property)
@@ -1141,8 +1158,8 @@ void QDeclarativeFlickable::setBoundsBehavior(BoundsBehavior b)
 }
 
 /*!
-    \qmlproperty int Flickable::contentWidth
-    \qmlproperty int Flickable::contentHeight
+    \qmlproperty real Flickable::contentWidth
+    \qmlproperty real Flickable::contentHeight
 
     The dimensions of the content (the surface controlled by Flickable). Typically this
     should be set to the combined size of the items placed in the Flickable. Note this
@@ -1478,18 +1495,20 @@ void QDeclarativeFlickable::movementStarting()
 void QDeclarativeFlickable::movementEnding()
 {
     Q_D(QDeclarativeFlickable);
+    movementXEnding();
+    movementYEnding();
+    d->hData.smoothVelocity.setValue(0);
+    d->vData.smoothVelocity.setValue(0);
+}
+
+void QDeclarativeFlickable::movementXEnding()
+{
+    Q_D(QDeclarativeFlickable);
     if (d->flickingHorizontally) {
         d->flickingHorizontally = false;
         emit flickingChanged();
         emit flickingHorizontallyChanged();
         if (!d->flickingVertically)
-           emit flickEnded();
-    }
-    if (d->flickingVertically) {
-        d->flickingVertically = false;
-        emit flickingChanged();
-        emit flickingVerticallyChanged();
-        if (!d->flickingHorizontally)
            emit flickEnded();
     }
     if (!d->pressed && !d->stealMouse) {
@@ -1501,6 +1520,20 @@ void QDeclarativeFlickable::movementEnding()
             if (!d->movingVertically)
                 emit movementEnded();
         }
+    }
+}
+
+void QDeclarativeFlickable::movementYEnding()
+{
+    Q_D(QDeclarativeFlickable);
+    if (d->flickingVertically) {
+        d->flickingVertically = false;
+        emit flickingChanged();
+        emit flickingVerticallyChanged();
+        if (!d->flickingHorizontally)
+           emit flickEnded();
+    }
+    if (!d->pressed && !d->stealMouse) {
         if (d->movingVertically) {
             d->movingVertically = false;
             d->vMoved = false;
@@ -1510,8 +1543,6 @@ void QDeclarativeFlickable::movementEnding()
                 emit movementEnded();
         }
     }
-    d->hData.smoothVelocity.setValue(0);
-    d->vData.smoothVelocity.setValue(0);
 }
 
 void QDeclarativeFlickablePrivate::updateVelocity()
