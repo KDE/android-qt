@@ -5056,6 +5056,11 @@ case "$XPLATFORM" in *symbian*)
     ;;
 esac
 
+case "$XPLATFORM" in *android*)
+    QMakeVar add styles "android"
+esac
+
+
 if [ "$CFG_LARGEFILE" = "auto" ]; then
     #Large files should be enabled for all Linux systems
     CFG_LARGEFILE=yes

@@ -36,7 +36,7 @@ void QAndroidInputContext::reset()
 void QAndroidInputContext::update()
 {
     // QWidget * w= focusWidget();
-    /// try to me the window to a new position when this widget is visible
+    /// try to move the window to a new position when this widget is visible
 }
 
 bool QAndroidInputContext::filterEvent( const QEvent * event )
