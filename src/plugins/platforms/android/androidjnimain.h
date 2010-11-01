@@ -34,6 +34,11 @@ namespace QtAndroid
     void unlockWindow();
     // Egl methods
 
+    // Software keyboard support
+    void showSoftwareKeyboard();
+    void hideSoftwareKeyboard();
+    // Software keyboard support
+
     bool hasOpenGL();
 }
 #endif // ANDROID_APP_H

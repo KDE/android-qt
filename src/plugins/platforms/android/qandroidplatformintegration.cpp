@@ -43,6 +43,8 @@
 #include "qandroidplatformscreen.h"
 #include "qandroidplatformwindow.h"
 #include "qandroidwindowsurface.h"
+#include "qandroidinputcontext.h"
+
 #include "androidjnimain.h"
 #include "qabstracteventdispatcher.h"
 #include "qbasicunixfontdatabase.h"
@@ -96,6 +98,7 @@ QAndroidPlatformIntegration::QAndroidPlatformIntegration(bool useGL)
     mScreens.append(mPrimaryScreen);
     m_mainThread=QThread::currentThread();
     QtAndroid::setAndroidGraphicsSystem(this);
+    qApp->setInputContext( new QAndroidInputContext() );
     m_useGL=useGL;
     mAndroidFDB = new QAndroidPlatformFontDatabase();
 }

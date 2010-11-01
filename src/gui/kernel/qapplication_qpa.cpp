@@ -547,6 +547,10 @@ void qt_init(QApplicationPrivate *priv, int type)
     }
 #endif
 
+#ifndef QT_NO_QWS_INPUTMETHODS
+        qApp->setInputContext(new QDummyInputContext(qApp));
+#endif
+
     init_platform(platformName);
     init_plugins(pluginList);
 
@@ -557,10 +561,6 @@ void qt_init(QApplicationPrivate *priv, int type)
 #endif
 
     qApp->setObjectName(appName);
-
-#ifndef QT_NO_QWS_INPUTMETHODS
-        qApp->setInputContext(new QDummyInputContext(qApp));
-#endif
 }
 
 void qt_cleanup()

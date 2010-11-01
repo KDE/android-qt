@@ -1,16 +1,16 @@
 package com.nokia.qt;
 
 import java.io.File;
-import android.app.Activity;
+import java.util.List;
+
 import android.graphics.Rect;
 import android.util.Log;
 import android.view.View;
-import java.util.List;
 
 public class QtApplication
 {
 	public static final String QtTAG = "Qt JAVA";
-	private static Activity m_activity = null;
+	private static QtActivity m_activity = null;
 	private static QtMainView m_view = null;
 	private static QtEgl mEgl = null;
 	
@@ -19,7 +19,7 @@ public class QtApplication
         return mEgl;
     }
 	
-	public static void setActivity(Activity mActivity)
+	public static void setActivity(QtActivity mActivity)
 	{
 		m_activity = mActivity;
 	}
@@ -212,6 +212,34 @@ public class QtApplication
 				if (window == null)
 					return;
 				window.invalidate(new Rect(left, top, right, bottom));
+			}
+		});
+	}
+	
+	@SuppressWarnings("unused")
+	private void showSoftwareKeyboard()
+	{
+		if (m_activity == null)
+			return;
+
+		m_activity.runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				m_activity.showSoftwareKeyboard();
+			}
+		});
+	}
+
+	@SuppressWarnings("unused")
+	private void hideSoftwareKeyboard()
+	{
+		if (m_activity == null)
+			return;
+
+		m_activity.runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				m_activity.hideSoftwareKeyboard();
 			}
 		});
 	}

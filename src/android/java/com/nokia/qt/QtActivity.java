@@ -1,25 +1,32 @@
 package com.nokia.qt;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import android.app.Activity;
+import android.content.Context;
 import android.os.Bundle;
+import android.text.method.MetaKeyKeyListener;
 import android.util.Log;
+import android.view.KeyCharacterMap;
 import android.view.KeyEvent;
 import android.view.Window;
-import java.util.List;
-import java.util.ArrayList;
+import android.view.inputmethod.InputMethodManager;
 
 public class QtActivity extends Activity
 {
 
     public enum QtLibrary {
-        QtCore, QtNetwork, QtXml, QtScript, QtSql, QtGui, QtOpenGL, QtSvg, QtScriptTools, QtDeclarative, QtMultimedia, QtWebKit, QtAndroid, QtAndroidBridge
+        QtCore, QtNetwork, QtXml, QtXmlPatterns, QtScript, QtSql, QtGui, QtOpenGL, QtSvg, QtScriptTools, QtDeclarative, QtMultimedia, QtWebKit, QtAndroid, QtAndroidBridge
     }
     
     private Object jniProxyObject = null;
     private boolean quitApp = true;
     private String appName = "";
     private List<String> libraries = new ArrayList<String>();
-    
+    private boolean softwareKeyboardIsVisible=false;
+    private long metaState;
+    private int lastChar=0;
     public QtActivity()
     {
         // By default try to load all Qt libraries
@@ -32,9 +39,10 @@ public class QtActivity extends Activity
         addQtLibrary(QtLibrary.QtOpenGL);
         addQtLibrary(QtLibrary.QtSvg);
         addQtLibrary(QtLibrary.QtScriptTools);
-        addQtLibrary(QtLibrary.QtDeclarative);
         addQtLibrary(QtLibrary.QtMultimedia);
         addQtLibrary(QtLibrary.QtWebKit);
+        addQtLibrary(QtLibrary.QtXmlPatterns);
+        addQtLibrary(QtLibrary.QtDeclarative);
         addQtLibrary(QtLibrary.QtAndroid);
         addQtLibrary(QtLibrary.QtAndroidBridge);
         QtApplication.setActivity(this);
@@ -81,20 +89,66 @@ public class QtActivity extends Activity
     {
         this.jniProxyObject = jniProxyObject;
     }
+    
+    public void showSoftwareKeyboard()
+    {
+    	softwareKeyboardIsVisible = true;
+    	InputMethodManager imm = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
+    	imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, InputMethodManager.HIDE_IMPLICIT_ONLY );
+    }
 
+    public void hideSoftwareKeyboard()
+    {
+    	if (softwareKeyboardIsVisible)
+    	{
+    		InputMethodManager imm = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
+    		imm.toggleSoftInput(0, 0);
+    	}
+    	softwareKeyboardIsVisible = false;
+    }
+    
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        if (event.getAction() == KeyEvent.ACTION_MULTIPLE && 
+            event.getCharacters() != null && 
+            event.getCharacters().length() == 1 &&
+            event.getKeyCode() == 0) {
+            Log.i(QtApplication.QtTAG, "dispatchKeyEvent at MULTIPLE with one character: "+event.getCharacters());
+            QtApplication.keyDown(0, event.getCharacters().charAt(0), event.getMetaState());
+            QtApplication.keyUp(0, event.getCharacters().charAt(0), event.getMetaState());
+        }
+    
+        return super.dispatchKeyEvent(event);
+    }
+
+   
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event)
     {
-        QtApplication.keyDown(keyCode, event.getUnicodeChar(), event.getMetaState());
+    	metaState = MetaKeyKeyListener.handleKeyDown(metaState,
+                keyCode, event);
+        int c = event.getUnicodeChar(MetaKeyKeyListener.getMetaState(metaState));
+        int lc=c;
+        metaState = MetaKeyKeyListener.adjustMetaAfterKeypress(metaState);
 
+        if ((c & KeyCharacterMap.COMBINING_ACCENT) != 0)
+        {
+            c = c & KeyCharacterMap.COMBINING_ACCENT_MASK;
+            int composed = KeyEvent.getDeadChar(lastChar, c);
+            c = composed;
+        }
+        lastChar = lc;
+       	QtApplication.keyDown(keyCode, c, event.getMetaState());
         if (keyCode == KeyEvent.KEYCODE_BACK)
             return super.onKeyDown(keyCode, event);
         return true;
     }
 
+   
     @Override
     public boolean onKeyUp(int keyCode, KeyEvent event)
     {
+    	metaState = MetaKeyKeyListener.handleKeyUp(metaState, keyCode, event);
         QtApplication.keyUp(keyCode, event.getUnicodeChar(), event.getMetaState());
 //		if (keyCode == KeyEvent.KEYCODE_BACK)
 //			return super.onKeyUp(keyCode, event);
@@ -163,6 +217,7 @@ public class QtActivity extends Activity
         {
             Log.i(QtApplication.QtTAG, "onDestroy");
             QtApplication.quitQtAndroidPlugin();
+            System.exit(0);
         }
     }
 
