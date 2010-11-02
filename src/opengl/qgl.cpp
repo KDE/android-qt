@@ -93,7 +93,7 @@
 #include "qlibrary.h"
 #include <qmutex.h>
 
-#ifdef QT_OPENGL_ES
+#ifndef QT_NO_EGL
 #include <EGL/egl.h>
 #endif
 

@@ -551,7 +551,7 @@ static void touchBegin(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/)
 
 static void touchAdd(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/, jint id, jint action, jboolean primary, jint x, jint y, jfloat size, jfloat pressure)
 {
-    Qt::TouchPointStates state=Qt::TouchPointStationary;
+    Qt::TouchPointState state=Qt::TouchPointStationary;
     switch(action)
     {
     case 0:
