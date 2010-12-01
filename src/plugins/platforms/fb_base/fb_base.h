@@ -174,7 +174,7 @@ public:
     virtual void addWindow(QFbWindow * surface);
     virtual void raise(QPlatformWindow * surface);
     virtual void lower(QPlatformWindow * surface);
-    virtual QWidget * lastTopLevel();
+    virtual QWidget * topWindow();
     virtual QWidget * topLevelAt(const QPoint & p) const;
 
     QImage * image() const { return mScreenImage; }

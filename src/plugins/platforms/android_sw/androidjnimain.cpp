@@ -537,8 +537,8 @@ static void keyUp(JNIEnv */*env*/, jobject /*thiz*/, jint key, jint unicode, jin
     int mappedKey=mapAndroidKey(key);
     if (mappedKey==Qt::Key_Close)
     {
-        qDebug()<<"handleCloseEvent"<<mAndroidGraphicsSystem->getPrimaryScreen()->lastTopLevel();
-        QWindowSystemInterface::handleCloseEvent(mAndroidGraphicsSystem->getPrimaryScreen()->lastTopLevel());
+        qDebug()<<"handleCloseEvent"<<mAndroidGraphicsSystem->getPrimaryScreen()->topWindow();
+        QWindowSystemInterface::handleCloseEvent(mAndroidGraphicsSystem->getPrimaryScreen()->topWindow());
     }
     else
         QWindowSystemInterface::handleKeyEvent(0, QEvent::KeyRelease, mapAndroidKey(key), modifiers, QChar(unicode),true);
