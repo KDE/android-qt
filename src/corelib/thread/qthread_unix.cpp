@@ -339,6 +339,7 @@ void QThreadPrivate::finish(void *arg)
     QThread *thr = reinterpret_cast<QThread *>(arg);
     QThreadPrivate *d = thr->d_func();
 
+#if defined(Q_OS_SYMBIAN) || defined(Q_OS_ANDROID)
     QMutexLocker locker(lockAnyway ? &d->mutex : 0);
 #else
     QMutexLocker locker(&d->mutex);
