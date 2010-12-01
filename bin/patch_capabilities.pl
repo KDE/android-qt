@@ -78,7 +78,7 @@ sub trim($) {
 my $nullDevice = "/dev/null";
 $nullDevice = "NUL" if ($^O =~ /MSWin/);
 
-my @capabilitiesToAllow = ("LocalServices", "NetworkServices", "ReadUserData", "UserEnvironment", "WriteUserData");
+my @capabilitiesToAllow = ("LocalServices", "NetworkServices", "ReadUserData", "UserEnvironment", "WriteUserData", "Location");
 my @capabilitiesSpecified = ();
 
 # If arguments were given to the script,
@@ -269,6 +269,9 @@ if (@ARGV)
             if (@capabilitiesSpecified)
             {
                 $commandToExecute = sprintf($baseCommandToExecute, join(" ", @capabilitiesSpecified));
+                $executeNeeded = 1;
+                my $capString = join(" ", @capabilitiesSpecified);
+                print ("Patching: Patching the the Vendor ID to 0 and the capabilities used to: \"$capString\" in \"$binaryBaseName\".\n");
             } else {
                 # Test which capabilities are present and then restrict them to the allowed set.
                 # This avoid raising the capabilities of apps that already have none.
@@ -298,6 +301,9 @@ if (@ARGV)
                         $_ = trim($_);
                         if ($capabilitiesToAllow =~ /$_/) {
                             push(@capabilitiesToSet, $_);
+                            if (Location =~ /$_/i) {
+                                print ("Patching: Warning - \"Location\" capability detected for binary: \"$binaryBaseName\". This capability is not self-signable for S60 3rd edition feature pack 1 devices, so installing this package on those devices will most likely not work.\n");
+                            }
                         } else {
                             push(@capabilitiesToDrop, $_);
                         }
@@ -316,6 +322,7 @@ if (@ARGV)
                         # While libraries often have capabilities they do not themselves need just to enable them to be loaded by wider variety of processes,
                         # executables are more likely to need every capability they have been assigned or they won't function correctly.
                         print ("Patching: Executable with capabilities incompatible with self-signing detected: \"$binaryBaseName\". (Incompatible capabilities: \"$capsToDropStr\".) Reducing capabilities is only supported for libraries.\n");
+                        print ("Patching: Please use a proper developer certificate for signing this package.\n");
                         exit(1);
                     } else {
                         print ("Patching: The following capabilities used in \"$binaryBaseName\" are not compatible with a self-signed package and will be removed: \"$capsToDropStr\".\n");

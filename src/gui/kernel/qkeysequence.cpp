@@ -1104,7 +1104,7 @@ QKeySequence QKeySequence::mnemonic(const QString &text)
 #else
                     found = true;
                 } else {
-                    qWarning("QKeySequence::mnemonic: \"%s\" contains multiple occurences of '&'", qPrintable(text));
+                    qWarning("QKeySequence::mnemonic: \"%s\" contains multiple occurrences of '&'", qPrintable(text));
 #endif
                 }
             }
@@ -1519,6 +1519,14 @@ QKeySequence &QKeySequence::operator=(const QKeySequence &other)
     qAtomicAssign(d, other.d);
     return *this;
 }
+
+/*!
+    \fn void QKeySequence::swap(QKeySequence &other)
+    \since 4.8
+
+    Swaps key sequence \a other with this key sequence. This operation is very
+    fast and never fails.
+*/
 
 /*!
     \fn bool QKeySequence::operator!=(const QKeySequence &other) const

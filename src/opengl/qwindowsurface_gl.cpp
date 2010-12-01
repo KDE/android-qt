@@ -184,6 +184,7 @@ QGLGraphicsSystem::QGLGraphicsSystem(bool useX11GL)
 // QGLWindowSurface
 //
 
+#ifndef Q_WS_QPA
 class QGLGlobalShareWidget
 {
 public:
@@ -256,6 +257,23 @@ QGLWidget* qt_gl_share_widget()
 void qt_destroy_gl_share_widget()
 {
     _qt_gl_share_widget()->destroy();
+}
+#endif//Q_WS_QPA
+
+const QGLContext *qt_gl_share_context()
+{
+#ifdef Q_WS_QPA
+    //make it possible to have an assesor to defaultSharedGLContext.
+    const QPlatformGLContext *platformContext = QPlatformGLContext::defaultSharedContext();
+    if (!platformContext)
+        qDebug() << "Please implement a defaultSharedContext for your platformplugin";
+    return QGLContext::fromPlatformGLContext(const_cast<QPlatformGLContext *>(platformContext));
+#else
+    QGLWidget *widget = qt_gl_share_widget();
+    if (widget)
+        return widget->context();
+    return 0;
+#endif
 }
 
 struct QGLWindowSurfacePrivate
@@ -338,10 +356,12 @@ QGLWindowSurface::~QGLWindowSurface()
 {
     if (d_ptr->ctx)
         glDeleteTextures(1, &d_ptr->tex_id);
+#ifndef Q_WS_QPA // Dont delete the contexts. Destroying the window does that for us
     foreach(QGLContext **ctx, d_ptr->contexts) {
         delete *ctx;
         *ctx = 0;
     }
+#endif
 
     delete d_ptr->pb;
     delete d_ptr->fbo;
@@ -358,6 +378,7 @@ void QGLWindowSurface::deleted(QObject *object)
             d_ptr->fbo = 0;
         }
 
+#ifndef Q_WS_QPA //no need to specifically delete the QGLContext as it will be deleted by QWidget
         QWidgetPrivate *widgetPrivate = widget->d_func();
         if (widgetPrivate->extraData()) {
             union { QGLContext **ctxPtrPtr; void **voidPtrPtr; };
@@ -369,6 +390,7 @@ void QGLWindowSurface::deleted(QObject *object)
                 d_ptr->contexts.removeAt(index);
             }
         }
+#endif
     }
 }
 
@@ -379,8 +401,14 @@ void QGLWindowSurface::hijackWindow(QWidget *widget)
     if (widgetPrivate->extraData()->glContext)
         return;
 
+#ifdef Q_WS_QPA
+    QGLContext *ctx = QGLContext::fromPlatformGLContext(widget->platformWindow()->glContext());
+    if (!d_ptr->fbo && d_ptr->tried_fbo)
+        d_ptr->ctx = ctx;
+#else
     QGLContext *ctx = new QGLContext(surfaceFormat, widget);
     ctx->create(qt_gl_share_widget()->context());
+#endif
 
 #ifndef QT_NO_EGL
     static bool checkedForNOKSwapRegion = false;
@@ -818,7 +846,7 @@ void QGLWindowSurface::updateGeometry() {
         }
     }
 
-#if !defined(QT_OPENGL_ES_2)
+#if !defined(QT_OPENGL_ES_2) && !defined(Q_WS_QPA) //QPA doesn't support pixelbuffers
     if (d_ptr->destructive_swap_buffers && (d_ptr->pb || !d_ptr->tried_pb)) {
         d_ptr->tried_pb = true;
 
@@ -861,7 +889,7 @@ void QGLWindowSurface::updateGeometry() {
             d_ptr->pb = 0;
         }
     }
-#endif // !defined(QT_OPENGL_ES_2)
+#endif // !defined(QT_OPENGL_ES_2) !defined(Q_WS_QPA)
 
     ctx->makeCurrent();
 

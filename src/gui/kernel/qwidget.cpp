@@ -239,6 +239,17 @@ void QWidgetBackingStoreTracker::unregisterWidget(QWidget *w)
     }
 }
 
+/*!
+    \internal
+    Recursively remove widget and all of its descendents.
+ */
+void QWidgetBackingStoreTracker::unregisterWidgetSubtree(QWidget *widget)
+{
+    unregisterWidget(widget);
+    foreach (QObject *child, widget->children())
+        if (QWidget *childWidget = qobject_cast<QWidget *>(child))
+            unregisterWidgetSubtree(childWidget);
+}
 
 QWidgetPrivate::QWidgetPrivate(int version)
     : QObjectPrivate(version)
@@ -334,15 +345,27 @@ QWidgetPrivate::~QWidgetPrivate()
 #endif //QT_NO_GRAPHICSEFFECT
 }
 
+class QDummyWindowSurface : public QWindowSurface
+{
+public:
+    QDummyWindowSurface(QWidget *window) : QWindowSurface(window) {}
+    QPaintDevice *paintDevice() { return window(); }
+    void flush(QWidget *, const QRegion &, const QPoint &) {}
+};
+
 QWindowSurface *QWidgetPrivate::createDefaultWindowSurface()
 {
     Q_Q(QWidget);
 
     QWindowSurface *surface;
-    if (QApplicationPrivate::graphicsSystem())
-        surface = QApplicationPrivate::graphicsSystem()->createWindowSurface(q);
-    else
-        surface = createDefaultWindowSurface_sys();
+    if (q->property("_q_DummyWindowSurface").toBool()) {
+        surface = new QDummyWindowSurface(q);
+    } else {
+        if (QApplicationPrivate::graphicsSystem())
+            surface = QApplicationPrivate::graphicsSystem()->createWindowSurface(q);
+        else
+            surface = createDefaultWindowSurface_sys();
+    }
 
     return surface;
 }
@@ -1667,13 +1690,8 @@ void QWidgetPrivate::setWinId(WId id)                // set widget identifier
     }
 
     if(oldWinId != id) {
-        // Do not emit an event when the old winId is destroyed.  This only
-        // happens (a) during widget destruction, and (b) immediately prior
-        // to creation of a new winId, for example as a result of re-parenting.
-        if(id != 0) {
-            QEvent e(QEvent::WinIdChange);
-            QCoreApplication::sendEvent(q, &e);
-        }
+        QEvent e(QEvent::WinIdChange);
+        QCoreApplication::sendEvent(q, &e);
     }
 }
 
@@ -7030,7 +7048,11 @@ bool QWidget::restoreGeometry(const QByteArray &geometry)
     if (maximized || fullScreen) {
         // set geomerty before setting the window state to make
         // sure the window is maximized to the right screen.
+        // Skip on windows: the window is restored into a broken
+        // half-maximized state.
+#ifndef Q_WS_WIN
         setGeometry(restoredNormalGeometry);
+#endif
         Qt::WindowStates ws = windowState();
         if (maximized)
             ws |= Qt::WindowMaximized;
@@ -8839,7 +8861,7 @@ void QWidget::mousePressEvent(QMouseEvent *event)
         QWidget* w;
         while ((w = QApplication::activePopupWidget()) && w != this){
             w->close();
-            if (QApplication::activePopupWidget() == w) // widget does not want to dissappear
+            if (QApplication::activePopupWidget() == w) // widget does not want to disappear
                 w->hide(); // hide at least
         }
         if (!rect().contains(event->pos())){
@@ -9308,7 +9330,7 @@ void QWidget::setInputMethodHints(Qt::InputMethodHints hints)
 #ifndef QT_NO_IM
     Q_D(QWidget);
     d->imHints = hints;
-    // Optimisation to update input context only it has already been created.
+    // Optimization to update input context only it has already been created.
     if (d->ic || qApp->d_func()->inputContext) {
         QInputContext *ic = inputContext();
         if (ic)
@@ -10074,7 +10096,16 @@ void QWidget::setParent(QWidget *parent, Qt::WindowFlags f)
     if (newParent && isAncestorOf(focusWidget()))
         focusWidget()->clearFocus();
 
+    QTLWExtra *oldTopExtra = window()->d_func()->maybeTopData();
+    QWidgetBackingStoreTracker *oldBsTracker = oldTopExtra ? &oldTopExtra->backingStore : 0;
+
     d->setParent_sys(parent, f);
+
+    QTLWExtra *topExtra = window()->d_func()->maybeTopData();
+    QWidgetBackingStoreTracker *bsTracker = topExtra ? &topExtra->backingStore : 0;
+    if (oldBsTracker && oldBsTracker != bsTracker)
+        oldBsTracker->unregisterWidgetSubtree(this);
+
     if (desktopWidget)
         parent = 0;
 

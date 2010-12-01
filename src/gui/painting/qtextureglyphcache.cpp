@@ -117,7 +117,7 @@ QFixed QTextureGlyphCache::subPixelPositionForX(QFixed x) const
     return subPixelPosition;
 }
 
-void QTextureGlyphCache::populate(QFontEngine *fontEngine, int numGlyphs, const glyph_t *glyphs,
+bool QTextureGlyphCache::populate(QFontEngine *fontEngine, int numGlyphs, const glyph_t *glyphs,
                                                 const QFixedPoint *positions)
 {
 #ifdef CACHE_DEBUG
@@ -196,7 +196,7 @@ void QTextureGlyphCache::populate(QFontEngine *fontEngine, int numGlyphs, const 
         rowHeight = qMax(rowHeight, glyph_height);
     }
     if (listItemCoordinates.isEmpty())
-        return;
+        return true;
 
     rowHeight += margin * 2 + paddingDoubled;
 
@@ -238,6 +238,8 @@ void QTextureGlyphCache::populate(QFontEngine *fontEngine, int numGlyphs, const 
         m_cx += c.w + paddingDoubled;
         ++iter;
     }
+    return true;
+
 }
 
 void QTextureGlyphCache::fillInPendingGlyphs()
@@ -312,7 +314,7 @@ QImage QTextureGlyphCache::textureMapForGlyph(glyph_t g, QFixed subPixelPosition
     if (m_type == QFontEngineGlyphCache::Raster_RGBMask)
         return m_current_fontengine->alphaRGBMapForGlyph(g, subPixelPosition, glyphMargin(), m_transform);
     else
-        return m_current_fontengine->alphaMapForGlyph(g, m_transform);
+        return m_current_fontengine->alphaMapForGlyph(g, subPixelPosition, m_transform);
 
     return QImage();
 }
@@ -368,11 +370,14 @@ void QImageTextureGlyphCache::fillTexture(const Coord &c, glyph_t g, QFixed subP
     }
 #endif
 
-    if (m_type == QFontEngineGlyphCache::Raster_RGBMask) {
-        QPainter p(&m_image);
+    if (m_type == QFontEngineGlyphCache::Raster_RGBMask) {        
+        QImage ref(m_image.bits() + (c.x * 4 + c.y * m_image.bytesPerLine()),
+                   qMax(mask.width(), c.w), qMax(mask.height(), c.h), m_image.bytesPerLine(),
+                   m_image.format());
+        QPainter p(&ref);
         p.setCompositionMode(QPainter::CompositionMode_Source);
-        p.fillRect(c.x, c.y, c.w, c.h, QColor(0,0,0,0)); // TODO optimize this
-        p.drawImage(c.x, c.y, mask);
+        p.fillRect(0, 0, c.w, c.h, QColor(0,0,0,0)); // TODO optimize this
+        p.drawImage(0, 0, mask);
         p.end();
     } else if (m_type == QFontEngineGlyphCache::Raster_Mono) {
         if (mask.depth() > 1) {

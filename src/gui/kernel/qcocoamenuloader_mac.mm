@@ -89,7 +89,7 @@ QT_USE_NAMESPACE
 - (void)ensureAppMenuInMenu:(NSMenu *)menu
 {
     // The application menu is the menu in the menu bar that contains the
-    // 'Quit' item. When changing menu bar (e.g when swithing between
+    // 'Quit' item. When changing menu bar (e.g when switching between
     // windows with different menu bars), we never recreate this menu, but
     // instead pull it out the current menu bar and place into the new one:
     NSMenu *mainMenu = [NSApp mainMenu];
@@ -170,12 +170,12 @@ QT_USE_NAMESPACE
     return [[aboutQtItem retain] autorelease];
 }
 
-- (NSMenuItem *)hideMenuItem;
+- (NSMenuItem *)hideMenuItem
 {
     return [[hideItem retain] autorelease];
 }
 
-- (NSMenuItem *)appSpecificMenuItem;
+- (NSMenuItem *)appSpecificMenuItem
 {
     // Create an App-Specific menu item, insert it into the menu and return
     // it as an autorelease item.

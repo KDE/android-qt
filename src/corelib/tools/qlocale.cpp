@@ -77,7 +77,7 @@ QT_END_NAMESPACE
 #include <qdebug.h>
 #include <time.h>
 
-#if defined(Q_OS_LINUX) && !defined(__UCLIBC__)
+#if defined(__GLIBC__) && !defined(__UCLIBC__)
 #    include <fenv.h>
 #endif
 
@@ -6639,7 +6639,7 @@ Q_CORE_EXPORT char *qdtoa ( double d, int mode, int ndigits, int *decpt, int *si
     _control87(MCW_EM, MCW_EM);
 #endif
 
-#if defined(Q_OS_LINUX) && !defined(__UCLIBC__)
+#if defined(__GLIBC__) && !defined(__UCLIBC__)
     fenv_t envp;
     feholdexcept(&envp);
 #endif
@@ -6655,7 +6655,7 @@ Q_CORE_EXPORT char *qdtoa ( double d, int mode, int ndigits, int *decpt, int *si
 #endif //_M_X64
 #endif //Q_OS_WIN
 
-#if defined(Q_OS_LINUX) && !defined(__UCLIBC__)
+#if defined(__GLIBC__) && !defined(__UCLIBC__)
     fesetenv(&envp);
 #endif
 
@@ -7310,6 +7310,7 @@ Q_CORE_EXPORT char *qdtoa( double d, int mode, int ndigits, int *decpt, int *sig
 
 Q_CORE_EXPORT double qstrtod(const char *s00, const char **se, bool *ok)
 {
+    errno = 0;
     double ret = strtod((char*)s00, (char**)se);
     if (ok) {
       if((ret == 0.0l && errno == ERANGE)

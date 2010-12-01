@@ -1716,7 +1716,14 @@ QScriptValue QScriptValue::construct(const QScriptValueList &args)
 
     QVarLengthArray<JSC::JSValue, 8> argsVector(args.size());
     for (int i = 0; i < args.size(); ++i) {
-        if (!args.at(i).isValid())
+        QScriptValue arg = args.at(i);
+        if (QScriptValuePrivate::getEngine(arg) != d->engine && QScriptValuePrivate::getEngine(arg)) {
+            qWarning("QScriptValue::construct() failed: "
+                     "cannot construct function with argument created in "
+                     "a different engine");
+            return QScriptValue();
+        }
+        if (!arg.isValid())
             argsVector[i] = JSC::jsUndefined();
         else
             argsVector[i] = d->engine->scriptValueToJSCValue(args.at(i));
@@ -1726,10 +1733,12 @@ QScriptValue QScriptValue::construct(const QScriptValueList &args)
 
     JSC::JSValue savedException;
     QScriptEnginePrivate::saveException(exec, &savedException);
-    JSC::JSObject *result = JSC::construct(exec, callee, constructType, constructData, jscArgs);
+    JSC::JSValue result;
+    JSC::JSObject *newObject = JSC::construct(exec, callee, constructType, constructData, jscArgs);
     if (exec->hadException()) {
-        result = JSC::asObject(exec->exception());
+        result = exec->exception();
     } else {
+        result = newObject;
         QScriptEnginePrivate::restoreException(exec, savedException);
     }
     return d->engine->scriptValueFromJSCValue(result);
@@ -1764,6 +1773,12 @@ QScriptValue QScriptValue::construct(const QScriptValue &arguments)
 
     JSC::ExecState *exec = d->engine->currentFrame;
 
+    if (QScriptValuePrivate::getEngine(arguments) != d->engine && QScriptValuePrivate::getEngine(arguments)) {
+        qWarning("QScriptValue::construct() failed: "
+                 "cannot construct function with argument created in "
+                 "a different engine");
+        return QScriptValue();
+    }
     JSC::JSValue array = d->engine->scriptValueToJSCValue(arguments);
     // copied from runtime/FunctionPrototype.cpp, functionProtoFuncApply()
     JSC::MarkedArgumentBuffer applyArgs;
@@ -1786,11 +1801,12 @@ QScriptValue QScriptValue::construct(const QScriptValue &arguments)
 
     JSC::JSValue savedException;
     QScriptEnginePrivate::saveException(exec, &savedException);
-    JSC::JSObject *result = JSC::construct(exec, callee, constructType, constructData, applyArgs);
+    JSC::JSValue result;
+    JSC::JSObject *newObject = JSC::construct(exec, callee, constructType, constructData, applyArgs);
     if (exec->hadException()) {
-        if (exec->exception().isObject())
-            result = JSC::asObject(exec->exception());
+        result = exec->exception();
     } else {
+        result = newObject;
         QScriptEnginePrivate::restoreException(exec, savedException);
     }
     return d->engine->scriptValueFromJSCValue(result);
@@ -2023,6 +2039,7 @@ void QScriptValue::setData(const QScriptValue &data)
     Q_D(QScriptValue);
     if (!d || !d->isObject())
         return;
+    QScript::APIShim shim(d->engine);
     JSC::JSValue other = d->engine->scriptValueToJSCValue(data);
     if (d->jscValue.inherits(&QScriptObject::info)) {
         QScriptObject *scriptObject = static_cast<QScriptObject*>(JSC::asObject(d->jscValue));

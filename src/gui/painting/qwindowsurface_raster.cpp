@@ -251,6 +251,11 @@ void QRasterWindowSurface::flush(QWidget *widget, const QRegion &rgn, const QPoi
 
 #ifdef Q_WS_MAC
 
+    // This is mainly done for native components like native "open file" dialog.
+    if (widget->testAttribute(Qt::WA_DontShowOnScreen)) {
+        return;
+    }
+
 #ifdef QT_MAC_USE_COCOA
     // Unified toolbar hack.
     QMainWindow* mWindow = qobject_cast<QMainWindow*>(widget->window());
@@ -280,6 +285,7 @@ void QRasterWindowSurface::flush(QWidget *widget, const QRegion &rgn, const QPoi
     extern CGContextRef qt_mac_graphicsContextFor(QWidget *);
     CGContextRef context = qt_mac_graphicsContextFor(widget);
 #endif
+    CGContextRetain(context);
     CGContextSaveGState(context);
 
     // Flip context.
@@ -312,6 +318,8 @@ void QRasterWindowSurface::flush(QWidget *widget, const QRegion &rgn, const QPoi
 
     // Restore context.
     CGContextRestoreGState(context);
+    CGContextRelease(context);
+
 
 #endif // Q_WS_MAC
 

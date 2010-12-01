@@ -99,6 +99,11 @@
 # define SCHED_IDLE    5
 #endif
 
+#if defined(Q_OS_DARWIN) || !defined(Q_OS_OPENBSD) && defined(_POSIX_THREAD_PRIORITY_SCHEDULING) && (_POSIX_THREAD_PRIORITY_SCHEDULING-0 >= 0)
+#define QT_HAS_THREAD_PRIORITY_SCHEDULING
+#endif
+
+
 QT_BEGIN_NAMESPACE
 
 #ifndef QT_NO_THREAD
@@ -140,6 +145,7 @@ static void create_current_thread_data_key()
 
 static void destroy_current_thread_data_key()
 {
+    pthread_once(&current_thread_data_once, create_current_thread_data_key);
     pthread_key_delete(current_thread_data_key);
 }
 Q_DESTRUCTOR_FUNCTION(destroy_current_thread_data_key)
@@ -332,39 +338,44 @@ void QThreadPrivate::finish(void *arg)
 {
     QThread *thr = reinterpret_cast<QThread *>(arg);
     QThreadPrivate *d = thr->d_func();
-#if defined(Q_OS_SYMBIAN) || defined(Q_OS_ANDROID)
-    if (lockAnyway)
+
+    QMutexLocker locker(lockAnyway ? &d->mutex : 0);
+#else
+    QMutexLocker locker(&d->mutex);
 #endif
-        d->mutex.lock();
 
+    d->isInFinish = true;
     d->priority = QThread::InheritPriority;
-    d->running = false;
-    d->finished = true;
-    if (d->terminated)
-        emit thr->terminated();
-    d->terminated = false;
-    emit thr->finished();
-
-    if (d->data->eventDispatcher) {
-        d->data->eventDispatcher->closingDown();
-        QAbstractEventDispatcher *eventDispatcher = d->data->eventDispatcher;
-        d->data->eventDispatcher = 0;
-        delete eventDispatcher;
-    }
-
+    bool terminated = d->terminated;
     void *data = &d->data->tls;
+    locker.unlock();
+    if (terminated)
+        emit thr->terminated();
+    emit thr->finished();
+    QCoreApplication::sendPostedEvents(0, QEvent::DeferredDelete);
     QThreadStorageData::finish((void **)data);
+    locker.relock();
+    d->terminated = false;
+
+    QAbstractEventDispatcher *eventDispatcher = d->data->eventDispatcher;
+    if (eventDispatcher) {
+        d->data->eventDispatcher = 0;
+        locker.unlock();
+        eventDispatcher->closingDown();
+        delete eventDispatcher;
+        locker.relock();
+    }
 
     d->thread_id = 0;
 #ifdef Q_OS_SYMBIAN
     if (closeNativeHandle)
         d->data->symbian_thread_handle.Close();
 #endif
+    d->running = false;
+    d->finished = true;
+
+    d->isInFinish = false;
     d->thread_done.wakeAll();
-#if defined(Q_OS_SYMBIAN) || defined(Q_OS_ANDROID)
-    if (lockAnyway)
-#endif
-        d->mutex.unlock();
 }
 
 
@@ -504,10 +515,10 @@ void QThread::usleep(unsigned long usecs)
     thread_sleep(&ti);
 }
 
+#ifdef QT_HAS_THREAD_PRIORITY_SCHEDULING
 // Does some magic and calculate the Unix scheduler priorities
 // sched_policy is IN/OUT: it must be set to a valid policy before calling this function
 // sched_priority is OUT only
-#if defined(Q_OS_DARWIN) || !defined(Q_OS_OPENBSD) && defined(_POSIX_THREAD_PRIORITY_SCHEDULING) && (_POSIX_THREAD_PRIORITY_SCHEDULING-0 >= 0)
 static bool calculateUnixPriority(int priority, int *sched_policy, int *sched_priority)
 {
 #ifdef SCHED_IDLE
@@ -541,6 +552,10 @@ void QThread::start(Priority priority)
 {
     Q_D(QThread);
     QMutexLocker locker(&d->mutex);
+
+    if (d->isInFinish)
+        d->thread_done.wait(locker.mutex());
+
     if (d->running)
         return;
 
@@ -556,7 +571,7 @@ void QThread::start(Priority priority)
 
     d->priority = priority;
 
-#if defined(Q_OS_DARWIN) || !defined(Q_OS_OPENBSD) && !defined(Q_OS_SYMBIAN) && defined(_POSIX_THREAD_PRIORITY_SCHEDULING) && (_POSIX_THREAD_PRIORITY_SCHEDULING-0 >= 0)
+#if defined(QT_HAS_THREAD_PRIORITY_SCHEDULING) && !defined(Q_OS_SYMBIAN)
 // ### Need to implement thread sheduling and priorities for symbian os. Implementation removed for now
     switch (priority) {
     case InheritPriority:
@@ -597,7 +612,7 @@ void QThread::start(Priority priority)
             break;
         }
     }
-#endif // _POSIX_THREAD_PRIORITY_SCHEDULING
+#endif // QT_HAS_THREAD_PRIORITY_SCHEDULING
 
 #ifdef Q_OS_SYMBIAN
     if (d->stackSize == 0)
@@ -761,7 +776,7 @@ void QThread::setPriority(Priority priority)
 
     // copied from start() with a few modifications:
 
-#if defined(Q_OS_DARWIN) || !defined(Q_OS_OPENBSD) && defined(_POSIX_THREAD_PRIORITY_SCHEDULING) && (_POSIX_THREAD_PRIORITY_SCHEDULING-0 >= 0)
+#ifdef QT_HAS_THREAD_PRIORITY_SCHEDULING
     int sched_policy;
     sched_param param;
 
