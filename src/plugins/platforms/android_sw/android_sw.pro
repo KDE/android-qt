@@ -2,18 +2,29 @@ TARGET = QtAndroid_sw
 
 include(../../qpluginbase.pri)
 
-CONFIG = dll
-#CONFIG += staticlib static
-DESTDIR	 = $$QMAKE_LIBDIR_QT
+DEFINES = QT_STATICPLUGIN
 
-CONFIG(jnigraphics) : DEFINES += JNIGRPAHICS
+include(../fontdatabases/basicunix/basicunix.pri)
+
+CONFIG += dll
+DESTDIR = $$QMAKE_LIBDIR_QT
+
+CONFIG(android-8) : LIBS += -ljnigraphics
+else{
+                    INCLUDEPATH += $$QT_SOURCE_TREE/src/plugins/platforms/android/native/include
+                    SOURCES += native/graphics/jni/bitmap.cpp
+CONFIG(android-4) : LIBS += -landroid_runtime -lsgl
+             else : LIBS += -landroid_runtime -lskia
+}
 
 
-SOURCES = main.cpp \
+SOURCES += main.cpp \
     androidjnimain.cpp \
-    qandroidplatformintegration.cpp
+    qandroidplatformintegration.cpp \
+    qandroidinputcontext.cpp
 
-HEADERS = qandroidplatformintegration.h
+HEADERS += qandroidplatformintegration.h \
+           qandroidinputcontext.h
 
 contains(QT_CONFIG, opengl) {
     QT += opengl

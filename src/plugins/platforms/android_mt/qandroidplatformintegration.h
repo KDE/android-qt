@@ -41,60 +41,52 @@
 
 #ifndef QGRAPHICSSYSTEM_MINIMAL_H
 #define QGRAPHICSSYSTEM_MINIMAL_H
-
 #include <QPlatformIntegration>
-#include "../fb_base/fb_base.h"
-#include <jni.h>
 
 QT_BEGIN_NAMESPACE
 
-class QDesktopWidget;
-
-class QAndroidPlatformScreen : public QFbScreen
-{
-    Q_OBJECT
-public:
-    QAndroidPlatformScreen();
-
-public slots:
-    QRegion doRedraw();
-
-};
+class QAndroidPlatformScreen;
+class QPlatformGLContext;
+class QAndroidPlatformEventLoopIntegration;
 
 class QAndroidPlatformIntegration : public QPlatformIntegration
 {
 public:
-    QAndroidPlatformIntegration();
+    explicit QAndroidPlatformIntegration(bool useGL=false);
     ~QAndroidPlatformIntegration();
+    virtual QPlatformWindow *createPlatformWindow(QWidget *widget, WId winId = 0) const;
+    virtual QPixmapData *createPixmapData(QPixmapData::PixelType type) const;
+    virtual QWindowSurface *createWindowSurface(QWidget *widget, WId winId) const;
+    QPlatformEventLoopIntegration *createEventLoopIntegration() const;
+    virtual QList<QPlatformScreen *> screens() const { return mScreens; }
+    virtual QAndroidPlatformScreen * getPrimaryScreen(){return mPrimaryScreen;}
 
-    QPixmapData *createPixmapData(QPixmapData::PixelType type) const;
-    QWindowSurface *createWindowSurface(QWidget *widget, WId winId) const;
-    QPlatformWindow *createPlatformWindow(QWidget *widget, WId winId = 0) const;
-
-    QList<QPlatformScreen *> screens() const { return mScreens; }
-
-    QAndroidPlatformScreen * getPrimaryScreen(){return mPrimaryScreen;}
+    QPlatformFontDatabase *fontDatabase() const;
 
     virtual void setDesktopSize(int width, int height);
     virtual void setDisplayMetrics(int width, int height);
-    QPlatformFontDatabase *fontDatabase() const;
-
     void pauseApp();
     void resumeApp();
+    QAndroidPlatformEventLoopIntegration* platformEventLoopIntegration();
+    void processEvents();
+
+#ifndef QT_NO_OPENGL
+    bool hasOpenGL() const;
+    QPlatformGLContext * createGLContext();
+#endif
 
     static void setDefaultDisplayMetrics(int gw, int gh, int sw, int sh);
     static void setDefaultDesktopSize(int gw, int gh);
 
 private:
+    bool m_useGL;
     QThread * m_mainThread;
     QAndroidPlatformScreen *mPrimaryScreen;
     QList<QPlatformScreen *> mScreens;
     static int mDefaultGeometryWidth,mDefaultGeometryHeight,mDefaultPhysicalSizeWidth,mDefaultPhysicalSizeHeight;
     friend class QAndroidPlatformScreen;
     QPlatformFontDatabase *mAndroidFDB;
-    QImage * mFbScreenImage;
-    QPainter *compositePainter;
-
+    mutable QAndroidPlatformEventLoopIntegration* mAndroidPlatformEventLoop;
 };
 
 QT_END_NAMESPACE

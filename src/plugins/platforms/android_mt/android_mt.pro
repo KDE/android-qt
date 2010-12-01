@@ -1,4 +1,4 @@
-TARGET = QtAndroid
+TARGET = QtAndroidMt
 
 include(../../qpluginbase.pri)
 
@@ -23,14 +23,16 @@ SOURCES +=  main.cpp \
             qandroidplatformscreen.cpp \
             qandroidplatformwindow.cpp \
             qandroidwindowsurface.cpp \
-            qandroidinputcontext.cpp
+            qandroidinputcontext.cpp \
+            qandroidplatformeventloopintegration.cpp
 
-HEADERS +=  androidjnimain.h \
+HEADERS =   androidjnimain.h \
             qandroidplatformintegration.h \
             qandroidplatformscreen.h \
             qandroidplatformwindow.h \
             qandroidwindowsurface.h \
-            qandroidinputcontext.h
+            qandroidinputcontext.h \
+            qandroidplatformeventloopintegration.h
 
 
 contains(QT_CONFIG, opengl) {

@@ -1,6 +1,8 @@
 #ifndef ANDROID_APP_H
 #define ANDROID_APP_H
 
+#include <QtGlobal>
+
 class QImage;
 class QRect;
 class QPoint;
@@ -40,5 +42,8 @@ namespace QtAndroid
     // Software keyboard support
 
     bool hasOpenGL();
+
+    void processEvents(qint64 miliseconds);
+    void moveToUiThread();
 }
 #endif // ANDROID_APP_H

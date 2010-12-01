@@ -6,6 +6,8 @@ import java.util.List;
 import android.app.Activity;
 import android.content.Context;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.text.method.MetaKeyKeyListener;
 import android.util.Log;
 import android.view.KeyCharacterMap;
@@ -17,9 +19,9 @@ public class QtActivity extends Activity
 {
 
     public enum QtLibrary {
-        QtCore, QtNetwork, QtXml, QtXmlPatterns, QtScript, QtSql, QtGui, QtOpenGL, QtSvg, QtScriptTools, QtDeclarative, QtMultimedia, QtWebKit, QtAndroid, QtAndroidBridge
+        QtCore, QtNetwork, QtXml, QtXmlPatterns, QtScript, QtSql, QtGui, QtOpenGL, QtSvg, QtScriptTools, QtDeclarative, QtMultimedia, QtWebKit, QtAndroid, QtAndroidMt, QtAndroid_sw, QtAndroidBridge
     }
-    
+    private boolean singleWindow=true;
     private Object jniProxyObject = null;
     private boolean quitApp = true;
     private String appName = "";
@@ -27,7 +29,27 @@ public class QtActivity extends Activity
     private boolean softwareKeyboardIsVisible=false;
     private long metaState;
     private int lastChar=0;
-    public QtActivity()
+   
+    private static final int ProcessEvents = 1;
+    private static final int MoveToUIThread = 2;
+	private Handler mHandler = new Handler()
+	{
+		@Override
+		public void handleMessage(Message msg)
+		{
+			switch(msg.what)
+			{
+				case ProcessEvents:
+					QtApplication.processQtEvents();
+					break;
+				case MoveToUIThread:
+					QtApplication.moveQtToUIThread();
+					break;
+			}
+		}
+	};
+
+	public QtActivity()
     {
         // By default try to load all Qt libraries
         addQtLibrary(QtLibrary.QtCore);
@@ -43,7 +65,10 @@ public class QtActivity extends Activity
         addQtLibrary(QtLibrary.QtWebKit);
         addQtLibrary(QtLibrary.QtXmlPatterns);
         addQtLibrary(QtLibrary.QtDeclarative);
-        addQtLibrary(QtLibrary.QtAndroid);
+        if (singleWindow)
+        	addQtLibrary(QtLibrary.QtAndroid_sw);
+        else
+        	addQtLibrary(QtLibrary.QtAndroid);
         addQtLibrary(QtLibrary.QtAndroidBridge);
         QtApplication.setActivity(this);
     }
@@ -138,12 +163,13 @@ public class QtActivity extends Activity
             c = composed;
         }
         lastChar = lc;
-       	QtApplication.keyDown(keyCode, c, event.getMetaState());
-        if (keyCode == KeyEvent.KEYCODE_BACK)
-            return super.onKeyDown(keyCode, event);
+        if (keyCode != KeyEvent.KEYCODE_BACK)
+        	QtApplication.keyDown(keyCode, c, event.getMetaState());
+//            return super.onKeyDown(keyCode, event);
         return true;
     }
 
+  
    
     @Override
     public boolean onKeyUp(int keyCode, KeyEvent event)
@@ -164,10 +190,16 @@ public class QtActivity extends Activity
         {
             String path=getFilesDir().getAbsolutePath();
             Log.i(QtApplication.QtTAG, path);
-            QtMainView view = new QtMainView(this);
-            setContentView(view);
-            QtApplication.setView(view);
-
+            if (singleWindow)
+            {
+    			setContentView(new QtSurface(this));
+            }
+            else
+            {
+	            QtMainView view = new QtMainView(this);
+	            setContentView(view);
+	            QtApplication.setView(view);
+            }
             if (null == getLastNonConfigurationInstance())
             {
                 QtApplication.loadLibraries(libraries);
@@ -216,7 +248,7 @@ public class QtActivity extends Activity
         if (quitApp)
         {
             Log.i(QtApplication.QtTAG, "onDestroy");
-            QtApplication.quitQtAndroidPlugin();
+//            QtApplication.quitQtAndroidPlugin();
             System.exit(0);
         }
     }
@@ -227,13 +259,16 @@ public class QtActivity extends Activity
         super.onSaveInstanceState(outState);
         Log.i(QtApplication.QtTAG, "onSaveInstanceState");
         QtMainView view = QtApplication.getView();
-        outState.putInt("Surfaces", view.getChildCount());
-        for (int i=0;i<view.getChildCount();i++)
+        if (view != null)
         {
-            QtWindow surface=(QtWindow) view.getChildAt(i);
-            Log.i(QtApplication.QtTAG,"id"+surface.getId()+","+surface.getLeft()+","+surface.getTop()+","+surface.getRight()+","+surface.getBottom());
-            int surfaceInfo[]={((QtWindowInterface)surface).isOpenGl(), surface.getId(), surface.getLeft(), surface.getTop(), surface.getRight(), surface.getBottom()};
-            outState.putIntArray("Surface_"+i, surfaceInfo);
+	        outState.putInt("Surfaces", view.getChildCount());
+	        for (int i=0;i<view.getChildCount();i++)
+	        {
+	            QtWindow surface=(QtWindow) view.getChildAt(i);
+	            Log.i(QtApplication.QtTAG,"id"+surface.getId()+","+surface.getLeft()+","+surface.getTop()+","+surface.getRight()+","+surface.getBottom());
+	            int surfaceInfo[]={((QtWindowInterface)surface).isOpenGl(), surface.getId(), surface.getLeft(), surface.getTop(), surface.getRight(), surface.getBottom()};
+	            outState.putIntArray("Surface_"+i, surfaceInfo);
+	        }
         }
     }
 
@@ -243,15 +278,27 @@ public class QtActivity extends Activity
         super.onRestoreInstanceState(savedInstanceState);
         Log.i(QtApplication.QtTAG, "onRestoreInstanceState");
         QtMainView view = QtApplication.getView();
-        int surfaces=savedInstanceState.getInt("Surfaces");
-        for (int i=0;i<surfaces;i++)
+        if (view != null)
         {
-            int surfaceInfo[]= {0,0,0,0,0,0};
-            surfaceInfo=savedInstanceState.getIntArray("Surface_"+i);
-            if (surfaceInfo[0]==1) // OpenGl Surface
-                view.addView(new QtGlWindow(this, surfaceInfo[1], surfaceInfo[2], surfaceInfo[3], surfaceInfo[4], surfaceInfo[5]),i);
-            else
-                view.addView(new QtWindow(this, surfaceInfo[1], surfaceInfo[2], surfaceInfo[3], surfaceInfo[4], surfaceInfo[5]), i);
+	        int surfaces=savedInstanceState.getInt("Surfaces");
+	        for (int i=0;i<surfaces;i++)
+	        {
+	            int surfaceInfo[]= {0,0,0,0,0,0};
+	            surfaceInfo=savedInstanceState.getIntArray("Surface_"+i);
+	            if (surfaceInfo[0]==1) // OpenGl Surface
+	                view.addView(new QtGlWindow(this, surfaceInfo[1], surfaceInfo[2], surfaceInfo[3], surfaceInfo[4], surfaceInfo[5]),i);
+	            else
+	                view.addView(new QtWindow(this, surfaceInfo[1], surfaceInfo[2], surfaceInfo[3], surfaceInfo[4], surfaceInfo[5]), i);
+	        }
         }
+    }
+    
+    void processEvents(long miliseconds)
+    {
+    	mHandler.sendMessageDelayed(mHandler.obtainMessage(ProcessEvents), miliseconds);
+    }
+    void moveToUIThread()
+    {
+    	mHandler.sendMessageAtFrontOfQueue(mHandler.obtainMessage(MoveToUIThread));
     }
 }

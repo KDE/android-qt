@@ -109,7 +109,7 @@ void QPlatformSoftwareCursor::setCursor(Qt::CursorShape shape)
 
 void QPlatformSoftwareCursor::setCursor(const QImage &image, int hotx, int hoty)
 {
-    graphic->set(&image, hotx, hoty);
+    graphic->set(image, hotx, hoty);
 }
 
 void QPlatformSoftwareCursor::setCursor(const uchar *data, const uchar *mask, int width, int height, int hotX, int hotY)
@@ -146,11 +146,13 @@ QFbScreen::QFbScreen() : cursor(0), mGeometry(), mDepth(16), mFormat(QImage::For
 
 void QFbScreen::setGeometry(QRect rect)
 {
+    qDebug()<<"QFbScreen::setGeometry";
+    delete compositePainter;
+    qDebug()<<"QFbScreen::setGeometry 1";
+    compositePainter = 0;
     delete mScreenImage;
     mGeometry = rect;
     mScreenImage = new QImage(mGeometry.size(), mFormat);
-    delete compositePainter;
-    compositePainter = 0;
     invalidateRectCache();
 }
 
@@ -161,16 +163,17 @@ void QFbScreen::setDepth(int depth)
 
 void QFbScreen::setPhysicalSize(QSize size)
 {
+    qDebug()<<"QFbScreen::setPhysicalSize";
     mPhysicalSize = size;
 }
 
 void QFbScreen::setFormat(QImage::Format format)
 {
     mFormat = format;
-    delete mScreenImage;
-    mScreenImage = new QImage(mGeometry.size(), mFormat);
     delete compositePainter;
     compositePainter = 0;
+    delete mScreenImage;
+    mScreenImage = new QImage(mGeometry.size(), mFormat);
 }
 
 QFbScreen::~QFbScreen()
@@ -353,6 +356,14 @@ void QFbScreen::lower(QPlatformWindow * surface)
     windowStack.move(index, windowStack.size() - 1);
     invalidateRectCache();
     setDirty(s->geometry());
+}
+
+QWidget * QFbScreen::topWindow()
+{
+    foreach (QFbWindow * fbw, windowStack )
+        if ( fbw->widget()->windowType()==Qt::Window || fbw->widget()->windowType()==Qt::Dialog )
+            return fbw->widget();
+    return 0;
 }
 
 QWidget * QFbScreen::topLevelAt(const QPoint & p) const

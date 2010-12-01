@@ -9,10 +9,13 @@ class QAndroidPlatformIntegration;
 
 namespace QtAndroid
 {
-    JavaVM* getJavaVM();
-    jobject getJniObject();
     void flushImage(const QPoint & pos, const QImage & image, const QRect & rect);
-    void setAndroidGraphicsSystem(QAndroidPlatformIntegration * androidGraphicsSystem);
+    void setAndroidPlatformIntegration(QAndroidPlatformIntegration * androidGraphicsSystem);
     void setQtThread(QThread * thread);
+
+    // Software keyboard support
+    void showSoftwareKeyboard();
+    void hideSoftwareKeyboard();
+    // Software keyboard support
 }
 #endif // ANDROID_APP_H

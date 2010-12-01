@@ -11,7 +11,6 @@ public class QtWindow extends View implements QtWindowInterface
 {
 	private Bitmap bitmap=null;
 	private int left, top, right, bottom;
-	private int oldx, oldy;
 
 	public QtWindow(Context context, int windowId, int l, int t, int r, int b)
 	{
@@ -65,134 +64,19 @@ public class QtWindow extends View implements QtWindowInterface
 		}
 		super.onWindowVisibilityChanged(visibility);
 	}
-	
-    private int getAction(int index, MotionEvent event)
-    {
-    	int action=event.getAction();
-		if (action == MotionEvent.ACTION_MOVE)
-		{
-			int hsz=event.getHistorySize();
-			if (hsz>0)
-			{
-				if (Math.abs(event.getX(index)-event.getHistoricalX(index, hsz-1))>1||
-						Math.abs(event.getY(index)-event.getHistoricalY(index, hsz-1))>1)
-					return 1;
-				else
-					return 2;
-			}
-			return 1;
-		}
-
-    	switch(index)
-		{
-		case 0:
-			if (action == MotionEvent.ACTION_DOWN || 
-					action == MotionEvent.ACTION_POINTER_1_DOWN)
-				return 0;
-			if (action == MotionEvent.ACTION_UP || 
-					action == MotionEvent.ACTION_POINTER_1_UP)
-				return 3;
-			break;
-		case 1:
-			if (action == MotionEvent.ACTION_POINTER_2_DOWN ||
-					action == MotionEvent.ACTION_POINTER_DOWN)
-				return 0;
-			if (action == MotionEvent.ACTION_POINTER_2_UP ||
-					action == MotionEvent.ACTION_POINTER_UP)
-				return 3;
-			break;
-		case 2:
-			if (action == MotionEvent.ACTION_POINTER_3_DOWN ||
-					action == MotionEvent.ACTION_POINTER_DOWN)
-				return 0;
-			if (action == MotionEvent.ACTION_POINTER_3_UP ||
-					action == MotionEvent.ACTION_POINTER_UP)
-				return 3;
-			break;
-		}
-		return 2;
-    }
-
-    public void sendTouchEvents(MotionEvent event)
-    {
-		QtApplication.touchBegin(getId());
-
-		for (int i=0;i<event.getPointerCount();i++)
-			QtApplication.touchAdd(getId(),event.getPointerId(i), getAction(i, event), i==0,
-					(int)event.getX(i), (int)event.getY(i), event.getSize(i),
-					event.getPressure(i));
-
-		switch(event.getAction())
-		{
-		case MotionEvent.ACTION_DOWN:
-			QtApplication.touchEnd(getId(),0);
-			break;
-		case MotionEvent.ACTION_UP:
-			QtApplication.touchEnd(getId(),2);
-			break;
-		default:
-			QtApplication.touchEnd(getId(),1);
-		}
-    }
 
 	@Override
 	public boolean onTouchEvent(MotionEvent event)
 	{
-//		Log.i("Duda",event.toString());
-		sendTouchEvents(event);
-		switch (event.getAction())
-		{
-		case MotionEvent.ACTION_UP:
-			QtApplication.mouseUp(getId(),(int) event.getX(), (int) event.getY());
-			return true;
-
-		case MotionEvent.ACTION_DOWN:
-			QtApplication.mouseDown(getId(),(int) event.getX(), (int) event.getY());
-			oldx = (int) event.getX();
-			oldy = (int) event.getY();
-			return true;
-
-		case MotionEvent.ACTION_MOVE:
-			int dx = (int) (event.getX() - oldx);
-			int dy = (int) (event.getY() - oldy);
-			if (Math.abs(dx) > 5 || Math.abs(dy) > 5)
-			{
-				QtApplication.mouseMove(getId(),(int) event.getX(), (int) event.getY());
-				oldx = (int) event.getX();
-				oldy = (int) event.getY();
-			}
-			return true;
-		}
+		QtApplication.sendTouchEvent(event, getId());
 		return true;
 	}
 
 	@Override
 	public boolean onTrackballEvent(MotionEvent event)
 	{
-		switch (event.getAction())
-		{
-		case MotionEvent.ACTION_UP:
-			QtApplication.mouseUp(getId(),(int) event.getX(), (int) event.getY());
-			return true;
-
-		case MotionEvent.ACTION_DOWN:
-			QtApplication.mouseDown(getId(),(int) event.getX(), (int) event.getY());
-			oldx = (int) event.getX();
-			oldy = (int) event.getY();
-			return true;
-
-		case MotionEvent.ACTION_MOVE:
-			int dx = (int) (event.getX() - oldx);
-			int dy = (int) (event.getY() - oldy);
-			if (Math.abs(dx) > 5 || Math.abs(dy) > 5)
-			{
-				QtApplication.mouseMove(getId(),(int) event.getX(), (int) event.getY());
-				oldx = (int) event.getX();
-				oldy = (int) event.getY();
-			}
-			return true;
-		}
-		return super.onTrackballEvent(event);
+		QtApplication.sendTrackballEvent(event, getId());
+		return true;
 	}
 
 	@Override

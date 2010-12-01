@@ -164,10 +164,9 @@ public:
     virtual QImage::Format format() const { return mFormat; }
     virtual QSize physicalSize() const { return mPhysicalSize; }
 
-    virtual void setGeometry(QRect rect);
     virtual void setDepth(int depth);
     virtual void setFormat(QImage::Format format);
-    virtual void setPhysicalSize(QSize size);
+
 
     virtual void setDirty(const QRect &rect);
 
@@ -175,10 +174,15 @@ public:
     virtual void addWindow(QFbWindow * surface);
     virtual void raise(QPlatformWindow * surface);
     virtual void lower(QPlatformWindow * surface);
+    virtual QWidget * lastTopLevel();
     virtual QWidget * topLevelAt(const QPoint & p) const;
 
     QImage * image() const { return mScreenImage; }
     QPaintDevice * paintDevice() const { return mScreenImage; }
+
+public slots:
+    virtual void setGeometry(QRect rect);
+    virtual void setPhysicalSize(QSize size);
 
 protected:
     QList<QFbWindow *> windowStack;

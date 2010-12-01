@@ -3,16 +3,147 @@ package com.nokia.qt;
 import java.io.File;
 import java.util.List;
 
+import android.app.Application;
 import android.graphics.Rect;
 import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
 
-public class QtApplication
+public class QtApplication extends Application
 {
 	public static final String QtTAG = "Qt JAVA";
 	private static QtActivity m_activity = null;
 	private static QtMainView m_view = null;
 	private static QtEgl mEgl = null;
+	public static QtSurface m_surface = null;
+	private static int oldx, oldy;
+	private static final int moveThreshold = 0;
+	private static boolean m_started = false;
+	@Override
+	public void onTerminate() {
+		if (m_started)
+			terminateQt();
+		super.onTerminate();
+	}
+	
+    static private int getAction(int index, MotionEvent event)
+    {
+    	int action=event.getAction();
+		if (action == MotionEvent.ACTION_MOVE)
+		{
+			int hsz=event.getHistorySize();
+			if (hsz>0)
+			{
+				if (Math.abs(event.getX(index)-event.getHistoricalX(index, hsz-1))>1||
+						Math.abs(event.getY(index)-event.getHistoricalY(index, hsz-1))>1)
+					return 1;
+				else
+					return 2;
+			}
+			return 1;
+		}
+
+    	switch(index)
+		{
+		case 0:
+			if (action == MotionEvent.ACTION_DOWN || 
+					action == MotionEvent.ACTION_POINTER_1_DOWN)
+				return 0;
+			if (action == MotionEvent.ACTION_UP || 
+					action == MotionEvent.ACTION_POINTER_1_UP)
+				return 3;
+			break;
+		case 1:
+			if (action == MotionEvent.ACTION_POINTER_2_DOWN ||
+					action == MotionEvent.ACTION_POINTER_DOWN)
+				return 0;
+			if (action == MotionEvent.ACTION_POINTER_2_UP ||
+					action == MotionEvent.ACTION_POINTER_UP)
+				return 3;
+			break;
+		case 2:
+			if (action == MotionEvent.ACTION_POINTER_3_DOWN ||
+					action == MotionEvent.ACTION_POINTER_DOWN)
+				return 0;
+			if (action == MotionEvent.ACTION_POINTER_3_UP ||
+					action == MotionEvent.ACTION_POINTER_UP)
+				return 3;
+			break;
+		}
+		return 2;
+    }
+
+	static public void sendTouchEvent(MotionEvent event, int id)
+	{
+		touchBegin(id);
+		for (int i=0;i<event.getPointerCount();i++)
+			touchAdd(id,event.getPointerId(i), getAction(i, event), i==0,
+					(int)event.getX(i), (int)event.getY(i), event.getSize(i),
+					event.getPressure(i));
+
+		switch(event.getAction())
+		{
+			case MotionEvent.ACTION_DOWN:
+				touchEnd(id,0);
+				break;
+			case MotionEvent.ACTION_UP:
+				touchEnd(id,2);
+				break;
+			default:
+				touchEnd(id,1);
+		}
+
+		switch (event.getAction())
+		{
+		case MotionEvent.ACTION_UP:
+			mouseUp(id,(int) event.getX(), (int) event.getY());
+			break;
+
+		case MotionEvent.ACTION_DOWN:
+			mouseDown(id,(int) event.getX(), (int) event.getY());
+			oldx = (int) event.getX();
+			oldy = (int) event.getY();
+			break;
+
+		case MotionEvent.ACTION_MOVE:
+			int dx = (int) (event.getX() - oldx);
+			int dy = (int) (event.getY() - oldy);
+			if (Math.abs(dx) > moveThreshold || Math.abs(dy) > moveThreshold)
+			{
+				mouseMove(id,(int) event.getX(), (int) event.getY());
+				oldx = (int) event.getX();
+				oldy = (int) event.getY();
+			}
+			break;
+		}
+	}
+
+	static public void sendTrackballEvent(MotionEvent event, int id)
+	{
+		switch (event.getAction())
+		{
+		case MotionEvent.ACTION_UP:
+			mouseUp(id, (int) event.getX(), (int) event.getY());
+			break;
+
+		case MotionEvent.ACTION_DOWN:
+			mouseDown(id, (int) event.getX(), (int) event.getY());
+			oldx = (int) event.getX();
+			oldy = (int) event.getY();
+			break;
+
+		case MotionEvent.ACTION_MOVE:
+			int dx = (int) (event.getX() - oldx);
+			int dy = (int) (event.getY() - oldy);
+			if (Math.abs(dx) > 5 || Math.abs(dy) > 5)
+			{
+				mouseMove(id, (int) event.getX(), (int) event.getY());
+				oldx = (int) event.getX();
+				oldy = (int) event.getY();
+			}
+			break;
+		}
+	}
 	
 	public static QtEgl getEgl()
     {
@@ -67,6 +198,7 @@ public class QtApplication
 			//InitializeOpenGL();
 			startQtAndroidPlugin();
 			startQtApp(jniProxyObject);
+			m_started=true;
 		}
 		catch (Exception e)
 		{
@@ -248,7 +380,34 @@ public class QtApplication
 	private void quitApp()
 	{
 		m_activity.finish();
-	}	
+	}
+	
+	@SuppressWarnings("unused")
+	private void processEvents(long miliseconds)
+	{
+		m_activity.processEvents(miliseconds);
+	}
+	
+	@SuppressWarnings("unused")
+	private void moveToUIThread()
+	{
+		m_activity.moveToUIThread();
+	}
+
+	@SuppressWarnings("unused")
+	private void redrawSurface(final int left, final int top, final int right, final int bottom )
+	{
+		if (m_activity == null || m_surface == null)
+			return;
+
+		m_activity.runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				m_surface.drawBitmap(new Rect(left, top, right+1, bottom+1));
+			}
+		});
+	}
+
 	// application methods
 	public static native void startQtApp(Object jniProxyObject);
 	public static native void pauseQtApp();
@@ -256,6 +415,7 @@ public class QtApplication
 	public static native void startQtAndroidPlugin();
 	public static native void quitQtAndroidPlugin();
 	public static native void setEglObject(Object eglObject);
+	public static native void terminateQt();
 	// application methods
 
 	// screen methods
@@ -285,4 +445,13 @@ public class QtApplication
 	public static native void lockWindow();
 	public static native void unlockWindow();
 	// window methods
+
+	// surface methods
+	public static native void destroySurface();
+	public static native void setSurface(Object surface);
+	public static native void lockSurface();
+	public static native void unlockSurface();
+	// surface methods
+	public static native void processQtEvents();
+	public static native void moveQtToUIThread();
 }

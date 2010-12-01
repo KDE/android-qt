@@ -44,6 +44,7 @@
 #include "qandroidplatformwindow.h"
 #include "qandroidwindowsurface.h"
 #include "qandroidinputcontext.h"
+#include "qandroidplatformeventloopintegration.h"
 
 #include "androidjnimain.h"
 #include "qabstracteventdispatcher.h"
@@ -101,6 +102,7 @@ QAndroidPlatformIntegration::QAndroidPlatformIntegration(bool useGL)
     qApp->setInputContext( new QAndroidInputContext() );
     m_useGL=useGL;
     mAndroidFDB = new QAndroidPlatformFontDatabase();
+    mAndroidPlatformEventLoop = 0;
 }
 
 QAndroidPlatformIntegration::~QAndroidPlatformIntegration()
@@ -177,6 +179,23 @@ void QAndroidPlatformIntegration::resumeApp()
 {
     if (QAbstractEventDispatcher::instance(m_mainThread))
         QAbstractEventDispatcher::instance(m_mainThread)->wakeUp();
+}
+
+QPlatformEventLoopIntegration* QAndroidPlatformIntegration::createEventLoopIntegration() const
+{
+    qDebug()<<"createEventLoopIntegration";
+    return (mAndroidPlatformEventLoop=new QAndroidPlatformEventLoopIntegration);
+}
+
+QAndroidPlatformEventLoopIntegration* QAndroidPlatformIntegration::platformEventLoopIntegration()
+{
+    return mAndroidPlatformEventLoop;
+}
+
+void QAndroidPlatformIntegration::processEvents()
+{
+    mAndroidPlatformEventLoop->processEvents();
+    QtAndroid::processEvents(mAndroidPlatformEventLoop->nextTimerEvent());
 }
 
 #ifndef QT_NO_OPENGL

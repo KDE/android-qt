@@ -40,12 +40,16 @@
 ****************************************************************************/
 
 #include "qandroidplatformintegration.h"
+#include "qandroidinputcontext.h"
 #include "qabstracteventdispatcher.h"
+#include "qbasicunixfontdatabase.h"
 #include "androidjnimain.h"
 #include <QtGui/private/qpixmap_raster_p.h>
 #include <QWindowSystemInterface>
 #include <QThread>
 #include <QPlatformWindow>
+#include <QDir>
+#include <QApplication>
 #include "qdesktopwidget.h"
 
 QT_BEGIN_NAMESPACE
@@ -55,33 +59,40 @@ int QAndroidPlatformIntegration::mDefaultGeometryHeight=455;
 int QAndroidPlatformIntegration::mDefaultPhysicalSizeWidth=50;
 int QAndroidPlatformIntegration::mDefaultPhysicalSizeHeight=71;
 
-QAndroidPlatformScreen::QAndroidPlatformScreen()
+class QAndroidPlatformFontDatabase: public QBasicUnixFontDatabase
+{
+    public:
+            virtual QString fontDir() const
+            {
+                return QLatin1String("/system/fonts");
+            }
+
+            virtual void populateFontDatabase()
+            {
+                QPlatformFontDatabase::populateFontDatabase();
+                QString fontpath = fontDir();
+
+                if(!QFile::exists(fontpath)) {
+                    qFatal("QFontDatabase: Cannot find font directory %s - is Qt installed correctly?",
+                        qPrintable(fontpath));
+                }
+
+                QDir dir(fontpath, QLatin1String("Droid*.ttf"));
+                for (int i = 0; i < int(dir.count()); ++i) {
+                    const QByteArray file = QFile::encodeName(dir.absoluteFilePath(dir[i]));
+                    addTTFile(QByteArray(), file);
+                }
+            }
+};
+
+QAndroidPlatformScreen::QAndroidPlatformScreen():QFbScreen()
 {
     mGeometry = QRect(0, 0, QAndroidPlatformIntegration::mDefaultGeometryWidth, QAndroidPlatformIntegration::mDefaultGeometryHeight);
     mFormat = QImage::Format_RGB16;
     mDepth = 16;
     setPhysicalSize(QSize(QAndroidPlatformIntegration::mDefaultPhysicalSizeWidth,
                           QAndroidPlatformIntegration::mDefaultPhysicalSizeHeight));
-    mScreenImage = new QImage(mGeometry.width(), mGeometry.height(),
-                              mFormat);
-}
-
-void QAndroidPlatformScreen::setGeometry(QRect rect)
-{
-    mGeometry = rect;
-
-    delete mScreenImage;
-    mScreenImage = new QImage(mGeometry.width(), mGeometry.height(),
-                              mFormat);
-}
-
-void QAndroidPlatformScreen::setFormat(QImage::Format format)
-{
-    mFormat = format;
-
-    delete mScreenImage;
-    mScreenImage = new QImage(mGeometry.width(), mGeometry.height(),
-                              mFormat);
+    setFormat(mFormat);
 }
 
 QRegion QAndroidPlatformScreen::doRedraw()
@@ -100,7 +111,19 @@ QAndroidPlatformIntegration::QAndroidPlatformIntegration()
     mPrimaryScreen = new QAndroidPlatformScreen();
     mScreens.append(mPrimaryScreen);
     m_mainThread=QThread::currentThread();
-    QtAndroid::setAndroidGraphicsSystem(this);
+    QtAndroid::setAndroidPlatformIntegration(this);
+    qApp->setInputContext( new QAndroidInputContext() );
+    mAndroidFDB = new QAndroidPlatformFontDatabase();
+}
+
+QAndroidPlatformIntegration::~QAndroidPlatformIntegration()
+{
+    delete mAndroidFDB;
+}
+
+QPlatformFontDatabase *QAndroidPlatformIntegration::fontDatabase() const
+{
+    return mAndroidFDB;
 }
 
 void QAndroidPlatformIntegration::setDefaultDisplayMetrics(int gw, int gh, int sw, int sh)
@@ -136,14 +159,18 @@ QPlatformWindow *QAndroidPlatformIntegration::createPlatformWindow(QWidget *widg
 
 void QAndroidPlatformIntegration::setDesktopSize(int width, int height)
 {
+    qDebug()<<"setDesktopSize";
     if (mPrimaryScreen)
-        mPrimaryScreen->setGeometry(QRect(0,0,width, height));
+        QMetaObject::invokeMethod(mPrimaryScreen, "setGeometry", Qt::AutoConnection, Q_ARG(QRect, QRect(0,0,width, height)));
+    qDebug()<<"setDesktopSize done";
 }
 
 void QAndroidPlatformIntegration::setDisplayMetrics(int width, int height)
 {
+    qDebug()<<"setDisplayMetrics";
     if (mPrimaryScreen)
-        mPrimaryScreen->setPhysicalSize(QSize(width, height));
+        QMetaObject::invokeMethod(mPrimaryScreen, "setPhysicalSize", Qt::AutoConnection, Q_ARG(QSize, QSize(width, height)));
+    qDebug()<<"setDisplayMetrics done";
 }
 
 void QAndroidPlatformIntegration::pauseApp()

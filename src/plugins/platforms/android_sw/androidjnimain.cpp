@@ -18,17 +18,12 @@
 
 #include <qabstracteventdispatcher.h>
 
-#ifdef JNIGRPAHICS
-#   include <android/bitmap.h>
-    static jmethodID m_redrawSurfaceMethodID=0;
-#else
-    static jmethodID m_flushImageMethodID=0;
-#endif
+#include <android/bitmap.h>
+static jmethodID m_redrawSurfaceMethodID=0;
 
 Q_IMPORT_PLUGIN (QtAndroid)
 
 static JavaVM *m_javaVM = NULL;
-static JNIEnv *m_env = NULL;
 static jobject m_applicationObject  = NULL;
 static jobject m_surface = NULL;
 static QList<QWindowSystemInterface::TouchPoint> m_touchPoints;
@@ -44,10 +39,13 @@ static const char *QtApplicationClassPathName = "com/nokia/qt/QtApplication";
 
 static volatile bool m_pauseApplication;
 
+// Software keyboard support
+static jmethodID m_showSoftwareKeyboardMethodID=0;
+static jmethodID m_hideSoftwareKeyboardMethodID=0;
+// Software keyboard support
 
 static inline void checkPauseApplication()
 {
-    qDebug()<<"checkPauseApplication";
     m_pauseApplicationMutex.lock();
     if (m_pauseApplication)
     {
@@ -62,19 +60,18 @@ static inline void checkPauseApplication()
     }
     else
         m_pauseApplicationMutex.unlock();
-    qDebug()<<"checkPauseApplication !!!";
 }
 
 namespace QtAndroid
 {
     void flushImage(const QPoint & pos, const QImage & image, const QRect & destinationRect)
     {
-        checkPauseApplication();
-        JNIEnv* env;
+//        checkPauseApplication();
         QMutexLocker locker(&m_surfaceMutex);
         if (!m_surface)
             return;
 
+        JNIEnv* env;
         if (m_javaVM->AttachCurrentThread(&env, NULL)<0)
         {
             qCritical()<<"AttachCurrentThread failed";
@@ -82,7 +79,6 @@ namespace QtAndroid
         }
 
         int bpp=2;
-#ifdef JNIGRPAHICS
         AndroidBitmapInfo  info;
         int ret;
 
@@ -115,7 +111,6 @@ namespace QtAndroid
         unsigned sposy=pos.y()+destinationRect.y();
 
         screenBits+=sposy*sbpl;
-#endif
 
         unsigned ibpl=image.bytesPerLine();
         unsigned iposx=destinationRect.x();
@@ -124,19 +119,12 @@ namespace QtAndroid
         unsigned char * imageBits=(unsigned char *)((const uchar*)image.bits());
         imageBits+=iposy*ibpl;
 
-#ifdef JNIGRPAHICS
         unsigned width=swidth-sposx<(unsigned)destinationRect.width()?swidth-sposx:destinationRect.width();
         unsigned height=sheight-sposy<(unsigned)destinationRect.height()?sheight-sposy:destinationRect.height();
-#else
-        Q_UNUSED(pos)
-        unsigned width=destinationRect.width();
-        unsigned height=destinationRect.height();
-#endif
 
         //qDebug()<<ibpl<<sbpl<<sxpos<<sypos<<width<<height<<sxpos+width<<sypos+height;
 
         jclass object=env->GetObjectClass(m_applicationObject);
-#ifdef JNIGRPAHICS
         for (unsigned y=0;y<height;y++)
             memcpy(screenBits+y*sbpl+sposx*bpp,
                     imageBits+y*ibpl+iposx*bpp,
@@ -147,100 +135,98 @@ namespace QtAndroid
                             (jint)destinationRect.top(),
                             (jint)destinationRect.right(),
                             (jint)destinationRect.bottom());
-#else
-        jshort* screenBits=(jshort*)malloc(width*height*sizeof(jshort));
-        for (unsigned y=0;y<height;y++)
-            memcpy(screenBits+y*width,imageBits+y*ibpl+iposx*bpp,width*bpp);
-        jshortArray img=env->NewShortArray(width*height);
-        env->SetShortArrayRegion(img,0,width*height, screenBits);
-        env->CallVoidMethod(object, m_flushImageMethodID,
-                             img,
-                             (jint)destinationRect.left(),
-                             (jint)destinationRect.top(),
-                             (jint)destinationRect.right(),
-                             (jint)destinationRect.bottom());
-        env->DeleteLocalRef(img);
-        free(screenBits);
-#endif
         m_javaVM->DetachCurrentThread();
     }
 
-    void setAndroidGraphicsSystem(QAndroidPlatformIntegration * androidGraphicsSystem)
+    void setAndroidPlatformIntegration(QAndroidPlatformIntegration * androidGraphicsSystem)
     {
         mAndroidGraphicsSystem=androidGraphicsSystem;
     }
+
+    void showSoftwareKeyboard()
+    {
+        JNIEnv* env;
+        if (m_javaVM->AttachCurrentThread(&env, NULL)<0)
+        {
+            qCritical()<<"AttachCurrentThread failed";
+            return;
+        }
+        qDebug()<<"showSoftwareKeyboard";
+        env->CallVoidMethod(m_applicationObject, m_showSoftwareKeyboardMethodID);
+        m_javaVM->DetachCurrentThread();
+    }
+
+    void hideSoftwareKeyboard()
+    {
+        JNIEnv* env;
+        if (m_javaVM->AttachCurrentThread(&env, NULL)<0)
+        {
+            qCritical()<<"AttachCurrentThread failed";
+            return;
+        }
+        qDebug()<<"hideSoftwareKeyboard";
+        env->CallVoidMethod(m_applicationObject, m_hideSoftwareKeyboardMethodID);
+        m_javaVM->DetachCurrentThread();
+    }
+
 }
 
-extern "C" int main(int, char **); //use the standard main method to start the application
-static void * startMainMethod(void * /*data*/)
+static void startQtAndroidPlugin(JNIEnv* /*env*/, jobject /*object*/)
 {
-    char ** params;
-    params=(char**)malloc(sizeof(char*)*2);
-    params[0]=(char*)malloc(20);
-    strcpy(params[0],"QtApp");
-    params[1]=(char*)malloc(20);
-    strcpy(params[1],"-platform");
-    params[2]=(char*)malloc(20);
-    strcpy(params[2],"android");
-    int ret = main(3, params);
-    free(params[2]);
-    free(params[1]);
-    free(params[0]);
-    free(params);
-    Q_UNUSED(ret);
-    m_quitAppSemaphore.release();
-    return NULL;
-}
-
-static jboolean startQtApp(JNIEnv* /*env*/, jobject /*object*/)
-{
-#ifdef JNIGRPAHICS
-        m_surface=0;
-#endif
+    m_surface=0;
     mAndroidGraphicsSystem=0;
-    pthread_t appThread;
-    return pthread_create(&appThread, NULL, startMainMethod, NULL)==0;
 }
 
 static void pauseQtApp(JNIEnv */*env*/, jobject /*thiz*/)
 {
-    m_surfaceMutex.lock();
-    m_pauseApplicationMutex.lock();
-    if (mAndroidGraphicsSystem)
-        mAndroidGraphicsSystem->pauseApp();
-    m_pauseApplication=true;
-    m_pauseApplicationMutex.unlock();
-    m_surfaceMutex.unlock();
+//    m_surfaceMutex.lock();
+//    m_pauseApplicationMutex.lock();
+//    if (mAndroidGraphicsSystem)
+//        mAndroidGraphicsSystem->pauseApp();
+//    m_pauseApplication=true;
+//    m_pauseApplicationMutex.unlock();
+//    m_surfaceMutex.unlock();
 }
 
 static void resumeQtApp(JNIEnv */*env*/, jobject /*thiz*/)
 {
-    m_surfaceMutex.lock();
-    m_pauseApplicationMutex.lock();
-    if (mAndroidGraphicsSystem)
-        mAndroidGraphicsSystem->resumeApp();
+//    m_surfaceMutex.lock();
+//    m_pauseApplicationMutex.lock();
+//    if (mAndroidGraphicsSystem)
+//        mAndroidGraphicsSystem->resumeApp();
 
-    if (m_pauseApplication)
-        m_pauseApplicationSemaphore.release();
+//    if (m_pauseApplication)
+//        m_pauseApplicationSemaphore.release();
 
-    m_pauseApplicationMutex.unlock();
-    m_surfaceMutex.unlock();
+//    m_pauseApplicationMutex.unlock();
+//    m_surfaceMutex.unlock();
 }
 
-static void quitQtApp(JNIEnv* /*env*/, jclass /*clazz*/)
+static void quitQtAndroidPlugin(JNIEnv* env, jclass /*clazz*/)
 {
-    QApplication::postEvent(qApp, new QEvent(QEvent::Quit));
-    m_quitAppSemaphore.acquire();
-    qDebug()<<"***** quitQtApp *****";
+    if (m_surface)
+    {
+        env->DeleteGlobalRef(m_surface);
+        m_surface=0;
+    }
+    mAndroidGraphicsSystem=0;
+}
+
+static void terminateQt(JNIEnv* env, jclass /*clazz*/)
+{
+    env->DeleteGlobalRef(m_applicationObject);
 }
 
 static void setSurface(JNIEnv *env, jobject /*thiz*/, jobject jSurface)
 {
+    if (m_surface)
+        env->DeleteGlobalRef(m_surface);
     m_surface = env->NewGlobalRef(jSurface);
 }
 
-static void destroySurface(JNIEnv */*env*/, jobject /*thiz*/)
+static void destroySurface(JNIEnv *env, jobject /*thiz*/)
 {
+    env->DeleteGlobalRef(m_surface);
     m_surface = 0;
 }
 
@@ -257,9 +243,9 @@ static void setDisplayMetrics(JNIEnv* /*env*/, jclass /*clazz*/,
                                                      qRound((double)heightPixels / ydpi *100  / 2.54 ));
     else
     {
-        mAndroidGraphicsSystem->setDesktopSize(desktopWidthPixels,desktopHeightPixels);
         mAndroidGraphicsSystem->setDisplayMetrics(qRound((double)widthPixels   / xdpi * 100 / 2.54 ),
                                                   qRound((double)heightPixels / ydpi *100  / 2.54 ));
+        mAndroidGraphicsSystem->setDesktopSize(desktopWidthPixels,desktopHeightPixels);
         if (m_surface)
         {
             QWindowSystemInterface::handleScreenAvailableGeometryChange(0);
@@ -268,33 +254,37 @@ static void setDisplayMetrics(JNIEnv* /*env*/, jclass /*clazz*/,
     }
 }
 
-
-static void mouseDown(JNIEnv */*env*/, jobject /*thiz*/, jint x, jint y)
+static void mouseDown(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/, jint x, jint y)
 {
-    QWindowSystemInterface::handleMouseEvent(0, QEvent::MouseButtonRelease,QPoint(x,y),QPoint(x,y),
-                                                             Qt::MouseButtons(Qt::LeftButton));
+    qDebug()<<"mouseDown";
+    QWindowSystemInterface::handleMouseEvent(0,
+                                             QEvent::MouseButtonPress,QPoint(x,y),QPoint(x,y),
+                                             Qt::MouseButtons(Qt::LeftButton));
 }
 
-static void mouseUp(JNIEnv */*env*/, jobject /*thiz*/, jint x, jint y)
+static void mouseUp(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/, jint x, jint y)
 {
-    QWindowSystemInterface::handleMouseEvent(0, QEvent::MouseButtonRelease,QPoint(x,y),QPoint(x,y),
-                                                             Qt::MouseButtons(Qt::NoButton));
+    qDebug()<<"mouseUp";
+    QWindowSystemInterface::handleMouseEvent(0,
+                                             QEvent::MouseButtonRelease,QPoint(x,y),QPoint(x,y),
+                                             Qt::MouseButtons(Qt::NoButton));
 }
 
-static void mouseMove(JNIEnv */*env*/, jobject /*thiz*/, jint x, jint y)
+static void mouseMove(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/, jint x, jint y)
 {
-    QWindowSystemInterface::handleMouseEvent(0, QEvent::MouseButtonRelease,QPoint(x,y),QPoint(x,y),
-                                                             Qt::MouseButtons(Qt::LeftButton));
+    QWindowSystemInterface::handleMouseEvent(0,
+                                             QEvent::MouseButtonPress,QPoint(x,y),QPoint(x,y),
+                                             Qt::MouseButtons(Qt::LeftButton));
 }
 
-static void touchBegin(JNIEnv */*env*/, jobject /*thiz*/)
+static void touchBegin(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/)
 {
     m_touchPoints.clear();
 }
 
-static void touchAdd(JNIEnv */*env*/, jobject /*thiz*/, jint id, jint action, jboolean primary, jint x, jint y, jfloat size, jfloat pressure)
+static void touchAdd(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/, jint id, jint action, jboolean primary, jint x, jint y, jfloat size, jfloat pressure)
 {
-    Qt::TouchPointStates state=Qt::TouchPointStationary;
+    Qt::TouchPointState state=Qt::TouchPointStationary;
     switch(action)
     {
     case 0:
@@ -316,21 +306,14 @@ static void touchAdd(JNIEnv */*env*/, jobject /*thiz*/, jint id, jint action, jb
     touchPoint.normalPosition=QPointF((double)x/m_desktopWidthPixels, (double)y/m_desktopHeightPixels);
     touchPoint.isPrimary=primary;
     touchPoint.state=state;
-    if (!size)
-        size=0.1;
     touchPoint.area=QRectF(x-((double)m_desktopWidthPixels*size)/2,
                            y-((double)m_desktopHeightPixels*size)/2,
                            (double)m_desktopWidthPixels*size,
                            (double)m_desktopHeightPixels*size);
     m_touchPoints.push_back(touchPoint);
-//    if (id==1)
-//        qDebug()<<"Duda"<<x<<y<<touchPoint.normalPosition;
-//        qDebug()<<"Duda"<<id<<action<<primary<<x<<y<<size<<pressure
-//                <<touchPoint.area<<touchPoint.normalPosition
-//                <<m_desktopWidthPixels<<m_desktopHeightPixels;
 }
 
-static void touchEnd(JNIEnv */*env*/, jobject /*thiz*/, jint action)
+static void touchEnd(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/, jint action)
 {
     QEvent::Type eventType=QEvent::None;
     switch (action)
@@ -367,6 +350,7 @@ static int mapAndroidKey(int key)
             return Qt::Key_Apostrophe;
 
         case 0x00000004: //KEYCODE_BACK
+            qDebug()<<"KEYCODE_BACK !!!!";
             return Qt::Key_Close;
 
         case 0x00000049:
@@ -506,14 +490,17 @@ static int mapAndroidKey(int key)
         case 0x0000004f: // KEYCODE_HEADSETHOOK ?!?!?
         case 0x00000044: // KEYCODE_GRAVE ?!?!?
         case 0x00000050: // KEYCODE_FOCUS ?!?!?
-        default:
             return Qt::Key_Any;
+
+        default:
+            return 0;
 
     }
 }
 
 static void keyDown(JNIEnv */*env*/, jobject /*thiz*/, jint key, jint unicode, jint modifier)
 {
+    qDebug()<<"keyDown";
     Qt::KeyboardModifiers modifiers;
     if (modifier & 1)
         modifiers|=Qt::AltModifier;
@@ -523,11 +510,20 @@ static void keyDown(JNIEnv */*env*/, jobject /*thiz*/, jint key, jint unicode, j
 
     if (modifier & 4)
         modifiers|=Qt::MetaModifier;
-    QWindowSystemInterface::handleKeyEvent(0, QEvent::KeyPress, mapAndroidKey(key), modifiers, QChar(unicode),true);
+
+    int mappedKey=mapAndroidKey(key);
+//    if (mappedKey==Qt::Key_Close)
+//    {
+//        qDebug()<<"handleCloseEvent";
+//        QWindowSystemInterface::handleCloseEvent(QApplication::topLevelWidgets().last());
+//    }
+//    else
+    QWindowSystemInterface::handleKeyEvent(0, QEvent::KeyPress, mappedKey, modifiers, QChar(unicode),true);
 }
 
 static void keyUp(JNIEnv */*env*/, jobject /*thiz*/, jint key, jint unicode, jint modifier)
 {
+    qDebug()<<"keyUp";
     Qt::KeyboardModifiers modifiers;
     if (modifier & 1)
         modifiers|=Qt::AltModifier;
@@ -538,7 +534,14 @@ static void keyUp(JNIEnv */*env*/, jobject /*thiz*/, jint key, jint unicode, jin
     if (modifier & 4)
         modifiers|=Qt::MetaModifier;
 
-    QWindowSystemInterface::handleKeyEvent(0, QEvent::KeyRelease, mapAndroidKey(key), modifiers, QChar(unicode),true);
+    int mappedKey=mapAndroidKey(key);
+    if (mappedKey==Qt::Key_Close)
+    {
+        qDebug()<<"handleCloseEvent"<<mAndroidGraphicsSystem->getPrimaryScreen()->lastTopLevel();
+        QWindowSystemInterface::handleCloseEvent(mAndroidGraphicsSystem->getPrimaryScreen()->lastTopLevel());
+    }
+    else
+        QWindowSystemInterface::handleKeyEvent(0, QEvent::KeyRelease, mapAndroidKey(key), modifiers, QChar(unicode),true);
 }
 
 static void lockSurface(JNIEnv */*env*/, jobject /*thiz*/)
@@ -552,21 +555,22 @@ static void unlockSurface(JNIEnv */*env*/, jobject /*thiz*/)
 }
 
 static JNINativeMethod methods[] = {
-    {"startQtApp", "()V", (void *)startQtApp},
+    {"startQtAndroidPlugin", "()V", (void *)startQtAndroidPlugin},
     {"pauseQtApp", "()V", (void *)pauseQtApp},
     {"resumeQtApp", "()V", (void *)resumeQtApp},
-    {"quitQtApp", "()V", (void *)quitQtApp},
+    {"quitQtAndroidPlugin", "()V", (void *)quitQtAndroidPlugin},
+    {"terminateQt", "()V", (void *)terminateQt},
     {"setDisplayMetrics", "(IIIIFF)V", (void *)setDisplayMetrics},
     {"setSurface", "(Ljava/lang/Object;)V", (void *)setSurface},
     {"destroySurface", "()V", (void *)destroySurface},
     {"lockSurface", "()V", (void *)lockSurface},
     {"unlockSurface", "()V", (void *)unlockSurface},
-    {"touchBegin","()V",(void*)touchBegin},
-    {"touchAdd","(IIZIIFF)V",(void*)touchAdd},
-    {"touchEnd","(I)V",(void*)touchEnd},
-    {"mouseDown", "(II)V", (void *)mouseDown},
-    {"mouseUp", "(II)V", (void *)mouseUp},
-    {"mouseMove", "(II)V", (void *)mouseMove},
+    {"touchBegin","(I)V",(void*)touchBegin},
+    {"touchAdd","(IIIZIIFF)V",(void*)touchAdd},
+    {"touchEnd","(II)V",(void*)touchEnd},
+    {"mouseDown", "(III)V", (void *)mouseDown},
+    {"mouseUp", "(III)V", (void *)mouseUp},
+    {"mouseMove", "(III)V", (void *)mouseMove},
     {"keyDown", "(III)V", (void *)keyDown},
     {"keyUp", "(III)V", (void *)keyUp}
 };
@@ -592,13 +596,9 @@ static int registerNativeMethods(JNIEnv* env, const char* className,
         return JNI_FALSE;
     }
     m_applicationObject = env->NewGlobalRef(clazz);
-
-#ifdef JNIGRPAHICS
     m_redrawSurfaceMethodID = env->GetMethodID((jclass)m_applicationObject, "redrawSurface", "(IIII)V");
-#else
-    m_flushImageMethodID = env->GetMethodID((jclass)m_applicationObject, "flushImage", "([SIIII)V");
-#endif
-
+    m_showSoftwareKeyboardMethodID = env->GetMethodID((jclass)m_applicationObject, "showSoftwareKeyboard", "()V");
+    m_hideSoftwareKeyboardMethodID = env->GetMethodID((jclass)m_applicationObject, "hideSoftwareKeyboard", "()V");
     return JNI_TRUE;
 }
 
@@ -630,8 +630,8 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* /*reserved*/)
         __android_log_print(ANDROID_LOG_FATAL,"Qt","GetEnv failed");
         return -1;
     }
-    m_env = uenv.nativeEnvironment;
-    if (!registerNatives(m_env))
+    JNIEnv *env = uenv.nativeEnvironment;
+    if (!registerNatives(env))
     {
         __android_log_print(ANDROID_LOG_FATAL, "Qt", "registerNatives failed");
         return -1;
