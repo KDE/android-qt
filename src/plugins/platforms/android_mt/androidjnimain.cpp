@@ -41,7 +41,6 @@ static jmethodID m_setWindowTitleMethodID=0;
 static jmethodID m_raiseWindowMethodID=0;
 static jmethodID m_redrawWindowMethodID=0;
 static jmethodID m_processEventsMethodID=0;
-static jmethodID m_moveToUIThreadMethodID=0;
 // Java window methods
 
 // Java EGL methods
@@ -56,6 +55,8 @@ static jmethodID m_swapBuffersMethodID=0;
 static jmethodID m_showSoftwareKeyboardMethodID=0;
 static jmethodID m_hideSoftwareKeyboardMethodID=0;
 // Software keyboard support
+
+static QThread * m_uiThread;
 
 struct TLWStruct
 {
@@ -99,17 +100,9 @@ namespace QtAndroid
         m_env->CallVoidMethod(m_applicationObject, m_processEventsMethodID, (jlong)miliseconds);
     }
 
-    void moveToUiThread()
+    QThread * uiThread()
     {
-        qDebug()<<"moveToUiThread";
-        JNIEnv* env;
-        if (m_javaVM->AttachCurrentThread(&env, NULL)<0)
-        {
-            qCritical()<<"AttachCurrentThread failed";
-            return;
-        }
-        env->CallVoidMethod(m_applicationObject, m_moveToUIThreadMethodID);
-        m_javaVM->DetachCurrentThread();
+        return m_uiThread;
     }
 
     void flushImage(int windowId, const QPoint & pos, const QImage & image, const QRect & destinationRect)
@@ -312,6 +305,7 @@ static void startQtAndroidPlugin(JNIEnv* env, jobject /*object*/)
     m_windows.clear();
     m_androidPlatformIntegration=0;
     m_pauseApplication=false;
+    m_uiThread = QThread::currentThread();
     qDebug()<<"startQtAndroidPlugin";
 }
 
@@ -351,11 +345,6 @@ static void quitQtAndroidPlugin(JNIEnv* /*env*/, jclass /*clazz*/)
 static void processQtEvents()
 {
     m_androidPlatformIntegration->processEvents();
-}
-
-static void moveQtToUIThread()
-{
-    qApp->moveToThread(QThread::currentThread());
 }
 
 static void setDisplayMetrics(JNIEnv* /*env*/, jclass /*clazz*/,
@@ -728,8 +717,7 @@ static JNINativeMethod methods[] = {
     {"mouseMove", "(III)V", (void *)mouseMove},
     {"keyDown", "(III)V", (void *)keyDown},
     {"keyUp", "(III)V", (void *)keyUp},
-    {"processQtEvents", "()V", (void *)processQtEvents},
-    {"moveQtToUIThread", "()V", (void *)moveQtToUIThread}
+    {"processQtEvents", "()V", (void *)processQtEvents}
 };
 
 /*
@@ -758,7 +746,6 @@ static int registerNativeMethods(JNIEnv* env, const char* className,
     m_showSoftwareKeyboardMethodID = env->GetMethodID((jclass)m_applicationObject, "showSoftwareKeyboard", "()V");
     m_hideSoftwareKeyboardMethodID = env->GetMethodID((jclass)m_applicationObject, "hideSoftwareKeyboard", "()V");
     m_processEventsMethodID = env->GetMethodID((jclass)m_applicationObject, "processEvents","(J)V");
-    m_moveToUIThreadMethodID = env->GetMethodID((jclass)m_applicationObject, "moveToUIThread","()V");
     return JNI_TRUE;
 }
 

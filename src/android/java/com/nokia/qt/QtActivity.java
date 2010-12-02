@@ -31,7 +31,6 @@ public class QtActivity extends Activity
     private int lastChar=0;
    
     private static final int ProcessEvents = 1;
-    private static final int MoveToUIThread = 2;
 	private Handler mHandler = new Handler()
 	{
 		@Override
@@ -41,9 +40,6 @@ public class QtActivity extends Activity
 			{
 				case ProcessEvents:
 					QtApplication.processQtEvents();
-					break;
-				case MoveToUIThread:
-					QtApplication.moveQtToUIThread();
 					break;
 			}
 		}
@@ -165,7 +161,6 @@ public class QtActivity extends Activity
         lastChar = lc;
         if (keyCode != KeyEvent.KEYCODE_BACK)
         	QtApplication.keyDown(keyCode, c, event.getMetaState());
-//            return super.onKeyDown(keyCode, event);
         return true;
     }
 
@@ -176,8 +171,6 @@ public class QtActivity extends Activity
     {
     	metaState = MetaKeyKeyListener.handleKeyUp(metaState, keyCode, event);
         QtApplication.keyUp(keyCode, event.getUnicodeChar(), event.getMetaState());
-//		if (keyCode == KeyEvent.KEYCODE_BACK)
-//			return super.onKeyUp(keyCode, event);
         return true;
     }
 
@@ -296,9 +289,5 @@ public class QtActivity extends Activity
     void processEvents(long miliseconds)
     {
     	mHandler.sendMessageDelayed(mHandler.obtainMessage(ProcessEvents), miliseconds);
-    }
-    void moveToUIThread()
-    {
-    	mHandler.sendMessageAtFrontOfQueue(mHandler.obtainMessage(MoveToUIThread));
     }
 }

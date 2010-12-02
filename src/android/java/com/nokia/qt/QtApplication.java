@@ -389,12 +389,6 @@ public class QtApplication extends Application
 	}
 	
 	@SuppressWarnings("unused")
-	private void moveToUIThread()
-	{
-		m_activity.moveToUIThread();
-	}
-
-	@SuppressWarnings("unused")
 	private void redrawSurface(final int left, final int top, final int right, final int bottom )
 	{
 		if (m_activity == null || m_surface == null)
@@ -453,5 +447,4 @@ public class QtApplication extends Application
 	public static native void unlockSurface();
 	// surface methods
 	public static native void processQtEvents();
-	public static native void moveQtToUIThread();
 }

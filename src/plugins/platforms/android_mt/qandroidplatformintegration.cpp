@@ -195,7 +195,6 @@ QAndroidPlatformEventLoopIntegration* QAndroidPlatformIntegration::platformEvent
 void QAndroidPlatformIntegration::processEvents()
 {
     mAndroidPlatformEventLoop->processEvents();
-    QtAndroid::processEvents(mAndroidPlatformEventLoop->nextTimerEvent());
 }
 
 #ifndef QT_NO_OPENGL

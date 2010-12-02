@@ -44,6 +44,6 @@ namespace QtAndroid
     bool hasOpenGL();
 
     void processEvents(qint64 miliseconds);
-    void moveToUiThread();
+    QThread * uiThread();
 }
 #endif // ANDROID_APP_H

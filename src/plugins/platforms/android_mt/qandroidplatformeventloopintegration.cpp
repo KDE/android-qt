@@ -8,7 +8,7 @@ void QAndroidPlatformEventLoopIntegration::startEventLoop()
 {
     // this function will be called from main method thread.
     m_mainMethodThread = QThread::currentThread();
-    QtAndroid::moveToUiThread();// trigger migration of QApplication to UI thread.
+    qApp->moveToThread(QtAndroid::uiThread()); // trigger migration of QApplication to UI thread.
     m_mainMethodSemaphore.acquire();// block the main method until QApplication will quit
 }
 
@@ -21,5 +21,5 @@ void QAndroidPlatformEventLoopIntegration::quitEventLoop()
 
 void QAndroidPlatformEventLoopIntegration::qtNeedsToProcessEvents()
 {
-    QtAndroid::processEvents(0);
+    QtAndroid::processEvents(nextTimerEvent());
 }
