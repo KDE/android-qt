@@ -18,7 +18,7 @@ import android.view.inputmethod.InputMethodManager;
 public class QtActivity extends Activity
 {
 
-    public enum QtLibrary {
+	public enum QtLibrary {
         QtCore, QtNetwork, QtXml, QtXmlPatterns, QtScript, QtSql, QtGui, QtOpenGL, QtSvg, QtScriptTools, QtDeclarative, QtMultimedia, QtWebKit, QtAndroid_mw, QtAndroid_sw, QtAndroidBridge
     }
     private boolean singleWindow=true;
@@ -64,7 +64,7 @@ public class QtActivity extends Activity
         if (singleWindow)
         	addQtLibrary(QtLibrary.QtAndroid_sw);
         else
-        	addQtLibrary(QtLibrary.QtAndroid);
+        	addQtLibrary(QtLibrary.QtAndroid_mw);
         addQtLibrary(QtLibrary.QtAndroidBridge);
         QtApplication.setActivity(this);
     }
