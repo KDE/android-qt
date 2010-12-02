@@ -19,7 +19,7 @@ public class QtActivity extends Activity
 {
 
     public enum QtLibrary {
-        QtCore, QtNetwork, QtXml, QtXmlPatterns, QtScript, QtSql, QtGui, QtOpenGL, QtSvg, QtScriptTools, QtDeclarative, QtMultimedia, QtWebKit, QtAndroid, QtAndroidMt, QtAndroid_sw, QtAndroidBridge
+        QtCore, QtNetwork, QtXml, QtXmlPatterns, QtScript, QtSql, QtGui, QtOpenGL, QtSvg, QtScriptTools, QtDeclarative, QtMultimedia, QtWebKit, QtAndroid_mw, QtAndroid_sw, QtAndroidBridge
     }
     private boolean singleWindow=true;
     private Object jniProxyObject = null;

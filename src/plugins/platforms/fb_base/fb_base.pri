@@ -1,2 +1,2 @@
-SOURCES += ../fb_base/fb_base.cpp
-HEADERS += ../fb_base/fb_base.h
+SOURCES += $$QT_SOURCE_TREE/src/plugins/platforms/fb_base/fb_base.cpp
+HEADERS += $$QT_SOURCE_TREE/src/plugins/platforms/fb_base/fb_base.h

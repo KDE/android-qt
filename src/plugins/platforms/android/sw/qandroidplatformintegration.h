@@ -43,7 +43,7 @@
 #define QGRAPHICSSYSTEM_MINIMAL_H
 
 #include <QPlatformIntegration>
-#include "../fb_base/fb_base.h"
+#include "../../fb_base/fb_base.h"
 #include <jni.h>
 
 QT_BEGIN_NAMESPACE

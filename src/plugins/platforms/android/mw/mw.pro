@@ -1,18 +1,18 @@
-TARGET = QtAndroid
+TARGET = QtAndroid_mw
 
-include(../../qpluginbase.pri)
+include(../../../qpluginbase.pri)
 
 DEFINES = QT_STATICPLUGIN
 
-include(../fontdatabases/basicunix/basicunix.pri)
+include(../../fontdatabases/basicunix/basicunix.pri)
 
 CONFIG += dll
 DESTDIR = $$QMAKE_LIBDIR_QT
 
 CONFIG(android-8) : LIBS += -ljnigraphics
 else{
-                    INCLUDEPATH += $$QT_SOURCE_TREE/src/plugins/platforms/android/native/include
-                    SOURCES += native/graphics/jni/bitmap.cpp
+                    INCLUDEPATH += $$QT_SOURCE_TREE/src/plugins/platforms/android/common/native/include
+                    SOURCES += ../common/native/graphics/jni/bitmap.cpp
 CONFIG(android-4) : LIBS += -landroid_runtime -lsgl
              else : LIBS += -landroid_runtime -lskia
 }
