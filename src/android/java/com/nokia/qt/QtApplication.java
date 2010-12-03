@@ -352,7 +352,10 @@ public class QtApplication extends Application
 	private void showSoftwareKeyboard()
 	{
 		if (m_activity == null)
+		{
+			updateAllWindows();
 			return;
+		}
 
 		m_activity.runOnUiThread(new Runnable() {
 			@Override
@@ -366,7 +369,10 @@ public class QtApplication extends Application
 	private void hideSoftwareKeyboard()
 	{
 		if (m_activity == null)
+		{
+			updateAllWindows();
 			return;
+		}
 
 		m_activity.runOnUiThread(new Runnable() {
 			@Override
@@ -392,12 +398,36 @@ public class QtApplication extends Application
 	private void redrawSurface(final int left, final int top, final int right, final int bottom )
 	{
 		if (m_activity == null || m_surface == null)
+		{
+			updateAllWindows();
 			return;
+		}
 
 		m_activity.runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
-				m_surface.drawBitmap(new Rect(left, top, right+1, bottom+1));
+				if (m_surface!=null)
+					m_surface.drawBitmap(new Rect(left, top, right+1, bottom+1));
+				else
+					updateAllWindows();
+			}
+		});
+	}
+
+	@SuppressWarnings("unused")
+	private void enterFullScreen()
+	{
+		if (m_activity == null)
+		{
+			updateAllWindows();
+			return;
+		}
+
+		m_activity.runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				m_activity.enterFullScreen();
+				updateAllWindows();
 			}
 		});
 	}
@@ -438,6 +468,7 @@ public class QtApplication extends Application
 	public static native void windowDestroyed(int id);
 	public static native void lockWindow();
 	public static native void unlockWindow();
+	public static native void updateAllWindows();
 	// window methods
 
 	// surface methods

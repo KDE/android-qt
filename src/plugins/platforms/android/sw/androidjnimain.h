@@ -13,6 +13,8 @@ namespace QtAndroid
     void setAndroidPlatformIntegration(QAndroidPlatformIntegration * androidGraphicsSystem);
     void setQtThread(QThread * thread);
 
+    void enterFullScreen();
+
     // Software keyboard support
     void showSoftwareKeyboard();
     void hideSoftwareKeyboard();

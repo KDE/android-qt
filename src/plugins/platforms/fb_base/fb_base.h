@@ -148,7 +148,6 @@ protected:
     QRect oldGeometry;
     bool visibleFlag;
     Qt::WindowFlags flags;
-
     WId windowId;
 };
 

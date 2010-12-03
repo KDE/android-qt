@@ -44,6 +44,8 @@ static jmethodID m_showSoftwareKeyboardMethodID=0;
 static jmethodID m_hideSoftwareKeyboardMethodID=0;
 // Software keyboard support
 
+static jmethodID m_enterFullScreenMethodID=0;
+
 static inline void checkPauseApplication()
 {
     m_pauseApplicationMutex.lock();
@@ -66,7 +68,7 @@ namespace QtAndroid
 {
     void flushImage(const QPoint & pos, const QImage & image, const QRect & destinationRect)
     {
-//        checkPauseApplication();
+        checkPauseApplication();
         QMutexLocker locker(&m_surfaceMutex);
         if (!m_surface)
             return;
@@ -122,14 +124,13 @@ namespace QtAndroid
         unsigned width=swidth-sposx<(unsigned)destinationRect.width()?swidth-sposx:destinationRect.width();
         unsigned height=sheight-sposy<(unsigned)destinationRect.height()?sheight-sposy:destinationRect.height();
 
-        //qDebug()<<ibpl<<sbpl<<sxpos<<sypos<<width<<height<<sxpos+width<<sypos+height;
-
         jclass object=env->GetObjectClass(m_applicationObject);
         for (unsigned y=0;y<height;y++)
             memcpy(screenBits+y*sbpl+sposx*bpp,
                     imageBits+y*ibpl+iposx*bpp,
                    width*bpp);
         AndroidBitmap_unlockPixels(env, m_surface);
+
         env->CallVoidMethod(object, m_redrawSurfaceMethodID,
                             (jint)destinationRect.left(),
                             (jint)destinationRect.top(),
@@ -169,6 +170,19 @@ namespace QtAndroid
         m_javaVM->DetachCurrentThread();
     }
 
+    void enterFullScreen()
+    {
+        JNIEnv* env;
+        if (m_javaVM->AttachCurrentThread(&env, NULL)<0)
+        {
+            qCritical()<<"AttachCurrentThread failed";
+            return;
+        }
+        qDebug()<<"toggleFullScreen";
+        env->CallVoidMethod(m_applicationObject, m_enterFullScreenMethodID);
+        m_javaVM->DetachCurrentThread();
+    }
+
 }
 
 static void startQtAndroidPlugin(JNIEnv* /*env*/, jobject /*object*/)
@@ -179,27 +193,27 @@ static void startQtAndroidPlugin(JNIEnv* /*env*/, jobject /*object*/)
 
 static void pauseQtApp(JNIEnv */*env*/, jobject /*thiz*/)
 {
-//    m_surfaceMutex.lock();
-//    m_pauseApplicationMutex.lock();
-//    if (mAndroidGraphicsSystem)
-//        mAndroidGraphicsSystem->pauseApp();
-//    m_pauseApplication=true;
-//    m_pauseApplicationMutex.unlock();
-//    m_surfaceMutex.unlock();
+    m_surfaceMutex.lock();
+    m_pauseApplicationMutex.lock();
+    if (mAndroidGraphicsSystem)
+        mAndroidGraphicsSystem->pauseApp();
+    m_pauseApplication=true;
+    m_pauseApplicationMutex.unlock();
+    m_surfaceMutex.unlock();
 }
 
 static void resumeQtApp(JNIEnv */*env*/, jobject /*thiz*/)
 {
-//    m_surfaceMutex.lock();
-//    m_pauseApplicationMutex.lock();
-//    if (mAndroidGraphicsSystem)
-//        mAndroidGraphicsSystem->resumeApp();
+    m_surfaceMutex.lock();
+    m_pauseApplicationMutex.lock();
+    if (mAndroidGraphicsSystem)
+        mAndroidGraphicsSystem->resumeApp();
 
-//    if (m_pauseApplication)
-//        m_pauseApplicationSemaphore.release();
+    if (m_pauseApplication)
+        m_pauseApplicationSemaphore.release();
 
-//    m_pauseApplicationMutex.unlock();
-//    m_surfaceMutex.unlock();
+    m_pauseApplicationMutex.unlock();
+    m_surfaceMutex.unlock();
 }
 
 static void quitQtAndroidPlugin(JNIEnv* env, jclass /*clazz*/)
@@ -554,6 +568,14 @@ static void unlockSurface(JNIEnv */*env*/, jobject /*thiz*/)
     m_surfaceMutex.unlock();
 }
 
+static void updateAllWindows(JNIEnv */*env*/, jobject /*thiz*/)
+{
+    foreach(QWidget * w, qApp->topLevelWidgets())
+    {
+        w->update();
+    }
+}
+
 static JNINativeMethod methods[] = {
     {"startQtAndroidPlugin", "()V", (void *)startQtAndroidPlugin},
     {"pauseQtApp", "()V", (void *)pauseQtApp},
@@ -565,6 +587,7 @@ static JNINativeMethod methods[] = {
     {"destroySurface", "()V", (void *)destroySurface},
     {"lockSurface", "()V", (void *)lockSurface},
     {"unlockSurface", "()V", (void *)unlockSurface},
+    {"updateAllWindows", "()V", (void *)updateAllWindows},
     {"touchBegin","(I)V",(void*)touchBegin},
     {"touchAdd","(IIIZIIFF)V",(void*)touchAdd},
     {"touchEnd","(II)V",(void*)touchEnd},
@@ -599,6 +622,7 @@ static int registerNativeMethods(JNIEnv* env, const char* className,
     m_redrawSurfaceMethodID = env->GetMethodID((jclass)m_applicationObject, "redrawSurface", "(IIII)V");
     m_showSoftwareKeyboardMethodID = env->GetMethodID((jclass)m_applicationObject, "showSoftwareKeyboard", "()V");
     m_hideSoftwareKeyboardMethodID = env->GetMethodID((jclass)m_applicationObject, "hideSoftwareKeyboard", "()V");
+    m_enterFullScreenMethodID = env->GetMethodID((jclass)m_applicationObject, "enterFullScreen", "()V");
     return JNI_TRUE;
 }
 

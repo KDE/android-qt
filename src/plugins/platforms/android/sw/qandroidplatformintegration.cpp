@@ -154,6 +154,9 @@ QPlatformWindow *QAndroidPlatformIntegration::createPlatformWindow(QWidget *widg
 {
     QFbWindow *w = new QFbWindow(widget);
     mPrimaryScreen->addWindow(w);
+    qDebug()<<"createPlatformWindow"<<widget->isFullScreen();
+    if (!widget->isFullScreen())
+        QtAndroid::enterFullScreen();
     return w;
 }
 

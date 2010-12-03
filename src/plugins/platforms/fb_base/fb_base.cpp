@@ -503,6 +503,9 @@ void QFbWindow::setVisible(bool visible)
 Qt::WindowFlags QFbWindow::setWindowFlags(Qt::WindowFlags type)
 {
     flags = type;
+    if (!widget()->isFullScreen() && flags != Qt::Popup && flags != Qt::Tool && flags != Qt::ToolTip && flags != Qt::SplashScreen)
+         widget()->setWindowState(widget()->windowState() | Qt::WindowMaximized);
+
     QList<QFbScreen *>::const_iterator i = mScreens.constBegin();
     QList<QFbScreen *>::const_iterator end = mScreens.constEnd();
     while (i != end) {

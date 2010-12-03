@@ -13,6 +13,7 @@ import android.util.Log;
 import android.view.KeyCharacterMap;
 import android.view.KeyEvent;
 import android.view.Window;
+import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
 
 public class QtActivity extends Activity
@@ -29,6 +30,7 @@ public class QtActivity extends Activity
     private boolean softwareKeyboardIsVisible=false;
     private long metaState;
     private int lastChar=0;
+    private boolean fullScreen=false;
    
     private static final int ProcessEvents = 1;
 	private Handler mHandler = new Handler()
@@ -74,6 +76,11 @@ public class QtActivity extends Activity
         appName = app;
     }
 
+    public void setFullScreen(boolean enterFullScreen)
+    {
+    	fullScreen=enterFullScreen;
+    }
+    
     public void setLibraries(List<String> libs)
     {
         libraries.clear();
@@ -174,11 +181,20 @@ public class QtActivity extends Activity
         return true;
     }
 
+    public void enterFullScreen()
+    {
+    	 getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,   
+                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
+    }
+    
     @Override
     public void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
+        if (fullScreen)
+        	getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,   
+        						WindowManager.LayoutParams.FLAG_FULLSCREEN);
         try
         {
             String path=getFilesDir().getAbsolutePath();
