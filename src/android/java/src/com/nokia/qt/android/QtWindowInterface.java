@@ -1,4 +1,4 @@
-package com.nokia.qt;
+package com.nokia.qt.android;
 
 public interface QtWindowInterface
 {

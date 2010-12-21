@@ -177,17 +177,17 @@ for(QTLIB, $$list($$lower($$unique(QT)))) {
    else:isEqual(QTLIB, multimedia):qlib = QtMultimedia
    else:isEqual(QTLIB, meegographicssystemhelper):qlib = QtMeeGoGraphicsSystemHelper
    else:isEqual(QTLIB, android) {
-        contains(TEMPLATE, ".*app"):{
-            QMAKE_LFLAGS += $$ANDROID_TOOLCHAIN_ROOT/lib/crtbegin_dynamic.o
-            QMAKE_LIBS = $$ANDROID_TOOLCHAIN_ROOT/lib/crtend_android.o $$QMAKE_LIBS
+        contains(TEMPLATE, ".*app") {
+            CONFIG(android) {
+                QMAKE_LFLAGS += -Wl,--whole-archive
+                QMAKE_LFLAGS += $$QMAKE_LIBDIR_QT/libQtAndroidMain.a
+                QMAKE_LFLAGS += -Wl,--no-whole-archive
+                LIBS += -lQtAndroidBridge
+             } else {
+                QMAKE_LFLAGS += $$ANDROID_PLATFORM_PATH/lib/crtbegin_dynamic.o
+                QMAKE_LIBS = $$ANDROID_PLATFORM_PATH/lib/crtend_android.o $$QMAKE_LIBS
+            }
         }
-        else:contains(TEMPLATE, ".*lib"):!CONFIG(plugin):!CONFIG(building-libs){
-            QMAKE_LFLAGS += -Wl,--whole-archive
-            QMAKE_LFLAGS += $$QMAKE_LIBDIR_QT/libQtAndroidMain.a
-            QMAKE_LFLAGS += -Wl,--no-whole-archive
-            LIBS += -lQtAndroidBridge
-        }
-
    }
    else:message("Unknown QT: $$QTLIB"):qlib =
    !isEmpty(qlib) {

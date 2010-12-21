@@ -111,7 +111,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* /*reserved*/)
     UnionJNIEnvToVoid uenv;
     uenv.venv = NULL;
     m_javaVM = 0;
-    
+
     if (vm->GetEnv(&uenv.venv, JNI_VERSION_1_4) != JNI_OK)
     {
         __android_log_print(ANDROID_LOG_FATAL,"Qt","GetEnv failed");
@@ -127,4 +127,3 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* /*reserved*/)
     QtAndroidBridge::setJavaVM(m_javaVM);
     return JNI_VERSION_1_4;
 }
-                                 

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <array name="pre_qt_bundled_libs">
+    </array>
+    <array name="qt_libs">
+    </array>
+    <array name="post_qt_bundled_libs">
+    </array>
+</resources>

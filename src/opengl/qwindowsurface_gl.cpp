@@ -500,11 +500,12 @@ static void blitTexture(QGLContext *ctx, GLuint texture, const QSize &viewport, 
 
     glViewport(0, 0, viewport.width(), viewport.height());
 
+#ifdef QT_OPENGL_ES_2
     QGLShaderProgram *blitProgram =
         QGLEngineSharedShaders::shadersForContext(ctx)->blitProgram();
     blitProgram->bind();
     blitProgram->setUniformValue("imageTexture", 0 /*QT_IMAGE_TEXTURE_UNIT*/);
-
+#endif
     // The shader manager's blit program does not multiply the
     // vertices by the pmv matrix, so we need to do the effect
     // of the orthographic projection here ourselves.

@@ -192,6 +192,8 @@ namespace QT_NAMESPACE {}
 #  define Q_OS_SYMBIAN
 #  define Q_NO_POSIX_SIGNALS
 #  define QT_NO_GETIFADDRS
+#elif defined(ANDROID)
+#  define Q_OS_ANDROID
 #elif defined(__CYGWIN__)
 #  define Q_OS_CYGWIN
 #elif defined(MSDOS) || defined(_MSDOS)
@@ -263,8 +265,6 @@ namespace QT_NAMESPACE {}
 #  define Q_OS_INTEGRITY
 #elif defined(VXWORKS) /* there is no "real" VxWorks define - this has to be set in the mkspec! */
 #  define Q_OS_VXWORKS
-#elif defined(ANDROID)
-#  define Q_OS_ANDROID
 #elif defined(__MAKEDEPEND__)
 #else
 #  error "Qt has not been ported to this OS - talk to qt-bugs@trolltech.com"

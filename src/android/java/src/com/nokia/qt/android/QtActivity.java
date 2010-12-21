@@ -1,4 +1,4 @@
-package com.nokia.qt;
+package com.nokia.qt.android;
 
 import java.util.ArrayList;
 import java.util.List;
