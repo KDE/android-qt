@@ -1,10 +1,15 @@
 package com.nokia.qt.android;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -25,13 +30,13 @@ public class QtActivity extends Activity
     private boolean singleWindow=true;
     private Object jniProxyObject = null;
     private boolean quitApp = true;
-    private String appName = "";
+    private String appName = "calculator";
     private List<String> libraries = new ArrayList<String>();
     private boolean softwareKeyboardIsVisible=false;
     private long metaState;
     private int lastChar=0;
     private boolean fullScreen=false;
-   
+    private Process debuggerProcess=null;
     private static final int ProcessEvents = 1;
 	private Handler mHandler = new Handler()
 	{
@@ -51,24 +56,23 @@ public class QtActivity extends Activity
     {
         // By default try to load all Qt libraries
         addQtLibrary(QtLibrary.QtCore);
-        addQtLibrary(QtLibrary.QtNetwork);
         addQtLibrary(QtLibrary.QtXml);
-        addQtLibrary(QtLibrary.QtScript);
-        addQtLibrary(QtLibrary.QtSql);
+        addQtLibrary(QtLibrary.QtNetwork);
+//        addQtLibrary(QtLibrary.QtScript);
+//        addQtLibrary(QtLibrary.QtSql);
         addQtLibrary(QtLibrary.QtGui);
         addQtLibrary(QtLibrary.QtOpenGL);
         addQtLibrary(QtLibrary.QtSvg);
-        addQtLibrary(QtLibrary.QtScriptTools);
-        addQtLibrary(QtLibrary.QtMultimedia);
-        addQtLibrary(QtLibrary.QtWebKit);
-        addQtLibrary(QtLibrary.QtXmlPatterns);
-        addQtLibrary(QtLibrary.QtDeclarative);
+//        addQtLibrary(QtLibrary.QtScriptTools);
+//        addQtLibrary(QtLibrary.QtMultimedia);
+//        addQtLibrary(QtLibrary.QtWebKit);
+//        addQtLibrary(QtLibrary.QtXmlPatterns);
+//        addQtLibrary(QtLibrary.QtDeclarative);
         if (singleWindow)
         	addQtLibrary(QtLibrary.QtAndroid_sw);
         else
         	addQtLibrary(QtLibrary.QtAndroid_mw);
-        addQtLibrary(QtLibrary.QtAndroidBridge);
-        QtApplication.setActivity(this);
+//        addQtLibrary(QtLibrary.QtAndroidBridge);
     }
 
     public void setApplication(String app)
@@ -185,6 +189,7 @@ public class QtActivity extends Activity
     {
     	 getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,   
                  WindowManager.LayoutParams.FLAG_FULLSCREEN);
+    	 fullScreen = true;
     }
     
     @Override
@@ -197,8 +202,14 @@ public class QtActivity extends Activity
         						WindowManager.LayoutParams.FLAG_FULLSCREEN);
         try
         {
-            String path=getFilesDir().getAbsolutePath();
-            Log.i(QtApplication.QtTAG, path);
+            String pn=getPackageName();
+            ApplicationInfo ai=getPackageManager().getApplicationInfo(pn, PackageManager.GET_META_DATA);
+            String packagePath=ai.dataDir+"/";
+            int resourceId = ai.metaData.getInt("qt_libs_resource_id");
+            Log.i(QtApplication.QtTAG, packagePath +","+resourceId+","+getResources().getStringArray(resourceId).length+"++++++");
+            if (ai.sharedLibraryFiles != null)
+                for (int i=0;i<ai.sharedLibraryFiles.length;i++)
+                        Log.i(QtApplication.QtTAG, ai.sharedLibraryFiles[i]);
             if (singleWindow)
             {
     			setContentView(new QtSurface(this));
@@ -209,10 +220,32 @@ public class QtActivity extends Activity
 	            setContentView(view);
 	            QtApplication.setView(view);
             }
+            QtApplication.setActivity(this);
             if (null == getLastNonConfigurationInstance())
             {
                 QtApplication.loadLibraries(libraries);
-                QtApplication.loadApplication(appName, (jniProxyObject == null) ? this : jniProxyObject);
+                QtApplication.loadApplication(appName);
+                if ((ai.flags&ApplicationInfo.FLAG_DEBUGGABLE) != 0 
+                		&& getIntent().getExtras() != null 
+                		&& getIntent().getExtras().containsKey("native_debug") 
+                		&& getIntent().getExtras().getString("native_debug").equals("true"))
+            	{
+            		try
+            		{
+            			String gdbserverPath=getIntent().getExtras().containsKey("gdbserver_path")?getIntent().getExtras().getString("gdbserver_path"):packagePath+"lib/gdbserver ";
+            			String socket=getIntent().getExtras().containsKey("gdbserver_socket")?getIntent().getExtras().getString("gdbserver_socket"):"+debug-socket";
+            			debuggerProcess = Runtime.getRuntime().exec(gdbserverPath+socket+" --attach "+android.os.Process.myPid(),null, new File(packagePath));
+            		}
+            		catch (IOException ioe)
+            	    {
+            			Log.e(QtApplication.QtTAG,"Can't start debugging"+ioe.getMessage());
+            	    }
+            		catch (SecurityException se)
+            	    {
+            			Log.e(QtApplication.QtTAG,"Can't start debugging"+se.getMessage());
+            	    }
+            	}
+                QtApplication.startApplication((jniProxyObject == null) ? this : jniProxyObject);
                 Log.i(QtApplication.QtTAG, "onCreate");
             }
             quitApp = true;
@@ -258,8 +291,11 @@ public class QtActivity extends Activity
         {
             Log.i(QtApplication.QtTAG, "onDestroy");
 //            QtApplication.quitQtAndroidPlugin();
+            if (debuggerProcess != null)
+            	debuggerProcess.destroy();
             System.exit(0);
         }
+        QtApplication.setActivity(null);
     }
 
     @Override
@@ -279,6 +315,7 @@ public class QtActivity extends Activity
 	            outState.putIntArray("Surface_"+i, surfaceInfo);
 	        }
         }
+        outState.putBoolean("FullScreen",fullScreen);
     }
 
     @Override
@@ -300,6 +337,16 @@ public class QtActivity extends Activity
 	                view.addView(new QtWindow(this, surfaceInfo[1], surfaceInfo[2], surfaceInfo[3], surfaceInfo[4], surfaceInfo[5]), i);
 	        }
         }
+        fullScreen=savedInstanceState.getBoolean("FullScreen");
+        if (fullScreen)
+        	enterFullScreen();
+        synchronized (QtApplication.getActivityMutex())
+        {
+        	Iterator<Runnable> itr=QtApplication.getLostActions().iterator();
+        	while(itr.hasNext())
+        		runOnUiThread(itr.next());
+        	QtApplication.clearLostActions();
+		}
     }
     
     void processEvents(long miliseconds)

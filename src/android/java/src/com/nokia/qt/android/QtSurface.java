@@ -31,7 +31,7 @@ public class QtSurface extends SurfaceView implements SurfaceHolder.Callback
     	mBitmap=Bitmap.createBitmap(getWidth(), getHeight(), Bitmap.Config.RGB_565);
 		QtApplication.setSurface(mBitmap);
         QtApplication.unlockSurface();
-		QtApplication.updateAllWindows();
+		QtApplication.updateWindow(-1);
 	}
 
 	@Override
@@ -47,7 +47,7 @@ public class QtSurface extends SurfaceView implements SurfaceHolder.Callback
 										width, height, metrics.xdpi, metrics.ydpi);
 		QtApplication.m_surface=this;
         QtApplication.unlockSurface();
-		QtApplication.updateAllWindows();
+		QtApplication.updateWindow(-1);
 	}
 
 	@Override

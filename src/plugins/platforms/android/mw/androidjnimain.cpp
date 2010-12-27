@@ -84,8 +84,8 @@ static QMap<int, TLWStruct> m_windows;
 static bool   m_pauseApplication;
 static QAndroidPlatformIntegration * mAndroidPlatformIntegration=0;
 
-static const char *QtApplicationClassPathName = "com/nokia/qt/QtApplication";
-static const char *QtEglClassPathName = "com/nokia/qt/QtEgl";
+static const char *QtApplicationClassPathName = "com/nokia/qt/android/QtApplication";
+static const char *QtEglClassPathName = "com/nokia/qt/android/QtEgl";
 static int m_desktopWidthPixels, m_desktopHeightPixels;
 static QWidget * mLastTLW=0;
 
@@ -870,6 +870,17 @@ static void unlockWindow(JNIEnv */*env*/, jobject /*thiz*/)
     m_applicationControl->m_windowMutex.unlock();
 }
 
+static void updateWindow(JNIEnv */*env*/, jobject /*thiz*/, jint windowId)
+{
+    if (m_windows.contains(windowId))
+    {
+        m_windows[windowId].tlw->update();
+        return;
+    }
+    foreach(QWidget * w, qApp->topLevelWidgets())
+        w->update();
+}
+
 static JNINativeMethod methods[] = {
     {"startQtAndroidPlugin", "()V", (void *)startQtAndroidPlugin},
     {"pauseQtApp", "()V", (void *)pauseQtApp},
@@ -881,6 +892,7 @@ static JNINativeMethod methods[] = {
     {"windowCreated", "(Ljava/lang/Object;I)V", (void *)windowCreated},
     {"windowChanged", "(Ljava/lang/Object;I)V", (void *)windowChanged},
     {"windowDestroyed", "(I)V", (void *)windowDestroyed},
+    {"updateWindow", "(I)V", (void *)updateWindow},
     {"lockWindow", "()V", (void *)lockWindow},
     {"unlockWindow", "()V", (void *)unlockWindow},
     {"touchBegin","(I)V",(void*)touchBegin},
@@ -937,7 +949,7 @@ typedef union {
     void* venv;
 } UnionJNIEnvToVoid;
 
-JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* /*reserved*/)
+Q_DECL_EXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* /*reserved*/)
 {
     __android_log_print(ANDROID_LOG_INFO,"Qt", "qt android plugin start");
     UnionJNIEnvToVoid uenv;

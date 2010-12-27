@@ -24,7 +24,7 @@ static jmethodID m_redrawSurfaceMethodID=0;
 Q_IMPORT_PLUGIN (QtAndroid)
 
 static JavaVM *m_javaVM = NULL;
-static jobject m_applicationObject  = NULL;
+static jclass m_applicationClass  = NULL;
 static jobject m_surface = NULL;
 static QList<QWindowSystemInterface::TouchPoint> m_touchPoints;
 
@@ -35,7 +35,7 @@ static QMutex m_pauseApplicationMutex;
 
 static QAndroidPlatformIntegration * mAndroidGraphicsSystem=0;
 static int m_desktopWidthPixels=0, m_desktopHeightPixels=0;
-static const char *QtApplicationClassPathName = "com/nokia/qt/QtApplication";
+static const char *QtApplicationClassPathName = "com/nokia/qt/android/QtApplication";
 
 static volatile bool m_pauseApplication;
 
@@ -124,14 +124,13 @@ namespace QtAndroid
         unsigned width=swidth-sposx<(unsigned)destinationRect.width()?swidth-sposx:destinationRect.width();
         unsigned height=sheight-sposy<(unsigned)destinationRect.height()?sheight-sposy:destinationRect.height();
 
-        jclass object=env->GetObjectClass(m_applicationObject);
         for (unsigned y=0;y<height;y++)
             memcpy(screenBits+y*sbpl+sposx*bpp,
                     imageBits+y*ibpl+iposx*bpp,
                    width*bpp);
         AndroidBitmap_unlockPixels(env, m_surface);
 
-        env->CallVoidMethod(object, m_redrawSurfaceMethodID,
+        env->CallStaticVoidMethod(m_applicationClass, m_redrawSurfaceMethodID,
                             (jint)destinationRect.left(),
                             (jint)destinationRect.top(),
                             (jint)destinationRect.right(),
@@ -153,7 +152,7 @@ namespace QtAndroid
             return;
         }
         qDebug()<<"showSoftwareKeyboard";
-        env->CallVoidMethod(m_applicationObject, m_showSoftwareKeyboardMethodID);
+        env->CallStaticVoidMethod(m_applicationClass, m_showSoftwareKeyboardMethodID);
         m_javaVM->DetachCurrentThread();
     }
 
@@ -166,7 +165,7 @@ namespace QtAndroid
             return;
         }
         qDebug()<<"hideSoftwareKeyboard";
-        env->CallVoidMethod(m_applicationObject, m_hideSoftwareKeyboardMethodID);
+        env->CallStaticVoidMethod(m_applicationClass, m_hideSoftwareKeyboardMethodID);
         m_javaVM->DetachCurrentThread();
     }
 
@@ -179,13 +178,13 @@ namespace QtAndroid
             return;
         }
         qDebug()<<"toggleFullScreen";
-        env->CallVoidMethod(m_applicationObject, m_enterFullScreenMethodID);
+        env->CallStaticVoidMethod(m_applicationClass, m_enterFullScreenMethodID);
         m_javaVM->DetachCurrentThread();
     }
 
 }
 
-static void startQtAndroidPlugin(JNIEnv* /*env*/, jobject /*object*/)
+static void startQtAndroidPlugin(JNIEnv* env, jobject object)
 {
     m_surface=0;
     mAndroidGraphicsSystem=0;
@@ -228,7 +227,7 @@ static void quitQtAndroidPlugin(JNIEnv* env, jclass /*clazz*/)
 
 static void terminateQt(JNIEnv* env, jclass /*clazz*/)
 {
-    env->DeleteGlobalRef(m_applicationObject);
+    env->DeleteGlobalRef(m_applicationClass);
 }
 
 static void setSurface(JNIEnv *env, jobject /*thiz*/, jobject jSurface)
@@ -279,6 +278,7 @@ static void mouseDown(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/, jint x,
 static void mouseUp(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/, jint x, jint y)
 {
     qDebug()<<"mouseUp";
+    // sometimes this method doesn't wakeup the loop, report this issue to nokia !!!
     QWindowSystemInterface::handleMouseEvent(0,
                                              QEvent::MouseButtonRelease,QPoint(x,y),QPoint(x,y),
                                              Qt::MouseButtons(Qt::NoButton));
@@ -286,6 +286,7 @@ static void mouseUp(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/, jint x, j
 
 static void mouseMove(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/, jint x, jint y)
 {
+    // sometimes this method doesn't wakeup the loop, report this issue to nokia !!!
     QWindowSystemInterface::handleMouseEvent(0,
                                              QEvent::MouseButtonPress,QPoint(x,y),QPoint(x,y),
                                              Qt::MouseButtons(Qt::LeftButton));
@@ -342,6 +343,7 @@ static void touchEnd(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/, jint act
             eventType=QEvent::TouchEnd;
             break;
     }
+    // sometimes this method doesn't wakeup the loop, report this issue to nokia !!!
     QWindowSystemInterface::handleTouchEvent(0, eventType, QTouchEvent::TouchScreen, m_touchPoints);
 }
 
@@ -532,6 +534,7 @@ static void keyDown(JNIEnv */*env*/, jobject /*thiz*/, jint key, jint unicode, j
 //        QWindowSystemInterface::handleCloseEvent(QApplication::topLevelWidgets().last());
 //    }
 //    else
+    // sometimes this method doesn't wakeup the loop, report this issue to nokia !!!
     QWindowSystemInterface::handleKeyEvent(0, QEvent::KeyPress, mappedKey, modifiers, QChar(unicode),true);
 }
 
@@ -551,10 +554,15 @@ static void keyUp(JNIEnv */*env*/, jobject /*thiz*/, jint key, jint unicode, jin
     int mappedKey=mapAndroidKey(key);
     if (mappedKey==Qt::Key_Close)
     {
-        qDebug()<<"handleCloseEvent"<<mAndroidGraphicsSystem->getPrimaryScreen()->topWindow();
-        QWindowSystemInterface::handleCloseEvent(mAndroidGraphicsSystem->getPrimaryScreen()->topWindow());
+        qDebug()<<"handleCloseEvent"<<mAndroidGraphicsSystem->getPrimaryScreen()->topWindow()<<qApp->activeWindow();
+#warning FIXME
+        // sometimes qApp->activeWindow() is null, it should never be null when you ahve at least one widget visible, report this issue to nokia !!!
+        // how to reproduce it ?
+        // create a dialog, create another dialog form previous dialog, close the last dialog.
+        QWindowSystemInterface::handleCloseEvent(qApp->activeWindow()?qApp->activeWindow():mAndroidGraphicsSystem->getPrimaryScreen()->topWindow());
     }
     else
+        // sometimes this method doesn't wakeup the loop, report this issue to nokia !!!
         QWindowSystemInterface::handleKeyEvent(0, QEvent::KeyRelease, mapAndroidKey(key), modifiers, QChar(unicode),true);
 }
 
@@ -568,7 +576,7 @@ static void unlockSurface(JNIEnv */*env*/, jobject /*thiz*/)
     m_surfaceMutex.unlock();
 }
 
-static void updateAllWindows(JNIEnv */*env*/, jobject /*thiz*/)
+static void updateWindow(JNIEnv */*env*/, jobject /*thiz*/, jint /*windowId*/)
 {
     foreach(QWidget * w, qApp->topLevelWidgets())
     {
@@ -587,7 +595,7 @@ static JNINativeMethod methods[] = {
     {"destroySurface", "()V", (void *)destroySurface},
     {"lockSurface", "()V", (void *)lockSurface},
     {"unlockSurface", "()V", (void *)unlockSurface},
-    {"updateAllWindows", "()V", (void *)updateAllWindows},
+    {"updateWindow", "(I)V", (void *)updateWindow},
     {"touchBegin","(I)V",(void*)touchBegin},
     {"touchAdd","(IIIZIIFF)V",(void*)touchAdd},
     {"touchEnd","(II)V",(void*)touchEnd},
@@ -604,25 +612,22 @@ static JNINativeMethod methods[] = {
 static int registerNativeMethods(JNIEnv* env, const char* className,
     JNINativeMethod* gMethods, int numMethods)
 {
-    jclass clazz;
-
-    clazz = env->FindClass(className);
-    if (clazz == NULL)
+    m_applicationClass = (jclass) env->NewGlobalRef(env->FindClass(className));
+    if (m_applicationClass == NULL)
     {
         __android_log_print(ANDROID_LOG_FATAL,"Qt", "Native registration unable to find class '%s'", className);
         return JNI_FALSE;
     }
 
-    if (env->RegisterNatives(clazz, gMethods, numMethods) < 0)
+    if (env->RegisterNatives(m_applicationClass, gMethods, numMethods) < 0)
     {
         __android_log_print(ANDROID_LOG_FATAL,"Qt", "RegisterNatives failed for '%s'", className);
         return JNI_FALSE;
     }
-    m_applicationObject = env->NewGlobalRef(clazz);
-    m_redrawSurfaceMethodID = env->GetMethodID((jclass)m_applicationObject, "redrawSurface", "(IIII)V");
-    m_showSoftwareKeyboardMethodID = env->GetMethodID((jclass)m_applicationObject, "showSoftwareKeyboard", "()V");
-    m_hideSoftwareKeyboardMethodID = env->GetMethodID((jclass)m_applicationObject, "hideSoftwareKeyboard", "()V");
-    m_enterFullScreenMethodID = env->GetMethodID((jclass)m_applicationObject, "enterFullScreen", "()V");
+    m_redrawSurfaceMethodID = env->GetStaticMethodID(m_applicationClass, "redrawSurface", "(IIII)V");
+    m_showSoftwareKeyboardMethodID = env->GetStaticMethodID(m_applicationClass, "showSoftwareKeyboard", "()V");
+    m_hideSoftwareKeyboardMethodID = env->GetStaticMethodID(m_applicationClass, "hideSoftwareKeyboard", "()V");
+    m_enterFullScreenMethodID = env->GetStaticMethodID(m_applicationClass, "enterFullScreen", "()V");
     return JNI_TRUE;
 }
 
@@ -642,7 +647,7 @@ typedef union {
     void* venv;
 } UnionJNIEnvToVoid;
 
-JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* /*reserved*/)
+Q_DECL_EXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* /*reserved*/)
 {
     __android_log_print(ANDROID_LOG_INFO,"Qt", "qt start");
     UnionJNIEnvToVoid uenv;

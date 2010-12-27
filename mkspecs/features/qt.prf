@@ -182,7 +182,6 @@ for(QTLIB, $$list($$lower($$unique(QT)))) {
                 QMAKE_LFLAGS += -Wl,--whole-archive
                 QMAKE_LFLAGS += $$QMAKE_LIBDIR_QT/libQtAndroidMain.a
                 QMAKE_LFLAGS += -Wl,--no-whole-archive
-                LIBS += -lQtAndroidBridge
              } else {
                 QMAKE_LFLAGS += $$ANDROID_PLATFORM_PATH/lib/crtbegin_dynamic.o
                 QMAKE_LIBS = $$ANDROID_PLATFORM_PATH/lib/crtend_android.o $$QMAKE_LIBS

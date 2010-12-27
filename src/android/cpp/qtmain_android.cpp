@@ -2,18 +2,17 @@
 #include <pthread.h>
 #include <QSemaphore>
 #include <QDebug>
+#include <qglobal.h>
 
-#include <QtAndroidBridge/private/qtandroidbridge_p.h>
 #include <stdlib.h>
 
+#include <jni.h>
 
 static JavaVM *m_javaVM = NULL;
 static JNIEnv *m_env = NULL;
-static jobject m_applicationObject  = NULL;
-static jmethodID m_quitApp=0;
 
 static QSemaphore m_quitAppSemaphore;
-static const char *QtApplicationClassPathName = "com/nokia/qt/QtApplication";
+static const char *QtApplicationClassPathName = "com/nokia/qt/android/QtApplication";
 
 
 extern "C" int main(int, char **); //use the standard main method to start the application
@@ -45,16 +44,17 @@ static void * startMainMethod(void * /*data*/)
         qCritical()<<"AttachCurrentThread failed";
         return false;
     }
-    env->CallVoidMethod(m_applicationObject, m_quitApp);
+
+    jclass applicationClass = env->FindClass(QtApplicationClassPathName);
+    jmethodID quitApp = env->GetStaticMethodID(applicationClass, "quitApp", "()V");
+    env->CallStaticVoidMethod(applicationClass, quitApp);
     m_javaVM->DetachCurrentThread();
-    
     return NULL;
 }
 
-static jboolean startQtApp(JNIEnv* env, jobject /*object*/, jobject jniProxyObject)
+static jboolean startQtApp(JNIEnv* /*env*/, jobject /*object*/, jobject /*jniProxyObject*/)
 {
     qDebug()<<"startQtApp";
-    QtAndroidBridge::setJniProxyObject(env->NewGlobalRef(jniProxyObject));
     pthread_t appThread;
     return pthread_create(&appThread, NULL, startMainMethod, NULL)==0;
 }
@@ -70,9 +70,7 @@ static JNINativeMethod methods[] = {
 static int registerNativeMethods(JNIEnv* env, const char* className,
                                  JNINativeMethod* gMethods, int numMethods)
 {
-    jclass clazz;
-    
-    clazz = env->FindClass(className);
+    jclass clazz=env->FindClass(className);
     if (clazz == NULL)
     {
         __android_log_print(ANDROID_LOG_FATAL,"Qt", "Native registration unable to find class '%s'", className);
@@ -84,8 +82,6 @@ static int registerNativeMethods(JNIEnv* env, const char* className,
         __android_log_print(ANDROID_LOG_FATAL,"Qt", "RegisterNatives failed for '%s'", className);
         return JNI_FALSE;
     }
-    m_applicationObject = env->NewGlobalRef(clazz);
-    m_quitApp = env->GetMethodID((jclass)m_applicationObject, "quitApp", "()V");
     return JNI_TRUE;
 }
 
@@ -105,7 +101,7 @@ typedef union {
     void* venv;
 } UnionJNIEnvToVoid;
 
-JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* /*reserved*/)
+Q_DECL_EXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* /*reserved*/)
 {
     __android_log_print(ANDROID_LOG_INFO,"Qt", "qt start");
     UnionJNIEnvToVoid uenv;
@@ -124,6 +120,5 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* /*reserved*/)
         return -1;
     }
     m_javaVM = vm;
-    QtAndroidBridge::setJavaVM(m_javaVM);
     return JNI_VERSION_1_4;
 }

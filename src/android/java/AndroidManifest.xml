@@ -10,13 +10,13 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <meta-data android:name="pre_qt_bundled_libs_resource_id"
-                       android:resource="@array/pre_qt_bundled_libs"/>
-            <meta-data android:name="qt_libs_resource_id"
-                       android:resource="@array/qt_libs"/>
-            <meta-data android:name="post_qt_bundled_libs_resource_id"
-                       android:resource="@array/post_qt_bundled_libs"/>
         </activity>
+        <meta-data android:name="pre_qt_bundled_libs_resource_id"
+                   android:resource="@array/pre_qt_bundled_libs"/>
+        <meta-data android:name="qt_libs_resource_id"
+                   android:resource="@array/qt_libs"/>
+        <meta-data android:name="post_qt_bundled_libs_resource_id"
+                  android:resource="@array/post_qt_bundled_libs"/>
     </application>
     <supports-screens android:smallScreens="true"
                       android:normalScreens="true"

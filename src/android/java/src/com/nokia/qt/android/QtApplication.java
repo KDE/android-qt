@@ -1,6 +1,7 @@
 package com.nokia.qt.android;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 
 import android.app.Application;
@@ -19,6 +20,8 @@ public class QtApplication extends Application
 	private static int oldx, oldy;
 	private static final int moveThreshold = 0;
 	private static boolean m_started = false;
+	private static Object m_activityMutex= new Object();
+	private static ArrayList<Runnable> m_lostActions = new ArrayList<Runnable>();
 	@Override
 	public void onTerminate() {
 		if (m_started)
@@ -26,6 +29,20 @@ public class QtApplication extends Application
 		super.onTerminate();
 	}
 	
+	static public Object getActivityMutex()
+	{
+		return m_activityMutex;
+	}
+	
+	static public ArrayList<Runnable> getLostActions()
+	{
+			return m_lostActions;
+	}
+	
+	static public void clearLostActions()
+	{
+		m_lostActions.clear();
+	}
     static private int getAction(int index, MotionEvent event)
     {
     	int action=event.getAction();
@@ -147,12 +164,15 @@ public class QtApplication extends Application
 	
 	public static QtEgl getEgl()
     {
-        return mEgl;
+    		return mEgl;
     }
 	
 	public static void setActivity(QtActivity mActivity)
 	{
-		m_activity = mActivity;
+    	synchronized (m_activityMutex)
+    	{
+    		m_activity = mActivity;
+    	}
 	}
 
 	public static QtMainView getView()
@@ -184,7 +204,7 @@ public class QtApplication extends Application
 		}
 	}
 
-    public static void loadApplication(String lib, Object jniProxyObject)
+    public static void loadApplication(String lib)
 	{
 		try
 		{
@@ -194,18 +214,21 @@ public class QtApplication extends Application
 				System.load(library);
 			else
 				System.loadLibrary(lib);
-
-			//InitializeOpenGL();
-			startQtAndroidPlugin();
-			startQtApp(jniProxyObject);
-			m_started=true;
 		}
 		catch (Exception e)
 		{
 			Log.i(QtTAG, "Can't load 'lib" + lib + ".so'", e);
 		}
 	}
-
+    
+    public static void startApplication(Object jniProxyObject)
+    {
+		//InitializeOpenGL();
+		startQtAndroidPlugin();
+		startQtApp(jniProxyObject);
+		m_started=true;
+    }
+    
 	public static void InitializeOpenGL()
 	{
 		mEgl = new QtEgl();
@@ -213,30 +236,37 @@ public class QtApplication extends Application
 			mEgl = null;
 	}
 
-	@SuppressWarnings("unused")
-	private boolean createWindow(final boolean OpenGl, final int id, final int l, final int t, final int r, final int b)
+	private static boolean runAction(Runnable action)
 	{
-		if (m_activity == null)
-			return false;
-		m_activity.runOnUiThread(new Runnable() {
-			@Override
-			public void run() {
-				if (OpenGl)
-					m_view.addView(new QtGlWindow(m_activity, id, l, t, r, b));
-				else
-					m_view.addView(new QtWindow(m_activity, id, l, t, r, b));
-			}
-		});
+    	synchronized (m_activityMutex)
+    	{
+			if (m_activity == null)
+				m_lostActions.add(action);
+			else
+				m_activity.runOnUiThread(action);
+			return m_activity != null;
+    	}
+	}
+	
+	@SuppressWarnings("unused")
+        private static boolean createWindow(final boolean OpenGl, final int id, final int l, final int t, final int r, final int b)
+	{
+		runAction(new Runnable() {
+				@Override
+				public void run() {
+					if (OpenGl)
+						m_view.addView(new QtGlWindow(m_activity, id, l, t, r, b));
+					else
+						m_view.addView(new QtWindow(m_activity, id, l, t, r, b));
+				}
+			});
 		return true;
 	}
 
 	@SuppressWarnings("unused")
-	private boolean resizeWindow(final int id, final int l, final int t, final int r, final int b)
+        private static boolean resizeWindow(final int id, final int l, final int t, final int r, final int b)
 	{
-		if (m_activity == null)
-			return false;
-
-		m_activity.runOnUiThread(new Runnable() {
+		runAction(new Runnable() {
 			@Override
 			public void run() {
 				QtWindowInterface window = (QtWindowInterface) m_view.findViewById(id);
@@ -249,187 +279,145 @@ public class QtApplication extends Application
 	}
 
 	@SuppressWarnings("unused")
-	private boolean destroyWindow(final int id)
+        private static boolean destroyWindow(final int id)
 	{
 		Log.i(QtTAG,"destroyWindow "+id);
-		if (m_activity == null)
-			return false;
-
-		m_activity.runOnUiThread(new Runnable() {
-			@Override
-			public void run() {
-				m_view.removeView(m_view.findViewById(id));
-			}
-		});
+		runAction(new Runnable() {
+				@Override
+				public void run() {
+					m_view.removeView(m_view.findViewById(id));
+				}
+			});
 		return true;
 	}
 
 	@SuppressWarnings("unused")
-	private void setWindowVisiblity(final int id, final boolean visible)
+        private static void setWindowVisiblity(final int id, final boolean visible)
 	{
 		Log.i(QtTAG,"setSurfaceVisiblity "+id+" visible "+visible);
-		if (m_activity == null)
-			return;
-
-		m_activity.runOnUiThread(new Runnable() {
-			@Override
-			public void run() {
-				QtWindow window = (QtWindow) m_view.findViewById(id);
-				if (window == null)
-					return;
-				window.setVisibility(visible ? View.VISIBLE : View.INVISIBLE);
-			}
-		});
+		runAction(new Runnable() {
+				@Override
+				public void run() {
+					QtWindow window = (QtWindow) m_view.findViewById(id);
+					if (window == null)
+						return;
+					window.setVisibility(visible ? View.VISIBLE : View.INVISIBLE);
+				}
+			});
 	}
 
 	@SuppressWarnings("unused")
-	private void setWindowOpacity(final int id, final double alpha)
+        private static void setWindowOpacity(final int id, final double alpha)
 	{
-		if (m_activity == null)
-			return;
-
-		m_activity.runOnUiThread(new Runnable() {
-			@Override
-			public void run() {
-				QtWindow window = (QtWindow) m_view.findViewById(id);
-				if (window == null)
-					return;
-//				window.getHolder().getSurface().setAlpha((float) alpha);
-			}
-		});
+		runAction(new Runnable() {
+				@Override
+				public void run() {
+					QtWindow window = (QtWindow) m_view.findViewById(id);
+					if (window == null)
+						return;
+				//	window.getHolder().getSurface().setAlpha((float) alpha);
+				}
+			});
 	}
 
 	@SuppressWarnings("unused")
-	private void setWindowTitle(final int id, final String title)
+        private static void setWindowTitle(final int id, final String title)
 	{
-		if (m_activity == null)
-			return;
-
-		m_activity.runOnUiThread(new Runnable() {
-			@Override
-			public void run() {
-				m_activity.getWindow().setTitle(title);
-			}
-		});
+		runAction(new Runnable() {
+				@Override
+				public void run() {
+					m_activity.getWindow().setTitle(title);
+				}
+			});
 	}
 
 	@SuppressWarnings("unused")
-	private void raiseWindow(final int id)
+        private static void raiseWindow(final int id)
 	{
 		Log.i(QtTAG,"raiseSurface "+id);
-		if (m_activity == null)
-			return;
-
-		m_activity.runOnUiThread(new Runnable() {
-			@Override
-			public void run() {
-				QtWindow window = (QtWindow) m_view.findViewById(id);
-				if (window == null)
-					return;
-				m_view.bringChildToFront(window);
-			}
-		});
+		runAction(new Runnable() {
+				@Override
+				public void run() {
+					QtWindow window = (QtWindow) m_view.findViewById(id);
+					if (window == null)
+						return;
+					m_view.bringChildToFront(window);
+				}
+			});
 	}
 
 	@SuppressWarnings("unused")
-	private void redrawWindow(final int id, final int left, final int top, final int right, final int bottom )
+        private static void redrawWindow(final int id, final int left, final int top, final int right, final int bottom )
 	{
-		if (m_activity == null)
-			return;
-
-		m_activity.runOnUiThread(new Runnable() {
-			@Override
-			public void run() {
-				QtWindow window = (QtWindow) m_view.findViewById(id);
-				if (window == null)
-					return;
-				window.invalidate(new Rect(left, top, right, bottom));
-			}
-		});
+		runAction(new Runnable() {
+				@Override
+				public void run() {
+					QtWindow window = (QtWindow) m_view.findViewById(id);
+					if (window == null)
+						return;
+					window.invalidate(new Rect(left, top, right, bottom));
+				}
+			});
 	}
 	
 	@SuppressWarnings("unused")
-	private void showSoftwareKeyboard()
+        private static void showSoftwareKeyboard()
 	{
-		if (m_activity == null)
-		{
-			updateAllWindows();
-			return;
-		}
-
-		m_activity.runOnUiThread(new Runnable() {
-			@Override
-			public void run() {
-				m_activity.showSoftwareKeyboard();
-			}
-		});
+		runAction(new Runnable() {
+				@Override
+				public void run() {
+					m_activity.showSoftwareKeyboard();
+				}
+			});
 	}
 
 	@SuppressWarnings("unused")
-	private void hideSoftwareKeyboard()
+        private static void hideSoftwareKeyboard()
 	{
-		if (m_activity == null)
-		{
-			updateAllWindows();
-			return;
-		}
-
-		m_activity.runOnUiThread(new Runnable() {
-			@Override
-			public void run() {
-				m_activity.hideSoftwareKeyboard();
-			}
-		});
+		runAction(new Runnable() {
+				@Override
+				public void run() {
+					m_activity.hideSoftwareKeyboard();
+				}
+			});
 	}
 
 	@SuppressWarnings("unused")
-	private void quitApp()
+        private static void quitApp()
 	{
 		m_activity.finish();
 	}
 	
 	@SuppressWarnings("unused")
-	private void processEvents(long miliseconds)
+        private static void processEvents(long miliseconds)
 	{
 		m_activity.processEvents(miliseconds);
 	}
 	
 	@SuppressWarnings("unused")
-	private void redrawSurface(final int left, final int top, final int right, final int bottom )
+        private static void redrawSurface(final int left, final int top, final int right, final int bottom )
 	{
-		if (m_activity == null || m_surface == null)
-		{
-			updateAllWindows();
-			return;
-		}
-
-		m_activity.runOnUiThread(new Runnable() {
-			@Override
-			public void run() {
-				if (m_surface!=null)
-					m_surface.drawBitmap(new Rect(left, top, right+1, bottom+1));
-				else
-					updateAllWindows();
-			}
-		});
+		runAction(new Runnable() {
+				@Override
+				public void run() {
+					if (m_surface!=null)
+						m_surface.drawBitmap(new Rect(left, top, right+1, bottom+1));
+					else
+						updateWindow(-1);
+				}
+			});
 	}
 
 	@SuppressWarnings("unused")
-	private void enterFullScreen()
+        private static void enterFullScreen()
 	{
-		if (m_activity == null)
-		{
-			updateAllWindows();
-			return;
-		}
-
-		m_activity.runOnUiThread(new Runnable() {
-			@Override
-			public void run() {
-				m_activity.enterFullScreen();
-				updateAllWindows();
-			}
-		});
+		runAction(new Runnable() {
+				@Override
+				public void run() {
+					m_activity.enterFullScreen();
+					updateWindow(-1);
+				}
+			});
 	}
 
 	// application methods
@@ -468,7 +456,7 @@ public class QtApplication extends Application
 	public static native void windowDestroyed(int id);
 	public static native void lockWindow();
 	public static native void unlockWindow();
-	public static native void updateAllWindows();
+	public static native void updateWindow(int id);
 	// window methods
 
 	// surface methods
