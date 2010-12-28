@@ -58,4 +58,9 @@ void QAndroidPlatformWindow::raise()
     QtAndroid::raiseWindow(winId());
 }
 
+void QAndroidPlatformWindow::lower()
+{
+    QtAndroid::lowerWindow(winId());
+}
+
 QT_END_NAMESPACE

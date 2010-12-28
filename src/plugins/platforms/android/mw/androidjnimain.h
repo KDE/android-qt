@@ -22,7 +22,9 @@ namespace QtAndroid
     void setWindowVisiblity(int windowId, bool visible);
     void setWindowOpacity(int windowId, double level);
     void setWindowTitle(int windowId, const QString & title);
+    void setWindowFullScreen(int windowId, bool fullScreen);
     void raiseWindow(int windowId);
+    void lowerWindow(int windowId);
     // Window methods
 
     // Egl methods

@@ -23,6 +23,7 @@ public:
     virtual Qt::WindowFlags setWindowFlags(Qt::WindowFlags flags);
     virtual void setWindowTitle(const QString &title);
     virtual void raise();
+    virtual void lower();
 
     WId winId() const { return m_windowId; }
 

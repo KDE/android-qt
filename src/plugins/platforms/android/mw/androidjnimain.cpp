@@ -27,7 +27,7 @@ static JavaVM *m_javaVM = 0;
 static JNIEnv *m_env = 0;
 
 static jobject m_EglObject = 0;
-static jobject m_applicationObject = 0;
+static jclass m_applicationClass = 0;
 
 static QList<QWindowSystemInterface::TouchPoint> m_touchPoints;
 struct ApplicationControl
@@ -91,15 +91,12 @@ static QWidget * mLastTLW=0;
 
 static int setQtApplicationObject(JNIEnv* env)
 {
-    jclass clazz;
-
-    clazz = env->FindClass(QtApplicationClassPathName);
-    if (clazz == NULL)
+    m_applicationClass = (jclass) env->NewGlobalRef(env->FindClass(QtApplicationClassPathName));
+    if (m_applicationClass == NULL)
     {
         __android_log_print(ANDROID_LOG_FATAL,"Qt", "Native registration unable to find class '%s'", QtApplicationClassPathName);
         return JNI_FALSE;
     }
-    m_applicationObject = clazz;
     return true;
 }
 
@@ -184,13 +181,12 @@ namespace QtAndroid
         unsigned width=swidth-sposx<(unsigned)destinationRect.width()?swidth-sposx:destinationRect.width();
         unsigned height=sheight-sposy<(unsigned)destinationRect.height()?sheight-sposy:destinationRect.height();
 
-        jclass object=env->GetObjectClass(m_applicationObject);
         for (unsigned y=0;y<height;y++)
             memcpy(screenBits+y*sbpl+sposx*bpp,
                     imageBits+y*ibpl+iposx*bpp,
                    width*bpp);
         AndroidBitmap_unlockPixels(env, m_windows[windowId].javaObject);
-        env->CallVoidMethod(object, m_redrawWindowMethodID, (jint)windowId,
+        env->CallStaticVoidMethod(m_applicationClass, m_redrawWindowMethodID, (jint)windowId,
                             (jint)destinationRect.left(),
                             (jint)destinationRect.top(),
                             (jint)destinationRect.right(),
@@ -214,7 +210,7 @@ namespace QtAndroid
             return false;
         }
 
-        bool res=env->CallBooleanMethod(m_applicationObject, m_createWindowMethodID,
+        bool res=env->CallStaticBooleanMethod(m_applicationClass, m_createWindowMethodID,
                             (jboolean)openGl, (jint)windowId, (jint)l, (jint)t, (jint)r, (jint)b);
 
         m_javaVM->DetachCurrentThread();
@@ -239,7 +235,7 @@ namespace QtAndroid
             return false;
         }
 
-        bool res=env->CallBooleanMethod(m_applicationObject, m_resizeWindowMethodID,
+        bool res=env->CallStaticBooleanMethod(m_applicationClass, m_resizeWindowMethodID,
                             (jint)windowId, (jint)l, (jint)t, (jint)r, (jint)b);
 
         m_javaVM->DetachCurrentThread();
@@ -259,7 +255,7 @@ namespace QtAndroid
             return false;
         }
 
-        bool res=env->CallBooleanMethod(m_applicationObject, m_destroyWindowMethodID, (jint)windowId);
+        bool res=env->CallStaticBooleanMethod(m_applicationClass, m_destroyWindowMethodID, (jint)windowId);
 
         m_javaVM->DetachCurrentThread();
 
@@ -278,7 +274,7 @@ namespace QtAndroid
             return;
         }
 
-        env->CallVoidMethod(m_applicationObject, m_setWindowVisiblityMethodID, (jint)windowId, (jboolean)visible);
+        env->CallStaticVoidMethod(m_applicationClass, m_setWindowVisiblityMethodID, (jint)windowId, (jboolean)visible);
 
         m_javaVM->DetachCurrentThread();
     }
@@ -291,8 +287,7 @@ namespace QtAndroid
             qCritical()<<"AttachCurrentThread failed";
             return;
         }
-        jclass object=env->GetObjectClass(m_applicationObject);
-        env->CallVoidMethod(object, m_setWindowOpacityMethodID, (jint)windowId, (jdouble)level);
+        env->CallStaticVoidMethod(m_applicationClass, m_setWindowOpacityMethodID, (jint)windowId, (jdouble)level);
         m_javaVM->DetachCurrentThread();
     }
 
@@ -307,9 +302,14 @@ namespace QtAndroid
             return;
         }
         jstring jtitle = env->NewStringUTF(title.toUtf8().data());
-        env->CallVoidMethod(m_applicationObject, m_setWindowTitleMethodID, (jint)windowId, (jstring)jtitle);
+        env->CallStaticVoidMethod(m_applicationClass, m_setWindowTitleMethodID, (jint)windowId, (jstring)jtitle);
         env->DeleteLocalRef(jtitle);
         m_javaVM->DetachCurrentThread();
+    }
+
+    void setWindowFullScreen(int windowId, bool fullScreen)
+    {
+        // TODO implement
     }
 
     void raiseWindow(int windowId)
@@ -320,9 +320,13 @@ namespace QtAndroid
             qCritical()<<"AttachCurrentThread failed";
             return;
         }
-        jclass object=env->GetObjectClass(m_applicationObject);
-        env->CallVoidMethod(object, m_raiseWindowMethodID, (jint)windowId);
+        env->CallStaticVoidMethod(m_applicationClass, m_raiseWindowMethodID, (jint)windowId);
         m_javaVM->DetachCurrentThread();
+    }
+
+    void lowerWindow(int windowId)
+    {
+        // TODO implement
     }
 
     bool makeCurrent(int windowId)
@@ -394,7 +398,7 @@ namespace QtAndroid
             qCritical()<<"AttachCurrentThread failed";
             return;
         }
-        env->CallVoidMethod(m_applicationObject, m_showSoftwareKeyboardMethodID);
+        env->CallStaticVoidMethod(m_applicationClass, m_showSoftwareKeyboardMethodID);
         m_javaVM->DetachCurrentThread();
     }
 
@@ -407,7 +411,7 @@ namespace QtAndroid
             qCritical()<<"AttachCurrentThread failed";
             return;
         }
-        env->CallVoidMethod(m_applicationObject, m_hideSoftwareKeyboardMethodID);
+        env->CallStaticVoidMethod(m_applicationClass, m_hideSoftwareKeyboardMethodID);
         m_javaVM->DetachCurrentThread();
     }
 
@@ -430,7 +434,7 @@ namespace QtAndroid
 
 static void startQtAndroidPlugin(JNIEnv* env, jobject /*object*/)
 {
-    if (!m_applicationObject)
+    if (!m_applicationClass)
         setQtApplicationObject(env);
     m_windows.clear();
     mAndroidPlatformIntegration=0;
@@ -496,7 +500,7 @@ static void quitQtAndroidPlugin(JNIEnv* env, jclass /*clazz*/)
 static void terminateQt(JNIEnv* env, jclass /*clazz*/)
 {
     env->DeleteGlobalRef(m_EglObject);
-    env->DeleteGlobalRef(m_applicationObject);
+    env->DeleteGlobalRef(m_applicationClass);
 }
 
 static void setDisplayMetrics(JNIEnv* /*env*/, jclass /*clazz*/,
@@ -914,22 +918,22 @@ static int registerNativeMethods(JNIEnv* env, const char* className,
     if (!setQtApplicationObject(env))
         return JNI_FALSE;
 
-    if (env->RegisterNatives((jclass)m_applicationObject, gMethods, numMethods) < 0)
+    if (env->RegisterNatives((jclass)m_applicationClass, gMethods, numMethods) < 0)
     {
         __android_log_print(ANDROID_LOG_FATAL,"Qt", "RegisterNatives failed for '%s'", className);
         return JNI_FALSE;
     }
 
-    m_createWindowMethodID = env->GetMethodID((jclass)m_applicationObject, "createWindow", "(ZIIIII)Z");
-    m_resizeWindowMethodID = env->GetMethodID((jclass)m_applicationObject, "resizeWindow", "(IIIII)Z");
-    m_destroyWindowMethodID = env->GetMethodID((jclass)m_applicationObject, "destroyWindow", "(I)Z");
-    m_setWindowVisiblityMethodID = env->GetMethodID((jclass)m_applicationObject, "setWindowVisiblity", "(IZ)V");
-    m_setWindowOpacityMethodID = env->GetMethodID((jclass)m_applicationObject, "setWindowOpacity", "(ID)V");
-    m_setWindowTitleMethodID = env->GetMethodID((jclass)m_applicationObject, "setWindowTitle", "(ILjava/lang/String;)V");
-    m_raiseWindowMethodID = env->GetMethodID((jclass)m_applicationObject, "raiseWindow", "(I)V");
-    m_redrawWindowMethodID = env->GetMethodID((jclass)m_applicationObject, "redrawWindow", "(IIIII)V");
-    m_showSoftwareKeyboardMethodID = env->GetMethodID((jclass)m_applicationObject, "showSoftwareKeyboard", "()V");
-    m_hideSoftwareKeyboardMethodID = env->GetMethodID((jclass)m_applicationObject, "hideSoftwareKeyboard", "()V");
+    m_createWindowMethodID = env->GetStaticMethodID(m_applicationClass, "createWindow", "(ZIIIII)Z");
+    m_resizeWindowMethodID = env->GetStaticMethodID(m_applicationClass, "resizeWindow", "(IIIII)Z");
+    m_destroyWindowMethodID = env->GetStaticMethodID(m_applicationClass, "destroyWindow", "(I)Z");
+    m_setWindowVisiblityMethodID = env->GetStaticMethodID(m_applicationClass, "setWindowVisiblity", "(IZ)V");
+    m_setWindowOpacityMethodID = env->GetStaticMethodID(m_applicationClass, "setWindowOpacity", "(ID)V");
+    m_setWindowTitleMethodID = env->GetStaticMethodID(m_applicationClass, "setWindowTitle", "(ILjava/lang/String;)V");
+    m_raiseWindowMethodID = env->GetStaticMethodID(m_applicationClass, "raiseWindow", "(I)V");
+    m_redrawWindowMethodID = env->GetStaticMethodID(m_applicationClass, "redrawWindow", "(IIIII)V");
+    m_showSoftwareKeyboardMethodID = env->GetStaticMethodID(m_applicationClass, "showSoftwareKeyboard", "()V");
+    m_hideSoftwareKeyboardMethodID = env->GetStaticMethodID(m_applicationClass, "hideSoftwareKeyboard", "()V");
     return JNI_TRUE;
 }
 
