@@ -33,7 +33,7 @@ public class QtActivity extends Activity
     private boolean singleWindow=true;
     private Object jniProxyObject = null;
     private boolean quitApp = true;
-    private String appName = "calculator";
+    private String appName = "samplephonebook";
     private List<String> libraries = new ArrayList<String>();
     private boolean softwareKeyboardIsVisible=false;
     private long metaState;

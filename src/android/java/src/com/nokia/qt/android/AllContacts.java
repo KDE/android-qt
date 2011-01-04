@@ -18,38 +18,29 @@ public class AllContacts
 	{
 	   	    m_allAndroidContacts[i] = new MyContacts(id,name,names,phoneNumberArray,emailArray,note,addressArray,orgArray,birthday,anniversary,nickName,urlArray);
 	}
-	
 }
-
-
 class MyContacts
 {
 	String   m_dispalyName;
 	NameData m_names;
 	PhoneNumber[] m_phoneNumbers;
 	EmailData[] m_email;
-
 	String   m_contactNote;
 	AddressData[] m_address;
-
 	OrganizationalData[] m_organizations;
-
 	String   m_contactID;
 	String   m_contactBirthDay;
 	String   m_contactAnniversary;
 	String   m_contactNickName;
 	String[] m_contactUrls;
 
-
- public MyContacts(String iid,String name,NameData names,PhoneNumber[] phonenumberArray,
+	public MyContacts(String iid,String name,NameData names,PhoneNumber[] phonenumberArray,
 			EmailData[] emailArray,String note,AddressData[] addressArray,
 			OrganizationalData[] organizationArray,String birthday,
 			String anniversary,String nickName,String[] urlArray)
-
 	{
 		m_contactID = new String(iid);
 		m_dispalyName = new String(name);
-		
 		if(names != null)
 		{
 		m_names = new NameData(names.m_firstName,names.m_lastName,names.m_middleName,names.m_prefix,names.m_suffix);
@@ -62,7 +53,6 @@ class MyContacts
 		int numbercount = phonenumberArray.length;
 		if(numbercount>0)
 		{
-
 			m_phoneNumbers = new PhoneNumber[numbercount];
 			for(i=0;i<numbercount;i++)
 			{
@@ -71,11 +61,9 @@ class MyContacts
 		}
 		else
 		{
-
 			m_phoneNumbers = new PhoneNumber[1];
 			m_phoneNumbers[0] = new PhoneNumber(new String(), 0);
 		}
-
 		int emailcount = emailArray.length;
 		if(emailcount>0)
 		{
@@ -90,7 +78,6 @@ class MyContacts
 			m_email = new EmailData[1];
 			m_email[0] = new EmailData(new String(),0);
 		}
-		
 		if(note != null)
 		{
 			m_contactNote = new String(note);
@@ -113,7 +100,6 @@ class MyContacts
 			m_address = new AddressData[1];
 			m_address[0] = new AddressData(new String(),new String(), new String(), new String(), new String(), new String(), 0);
 		}
-		
 		int orgcount = organizationArray.length;
 		if(orgcount>0)
 		{

@@ -4,7 +4,6 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
-
 import android.R.bool;
 import android.net.Uri;
 import android.os.Handler;
@@ -28,23 +27,16 @@ import android.content.ContentUris;
 import android.provider.ContactsContract;
 import android.content.ContentValues; 
 
-
 public class QtAndroidContacts
 {
 	private static QtActivity _m_instance;
 	private String TAG = "QTMOBILITYCONTACTS";
 	private static AllContacts m_androidContacts;
-
 	public static void setContactsActivity(QtActivity mActivity)
 	{
-		Log.i("QTMOBILECONTACTS", "SetActivity");
-		
-
 		_m_instance = mActivity;
 	}
-
 	@SuppressWarnings("unused")
-	
 	private void getQtContacts()
 	{
 		Cursor c=_m_instance.getContentResolver().query(ContactsContract.Contacts.CONTENT_URI,null, null, null, null);	
@@ -69,10 +61,8 @@ public class QtAndroidContacts
 			String anniversary = getAnniversaryDetails(id);
 			String nickNameg = getNickNameDetails(id);
 			m_androidContacts.buildContacts(i,id,displayName,nameData,numberArray,emailArray,note,addressArray,organizationArray,birthday,anniversary,nickNameg,urlArray);
-
 		}
 	}
-
     private NameData getNameDetails(String id)
     {
     	String nameWhere = ContactsContract.Data.CONTACT_ID + " = ? AND " + ContactsContract.Data.MIMETYPE + " = ?"; 
@@ -80,7 +70,7 @@ public class QtAndroidContacts
 				ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE}; 
 		Cursor nameCur = _m_instance.getContentResolver().query(ContactsContract.Data.CONTENT_URI, 
 				null, nameWhere, nameWhereParams, null);
-		if(nameCur.moveToFirst())
+		if(nameCur != null && nameCur.moveToFirst())
 		{
 			
 			String firstName = nameCur.getString(nameCur.getColumnIndex(ContactsContract.CommonDataKinds.StructuredName.GIVEN_NAME));
@@ -99,11 +89,15 @@ public class QtAndroidContacts
 			if(suffix == null)
 				suffix = new String();
 			NameData nameDetails = new NameData(firstName,lastName,middleName,prefix,suffix);
+
+			nameCur.close();
+
 			return nameDetails;
 			
 		}
 		return null;
 	}
+
 	private PhoneNumber[] getPhoneNumberDetails(String id)
 	{
 		Cursor pCur = _m_instance.getContentResolver().query(
@@ -111,21 +105,19 @@ public class QtAndroidContacts
 				null, 
 				ContactsContract.CommonDataKinds.Phone.CONTACT_ID +" = ?", 
 				new String[]{id}, null);
-
 		if(pCur!= null)
 		{
 			int i=0;
-			PhoneNumber[] numarray = new PhoneNumber[pCur.getCount()];
+			PhoneNumber[] numbers = new PhoneNumber[pCur.getCount()];
 			while (pCur.moveToNext())
 			{
-
 				String number= pCur.getString(pCur.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER));
 				int type =Integer.parseInt(pCur.getString(pCur.getColumnIndex(ContactsContract.CommonDataKinds.Phone.TYPE)));
-				numarray[i] = new PhoneNumber(number, type);
+				numbers[i] = new PhoneNumber(number, type);
 				i++;
 			} 
 			pCur.close();
-			return numarray;
+			return numbers;
 		}
 		return null;
 	}
@@ -137,27 +129,22 @@ public class QtAndroidContacts
 				null,
 				ContactsContract.CommonDataKinds.Email.CONTACT_ID + " = ?", 
 				new String[]{id}, null);
-
-
 		if(emailCur!= null)
 		{
-			EmailData[] emailarray = new EmailData[emailCur.getCount()];
+			EmailData[] emails = new EmailData[emailCur.getCount()];
 			int i=0;
 			while (emailCur.moveToNext())
 			{ 
-
 				String email = emailCur.getString(emailCur.getColumnIndex(ContactsContract.CommonDataKinds.Email.DATA));
 				String type = emailCur.getString(emailCur.getColumnIndex(ContactsContract.CommonDataKinds.Email.TYPE));
-				emailarray[i] = new EmailData(email, Integer.parseInt(type));
+				emails[i] = new EmailData(email, Integer.parseInt(type));
 				i++;
-
 			}
 			emailCur.close();
-		   return emailarray;
+		   return emails;
 		}
 		return null;
 	}
-
 	private String getNoteDetails(String id)
 	{
 		String noteWhere = ContactsContract.Data.CONTACT_ID + " = ? AND " + ContactsContract.Data.MIMETYPE + " = ?"; 
@@ -167,11 +154,9 @@ public class QtAndroidContacts
 		if (noteCur.moveToFirst()) { 
 			note = noteCur.getString(noteCur.getColumnIndex(ContactsContract.CommonDataKinds.Note.NOTE));
 		} 
-
 		noteCur.close();
 		return note;
 	}
-	
 	private String getBirthdayDetails(String id)
 	{
 		Cursor birthDayCur =_m_instance.getContentResolver().query( ContactsContract.Data.CONTENT_URI, new String[] { Event.DATA }, ContactsContract.Data.CONTACT_ID + "=" + id + " AND " + Data.MIMETYPE + "= '" + Event.CONTENT_ITEM_TYPE + "' AND " + Event.TYPE + "=" + Event.TYPE_BIRTHDAY, null, null);
@@ -189,11 +174,9 @@ public class QtAndroidContacts
 			}
 			birthDayCur.close();
 			return birthday;
-
 		}
 		return null;
 	}
-	
 	private String getAnniversaryDetails(String id)
 	{
 		Cursor anniversaryCur =_m_instance.getContentResolver().query( ContactsContract.Data.CONTENT_URI, new String[] { Event.DATA }, ContactsContract.Data.CONTACT_ID + "=" + id + " AND " + Data.MIMETYPE + "= '" + Event.CONTENT_ITEM_TYPE + "' AND " + Event.TYPE + "=" + Event.TYPE_ANNIVERSARY, null, ContactsContract.Data.DISPLAY_NAME);
@@ -214,8 +197,6 @@ public class QtAndroidContacts
 		}
 		return null;
 	}
-
-	
 	private String getNickNameDetails(String id)
 	{
 		String nickWhere = ContactsContract.Data.CONTACT_ID + " = ? AND " + ContactsContract.Data.MIMETYPE + " = ?"; 
@@ -224,15 +205,12 @@ public class QtAndroidContacts
 		Cursor nickCur = _m_instance.getContentResolver().query(ContactsContract.Data.CONTENT_URI, 
 				null, nickWhere, nickWhereParams, null);
 		if (nickCur.moveToFirst()) { 
-			String nickname= nickCur.getString(nickCur.getColumnIndex(ContactsContract.CommonDataKinds.Nickname.DATA));
+			String nickName= nickCur.getString(nickCur.getColumnIndex(ContactsContract.CommonDataKinds.Nickname.DATA));
 			nickCur.close();
-			Log.i(TAG,nickname);
-			return nickname;
+			return nickName;
 		} 
-
 		return null;
 	}
-	
 	private OrganizationalData[] getOrganizationDetails(String id)
 	{ 
 		String orgWhere = ContactsContract.Data.CONTACT_ID + " = ? AND " + ContactsContract.Data.MIMETYPE + " = ?"; 
@@ -240,15 +218,12 @@ public class QtAndroidContacts
 				ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE}; 
 		Cursor orgCur = _m_instance.getContentResolver().query(ContactsContract.Data.CONTENT_URI, 
 				null, orgWhere, orgWhereParams, null);
-
-
 		if(orgCur!= null)
 		{
-			OrganizationalData[] orgarray = new OrganizationalData[orgCur.getCount()];
+			OrganizationalData[] organizations = new OrganizationalData[orgCur.getCount()];
 			int i=0;
 			while (orgCur.moveToNext())
 			{ 
-
 				String organization = orgCur.getString(orgCur.getColumnIndex(ContactsContract.CommonDataKinds.Organization.DATA));
 				if(organization == null)
 					organization = new String();
@@ -256,16 +231,14 @@ public class QtAndroidContacts
 				if(title == null)
 					title = new String();
 				String type = orgCur.getString(orgCur.getColumnIndex(ContactsContract.CommonDataKinds.Organization.TYPE));
-				orgarray[i]= new OrganizationalData(organization, title, Integer.parseInt(type));
+				organizations[i]= new OrganizationalData(organization, title, Integer.parseInt(type));
 				i++;
-
 			}
 			orgCur.close();
-			return orgarray;
+			return organizations;
 		}
 		return null;
 	}
-
 	private AddressData[] getAddressDetails(String id)
 	{
 		String addrWhere = ContactsContract.Data.CONTACT_ID + " = ? AND " + ContactsContract.Data.MIMETYPE + " = ?"; 
@@ -273,79 +246,55 @@ public class QtAndroidContacts
 				ContactsContract.CommonDataKinds.StructuredPostal.CONTENT_ITEM_TYPE}; 
 		Cursor addrCur = _m_instance.getContentResolver().query(ContactsContract.Data.CONTENT_URI, 
 				null, addrWhere,addrWhereParams, null);
-
-
 		if(addrCur != null)
 		{
-			AddressData[] addressarray = new AddressData[addrCur.getCount()];
+			AddressData[] addresses = new AddressData[addrCur.getCount()];
 			int i=0;
 			while(addrCur.moveToNext()) {
-				
-				
-				String pobox = addrCur.getString(addrCur.getColumnIndex(ContactsContract.CommonDataKinds.StructuredPostal.POBOX));
-				
+			String pobox = addrCur.getString(addrCur.getColumnIndex(ContactsContract.CommonDataKinds.StructuredPostal.POBOX));
 				if(pobox == null)
 					pobox = new String();
-				
-				String street =addrCur.getString(addrCur.getColumnIndex(ContactsContract.CommonDataKinds.StructuredPostal.STREET));
-				
+			String street =addrCur.getString(addrCur.getColumnIndex(ContactsContract.CommonDataKinds.StructuredPostal.STREET));
 				if(street == null)
 					street = new String();
-				
-				String city =addrCur.getString(addrCur.getColumnIndex(ContactsContract.CommonDataKinds.StructuredPostal.CITY));
-				
+			String city =addrCur.getString(addrCur.getColumnIndex(ContactsContract.CommonDataKinds.StructuredPostal.CITY));
 				if(city == null)
 					city = new String();
-				
-				String region = addrCur.getString(addrCur.getColumnIndex(ContactsContract.CommonDataKinds.StructuredPostal.REGION));
-				
+			String region = addrCur.getString(addrCur.getColumnIndex(ContactsContract.CommonDataKinds.StructuredPostal.REGION));
 				if(region == null)
 					region = new String();
-				
-				String postCode = addrCur.getString(addrCur.getColumnIndex(ContactsContract.CommonDataKinds.StructuredPostal.POSTCODE));
-				
+			String postCode = addrCur.getString(addrCur.getColumnIndex(ContactsContract.CommonDataKinds.StructuredPostal.POSTCODE));
 				if(postCode == null)
 					postCode = new String();
-				
-				String country = addrCur.getString(addrCur.getColumnIndex(ContactsContract.CommonDataKinds.StructuredPostal.COUNTRY));
-				
+			String country = addrCur.getString(addrCur.getColumnIndex(ContactsContract.CommonDataKinds.StructuredPostal.COUNTRY));
 				if(country == null)
 					country = new String();
-				
-				String type = addrCur.getString(addrCur.getColumnIndex(ContactsContract.CommonDataKinds.StructuredPostal.TYPE));
-				
-				addressarray[i] = new AddressData(pobox, street, city, region, postCode, country, Integer.parseInt(type));
-
+			String type = addrCur.getString(addrCur.getColumnIndex(ContactsContract.CommonDataKinds.StructuredPostal.TYPE));
+				addresses[i] = new AddressData(pobox, street, city, region, postCode, country, Integer.parseInt(type));
 				i++;
 			} 
 			addrCur.close();
-			return addressarray;
+			return addresses;
 		}
 		return null;
 	}
-
 	private String[] getUrlDetails(String id)
 	{
 		String urlWhere = ContactsContract.Data.CONTACT_ID + " = ? AND " + ContactsContract.Data.MIMETYPE + " = ?"; 
 		String[] urlWhereParams = new String[]{id, ContactsContract.CommonDataKinds.Website.CONTENT_ITEM_TYPE}; 
 		Cursor urlCur = _m_instance.getContentResolver().query(ContactsContract.Data.CONTENT_URI, null, urlWhere, urlWhereParams, null);
-
-
 		if(urlCur!= null)
 		{
-			String[] urlarray = new String[urlCur.getCount()];
+			String[] urls = new String[urlCur.getCount()];
 			int i=0;
 			while (urlCur.moveToNext())
 			{ 
-
-				urlarray[i] =urlCur.getString(urlCur.getColumnIndex(ContactsContract.CommonDataKinds.Website.DATA));
+				urls[i] =urlCur.getString(urlCur.getColumnIndex(ContactsContract.CommonDataKinds.Website.DATA));
 				i++;
 			}
 			urlCur.close();
-			return urlarray;
+			return urls;
 		}
 		return null;
 	}
-	
-	
 }
