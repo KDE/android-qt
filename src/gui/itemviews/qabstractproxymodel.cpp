@@ -45,6 +45,9 @@
 
 #include "qitemselectionmodel.h"
 #include <private/qabstractproxymodel_p.h>
+#include <QtCore/QSize>
+#include <QtCore/QStringList>
+
 
 QT_BEGIN_NAMESPACE
 
@@ -118,12 +121,15 @@ QAbstractProxyModel::~QAbstractProxyModel()
 void QAbstractProxyModel::setSourceModel(QAbstractItemModel *sourceModel)
 {
     Q_D(QAbstractProxyModel);
-    if (d->model)
+    if (d->model) {
         disconnect(d->model, SIGNAL(destroyed()), this, SLOT(_q_sourceModelDestroyed()));
+        disconnect(d->model, SIGNAL(modelReset()), this, SLOT(resetInternalData()));
+    }
 
     if (sourceModel) {
         d->model = sourceModel;
         connect(d->model, SIGNAL(destroyed()), this, SLOT(_q_sourceModelDestroyed()));
+        connect(d->model, SIGNAL(modelReset()), this, SLOT(resetInternalData()));
     } else {
         d->model = QAbstractItemModelPrivate::staticEmptyModel();
     }
@@ -187,8 +193,12 @@ QItemSelection QAbstractProxyModel::mapSelectionToSource(const QItemSelection &p
 {
     QModelIndexList proxyIndexes = proxySelection.indexes();
     QItemSelection sourceSelection;
-    for (int i = 0; i < proxyIndexes.size(); ++i)
-        sourceSelection << QItemSelectionRange(mapToSource(proxyIndexes.at(i)));
+    for (int i = 0; i < proxyIndexes.size(); ++i) {
+        const QModelIndex proxyIdx = mapToSource(proxyIndexes.at(i));
+        if (!proxyIdx.isValid())
+            continue;
+        sourceSelection << QItemSelectionRange(proxyIdx);
+    }
     return sourceSelection;
 }
 
@@ -201,8 +211,12 @@ QItemSelection QAbstractProxyModel::mapSelectionFromSource(const QItemSelection 
 {
     QModelIndexList sourceIndexes = sourceSelection.indexes();
     QItemSelection proxySelection;
-    for (int i = 0; i < sourceIndexes.size(); ++i)
-        proxySelection << QItemSelectionRange(mapFromSource(sourceIndexes.at(i)));
+    for (int i = 0; i < sourceIndexes.size(); ++i) {
+        const QModelIndex srcIdx = mapFromSource(sourceIndexes.at(i));
+        if (!srcIdx.isValid())
+            continue;
+        proxySelection << QItemSelectionRange(srcIdx);
+    }
     return proxySelection;
 }
 
@@ -262,6 +276,15 @@ bool QAbstractProxyModel::setData(const QModelIndex &index, const QVariant &valu
 /*!
     \reimp
  */
+bool QAbstractProxyModel::setItemData(const QModelIndex &index, const QMap< int, QVariant >& roles)
+{
+    Q_D(QAbstractProxyModel);
+    return d->model->setItemData(mapToSource(index), roles);
+}
+
+/*!
+    \reimp
+ */
 bool QAbstractProxyModel::setHeaderData(int section, Qt::Orientation orientation, const QVariant &value, int role)
 {
     Q_D(QAbstractProxyModel);
@@ -274,6 +297,109 @@ bool QAbstractProxyModel::setHeaderData(int section, Qt::Orientation orientation
         sourceSection = mapToSource(proxyIndex).row();
     }
     return d->model->setHeaderData(sourceSection, orientation, value, role);
+}
+
+/*!
+    \reimp
+ */
+QModelIndex QAbstractProxyModel::buddy(const QModelIndex &index) const
+{
+    Q_D(const QAbstractProxyModel);
+    return mapFromSource(d->model->buddy(mapToSource(index)));
+}
+
+/*!
+    \reimp
+ */
+bool QAbstractProxyModel::canFetchMore(const QModelIndex &parent) const
+{
+    Q_D(const QAbstractProxyModel);
+    return d->model->canFetchMore(mapToSource(parent));
+}
+
+/*!
+    \reimp
+ */
+void QAbstractProxyModel::fetchMore(const QModelIndex &parent)
+{
+    Q_D(QAbstractProxyModel);
+    d->model->fetchMore(mapToSource(parent));
+}
+
+/*!
+    \reimp
+ */
+void QAbstractProxyModel::sort(int column, Qt::SortOrder order)
+{
+    Q_D(QAbstractProxyModel);
+    d->model->sort(column, order);
+}
+
+/*!
+    \reimp
+ */
+QSize QAbstractProxyModel::span(const QModelIndex &index) const
+{
+    Q_D(const QAbstractProxyModel);
+    return d->model->span(mapToSource(index));
+}
+
+/*!
+    \reimp
+ */
+bool QAbstractProxyModel::hasChildren(const QModelIndex &parent) const
+{
+    Q_D(const QAbstractProxyModel);
+    return d->model->hasChildren(mapToSource(parent));
+}
+
+/*!
+    \reimp
+ */
+QMimeData* QAbstractProxyModel::mimeData(const QModelIndexList &indexes) const
+{
+    Q_D(const QAbstractProxyModel);
+    QModelIndexList list;
+    foreach(const QModelIndex &index, indexes)
+        list << mapToSource(index);
+    return d->model->mimeData(list);
+}
+
+/*!
+    \reimp
+ */
+QStringList QAbstractProxyModel::mimeTypes() const
+{
+    Q_D(const QAbstractProxyModel);
+    return d->model->mimeTypes();
+}
+
+/*!
+    \reimp
+ */
+Qt::DropActions QAbstractProxyModel::supportedDropActions() const
+{
+    Q_D(const QAbstractProxyModel);
+    return d->model->supportedDropActions();
+}
+
+/*
+    \since 4.8
+
+    This slot is called just after the internal data of a model is cleared
+    while it is being reset.
+
+    This slot is provided the convenience of subclasses of concrete proxy
+    models, such as subclasses of QSortFilterProxyModel which maintain extra
+    data.
+
+    \snippet doc/src/snippets/code/src_corelib_kernel_qabstractitemmodel.cpp 10
+
+    \sa modelAboutToBeReset(), modelReset()
+*/
+void QAbstractProxyModel::resetInternalData()
+{
+
 }
 
 QT_END_NAMESPACE

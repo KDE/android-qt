@@ -59,6 +59,7 @@
 #include <private/qdeclarativerectangle_p.h>
 #include <private/qdeclarativemetatype_p.h>
 #include <private/qdeclarativeproperty_p.h>
+#include <private/qdeclarativedebughelper_p.h>
 
 #include "../../../shared/util.h"
 #include "../shared/debugutil_p.h"
@@ -112,6 +113,7 @@ private slots:
     void tst_QDeclarativeDebugContextReference();
     void tst_QDeclarativeDebugPropertyReference();
 
+    void setBindingForObject();
     void setMethodBody();
 };
 
@@ -278,12 +280,14 @@ void tst_QDeclarativeDebug::initTestCase()
 {
     qRegisterMetaType<QDeclarativeDebugWatch::State>();
 
+    QTest::ignoreMessage(QtWarningMsg, "Qml debugging is enabled. Only use this in a safe environment!");
+    QDeclarativeDebugHelper::enableDebugging();
+
     QTest::ignoreMessage(QtWarningMsg, "QDeclarativeDebugServer: Waiting for connection on port 3768...");
-    qputenv("QML_DEBUG_SERVER_PORT", "3768");
     m_engine = new QDeclarativeEngine(this);
 
     QList<QByteArray> qml;
-    qml << "import Qt 4.7\n"
+    qml << "import QtQuick 1.0\n"
             "Item {"
                 "width: 10; height: 20; scale: blueRect.scale;"
                 "Rectangle { id: blueRect; width: 500; height: 600; color: \"blue\"; }"
@@ -294,11 +298,11 @@ void tst_QDeclarativeDebug::initTestCase()
             "}";
 
     // add second component to test multiple root contexts
-    qml << "import Qt 4.7\n"
+    qml << "import QtQuick 1.0\n"
             "Item {}";
 
     // and a third to test methods
-    qml << "import Qt 4.7\n"
+    qml << "import QtQuick 1.0\n"
             "Item {"
                 "function myMethodNoArgs() { return 3; }\n"
                 "function myMethod(a) { return a + 9; }\n"
@@ -324,13 +328,16 @@ void tst_QDeclarativeDebug::initTestCase()
     bool ok = m_conn->waitForConnected();
     Q_ASSERT(ok);
     QTRY_VERIFY(QDeclarativeDebugService::hasDebuggingClient());
-
     m_dbg = new QDeclarativeEngineDebug(m_conn, this);
+    QTRY_VERIFY(m_dbg->status() == QDeclarativeEngineDebug::Enabled);
 }
 
 void tst_QDeclarativeDebug::cleanupTestCase()
 {
+    delete m_dbg;
+    delete m_conn;
     qDeleteAll(m_components);
+    delete m_engine;
 }
 
 void tst_QDeclarativeDebug::setMethodBody()
@@ -891,6 +898,90 @@ void tst_QDeclarativeDebug::tst_QDeclarativeDebugPropertyReference()
         compareProperties(r, ref);
 }
 
-QTEST_MAIN(tst_QDeclarativeDebug)
+
+void tst_QDeclarativeDebug::setBindingForObject()
+{
+    QDeclarativeDebugObjectReference rootObject = findRootObject();
+    QVERIFY(rootObject.debugId() != -1);
+    QDeclarativeDebugPropertyReference widthPropertyRef = findProperty(rootObject.properties(), "width");
+
+    QCOMPARE(widthPropertyRef.value(), QVariant(10));
+    QCOMPARE(widthPropertyRef.binding(), QString());
+
+    //
+    // set literal
+    //
+    m_dbg->setBindingForObject(rootObject.debugId(), "width", "15", true);
+
+    rootObject = findRootObject();
+    widthPropertyRef =  findProperty(rootObject.properties(), "width");
+
+    QCOMPARE(widthPropertyRef.value(), QVariant(15));
+    QCOMPARE(widthPropertyRef.binding(), QString());
+
+    //
+    // set expression
+    //
+    m_dbg->setBindingForObject(rootObject.debugId(), "width", "height", false);
+
+    rootObject = findRootObject();
+    widthPropertyRef =  findProperty(rootObject.properties(), "width");
+
+    QCOMPARE(widthPropertyRef.value(), QVariant(20));
+    QCOMPARE(widthPropertyRef.binding(), QString("height"));
+
+    //
+    // reset
+    //
+    m_dbg->resetBindingForObject(rootObject.debugId(), "width");
+
+    rootObject = findRootObject();
+    widthPropertyRef =  findProperty(rootObject.properties(), "width");
+
+   // QCOMPARE(widthPropertyRef.value(), QVariant(0)); // TODO: Shouldn't this work?
+    QCOMPARE(widthPropertyRef.binding(), QString());
+
+    //
+    // set handler
+    //
+    rootObject = findRootObject();
+    QCOMPARE(rootObject.children().size(), 3);
+    QDeclarativeDebugObjectReference mouseAreaObject = rootObject.children().at(2);
+    QDeclarativeDebugObjectQuery *q_obj = m_dbg->queryObjectRecursive(mouseAreaObject, this);
+    waitForQuery(q_obj);
+    mouseAreaObject = q_obj->object();
+
+    QCOMPARE(mouseAreaObject.className(), QString("MouseArea"));
+
+    QDeclarativeDebugPropertyReference onEnteredRef = findProperty(mouseAreaObject.properties(), "onEntered");
+
+    QCOMPARE(onEnteredRef.name(), QString("onEntered"));
+    QCOMPARE(onEnteredRef.value(),  QVariant("{ console.log('hello') }"));
+
+    m_dbg->setBindingForObject(mouseAreaObject.debugId(), "onEntered", "{console.log('hello, world') }", false) ;
+
+    rootObject = findRootObject();
+    mouseAreaObject = rootObject.children().at(2);
+    q_obj = m_dbg->queryObjectRecursive(mouseAreaObject, this);
+    waitForQuery(q_obj);
+    mouseAreaObject = q_obj->object();
+    onEnteredRef = findProperty(mouseAreaObject.properties(), "onEntered");
+    QCOMPARE(onEnteredRef.name(), QString("onEntered"));
+    QCOMPARE(onEnteredRef.value(),  QVariant("{console.log('hello, world') }"));
+}
+
+int main(int argc, char *argv[])
+{
+    int _argc = argc + 1;
+    char **_argv = new char*[_argc];
+    for (int i = 0; i < argc; ++i)
+        _argv[i] = argv[i];
+    _argv[_argc - 1] = "-qmljsdebugger=port:3768";
+
+    QApplication app(_argc, _argv);
+    tst_QDeclarativeDebug tc;
+    return QTest::qExec(&tc, _argc, _argv);
+    delete _argv;
+}
 
 #include "tst_qdeclarativedebug.moc"

@@ -616,6 +616,7 @@ void QTextFramePrivate::remove_me()
 
 /*!
     Returns an iterator pointing to the first document element inside the frame.
+    Please see the document \l{STL-style-Iterators} for more information.
 
     \sa end()
 */
@@ -628,8 +629,8 @@ QTextFrame::iterator QTextFrame::begin() const
 }
 
 /*!
-    Returns an iterator pointing to the last document element inside the frame.
-
+    Returns an iterator pointing to the position past the last document element inside the frame.
+    Please see the document \l{STL-Style Iterators} for more information.    
     \sa begin()
 */
 QTextFrame::iterator QTextFrame::end() const
@@ -1654,6 +1655,35 @@ QTextBlock::iterator &QTextBlock::iterator::operator--()
     than the \a other text fragment; otherwise returns false.
 */
 
+/*!
+    Returns the glyphs of this text fragment. The positions of the glyphs are
+    relative to the position of the QTextBlock's layout.
+
+    \sa QGlyphs, QTextBlock::layout(), QTextLayout::position(), QPainter::drawGlyphs()
+*/
+QList<QGlyphs> QTextFragment::glyphs() const
+{
+    if (!p || !n)
+        return QList<QGlyphs>();
+
+    int pos = position();
+    int len = length();
+    if (len == 0)
+        return QList<QGlyphs>();
+
+    int blockNode = p->blockMap().findNode(pos);
+
+    const QTextBlockData *blockData = p->blockMap().fragment(blockNode);
+    QTextLayout *layout = blockData->layout;
+
+    QList<QGlyphs> ret;
+    for (int i=0; i<layout->lineCount(); ++i) {
+        QTextLine textLine = layout->lineAt(i);
+        ret += textLine.glyphs(pos, len);
+    }
+
+    return ret;
+}
 
 /*!
     Returns the position of this text fragment in the document.

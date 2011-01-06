@@ -157,13 +157,14 @@ private slots:
     void keyBoardNavigationWithMouse();
     void task_QTBUG_1071_changingFocusEmitsActivated();
     void maxVisibleItems();
+    void task_QTBUG_10491_currentIndexAndModelColumn();
 
 protected slots:
     void onEditTextChanged( const QString &newString );
 
 private:
     QComboBox *testWidget;
-    QDialog *parent;
+    QWidget *parent;
     QPushButton* ok;
     int editTextCount;
     QString editText;
@@ -395,7 +396,7 @@ tst_QComboBox::~tst_QComboBox()
 void tst_QComboBox::initTestCase()
 {
     // Create the test class
-    parent = new QDialog(0);
+    parent = new QWidget(0, Qt::Window);
     parent->setObjectName("parent");
     parent->resize(400, 400);
     testWidget = new QComboBox(parent);
@@ -474,6 +475,18 @@ void tst_QComboBox::setPalette()
             QVERIFY(((QWidget*)o)->palette() == pal);
         }
     }
+
+    testWidget->setEditable(true);
+    pal.setColor(QPalette::Base, Qt::red);
+    //Setting it on the lineedit should be separate form the combo
+    testWidget->lineEdit()->setPalette(pal);
+    QVERIFY(testWidget->palette() != pal);
+    QVERIFY(testWidget->lineEdit()->palette() == pal);
+    pal.setColor(QPalette::Base, Qt::green);
+    //Setting it on the combo directly should override lineedit
+    testWidget->setPalette(pal);
+    QVERIFY(testWidget->palette() == pal);
+    QVERIFY(testWidget->lineEdit()->palette() == pal);
 }
 
 void tst_QComboBox::sizeAdjustPolicy()
@@ -1914,7 +1927,8 @@ void tst_QComboBox::itemListPosition()
 
     //we test QFontComboBox because it has the specific behaviour to set a fixed size
     //to the list view
-    QFontComboBox combo;
+    QWidget topLevel;
+    QFontComboBox combo(&topLevel);
 
     //the code to get the avaialbe screen space is copied from QComboBox code
     const int scrNumber = QApplication::desktop()->screenNumber(&combo);
@@ -1932,7 +1946,7 @@ void tst_QComboBox::itemListPosition()
 
     combo.move(screen.width()-combo.sizeHint().width(), 0); //puts the combo to the top-right corner
 
-    combo.show();
+    topLevel.show();
     //wait because the window manager can move the window if there is a right panel
     QTRY_VERIFY(combo.isVisible());
     combo.showPopup();
@@ -2254,9 +2268,10 @@ void tst_QComboBox::noScrollbar()
     qApp->setStyleSheet(stylesheet);
 
     {
-        QComboBox comboBox;
+        QWidget topLevel;
+        QComboBox comboBox(&topLevel);
         comboBox.addItems(initialContent);
-        comboBox.show();
+        topLevel.show();
         comboBox.resize(200, comboBox.height());
         QTRY_VERIFY(comboBox.isVisible());
         comboBox.showPopup();
@@ -2553,11 +2568,33 @@ void tst_QComboBox::maxVisibleItems()
 
     QAbstractItemView *v = comboBox.view();
     int itemHeight = v->visualRect(v->model()->index(0,0)).height();
-    if (v->style()->styleHint(QStyle::SH_ComboBox_Popup))
+    QListView *lv = qobject_cast<QListView*>(v);
+    if (lv)
+        itemHeight += lv->spacing();
+    QStyleOptionComboBox opt;
+    opt.initFrom(&comboBox);
+    if (!comboBox.style()->styleHint(QStyle::SH_ComboBox_Popup, &opt))
         QCOMPARE(v->viewport()->height(), itemHeight * comboBox.maxVisibleItems());
-    // QCombobox without a popup does not work, see QTBUG-760
 }
 
+void tst_QComboBox::task_QTBUG_10491_currentIndexAndModelColumn()
+{
+    QComboBox comboBox;
+
+    QStandardItemModel model(4, 4, &comboBox);
+    for (int i = 0; i < 4; i++){
+        model.setItem(i, 0, new QStandardItem(QString("Employee Nr %1").arg(i)));
+        model.setItem(i, 1, new QStandardItem(QString("Street Nr %1").arg(i)));
+        model.setItem(i, 2, new QStandardItem(QString("Town Nr %1").arg(i)));
+        model.setItem(i, 3, new QStandardItem(QString("Phone Nr %1").arg(i)));
+    }
+    comboBox.setModel(&model);
+    comboBox.setModelColumn(0);
+
+    QComboBoxPrivate *d = static_cast<QComboBoxPrivate *>(QComboBoxPrivate::get(&comboBox));
+    d->setCurrentIndex(model.index(2, 2));
+    QCOMPARE(QModelIndex(d->currentIndex), model.index(2, comboBox.modelColumn()));
+}
 
 QTEST_MAIN(tst_QComboBox)
 #include "tst_qcombobox.moc"

@@ -46,7 +46,9 @@ QT_BEGIN_HEADER
 
 #include "QtCore/qglobal.h"
 
-#if defined(QT_ARCH_VXWORKS)
+#if defined(Q_OS_ANDROID)
+#  include "QtCore/qatomic_android.h"
+#elif defined(QT_ARCH_VXWORKS)
 #  include "QtCore/qatomic_vxworks.h"
 #elif defined(QT_ARCH_ALPHA)
 #  include "QtCore/qatomic_alpha.h"

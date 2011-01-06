@@ -251,12 +251,6 @@ bool QDirectFBPixmapData::fromDataBufferDescription(const DFBDataBufferDescripti
     }
     QDirectFBPointer<IDirectFBImageProvider> provider(providerPtr);
 
-    DFBSurfaceDescription surfaceDescription;
-    if ((result = provider->GetSurfaceDescription(provider.data(), &surfaceDescription)) != DFB_OK) {
-        DirectFBError("QDirectFBPixmapData::fromDataBufferDescription(): Can't get surface description", result);
-        return false;
-    }
-
     DFBImageDescription imageDescription;
     result = provider->GetImageDescription(provider.data(), &imageDescription);
     if (result != DFB_OK) {
@@ -264,7 +258,17 @@ bool QDirectFBPixmapData::fromDataBufferDescription(const DFBDataBufferDescripti
         return false;
     }
 
-    alpha = imageDescription.caps & (DICAPS_ALPHACHANNEL|DICAPS_COLORKEY);
+    if (imageDescription.caps & DICAPS_COLORKEY) {
+        return false;
+    }
+
+    DFBSurfaceDescription surfaceDescription;
+    if ((result = provider->GetSurfaceDescription(provider.data(), &surfaceDescription)) != DFB_OK) {
+        DirectFBError("QDirectFBPixmapData::fromDataBufferDescription(): Can't get surface description", result);
+        return false;
+    }
+
+    alpha = imageDescription.caps & DICAPS_ALPHACHANNEL;
     imageFormat = alpha ? screen->alphaPixmapFormat() : screen->pixelFormat();
 
     dfbSurface = screen->createDFBSurface(QSize(surfaceDescription.width, surfaceDescription.height),
@@ -585,7 +589,6 @@ void QDirectFBPixmapData::invalidate()
     imageFormat = QImage::Format_Invalid;
 }
 
-#ifndef QT_DIRECTFB_PLUGIN
 Q_GUI_EXPORT IDirectFBSurface *qt_directfb_surface_for_pixmap(const QPixmap &pixmap)
 {
     const QPixmapData *data = pixmap.pixmapData();
@@ -594,7 +597,6 @@ Q_GUI_EXPORT IDirectFBSurface *qt_directfb_surface_for_pixmap(const QPixmap &pix
     const QDirectFBPixmapData *dfbData = static_cast<const QDirectFBPixmapData*>(data);
     return dfbData->directFBSurface();
 }
-#endif
 
 QT_END_NAMESPACE
 

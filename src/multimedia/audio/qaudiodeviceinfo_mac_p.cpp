@@ -78,7 +78,13 @@ QAudioDeviceInfoInternal::QAudioDeviceInfoInternal(QByteArray const& handle, QAu
 
 bool QAudioDeviceInfoInternal::isFormatSupported(const QAudioFormat& format) const
 {
-    return format.codec() == QString::fromLatin1("audio/pcm");
+    QAudioDeviceInfoInternal *self = const_cast<QAudioDeviceInfoInternal*>(this);
+
+    return format.isValid()
+            && format.codec() == QString::fromLatin1("audio/pcm")
+            && self->frequencyList().contains(format.frequency())
+            && self->channelsList().contains(format.channels())
+            && self->sampleSizeList().contains(format.sampleSize());
 }
 
 QAudioFormat QAudioDeviceInfoInternal::preferredFormat() const
@@ -127,7 +133,7 @@ QAudioFormat QAudioDeviceInfoInternal::preferredFormat() const
                 }
             }
 
-            delete streams;
+            delete[] streams;
         }
     }
 
@@ -201,7 +207,7 @@ QList<int> QAudioDeviceInfoInternal::frequencyList()
                     rc << vr[i].mMaximum;
             }
 
-            delete vr;
+            delete[] vr;
         }
     }
 
@@ -345,7 +351,7 @@ QList<QByteArray> QAudioDeviceInfoInternal::availableDevices(QAudio::Mode mode)
                 }
             }
 
-            delete audioDevices;
+            delete[] audioDevices;
         }
     }
 

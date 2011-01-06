@@ -137,21 +137,28 @@ void QGraphicsLayoutItemPrivate::init()
 QSizeF *QGraphicsLayoutItemPrivate::effectiveSizeHints(const QSizeF &constraint) const
 {
     Q_Q(const QGraphicsLayoutItem);
-    if (!sizeHintCacheDirty && cachedConstraint == constraint)
-        return cachedSizeHints;
-
+    QSizeF *sizeHintCache;
     const bool hasConstraint = constraint.width() >= 0 || constraint.height() >= 0;
-
-    for (int i = 0; i < Qt::NSizeHints; ++i) {
-        cachedSizeHints[i] = constraint;
-        if (userSizeHints && !hasConstraint)
-            combineSize(cachedSizeHints[i], userSizeHints[i]);
+    if (hasConstraint) {
+        if (!sizeHintWithConstraintCacheDirty && constraint == cachedConstraint)
+            return cachedSizeHintsWithConstraints;
+        sizeHintCache = cachedSizeHintsWithConstraints;
+    } else {
+        if (!sizeHintCacheDirty)
+            return cachedSizeHints;
+        sizeHintCache = cachedSizeHints;
     }
 
-    QSizeF &minS = cachedSizeHints[Qt::MinimumSize];
-    QSizeF &prefS = cachedSizeHints[Qt::PreferredSize];
-    QSizeF &maxS = cachedSizeHints[Qt::MaximumSize];
-    QSizeF &descentS = cachedSizeHints[Qt::MinimumDescent];
+    for (int i = 0; i < Qt::NSizeHints; ++i) {
+        sizeHintCache[i] = constraint;
+        if (userSizeHints)
+            combineSize(sizeHintCache[i], userSizeHints[i]);
+    }
+
+    QSizeF &minS = sizeHintCache[Qt::MinimumSize];
+    QSizeF &prefS = sizeHintCache[Qt::PreferredSize];
+    QSizeF &maxS = sizeHintCache[Qt::MaximumSize];
+    QSizeF &descentS = sizeHintCache[Qt::MinimumDescent];
 
     normalizeHints(minS.rwidth(), prefS.rwidth(), maxS.rwidth(), descentS.rwidth());
     normalizeHints(minS.rheight(), prefS.rheight(), maxS.rheight(), descentS.rheight());
@@ -177,9 +184,13 @@ QSizeF *QGraphicsLayoutItemPrivate::effectiveSizeHints(const QSizeF &constraint)
     // Not supported yet
     // COMBINE_SIZE(descentS, q->sizeHint(Qt::MinimumDescent, constraint));
 
-    cachedConstraint = constraint;
-    sizeHintCacheDirty = false;
-    return cachedSizeHints;
+    if (hasConstraint) {
+        cachedConstraint = constraint;
+        sizeHintWithConstraintCacheDirty = false;
+    } else {
+        sizeHintCacheDirty = false;
+    }
+    return sizeHintCache;
 }
 
 
@@ -234,7 +245,7 @@ void QGraphicsLayoutItemPrivate::setSize(Qt::SizeHint which, const QSizeF &size)
     if (userSizeHints) {
         if (size == userSizeHints[which])
             return;
-    } else if (!size.isValid()) {
+    } else if (size.width() < 0 && size.height() < 0) {
         return;
     }
 
@@ -285,10 +296,6 @@ bool QGraphicsLayoutItemPrivate::hasHeightForWidth() const
 
 bool QGraphicsLayoutItemPrivate::hasWidthForHeight() const
 {
-    // enable this code when we add QSizePolicy::hasWidthForHeight() (For 4.8)
-#if 1
-    return false;
-#else
     Q_Q(const QGraphicsLayoutItem);
     if (isLayout) {
         const QGraphicsLayout *l = static_cast<const QGraphicsLayout *>(q);
@@ -305,7 +312,6 @@ bool QGraphicsLayoutItemPrivate::hasWidthForHeight() const
         }
     }
     return q->sizePolicy().hasWidthForHeight();
-#endif
 }
 
 /*!
@@ -697,7 +703,7 @@ void QGraphicsLayoutItem::setMaximumHeight(qreal height)
     is equivalent to the item's position in parent coordinates).
 
     You must reimplement this function in a subclass of QGraphicsLayoutItem to
-    receive geometry updates. The layout will call this function when it does a 
+    receive geometry updates. The layout will call this function when it does a
     rearrangement.
 
     If \a rect is outside of the bounds of minimumSize and maximumSize, it

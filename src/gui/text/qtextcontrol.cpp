@@ -64,6 +64,7 @@
 #include "qgraphicssceneevent.h"
 #include "qprinter.h"
 #include "qtextdocumentwriter.h"
+#include "private/qtextcursor_p.h"
 
 #include <qtextformat.h>
 #include <qdatetime.h>
@@ -404,12 +405,6 @@ void QTextControlPrivate::init(Qt::TextFormat format, const QString &text, QText
     Q_Q(QTextControl);
     setContent(format, text, document);
 
-    QWidget *parentWidget = qobject_cast<QWidget*>(parent);
-    if (parentWidget) {
-        QTextOption opt = doc->defaultTextOption();
-        opt.setTextDirection(parentWidget->layoutDirection());
-        doc->setDefaultTextOption(opt);
-    }
     doc->setUndoRedoEnabled(interactionFlags & Qt::TextEditable);
     q->setCursorWidth(-1);
 }
@@ -1910,6 +1905,8 @@ void QTextControlPrivate::inputMethodEvent(QInputMethodEvent *e)
     }
     layout->setAdditionalFormats(overrides);
     cursor.endEditBlock();
+    if (cursor.d)
+        cursor.d->setX();
 }
 
 QVariant QTextControl::inputMethodQuery(Qt::InputMethodQuery property) const
@@ -2900,7 +2897,7 @@ QAbstractTextDocumentLayout::PaintContext QTextControl::getPaintContext(QWidget 
             if (widget)
                 style = widget->style();
             style->styleHint(QStyle::SH_TextControl_FocusIndicatorTextCharFormat, &opt, widget, &ret);
-            selection.format = qVariantValue<QTextFormat>(ret.variant).toCharFormat();
+            selection.format = qvariant_cast<QTextFormat>(ret.variant).toCharFormat();
         } else {
             QPalette::ColorGroup cg = d->hasFocus ? QPalette::Active : QPalette::Inactive;
             selection.format.setBackground(ctx.palette.brush(cg, QPalette::Highlight));

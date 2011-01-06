@@ -74,7 +74,7 @@ class QDeclarativeEngine;
 class QDeclarativeCompiledData;
 
 class QDeclarativeComponentAttached;
-class QDeclarativeComponentPrivate : public QObjectPrivate, public QDeclarativeTypeData::TypeDataCallback
+class Q_AUTOTEST_EXPORT QDeclarativeComponentPrivate : public QObjectPrivate, public QDeclarativeTypeData::TypeDataCallback
 {
     Q_DECLARE_PUBLIC(QDeclarativeComponent)
         
@@ -109,9 +109,10 @@ public:
     };
     ConstructionState state;
 
-    static QObject *begin(QDeclarativeContextData *ctxt, QDeclarativeEnginePrivate *enginePriv,
-                          QDeclarativeCompiledData *component, int start, int count,
-                          ConstructionState *state, const QBitField &bindings = QBitField());
+    static QObject *begin(QDeclarativeContextData *parentContext, QDeclarativeContextData *componentCreationContext,
+                          QDeclarativeCompiledData *component, int start, int count, 
+                          ConstructionState *state, QList<QDeclarativeError> *errors, 
+                          const QBitField &bindings = QBitField());
     static void beginDeferred(QDeclarativeEnginePrivate *enginePriv, QObject *object, 
                               ConstructionState *state);
     static void complete(QDeclarativeEnginePrivate *enginePriv, ConstructionState *state);

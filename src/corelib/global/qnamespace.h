@@ -92,6 +92,7 @@ Qt {
     Q_ENUMS(ConnectionType)
 #ifndef QT_NO_GESTURES
     Q_ENUMS(GestureState)
+    Q_ENUMS(GestureType)
 #endif
 #endif // (defined(Q_MOC_RUN) || defined(QT_JAMBI_RUN))
 
@@ -518,6 +519,8 @@ public:
 
         WA_X11DoNotAcceptFocus = 132,
 
+        WA_MacNoShadow = 133,
+
         // Add new attributes before this line
         WA_AttributeCount
     };
@@ -533,6 +536,7 @@ public:
         AA_DontUseNativeMenuBar = 6,
         AA_MacDontSwapCtrlAndMeta = 7,
         AA_S60DontConstructApplicationPanes = 8,
+        AA_X11InitThreads = 9,
 
         // Add new attributes before this line
         AA_AttributeCount

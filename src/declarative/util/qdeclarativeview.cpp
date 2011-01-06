@@ -72,6 +72,7 @@
 QT_BEGIN_NAMESPACE
 
 DEFINE_BOOL_CONFIG_OPTION(frameRateDebug, QML_SHOW_FRAMERATE)
+extern Q_GUI_EXPORT bool qt_applefontsmoothing_enabled;
 
 class QDeclarativeScene : public QGraphicsScene
 {
@@ -392,7 +393,7 @@ QDeclarativeView::Status QDeclarativeView::status() const
 
 /*!
     Return the list of errors that occurred during the last compile or create
-    operation.  An empty list is returned if isError() is not set.
+    operation.  When the status is not Error, an empty list is returned.
 */
 QList<QDeclarativeError> QDeclarativeView::errors() const
 {
@@ -696,12 +697,36 @@ void QDeclarativeView::paintEvent(QPaintEvent *event)
     if (frameRateDebug()) 
         time = d->frameTimer.restart();
 
+#ifdef Q_WS_MAC
+    bool oldSmooth = qt_applefontsmoothing_enabled;
+    qt_applefontsmoothing_enabled = false;
+#endif
     QGraphicsView::paintEvent(event);
+#ifdef Q_WS_MAC
+    qt_applefontsmoothing_enabled = oldSmooth;
+#endif
 
     QDeclarativeDebugTrace::endRange(QDeclarativeDebugTrace::Painting);
 
     if (frameRateDebug())
         qDebug() << "paintEvent:" << d->frameTimer.elapsed() << "time since last frame:" << time;
+
+#if QT_SHOW_DECLARATIVEVIEW_FPS
+    static QTime timer;
+    static int frames;
+
+    if (frames == 0) {
+        timer.start();
+    } else if (timer.elapsed() > 5000) {
+        qreal avgtime = timer.elapsed() / (qreal) frames;
+        qDebug("Average time per frame: %f ms (%i fps)", avgtime, int(1000 / avgtime));
+        timer.start();
+        frames = 0;
+    }
+    ++frames;
+    scene()->update();
+#endif
+
 }
 
 QT_END_NAMESPACE

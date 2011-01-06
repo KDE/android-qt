@@ -64,7 +64,7 @@
 #include <stdlib.h>
 
 // Included from tools/shared
-#include <symbian/epocroot.h>
+#include <symbian/epocroot_p.h>
 
 #ifdef Q_OS_WIN32
 #define QT_POPEN _popen
@@ -76,7 +76,7 @@
 
 QT_BEGIN_NAMESPACE
 
-//expand fucntions
+//expand functions
 enum ExpandFunc { E_MEMBER=1, E_FIRST, E_LAST, E_CAT, E_FROMFILE, E_EVAL, E_LIST,
                   E_SPRINTF, E_JOIN, E_SPLIT, E_BASENAME, E_DIRNAME, E_SECTION,
                   E_FIND, E_SYSTEM, E_UNIQUE, E_QUOTE, E_ESCAPE_EXPAND,
@@ -87,7 +87,7 @@ QMap<QString, ExpandFunc> qmake_expandFunctions()
     static QMap<QString, ExpandFunc> *qmake_expand_functions = 0;
     if(!qmake_expand_functions) {
         qmake_expand_functions = new QMap<QString, ExpandFunc>;
-        qmakeAddCacheClear(qmakeDeleteCacheClear_QMapStringInt, (void**)&qmake_expand_functions);
+        qmakeAddCacheClear(qmakeDeleteCacheClear<QMap<QString, ExpandFunc> >, (void**)&qmake_expand_functions);
         qmake_expand_functions->insert("member", E_MEMBER);
         qmake_expand_functions->insert("first", E_FIRST);
         qmake_expand_functions->insert("last", E_LAST);
@@ -677,7 +677,23 @@ QMakeProject::reset()
 bool
 QMakeProject::parse(const QString &t, QMap<QString, QStringList> &place, int numLines)
 {
-    QString s = t.simplified();
+    // To preserve the integrity of any UTF-8 characters in .pro file, temporarily replace the
+    // non-breaking space (0xA0) characters with another non-space character, so that
+    // QString::simplified() call will not replace it with space.
+    // Note: There won't be any two byte characters in .pro files, so 0x10A0 should be a safe
+    // replacement character.
+    static QChar nbsp(0xA0);
+    static QChar nbspFix(0x01A0);
+    QString s;
+    if (t.indexOf(nbsp) != -1) {
+        s = t;
+        s.replace(nbsp, nbspFix);
+        s = s.simplified();
+        s.replace(nbspFix, nbsp);
+    } else {
+        s = t.simplified();
+    }
+
     int hash_mark = s.indexOf("#");
     if(hash_mark != -1) //good bye comments
         s = s.left(hash_mark);
@@ -1063,7 +1079,7 @@ QMakeProject::parse(const QString &t, QMap<QString, QStringList> &place, int num
 #undef SKIP_WS
 
     doVariableReplace(var, place);
-    var = varMap(var); //backwards compatability
+    var = varMap(var); //backwards compatibility
     if(!var.isEmpty() && Option::mkfile::do_preprocess) {
         static QString last_file("*none*");
         if(parser.file != last_file) {
@@ -1631,7 +1647,7 @@ QMakeProject::doProjectInclude(QString file, uchar flags, QMap<QString, QStringL
             if(!feature_roots) {
                 validateModes();
                 feature_roots = new QStringList(qmake_feature_paths(prop));
-                qmakeAddCacheClear(qmakeDeleteCacheClear_QStringList, (void**)&feature_roots);
+                qmakeAddCacheClear(qmakeDeleteCacheClear<QStringList>, (void**)&feature_roots);
             }
             debug_msg(2, "Looking for feature '%s' in (%s)", file.toLatin1().constData(),
 			feature_roots->join("::").toLatin1().constData());
@@ -3102,7 +3118,7 @@ QStringList &QMakeProject::values(const QString &_var, QMap<QString, QStringList
                 false));
     } else if (var == QLatin1String("EPOCROOT")) {
         if (place[var].isEmpty())
-            place[var] = QStringList(epocRoot());
+            place[var] = QStringList(qt_epocRoot());
     }
 #if defined(Q_OS_WIN32) && defined(Q_CC_MSVC)
       else if(var.startsWith(QLatin1String("QMAKE_TARGET."))) {

@@ -51,7 +51,6 @@
 #include "qabstractfileengine.h"
 #include "qthreadstorage.h"
 #include <qmath.h>
-#include <private/qpdf_p.h>
 #include <private/qharfbuzz_p.h>
 
 #include "qfontengine_ft_p.h"
@@ -761,15 +760,36 @@ void QFontEngineFT::setDefaultHintStyle(HintStyle style)
     default_hint_style = style;
 }
 
-QFontEngineFT::Glyph *QFontEngineFT::loadGlyphMetrics(QGlyphSet *set, uint glyph) const
+QFontEngineFT::Glyph *QFontEngineFT::loadGlyphMetrics(QGlyphSet *set, uint glyph, GlyphFormat format) const
 {
     Glyph *g = set->getGlyph(glyph);
-    if (g)
+    if (g && g->format == format)
         return g;
 
     int load_flags = FT_LOAD_DEFAULT | default_load_flags;
+    int load_target = default_hint_style == HintLight
+                      ? FT_LOAD_TARGET_LIGHT
+                      : FT_LOAD_TARGET_NORMAL;
+
+    if (format == Format_Mono) {
+        load_target = FT_LOAD_TARGET_MONO;
+    } else if (format == Format_A32) {
+        if (subpixelType == QFontEngineFT::Subpixel_RGB || subpixelType == QFontEngineFT::Subpixel_BGR) {
+            if (default_hint_style == HintFull)
+                load_target = FT_LOAD_TARGET_LCD;
+        } else if (subpixelType == QFontEngineFT::Subpixel_VRGB || subpixelType == QFontEngineFT::Subpixel_VBGR) {
+            if (default_hint_style == HintFull)
+                load_target = FT_LOAD_TARGET_LCD_V;
+        }
+    }
+
     if (set->outline_drawing)
         load_flags = FT_LOAD_NO_BITMAP;
+
+    if (default_hint_style == HintNone)
+        load_flags |= FT_LOAD_NO_HINTING;
+    else
+        load_flags |= load_target;
 
     // apply our matrix to this, but note that the metrics will not be affected by this.
     FT_Face face = lockFace();
@@ -1201,10 +1221,7 @@ QFontEngine::Properties QFontEngineFT::properties() const
 {
     Properties p = freetype->properties();
     if (p.postscriptName.isEmpty()) {
-        p.postscriptName = fontDef.family.toUtf8();
-#ifndef QT_NO_PRINTER
-        p.postscriptName = QPdf::stripSpecialCharacters(p.postscriptName);
-#endif
+        p.postscriptName = QFontEngine::convertToPostscriptFontFamilyName(fontDef.family.toUtf8());
     }
 
     return freetype->properties();
@@ -1767,6 +1784,11 @@ glyph_metrics_t QFontEngineFT::boundingBox(glyph_t glyph)
 
 glyph_metrics_t QFontEngineFT::boundingBox(glyph_t glyph, const QTransform &matrix)
 {
+    return alphaMapBoundingBox(glyph, matrix, QFontEngine::Format_None);
+}
+
+glyph_metrics_t QFontEngineFT::alphaMapBoundingBox(glyph_t glyph, const QTransform &matrix, QFontEngine::GlyphFormat format)
+{
     FT_Face face = 0;
     glyph_metrics_t overall;
     QGlyphSet *glyphSet = 0;
@@ -1810,9 +1832,9 @@ glyph_metrics_t QFontEngineFT::boundingBox(glyph_t glyph, const QTransform &matr
         glyphSet = &defaultGlyphSet;
     }
     Glyph * g = glyphSet->getGlyph(glyph);
-    if (!g) {
+    if (!g || g->format != format) {
         face = lockFace();
-        g = loadGlyphMetrics(glyphSet, glyph);
+        g = loadGlyphMetrics(glyphSet, glyph, format);
     }
 
     if (g) {
@@ -1874,10 +1896,10 @@ QImage QFontEngineFT::alphaMapForGlyph(glyph_t g)
     return img;
 }
 
-QImage QFontEngineFT::alphaRGBMapForGlyph(glyph_t g, int margin, const QTransform &t)
+QImage QFontEngineFT::alphaRGBMapForGlyph(glyph_t g, QFixed subPixelPosition, int margin, const QTransform &t)
 {
     if (t.type() > QTransform::TxTranslate)
-        return QFontEngine::alphaRGBMapForGlyph(g, margin, t);
+        return QFontEngine::alphaRGBMapForGlyph(g, subPixelPosition, margin, t);
 
     lockFace();
 
@@ -1886,7 +1908,7 @@ QImage QFontEngineFT::alphaRGBMapForGlyph(glyph_t g, int margin, const QTransfor
     Glyph *glyph = defaultGlyphSet.outline_drawing ? 0 : loadGlyph(g, glyph_format);
     if (!glyph) {
         unlockFace();
-        return QFontEngine::alphaRGBMapForGlyph(g, margin, t);
+        return QFontEngine::alphaRGBMapForGlyph(g, subPixelPosition, margin, t);
     }
 
     QImage img(glyph->width, glyph->height, QImage::Format_RGB32);

@@ -77,7 +77,7 @@ QNetworkAccessFtpBackendFactory::create(QNetworkAccessManager::Operation op,
     }
 
     QUrl url = request.url();
-    if (url.scheme() == QLatin1String("ftp"))
+    if (url.scheme().compare(QLatin1String("ftp"), Qt::CaseInsensitive) == 0)
         return new QNetworkAccessFtpBackend;
     return 0;
 }
@@ -180,23 +180,6 @@ void QNetworkAccessFtpBackend::closeDownstreamChannel()
 #else
         exit(3);
 #endif
-}
-
-bool QNetworkAccessFtpBackend::waitForDownstreamReadyRead(int ms)
-{
-    if (!ftp)
-        return false;
-
-    if (ftp->bytesAvailable()) {
-        ftpReadyRead();
-        return true;
-    }
-
-    if (ms == 0)
-        return false;
-
-    qCritical("QNetworkAccess: FTP backend does not support waitForReadyRead()");
-    return false;
 }
 
 void QNetworkAccessFtpBackend::downstreamReadyWrite()

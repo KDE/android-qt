@@ -395,7 +395,10 @@ QIODevice::QIODevice(QIODevicePrivate &dd, QObject *parent)
 
 
 /*!
-    Destructs the QIODevice object.
+  The destructor is virtual, and QIODevice is an abstract base
+  class. This destructor does not call close(), but the subclass
+  destructor might. If you are in doubt, call close() before
+  destroying the QIODevice.
 */
 QIODevice::~QIODevice()
 {
@@ -1633,6 +1636,12 @@ QString QIODevice::errorString() const
     This function is called by QIODevice. Reimplement this function
     when creating a subclass of QIODevice.
 
+    When reimplementing this function it is important that this function
+    reads all the required data before returning. This is required in order
+    for QDataStream to be able to operate on the class. QDataStream assumes
+    all the requested information was read and therefore does not retry reading
+    if there was a problem.
+
     \sa read() readLine() writeData()
 */
 
@@ -1644,6 +1653,12 @@ QString QIODevice::errorString() const
 
     This function is called by QIODevice. Reimplement this function
     when creating a subclass of QIODevice.
+
+    When reimplementing this function it is important that this function
+    writes all the data available before returning. This is required in order
+    for QDataStream to be able to operate on the class. QDataStream assumes
+    all the information was written and therefore does not retry writing if
+    there was a problem.
 
     \sa read() write()
 */

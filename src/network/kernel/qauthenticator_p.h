@@ -71,6 +71,7 @@ public:
 
     QAtomicInt ref;
     QString user;
+    QString extractedUser;
     QString password;
     QVariantHash options;
     Method method;
@@ -91,6 +92,7 @@ public:
 
     // ntlm specific
     QString workstation;
+    QString userDomain;
 
     QByteArray calculateResponse(const QByteArray &method, const QByteArray &path);
 

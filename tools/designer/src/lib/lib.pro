@@ -3,6 +3,9 @@ TARGET=QtDesigner
 QT += xml
 contains(QT_CONFIG, reduce_exports):CONFIG += hide_symbols
 CONFIG += qt
+android-g++ {
+    QT -= android
+}
 win32|mac: CONFIG += debug_and_release
 DESTDIR = ../../../../lib
 !wince*:DLLDESTDIR = ../../../../bin

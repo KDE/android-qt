@@ -94,6 +94,8 @@ Q_DECLARE_METATYPE(QRectF)
 #define COMPARE_REGIONS QTRY_COMPARE
 #endif
 
+#include "../platformquirks.h"
+
 static QGraphicsRectItem staticItem; //QTBUG-7629, we should not crash at exit.
 
 static void sendMousePress(QGraphicsScene *scene, const QPointF &point, Qt::MouseButton button = Qt::LeftButton)
@@ -272,7 +274,7 @@ class MyGraphicsView : public QGraphicsView
 public:
     int repaints;
     QRegion paintedRegion;
-    MyGraphicsView(QGraphicsScene *scene) : QGraphicsView(scene), repaints(0) {}
+    MyGraphicsView(QGraphicsScene *scene, QWidget *parent=0) : QGraphicsView(scene,parent), repaints(0) {}
     void paintEvent(QPaintEvent *e)
     {
         paintedRegion += e->region();
@@ -377,6 +379,7 @@ private slots:
     void itemClipsChildrenToShape2();
     void itemClipsChildrenToShape3();
     void itemClipsChildrenToShape4();
+    void itemClipsChildrenToShape5();
     void itemClipsTextChildToShape();
     void itemClippingDiscovery();
     void ancestorFlags();
@@ -444,6 +447,7 @@ private slots:
     void textItem_shortcuts();
     void scroll();
     void stopClickFocusPropagation();
+    void deviceCoordinateCache_simpleRotations();
 
     // task specific tests below me
     void task141694_textItemEnsureVisible();
@@ -464,6 +468,7 @@ private slots:
     void doNotMarkFullUpdateIfNotInScene();
     void itemDiesDuringDraggingOperation();
     void QTBUG_12112_focusItem();
+    void QTBUG_13473_sceneposchange();
 
 private:
     QList<QGraphicsItem *> paintedItems;
@@ -4067,9 +4072,10 @@ void tst_QGraphicsItem::cursor()
     item1->setCursor(Qt::IBeamCursor);
     item2->setCursor(Qt::PointingHandCursor);
 
-    QGraphicsView view(&scene);
+    QWidget topLevel;
+    QGraphicsView view(&scene,&topLevel);
     view.setFixedSize(200, 100);
-    view.show();
+    topLevel.show();
     QTest::mouseMove(&view, view.rect().center());
 
     QTest::qWait(25);
@@ -4091,6 +4097,8 @@ void tst_QGraphicsItem::cursor()
         QApplication::sendEvent(view.viewport(), &event);
     }
 
+    if (!PlatformQuirks::haveMouseCursor())
+        return;
 #if !defined(Q_OS_WINCE)
     QTest::qWait(250);
 #else
@@ -4956,7 +4964,10 @@ void tst_QGraphicsItem::paint()
 
     QGraphicsView view(&scene);
 
-    view.show();
+    if(PlatformQuirks::isAutoMaximizing())
+        view.showFullScreen();
+    else
+        view.show();
     QTest::qWaitForWindowShown(&view);
     QApplication::processEvents();
 #ifdef Q_OS_WIN32
@@ -5464,6 +5475,193 @@ void tst_QGraphicsItem::itemClipsChildrenToShape4()
     QTRY_COMPARE(innerWidget->painted, true);
 }
 
+//#define DEBUG_ITEM_CLIPS_CHILDREN_TO_SHAPE_5
+static inline void renderSceneToImage(QGraphicsScene *scene, QImage *image, const QString &filename)
+{
+    image->fill(0);
+    QPainter painter(image);
+    scene->render(&painter);
+    painter.end();
+#ifdef DEBUG_ITEM_CLIPS_CHILDREN_TO_SHAPE_5
+    image->save(filename);
+#else
+    Q_UNUSED(filename);
+#endif
+}
+
+void tst_QGraphicsItem::itemClipsChildrenToShape5()
+{
+    class ParentItem : public QGraphicsRectItem
+    {
+    public:
+        ParentItem(qreal x, qreal y, qreal width, qreal height)
+            : QGraphicsRectItem(x, y, width, height) {}
+
+        QPainterPath shape() const
+        {
+            QPainterPath path;
+            path.addRect(50, 50, 200, 200);
+            return path;
+        }
+    };
+
+    ParentItem *parent = new ParentItem(0, 0, 300, 300);
+    parent->setBrush(Qt::blue);
+    parent->setOpacity(0.5);
+
+    const QRegion parentRegion(0, 0, 300, 300);
+    const QRegion clippedParentRegion = parentRegion & QRect(50, 50, 200, 200);
+    QRegion childRegion;
+    QRegion grandChildRegion;
+
+    QGraphicsRectItem *topLeftChild = new QGraphicsRectItem(0, 0, 100, 100);
+    topLeftChild->setBrush(Qt::red);
+    topLeftChild->setParentItem(parent);
+    childRegion += QRect(0, 0, 100, 100);
+
+    QGraphicsRectItem *topRightChild = new QGraphicsRectItem(0, 0, 100, 100);
+    topRightChild->setBrush(Qt::red);
+    topRightChild->setParentItem(parent);
+    topRightChild->setFlag(QGraphicsItem::ItemClipsChildrenToShape);
+    topRightChild->setPos(200, 0);
+    childRegion += QRect(200, 0, 100, 100);
+
+    QGraphicsRectItem *topRightGrandChild = new QGraphicsRectItem(0, 0, 100, 100);
+    topRightGrandChild->setBrush(Qt::green);
+    topRightGrandChild->setParentItem(topRightChild);
+    topRightGrandChild->setPos(-40, 40);
+    grandChildRegion += QRect(200 - 40, 0 + 40, 100, 100) & QRect(200, 0, 100, 100);
+
+    QGraphicsRectItem *bottomLeftChild = new QGraphicsRectItem(0, 0, 100, 100);
+    bottomLeftChild->setBrush(Qt::red);
+    bottomLeftChild->setParentItem(parent);
+    bottomLeftChild->setFlag(QGraphicsItem::ItemClipsToShape);
+    bottomLeftChild->setPos(0, 200);
+    childRegion += QRect(0, 200, 100, 100);
+
+    QGraphicsRectItem *bottomLeftGrandChild = new QGraphicsRectItem(0, 0, 160, 160);
+    bottomLeftGrandChild->setBrush(Qt::green);
+    bottomLeftGrandChild->setParentItem(bottomLeftChild);
+    bottomLeftGrandChild->setFlag(QGraphicsItem::ItemClipsToShape);
+    bottomLeftGrandChild->setPos(0, -60);
+    grandChildRegion += QRect(0, 200 - 60, 160, 160);
+
+    QGraphicsRectItem *bottomRightChild = new QGraphicsRectItem(0, 0, 100, 100);
+    bottomRightChild->setBrush(Qt::red);
+    bottomRightChild->setParentItem(parent);
+    bottomRightChild->setPos(200, 200);
+    childRegion += QRect(200, 200, 100, 100);
+
+    QPoint controlPoints[17] = {
+        QPoint(5, 5)  , QPoint(95, 5)  , QPoint(205, 5)  , QPoint(295, 5)  ,
+        QPoint(5, 95) , QPoint(95, 95) , QPoint(205, 95) , QPoint(295, 95) ,
+                             QPoint(150, 150),
+        QPoint(5, 205), QPoint(95, 205), QPoint(205, 205), QPoint(295, 205),
+        QPoint(5, 295), QPoint(95, 295), QPoint(205, 295), QPoint(295, 295),
+    };
+
+    const QRegion clippedChildRegion = childRegion & QRect(50, 50, 200, 200);
+    const QRegion clippedGrandChildRegion = grandChildRegion & QRect(50, 50, 200, 200);
+
+    QGraphicsScene scene;
+    scene.addItem(parent);
+    QImage sceneImage(300, 300, QImage::Format_ARGB32);
+
+#define VERIFY_CONTROL_POINTS(pRegion, cRegion, gRegion) \
+    for (int i = 0; i < 17; ++i) { \
+        QPoint controlPoint = controlPoints[i]; \
+        QRgb pixel = sceneImage.pixel(controlPoint.x(), controlPoint.y()); \
+        if (pRegion.contains(controlPoint)) \
+            QVERIFY(qBlue(pixel) != 0); \
+        else \
+            QVERIFY(qBlue(pixel) == 0); \
+        if (cRegion.contains(controlPoint)) \
+            QVERIFY(qRed(pixel) != 0); \
+        else \
+            QVERIFY(qRed(pixel) == 0); \
+        if (gRegion.contains(controlPoint)) \
+            QVERIFY(qGreen(pixel) != 0); \
+        else \
+            QVERIFY(qGreen(pixel) == 0); \
+    }
+
+    const QList<QGraphicsItem *> children = parent->childItems();
+    const int childrenCount = children.count();
+
+    for (int i = 0; i < 5; ++i) {
+        QString clipString;
+        QString childString;
+        switch (i) {
+        case 0:
+            // All children stacked in front.
+            childString = QLatin1String("ChildrenInFront.png");
+            foreach (QGraphicsItem *child, children)
+                child->setFlag(QGraphicsItem::ItemStacksBehindParent, false);
+            break;
+        case 1:
+            // All children stacked behind.
+            childString = QLatin1String("ChildrenBehind.png");
+            foreach (QGraphicsItem *child, children)
+                child->setFlag(QGraphicsItem::ItemStacksBehindParent, true);
+            break;
+        case 2:
+            // First half of the children behind, second half in front.
+            childString = QLatin1String("FirstHalfBehind_SecondHalfInFront.png");
+            for (int j = 0; j < childrenCount; ++j) {
+                QGraphicsItem *child = children.at(j);
+                child->setFlag(QGraphicsItem::ItemStacksBehindParent, (j < childrenCount / 2));
+            }
+            break;
+        case 3:
+            // First half of the children in front, second half behind.
+            childString = QLatin1String("FirstHalfInFront_SecondHalfBehind.png");
+            for (int j = 0; j < childrenCount; ++j) {
+                QGraphicsItem *child = children.at(j);
+                child->setFlag(QGraphicsItem::ItemStacksBehindParent, (j >= childrenCount / 2));
+            }
+            break;
+        case 4:
+            // Child2 and child4 behind, rest in front.
+            childString = QLatin1String("Child2And4Behind_RestInFront.png");
+            for (int j = 0; j < childrenCount; ++j) {
+                QGraphicsItem *child = children.at(j);
+                if (j == 1 || j == 3)
+                    child->setFlag(QGraphicsItem::ItemStacksBehindParent, true);
+                else
+                    child->setFlag(QGraphicsItem::ItemStacksBehindParent, false);
+            }
+            break;
+        default:
+            qFatal("internal error");
+        }
+
+        // Nothing is clipped.
+        parent->setFlag(QGraphicsItem::ItemClipsChildrenToShape, false);
+        parent->setFlag(QGraphicsItem::ItemClipsToShape, false);
+        clipString = QLatin1String("nothingClipped_");
+        renderSceneToImage(&scene, &sceneImage, clipString + childString);
+        VERIFY_CONTROL_POINTS(parentRegion, childRegion, grandChildRegion);
+
+        // Parent clips children to shape.
+        parent->setFlag(QGraphicsItem::ItemClipsChildrenToShape);
+        clipString = QLatin1String("parentClipsChildrenToShape_");
+        renderSceneToImage(&scene, &sceneImage, clipString + childString);
+        VERIFY_CONTROL_POINTS(parentRegion, clippedChildRegion, clippedGrandChildRegion);
+
+        // Parent clips itself and children to shape.
+        parent->setFlag(QGraphicsItem::ItemClipsToShape);
+        clipString = QLatin1String("parentClipsItselfAndChildrenToShape_");
+        renderSceneToImage(&scene, &sceneImage, clipString + childString);
+        VERIFY_CONTROL_POINTS(clippedParentRegion, clippedChildRegion, clippedGrandChildRegion);
+
+        // Parent clips itself to shape.
+        parent->setFlag(QGraphicsItem::ItemClipsChildrenToShape, false);
+        clipString = QLatin1String("parentClipsItselfToShape_");
+        renderSceneToImage(&scene, &sceneImage, clipString + childString);
+        VERIFY_CONTROL_POINTS(clippedParentRegion, childRegion, grandChildRegion);
+    }
+}
+
 void tst_QGraphicsItem::itemClipsTextChildToShape()
 {
     // Construct a scene with a rect that clips its children, with one text
@@ -5785,9 +5983,10 @@ void tst_QGraphicsItem::untransformable()
     QGraphicsScene scene(-500, -500, 1000, 1000);
     scene.addItem(item1);
 
-    QGraphicsView view(&scene);
+    QWidget topLevel;
+    QGraphicsView view(&scene,&topLevel);
     view.resize(300, 300);
-    view.show();
+    topLevel.show();
     view.scale(8, 8);
     view.centerOn(0, 0);
 
@@ -6426,7 +6625,10 @@ void tst_QGraphicsItem::opacity2()
     scene.addItem(parent);
 
     MyGraphicsView view(&scene);
-    view.show();
+    if(PlatformQuirks::isAutoMaximizing())
+        view.showFullScreen();
+    else
+        view.show();
     QTest::qWaitForWindowShown(&view);
     QTRY_VERIFY(view.repaints >= 1);
 
@@ -6860,6 +7062,7 @@ void tst_QGraphicsItem::tabChangesFocus()
     widget.setLayout(layout);
     widget.show();
     QTest::qWaitForWindowShown(&widget);
+    QTest::qWait(2000);
 
     QTRY_VERIFY(scene.isActive());
 
@@ -7305,9 +7508,11 @@ void tst_QGraphicsItem::update()
 {
     QGraphicsScene scene;
     scene.setSceneRect(-100, -100, 200, 200);
-    MyGraphicsView view(&scene);
+    QWidget topLevel;
+    MyGraphicsView view(&scene,&topLevel);
 
-    view.show();
+    topLevel.resize(300, 300);
+    topLevel.show();
 #ifdef Q_WS_X11
     qt_x11_wait_for_window_manager(&view);
 #endif
@@ -7586,10 +7791,11 @@ void tst_QGraphicsItem::itemUsesExtendedStyleOption()
     MyStyleOptionTester *rect = new MyStyleOptionTester(QRect(0, 0, 100, 100));
     scene.addItem(rect);
     rect->setPos(200, 200);
-    QGraphicsView view(&scene);
-    view.setWindowFlags(Qt::X11BypassWindowManagerHint);
+    QWidget topLevel;
+    QGraphicsView view(&scene, &topLevel);
+    topLevel.setWindowFlags(Qt::X11BypassWindowManagerHint);
     rect->startTrack = false;
-    view.show();
+    topLevel.show();
     QTest::qWaitForWindowShown(&view);
     QTest::qWait(60);
     rect->startTrack = true;
@@ -7790,6 +7996,9 @@ void tst_QGraphicsItem::sorting_data()
 
 void tst_QGraphicsItem::sorting()
 {
+    if (PlatformQuirks::isAutoMaximizing())
+        QSKIP("Skipped because Platform is auto maximizing", SkipAll);
+
     _paintedItems.clear();
 
     QGraphicsScene scene;
@@ -7825,7 +8034,7 @@ void tst_QGraphicsItem::sorting()
     _paintedItems.clear();
 
     view.viewport()->repaint();
-#ifdef Q_WS_MAC
+#if defined(Q_WS_MAC)
     // There's no difference between repaint and update on the Mac,
     // so we have to process events here to make sure we get the event.
     QTest::qWait(100);
@@ -7924,10 +8133,13 @@ void tst_QGraphicsItem::hitTestGraphicsEffectItem()
     QGraphicsScene scene;
     scene.setSceneRect(-100, -100, 200, 200);
 
-    QGraphicsView view(&scene);
-    view.show();
+    QWidget toplevel;
+
+    QGraphicsView view(&scene, &toplevel);
+    toplevel.resize(300, 300);
+    toplevel.show();
 #ifdef Q_WS_X11
-    qt_x11_wait_for_window_manager(&view);
+    qt_x11_wait_for_window_manager(&toplevel);
 #endif
     QTest::qWait(100);
 
@@ -8876,6 +9088,10 @@ void tst_QGraphicsItem::focusScope()
     scope2->hide();
     scope2->show();
     QVERIFY(!scope2->hasFocus());
+    QVERIFY(scope1->hasFocus());
+    scope2->setFocus();
+    QVERIFY(scope2->hasFocus());
+    scope3->setFocus();
     QVERIFY(scope3->hasFocus());
 
     QGraphicsRectItem *rect4 = new QGraphicsRectItem;
@@ -10372,6 +10588,81 @@ void tst_QGraphicsItem::stopClickFocusPropagation()
     QVERIFY(itemWithFocus->hasFocus());
 }
 
+void tst_QGraphicsItem::deviceCoordinateCache_simpleRotations()
+{
+    // Make sure we don't invalidate the cache when applying simple
+    // (90, 180, 270, 360) rotation transforms to the item.
+    QGraphicsRectItem *item = new QGraphicsRectItem(0, 0, 300, 200);
+    item->setBrush(Qt::red);
+    item->setCacheMode(QGraphicsItem::DeviceCoordinateCache);
+
+    QGraphicsScene scene;
+    scene.setSceneRect(0, 0, 300, 200);
+    scene.addItem(item);
+
+    MyGraphicsView view(&scene);
+    view.show();
+    QTest::qWaitForWindowShown(&view);
+    QTRY_VERIFY(view.repaints > 0);
+
+    QGraphicsItemCache *itemCache = QGraphicsItemPrivate::get(item)->extraItemCache();
+    Q_ASSERT(itemCache);
+    QPixmapCache::Key currentKey = itemCache->deviceData.value(view.viewport()).key;
+
+    // Trigger an update and verify that the cache is unchanged.
+    QPixmapCache::Key oldKey = currentKey;
+    view.reset();
+    view.viewport()->update();
+    QTRY_VERIFY(view.repaints > 0);
+    currentKey = itemCache->deviceData.value(view.viewport()).key;
+    QCOMPARE(currentKey, oldKey);
+
+    // Check 90, 180, 270 and 360 degree rotations.
+    for (int angle = 90; angle <= 360; angle += 90) {
+        // Rotate item and verify that the cache was invalidated.
+        oldKey = currentKey;
+        view.reset();
+        QTransform transform;
+        transform.translate(150, 100);
+        transform.rotate(angle);
+        transform.translate(-150, -100);
+        item->setTransform(transform);
+        QTRY_VERIFY(view.repaints > 0);
+        currentKey = itemCache->deviceData.value(view.viewport()).key;
+        QVERIFY(currentKey != oldKey);
+
+        // IMPORTANT PART:
+        // Trigger an update and verify that the cache is unchanged.
+        oldKey = currentKey;
+        view.reset();
+        view.viewport()->update();
+        QTRY_VERIFY(view.repaints > 0);
+        currentKey = itemCache->deviceData.value(view.viewport()).key;
+        QCOMPARE(currentKey, oldKey);
+    }
+
+    // 45 degree rotation.
+    oldKey = currentKey;
+    view.reset();
+    QTransform transform;
+    transform.translate(150, 100);
+    transform.rotate(45);
+    transform.translate(-150, -100);
+    item->setTransform(transform);
+    QTRY_VERIFY(view.repaints > 0);
+    currentKey = itemCache->deviceData.value(view.viewport()).key;
+    QVERIFY(currentKey != oldKey);
+
+    // Trigger an update and verify that the cache was invalidated.
+    // We should always invalidate the cache for non-trivial transforms.
+    oldKey = currentKey;
+    view.reset();
+    view.viewport()->update();
+    QTRY_VERIFY(view.repaints > 0);
+    currentKey = itemCache->deviceData.value(view.viewport()).key;
+    QVERIFY(currentKey != oldKey);
+}
+
 void tst_QGraphicsItem::QTBUG_5418_textItemSetDefaultColor()
 {
     struct Item : public QGraphicsTextItem
@@ -10452,7 +10743,10 @@ void tst_QGraphicsItem::QTBUG_6738_missingUpdateWithSetParent()
     scene.addItem(parent);
 
     MyGraphicsView view(&scene);
-    view.show();
+    if(PlatformQuirks::isAutoMaximizing())
+        view.showFullScreen();
+    else
+        view.show();
     QTest::qWaitForWindowShown(&view);
     QTRY_VERIFY(view.repaints > 0);
 
@@ -10500,7 +10794,10 @@ void tst_QGraphicsItem::QT_2653_fullUpdateDiscardingOpacityUpdate()
     // ItemIgnoresTransformations, ItemClipsChildrenToShape, ItemIsSelectable
     parentGreen->setFlag(QGraphicsItem::ItemIgnoresTransformations);
 
-    view.show();
+    if (PlatformQuirks::isAutoMaximizing())
+        view.showFullScreen();
+    else
+        view.show();
     QTest::qWaitForWindowShown(&view);
     view.reset();
 
@@ -10685,7 +10982,10 @@ void tst_QGraphicsItem::doNotMarkFullUpdateIfNotInScene()
     item3->setParentItem(item2);
     item2->setParentItem(item);
     scene.addItem(item);
-    view.show();
+    if(PlatformQuirks::isAutoMaximizing())
+        view.showFullScreen();
+    else
+        view.show();
     QTest::qWaitForWindowShown(&view);
     QTRY_COMPARE(view.repaints, 1);
     QTRY_COMPARE(item->painted, 1);
@@ -10749,6 +11049,32 @@ void tst_QGraphicsItem::QTBUG_12112_focusItem()
     item2->setFocus();
     QVERIFY(!item1->focusItem());
     QVERIFY(item2->focusItem());
+}
+
+void tst_QGraphicsItem::QTBUG_13473_sceneposchange()
+{
+    ScenePosChangeTester* parent = new ScenePosChangeTester;
+    ScenePosChangeTester* child = new ScenePosChangeTester(parent);
+
+    // parent's disabled ItemSendsGeometryChanges flag must not affect
+    // child's scene pos change notifications
+    parent->setFlag(QGraphicsItem::ItemSendsGeometryChanges, false);
+    child->setFlag(QGraphicsItem::ItemSendsScenePositionChanges, true);
+
+    QGraphicsScene scene;
+    scene.addItem(parent);
+
+    // ignore uninteresting changes
+    parent->clear();
+    child->clear();
+
+    // move
+    parent->moveBy(1.0, 1.0);
+    QCOMPARE(child->changes.count(QGraphicsItem::ItemScenePositionHasChanged), 1);
+
+    // transform
+    parent->setTransform(QTransform::fromScale(0.5, 0.5));
+    QCOMPARE(child->changes.count(QGraphicsItem::ItemScenePositionHasChanged), 2);
 }
 
 QTEST_MAIN(tst_QGraphicsItem)

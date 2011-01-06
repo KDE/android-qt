@@ -95,10 +95,10 @@ public:
         WritingState = 2,       // writing the data
         WaitingState = 4,       // waiting for reply
         ReadingState = 8,       // reading the reply
-        Wait4AuthState = 0x10,  // blocked for send till the current authentication slot is done
-        BusyState = (ConnectingState|WritingState|WaitingState|ReadingState|Wait4AuthState)
+        BusyState = (ConnectingState|WritingState|WaitingState|ReadingState)
     };
     QAbstractSocket *socket;
+    bool ssl;
     ChannelState state;
     QHttpNetworkRequest request; // current request
     QHttpNetworkReply *reply; // current reply for this request
@@ -108,8 +108,8 @@ public:
     int lastStatus; // last status received on this channel
     bool pendingEncrypt; // for https (send after encrypted)
     int reconnectAttempts; // maximum 2 reconnection attempts
-    QAuthenticatorPrivate::Method authMehtod;
-    QAuthenticatorPrivate::Method proxyAuthMehtod;
+    QAuthenticatorPrivate::Method authMethod;
+    QAuthenticatorPrivate::Method proxyAuthMethod;
     QAuthenticator authenticator;
     QAuthenticator proxyAuthenticator;
 #ifndef QT_NO_OPENSSL
@@ -125,7 +125,11 @@ public:
     };
     PipeliningSupport pipeliningSupported;
     QList<HttpMessagePair> alreadyPipelinedRequests;
-
+    QByteArray pipeline; // temporary buffer that gets sent to socket in pipelineFlush
+    void pipelineInto(HttpMessagePair &pair);
+    void pipelineFlush();
+    void requeueCurrentlyPipelinedRequests();
+    void detectPipeliningSupport();
 
     QHttpNetworkConnectionChannel();
     
@@ -145,14 +149,8 @@ public:
 
     bool resetUploadData(); // return true if resetting worked or there is no upload data
 
-    void pipelineInto(HttpMessagePair &pair);
-    void requeueCurrentlyPipelinedRequests();
-    void detectPipeliningSupport();
-
     void handleUnexpectedEOF();
     void closeAndResendCurrentRequest();
-
-    void eatWhitespace();
 
     bool isSocketBusy() const;
     bool isSocketWriting() const;

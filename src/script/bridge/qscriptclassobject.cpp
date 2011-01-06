@@ -78,6 +78,12 @@ bool ClassObjectDelegate::getOwnPropertySlot(QScriptObject* object,
         scriptObject, scriptName, QScriptClass::HandlesReadAccess, &id);
     if (flags & QScriptClass::HandlesReadAccess) {
         QScriptValue value = m_scriptClass->property(scriptObject, scriptName, id);
+        if (!value.isValid()) {
+            // The class claims to have the property, but returned an invalid
+            // value. Silently convert to undefined to avoid the invalid value
+            // "escaping" into JS.
+            value = QScriptValue(QScriptValue::UndefinedValue);
+        }
         slot.setValue(engine->scriptValueToJSCValue(value));
         return true;
     }
@@ -119,6 +125,12 @@ bool ClassObjectDelegate::getOwnPropertyDescriptor(QScriptObject *object,
         attribs |= pflags & QScriptValue::UserRange;
         // Rather than calling the getter, we could return an access descriptor here.
         QScriptValue value = m_scriptClass->property(scriptObject, scriptName, id);
+        if (!value.isValid()) {
+            // The class claims to have the property, but returned an invalid
+            // value. Silently convert to undefined to avoid the invalid value
+            // "escaping" into JS.
+            value = QScriptValue(QScriptValue::UndefinedValue);
+        }
         descriptor.setDescriptor(engine->scriptValueToJSCValue(value), attribs);
         return true;
     }
@@ -211,7 +223,7 @@ JSC::JSValue JSC_HOST_CALL ClassObjectDelegate::call(JSC::ExecState *exec, JSC::
     eng_p->pushContext(exec, thisValue, args, callee);
     QScriptContext *ctx = eng_p->contextForFrame(eng_p->currentFrame);
     QScriptValue scriptObject = eng_p->scriptValueFromJSCValue(obj);
-    QVariant result = scriptClass->extension(QScriptClass::Callable, qVariantFromValue(ctx));
+    QVariant result = scriptClass->extension(QScriptClass::Callable, QVariant::fromValue(ctx));
     eng_p->popContext();
     eng_p->currentFrame = oldFrame;
     return QScriptEnginePrivate::jscValueFromVariant(exec, result);
@@ -239,7 +251,7 @@ JSC::JSObject* ClassObjectDelegate::construct(JSC::ExecState *exec, JSC::JSObjec
     QScriptContext *ctx = eng_p->contextForFrame(eng_p->currentFrame);
 
     QScriptValue defaultObject = ctx->thisObject();
-    QScriptValue result = qvariant_cast<QScriptValue>(scriptClass->extension(QScriptClass::Callable, qVariantFromValue(ctx)));
+    QScriptValue result = qvariant_cast<QScriptValue>(scriptClass->extension(QScriptClass::Callable, QVariant::fromValue(ctx)));
     if (!result.isObject())
         result = defaultObject;
     eng_p->popContext();
@@ -256,7 +268,7 @@ bool ClassObjectDelegate::hasInstance(QScriptObject* object, JSC::ExecState *exe
     QScriptEnginePrivate *eng_p = scriptEngineFromExec(exec);
     QScript::SaveFrameHelper saveFrame(eng_p, exec);
     args << eng_p->scriptValueFromJSCValue(object) << eng_p->scriptValueFromJSCValue(value);
-    QVariant result = scriptClass()->extension(QScriptClass::HasInstance, qVariantFromValue(args));
+    QVariant result = scriptClass()->extension(QScriptClass::HasInstance, QVariant::fromValue(args));
     return result.toBool();
 }
 

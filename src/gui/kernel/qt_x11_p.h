@@ -338,6 +338,7 @@ enum DesktopEnvironment {
     DE_KDE,
     DE_GNOME,
     DE_CDE,
+    DE_MEEGO_COMPOSITOR,
     DE_4DWM
 };
 
@@ -350,7 +351,7 @@ struct QX11Data
     // from qclipboard_x11.cpp
     bool clipboardWaitForEvent(Window win, int type, XEvent *event, int timeout);
     bool clipboardReadProperty(Window win, Atom property, bool deleteProperty,
-                            QByteArray *buffer, int *size, Atom *type, int *format, bool nullterm);
+                            QByteArray *buffer, int *size, Atom *type, int *format);
     QByteArray clipboardReadIncrementalProperty(Window win, Atom property, int nbytes, bool nullterm);
 
     // from qdnd_x11.cpp

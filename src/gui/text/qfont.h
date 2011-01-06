@@ -226,7 +226,10 @@ public:
     bool operator<(const QFont &) const;
     operator QVariant() const;
     bool isCopyOf(const QFont &) const;
-
+#ifdef Q_COMPILER_RVALUE_REFS
+    inline QFont &operator=(QFont &&other)
+    { qSwap(d, other.d); return *this; }
+#endif
 
 #ifdef Q_WS_WIN
     HFONT handle() const;
@@ -315,6 +318,7 @@ private:
     friend class QPainterReplayer;
     friend class QPaintBufferEngine;
     friend class QCommandLinkButtonPrivate;
+    friend class QFontEngine;
 
 #ifndef QT_NO_DATASTREAM
     friend Q_GUI_EXPORT QDataStream &operator<<(QDataStream &, const QFont &);

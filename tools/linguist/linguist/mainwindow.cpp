@@ -187,7 +187,7 @@ private:
 static const QVariant &pxObsolete()
 {
     static const QVariant v =
-        qVariantFromValue(QPixmap(QLatin1String(":/images/s_check_obsolete.png")));
+        QVariant::fromValue(QPixmap(QLatin1String(":/images/s_check_obsolete.png")));
     return v;
 }
 
@@ -1522,7 +1522,7 @@ void MainWindow::selectedMessageChanged(const QModelIndex &sortedIndex, const QM
             }
             m_phraseView->setSourceText(-1, QString());
         }
-        if (m) {
+        if (m && !m->fileName().isEmpty()) {
             if (hasFormPreview(m->fileName())) {
                 m_sourceAndFormView->setCurrentWidget(m_formPreviewView);
                 m_formPreviewView->setSourceContext(model, m);
@@ -1577,7 +1577,7 @@ void MainWindow::updateTranslation(const QStringList &translations)
         return;
 
     m->setTranslations(translations);
-    if (hasFormPreview(m->fileName()))
+    if (!m->fileName().isEmpty() && hasFormPreview(m->fileName()))
         m_formPreviewView->setSourceContext(m_currentIndex.model(), m);
     updateDanger(m_currentIndex, true);
 
@@ -1996,7 +1996,7 @@ void MainWindow::updateLatestModel(int model)
 
         if (m_currentIndex.isValid()) {
             if (MessageItem *item = m_dataModel->messageItem(m_currentIndex)) {
-                if (hasFormPreview(item->fileName()))
+                if (!item->fileName().isEmpty() && hasFormPreview(item->fileName()))
                     m_formPreviewView->setSourceContext(model, item);
                 if (enableRw && !item->isObsolete())
                     m_phraseView->setSourceText(model, item->text());
@@ -2498,8 +2498,8 @@ void MainWindow::updateDanger(const MultiDataIndex &index, bool verbose)
             }
 
             if (m_ui.actionPlaceMarkerMatches->isChecked()) {
-                // Stores the occurence count of the place markers in the map placeMarkerIndexes.
-                // i.e. the occurence count of %1 is stored at placeMarkerIndexes[1],
+                // Stores the occurrence count of the place markers in the map placeMarkerIndexes.
+                // i.e. the occurrence count of %1 is stored at placeMarkerIndexes[1],
                 // count of %2 is stored at placeMarkerIndexes[2] etc.
                 // In the first pass, it counts all place markers in the sourcetext.
                 // In the second pass it (de)counts all place markers in the translation.

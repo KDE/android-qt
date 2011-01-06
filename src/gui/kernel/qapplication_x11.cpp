@@ -74,7 +74,6 @@
 #include "qevent_p.h"
 #include "qvarlengtharray.h"
 #include "qdebug.h"
-#include <private/qunicodetables_p.h>
 #include <private/qcrashhandler_p.h>
 #include <private/qcolor_p.h>
 #include <private/qcursor_p.h>
@@ -400,11 +399,39 @@ QTabletDeviceDataList *qt_tablet_devices()
 extern bool qt_tabletChokeMouse;
 #endif
 
+typedef bool(*QX11FilterFunction)(XEvent *event);
+
+Q_GLOBAL_STATIC(QList<QX11FilterFunction>, x11Filters)
+
+Q_GUI_EXPORT void qt_installX11EventFilter(QX11FilterFunction func)
+{
+    Q_ASSERT(func);
+
+    if (QList<QX11FilterFunction> *list = x11Filters())
+        list->append(func);
+}
+
+Q_GUI_EXPORT void qt_removeX11EventFilter(QX11FilterFunction func)
+{
+    Q_ASSERT(func);
+
+    if (QList<QX11FilterFunction> *list = x11Filters())
+        list->removeOne(func);
+}
+
+
 static bool qt_x11EventFilter(XEvent* ev)
 {
     long unused;
     if (qApp->filterEvent(ev, &unused))
         return true;
+    if (const QList<QX11FilterFunction> *list = x11Filters()) {
+        for (QList<QX11FilterFunction>::const_iterator it = list->constBegin(); it != list->constEnd(); ++it) {
+            if ((*it)(ev))
+                return true;
+        }
+    }
+
     return qApp->x11EventFilter(ev);
 }
 
@@ -456,11 +483,9 @@ static void* qt_load_library_runtime(const char *library, int vernum,
     Q_FOREACH(int version, versions) {
         QLatin1String libName(library);
         QLibrary xfixesLib(libName, version);
-        if (xfixesLib.load()) {
-            void *ptr = xfixesLib.resolve(symbol);
-            if (ptr)
-                return ptr;
-        }
+        void *ptr = xfixesLib.resolve(symbol);
+        if (ptr)
+            return ptr;
     }
     return 0;
 }
@@ -1712,6 +1737,9 @@ void qt_init(QApplicationPrivate *priv, int,
     } else {
         // Qt controls everything (default)
 
+        if (QApplication::testAttribute(Qt::AA_X11InitThreads))
+            XInitThreads();
+
         // Set application name and class
         char *app_class = 0;
         if (argv && argv[0]) {
@@ -2307,6 +2335,30 @@ void qt_init(QApplicationPrivate *priv, int,
                 X11->desktopEnvironment = DE_4DWM;
                 break;
             }
+
+            if (XGetWindowProperty(X11->display, QX11Info::appRootWindow(),
+                               ATOM(_NET_SUPPORTING_WM_CHECK),
+                               0, 1024, False, XA_WINDOW, &type,
+                               &format, &length, &after, &data) == Success) {
+                if (type == XA_WINDOW && format == 32) {
+                    Window windowManagerWindow = *((Window*) data);
+                    XFree(data);
+                    data = 0;
+
+                    if (windowManagerWindow != XNone) {
+                        Atom utf8atom = ATOM(UTF8_STRING);
+                        if (XGetWindowProperty(QX11Info::display(), windowManagerWindow, ATOM(_NET_WM_NAME),
+                                               0, 1024, False, utf8atom, &type,
+                                               &format, &length, &after, &data) == Success) {
+                            if (type == utf8atom && format == 8) {
+                                if (qstrcmp((const char *)data, "MCompositor") == 0)
+                                    X11->desktopEnvironment = DE_MEEGO_COMPOSITOR;
+                            }
+                        }
+                    }
+                }
+            }
+
         } while(0);
 
         if (data)
@@ -2557,22 +2609,20 @@ void qt_init(QApplicationPrivate *priv, int,
 
 #if !defined (Q_OS_IRIX) && !defined (QT_NO_TABLET)
     QLibrary wacom(QString::fromLatin1("wacomcfg"), 0); // version 0 is the latest release at time of writing this.
-    if (wacom.load()) {
-        // NOTE: C casts instead of reinterpret_cast for GCC 3.3.x
-        ptrWacomConfigInit = (PtrWacomConfigInit)wacom.resolve("WacomConfigInit");
-        ptrWacomConfigOpenDevice = (PtrWacomConfigOpenDevice)wacom.resolve("WacomConfigOpenDevice");
-        ptrWacomConfigGetRawParam  = (PtrWacomConfigGetRawParam)wacom.resolve("WacomConfigGetRawParam");
-        ptrWacomConfigCloseDevice = (PtrWacomConfigCloseDevice)wacom.resolve("WacomConfigCloseDevice");
-        ptrWacomConfigTerm = (PtrWacomConfigTerm)wacom.resolve("WacomConfigTerm");
+    // NOTE: C casts instead of reinterpret_cast for GCC 3.3.x
+    ptrWacomConfigInit = (PtrWacomConfigInit)wacom.resolve("WacomConfigInit");
+    ptrWacomConfigOpenDevice = (PtrWacomConfigOpenDevice)wacom.resolve("WacomConfigOpenDevice");
+    ptrWacomConfigGetRawParam  = (PtrWacomConfigGetRawParam)wacom.resolve("WacomConfigGetRawParam");
+    ptrWacomConfigCloseDevice = (PtrWacomConfigCloseDevice)wacom.resolve("WacomConfigCloseDevice");
+    ptrWacomConfigTerm = (PtrWacomConfigTerm)wacom.resolve("WacomConfigTerm");
 
-        if (ptrWacomConfigInit == 0 || ptrWacomConfigOpenDevice == 0 || ptrWacomConfigGetRawParam == 0
-                || ptrWacomConfigCloseDevice == 0 || ptrWacomConfigTerm == 0) { // either we have all, or we have none.
+    if (ptrWacomConfigInit == 0 || ptrWacomConfigOpenDevice == 0 || ptrWacomConfigGetRawParam == 0
+        || ptrWacomConfigCloseDevice == 0 || ptrWacomConfigTerm == 0) { // either we have all, or we have none.
             ptrWacomConfigInit = 0;
             ptrWacomConfigOpenDevice = 0;
             ptrWacomConfigGetRawParam  = 0;
             ptrWacomConfigCloseDevice = 0;
             ptrWacomConfigTerm = 0;
-        }
     }
 #endif
 }
@@ -3715,7 +3765,7 @@ int QApplication::x11ProcessEvent(XEvent* event)
                 // toplevel reparented...
                 QWidget *newparent = QWidget::find(event->xreparent.parent);
                 if (! newparent || (newparent->windowType() == Qt::Desktop)) {
-                    // we dont' know about the new parent (or we've been
+                    // we don't know about the new parent (or we've been
                     // reparented to root), perhaps a window manager
                     // has been (re)started?  reset the focus model to unknown
                     X11->focus_model = QX11Data::FM_Unknown;

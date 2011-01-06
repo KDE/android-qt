@@ -156,14 +156,11 @@ QFontEngine *loadSingleEngine(int script,
     QFontEngine *engine = QFontCache::instance()->findEngine(key);
     if (!engine) {
         QPlatformFontDatabase *pfdb = QApplicationPrivate::platformIntegration()->fontDatabase();
-        if (size->handle) {
-            engine = pfdb->fontEngine(def,QUnicodeTables::Script(script),size->handle);
-            if (engine) {
-                QFontCache::Key key(def,script);
-                QFontCache::instance()->instance()->insertEngine(key,engine);
-            }
+        engine = pfdb->fontEngine(def,QUnicodeTables::Script(script),size->handle);
+        if (engine) {
+            QFontCache::Key key(def,script);
+            QFontCache::instance()->instance()->insertEngine(key,engine);
         }
-
     }
     return engine;
 }
@@ -199,7 +196,8 @@ static void registerFont(QFontDatabasePrivate::ApplicationFont *fnt)
 {
     QFontDatabasePrivate *db = privateDb();
 
-    QApplicationPrivate::platformIntegration()->fontDatabase()->addApplicationFont(fnt->data,fnt->fileName);
+    fnt->families = QApplicationPrivate::platformIntegration()->fontDatabase()->addApplicationFont(fnt->data,fnt->fileName);
+
     db->reregisterAppFonts = true;
 }
 

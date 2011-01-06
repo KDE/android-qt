@@ -83,7 +83,9 @@
 #   define old_qDebug qDebug
 #   undef qDebug
 # endif
+#ifndef QT_NO_CORESERVICES
 # include <CoreServices/CoreServices.h>
+#endif //QT_NO_CORESERVICES
 
 # ifdef old_qDebug
 #   undef qDebug
@@ -96,6 +98,11 @@
 // from linux/sched.h
 # define SCHED_IDLE    5
 #endif
+
+#if defined(Q_OS_DARWIN) || !defined(Q_OS_OPENBSD) && defined(_POSIX_THREAD_PRIORITY_SCHEDULING) && (_POSIX_THREAD_PRIORITY_SCHEDULING-0 >= 0)
+#define QT_HAS_THREAD_PRIORITY_SCHEDULING
+#endif
+
 
 QT_BEGIN_NAMESPACE
 
@@ -138,32 +145,78 @@ static void create_current_thread_data_key()
 
 static void destroy_current_thread_data_key()
 {
+    pthread_once(&current_thread_data_once, create_current_thread_data_key);
     pthread_key_delete(current_thread_data_key);
 }
 Q_DESTRUCTOR_FUNCTION(destroy_current_thread_data_key)
 
+
+// Utility functions for getting, setting and clearing thread specific data.
+// In Symbian, TLS access is significantly faster than pthread_getspecific.
+// However Symbian does not have the thread destruction cleanup functionality
+// that pthread has, so pthread_setspecific is also used.
+static QThreadData *get_thread_data()
+{
+#ifdef Q_OS_SYMBIAN
+    return reinterpret_cast<QThreadData *>(Dll::Tls());
+#else
+    pthread_once(&current_thread_data_once, create_current_thread_data_key);
+    return reinterpret_cast<QThreadData *>(pthread_getspecific(current_thread_data_key));
+#endif
+}
+
+static void set_thread_data(QThreadData *data)
+{
+#ifdef Q_OS_SYMBIAN
+    qt_symbian_throwIfError(Dll::SetTls(data));
+#endif
+    pthread_once(&current_thread_data_once, create_current_thread_data_key);
+    pthread_setspecific(current_thread_data_key, data);
+}
+
+static void clear_thread_data()
+{
+#ifdef Q_OS_SYMBIAN
+    Dll::FreeTls();
+#endif
+    pthread_setspecific(current_thread_data_key, 0);
+}
+
+
+#ifdef Q_OS_SYMBIAN
+static void init_symbian_thread_handle(RThread &thread)
+{
+    thread = RThread();
+    TThreadId threadId = thread.Id();
+    thread.Open(threadId);
+
+    // Make thread handle accessible process wide
+    RThread originalCloser = thread;
+    thread.Duplicate(thread, EOwnerProcess);
+    originalCloser.Close();
+}
+#endif
+
 QThreadData *QThreadData::current()
 {
-    pthread_once(&current_thread_data_once, create_current_thread_data_key);
-
-    QThreadData *data = reinterpret_cast<QThreadData *>(pthread_getspecific(current_thread_data_key));
+    QThreadData *data = get_thread_data();
     if (!data) {
         void *a;
         if (QInternal::activateCallbacks(QInternal::AdoptCurrentThread, &a)) {
             QThread *adopted = static_cast<QThread*>(a);
             Q_ASSERT(adopted);
             data = QThreadData::get2(adopted);
-            pthread_setspecific(current_thread_data_key, data);
+            set_thread_data(data);
             adopted->d_func()->running = true;
             adopted->d_func()->finished = false;
             static_cast<QAdoptedThread *>(adopted)->init();
         } else {
             data = new QThreadData;
-            pthread_setspecific(current_thread_data_key, data);
             QT_TRY {
+                set_thread_data(data);
                 data->thread = new QAdoptedThread(data);
             } QT_CATCH(...) {
-                pthread_setspecific(current_thread_data_key, 0);
+                clear_thread_data();
                 data->deref();
                 data = 0;
                 QT_RETHROW;
@@ -182,9 +235,7 @@ void QAdoptedThread::init()
     Q_D(QThread);
     d->thread_id = pthread_self();
 #ifdef Q_OS_SYMBIAN
-    d->data->symbian_thread_handle = RThread();
-    TThreadId threadId = d->data->symbian_thread_handle.Id();
-    d->data->symbian_thread_handle.Open(threadId);
+    init_symbian_thread_handle(d->data->symbian_thread_handle);
 #endif
 }
 
@@ -244,9 +295,8 @@ void *QThreadPrivate::start(void *arg)
     // RThread and pthread_t, we must delay initialization of the RThread
     // handle when creating a thread, until we are running in the new thread.
     // Here, we pick up the current thread and assign that to the handle.
-    data->symbian_thread_handle = RThread();
-    TThreadId threadId = data->symbian_thread_handle.Id();
-    data->symbian_thread_handle.Open(threadId);
+    init_symbian_thread_handle(data->symbian_thread_handle);
+
     // On symbian, threads other than the main thread are non critical by default
     // This means a worker thread can crash without crashing the application - to
     // use this feature, we would need to use RThread::Logon in the main thread
@@ -257,8 +307,7 @@ void *QThreadPrivate::start(void *arg)
     User::SetCritical(User::EProcessCritical);
 #endif
 
-    pthread_once(&current_thread_data_once, create_current_thread_data_key);
-    pthread_setspecific(current_thread_data_key, data);
+    set_thread_data(data);
 
     data->ref();
     data->quitNow = false;
@@ -289,39 +338,45 @@ void QThreadPrivate::finish(void *arg)
 {
     QThread *thr = reinterpret_cast<QThread *>(arg);
     QThreadPrivate *d = thr->d_func();
+
 #if defined(Q_OS_SYMBIAN) || defined(Q_OS_ANDROID)
-    if (lockAnyway)
+    QMutexLocker locker(lockAnyway ? &d->mutex : 0);
+#else
+    QMutexLocker locker(&d->mutex);
 #endif
-        d->mutex.lock();
 
+    d->isInFinish = true;
     d->priority = QThread::InheritPriority;
-    d->running = false;
-    d->finished = true;
-    if (d->terminated)
-        emit thr->terminated();
-    d->terminated = false;
-    emit thr->finished();
-
-    if (d->data->eventDispatcher) {
-        d->data->eventDispatcher->closingDown();
-        QAbstractEventDispatcher *eventDispatcher = d->data->eventDispatcher;
-        d->data->eventDispatcher = 0;
-        delete eventDispatcher;
-    }
-
+    bool terminated = d->terminated;
     void *data = &d->data->tls;
+    locker.unlock();
+    if (terminated)
+        emit thr->terminated();
+    emit thr->finished();
+    QCoreApplication::sendPostedEvents(0, QEvent::DeferredDelete);
     QThreadStorageData::finish((void **)data);
+    locker.relock();
+    d->terminated = false;
+
+    QAbstractEventDispatcher *eventDispatcher = d->data->eventDispatcher;
+    if (eventDispatcher) {
+        d->data->eventDispatcher = 0;
+        locker.unlock();
+        eventDispatcher->closingDown();
+        delete eventDispatcher;
+        locker.relock();
+    }
 
     d->thread_id = 0;
 #ifdef Q_OS_SYMBIAN
     if (closeNativeHandle)
         d->data->symbian_thread_handle.Close();
 #endif
+    d->running = false;
+    d->finished = true;
+
+    d->isInFinish = false;
     d->thread_done.wakeAll();
-#if defined(Q_OS_SYMBIAN) || defined(Q_OS_ANDROID)
-    if (lockAnyway)
-#endif
-        d->mutex.unlock();
 }
 
 
@@ -346,7 +401,7 @@ int QThread::idealThreadCount()
 {
     int cores = -1;
 
-#if defined(Q_OS_MAC)
+#if defined(Q_OS_MAC) && !defined(Q_WS_QPA)
     // Mac OS X
     cores = MPProcessorsScheduled();
 #elif defined(Q_OS_HPUX)
@@ -461,10 +516,10 @@ void QThread::usleep(unsigned long usecs)
     thread_sleep(&ti);
 }
 
+#ifdef QT_HAS_THREAD_PRIORITY_SCHEDULING
 // Does some magic and calculate the Unix scheduler priorities
 // sched_policy is IN/OUT: it must be set to a valid policy before calling this function
 // sched_priority is OUT only
-#if defined(Q_OS_DARWIN) || !defined(Q_OS_OPENBSD) && !defined(Q_OS_SYMBIAN) && defined(_POSIX_THREAD_PRIORITY_SCHEDULING) && (_POSIX_THREAD_PRIORITY_SCHEDULING-0 >= 0)
 static bool calculateUnixPriority(int priority, int *sched_policy, int *sched_priority)
 {
 #ifdef SCHED_IDLE
@@ -498,12 +553,18 @@ void QThread::start(Priority priority)
 {
     Q_D(QThread);
     QMutexLocker locker(&d->mutex);
+
+    if (d->isInFinish)
+        d->thread_done.wait(locker.mutex());
+
     if (d->running)
         return;
 
     d->running = true;
     d->finished = false;
     d->terminated = false;
+    d->returnCode = 0;
+    d->exited = false;
 
     pthread_attr_t attr;
     pthread_attr_init(&attr);
@@ -511,7 +572,7 @@ void QThread::start(Priority priority)
 
     d->priority = priority;
 
-#if defined(Q_OS_DARWIN) || !defined(Q_OS_OPENBSD) && !defined(Q_OS_SYMBIAN) && defined(_POSIX_THREAD_PRIORITY_SCHEDULING) && (_POSIX_THREAD_PRIORITY_SCHEDULING-0 >= 0)
+#if defined(QT_HAS_THREAD_PRIORITY_SCHEDULING) && !defined(Q_OS_SYMBIAN)
 // ### Need to implement thread sheduling and priorities for symbian os. Implementation removed for now
     switch (priority) {
     case InheritPriority:
@@ -552,7 +613,7 @@ void QThread::start(Priority priority)
             break;
         }
     }
-#endif // _POSIX_THREAD_PRIORITY_SCHEDULING
+#endif // QT_HAS_THREAD_PRIORITY_SCHEDULING
 
 #ifdef Q_OS_SYMBIAN
     if (d->stackSize == 0)
@@ -659,6 +720,18 @@ bool QThread::wait(unsigned long time)
         return true;
 
     while (d->running) {
+#ifdef Q_OS_SYMBIAN
+        // Check if thread still exists. Needed because kernel will kill it without notification
+        // before global statics are deleted at application exit.
+        if (d->data->symbian_thread_handle.Handle()
+            && d->data->symbian_thread_handle.ExitType() != EExitPending) {
+            // Cannot call finish here as wait is typically called from another thread.
+            // It won't be necessary anyway, as we should never get here under normal operations;
+            // all QThreads are EProcessCritical and therefore cannot normally exit
+            // undetected (i.e. panic) as long as all thread control is via QThread.
+            return true;
+        }
+#endif
         if (!d->thread_done.wait(locker.mutex(), time))
             return false;
     }
@@ -704,7 +777,7 @@ void QThread::setPriority(Priority priority)
 
     // copied from start() with a few modifications:
 
-#if defined(Q_OS_DARWIN) || !defined(Q_OS_OPENBSD) && defined(_POSIX_THREAD_PRIORITY_SCHEDULING) && (_POSIX_THREAD_PRIORITY_SCHEDULING-0 >= 0)
+#ifdef QT_HAS_THREAD_PRIORITY_SCHEDULING
     int sched_policy;
     sched_param param;
 

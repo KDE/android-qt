@@ -72,25 +72,27 @@ public:
         } else {
             const QStringList deployments = this->project->values("DEPLOYMENT");
             for (int i = 0; i < deployments.count(); ++i) {
-                if (!this->project->values(deployments.at(i) + ".sources").isEmpty()) {
+                // ### Qt 5: remove .sources, inconsistent with INSTALLS
+                if (!this->project->values(deployments.at(i) + ".sources").isEmpty() ||
+                    !this->project->values(deployments.at(i) + ".files").isEmpty()) {
                     generatePkg = true;
                     break;
                 }
             }
         }
 
-        if (generatePkg) {
-            generatePkgFile(iconFile, false);
-        }
+        SymbianLocalizationList symbianLocalizationList;
+        parseTsFiles(&symbianLocalizationList);
 
-        // Get the application translations and convert to symbian OS lang code, i.e. decical number
-        QStringList symbianLangCodes = symbianLangCodesFromTsFiles();
+        if (generatePkg) {
+            generatePkgFile(iconFile, false, symbianLocalizationList);
+        }
 
         if (targetType == TypeExe) {
             if (!this->project->values("CONFIG").contains("no_icon", Qt::CaseInsensitive)) {
                 writeRegRssFile(userRssRules);
                 writeRssFile(numberOfIcons, iconFile);
-                writeLocFile(symbianLangCodes);
+                writeLocFile(symbianLocalizationList);
             }
         }
 

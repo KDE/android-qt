@@ -114,7 +114,7 @@ void QSpanCollection::updateSpan(QSpanCollection::Span *span, int old_height)
         }
     } else if (old_height > span->height()) {
         //remove the span from all the subspans lists that intersect the columns not covered anymore
-        Index::iterator it_y = index.lowerBound(-qMax(span->bottom(), span->top())); //qMax usefull if height is 0
+        Index::iterator it_y = index.lowerBound(-qMax(span->bottom(), span->top())); //qMax useful if height is 0
         Q_ASSERT(it_y != index.end()); //it_y must exist since the span is in the list
         while (-it_y.key() <= span->top() + old_height -1) {
             if (-it_y.key() > span->bottom()) {
@@ -926,14 +926,7 @@ void QTableViewPrivate::drawCell(QPainter *painter, const QStyleOptionViewItemV4
 
     q->style()->drawPrimitive(QStyle::PE_PanelItemViewRow, &opt, painter, q);
 
-    if (const QWidget *widget = editorForIndex(index).editor) {
-        painter->save();
-        painter->setClipRect(widget->geometry());
-        q->itemDelegate(index)->paint(painter, opt, index);
-        painter->restore();
-    } else {
-        q->itemDelegate(index)->paint(painter, opt, index);
-    }
+    q->itemDelegate(index)->paint(painter, opt, index);
 }
 
 /*!
@@ -1411,7 +1404,7 @@ void QTableView::paintEvent(QPaintEvent *event)
         }
 
         if (showGrid) {
-            // Find the bottom right (the last rows/coloumns might be hidden)
+            // Find the bottom right (the last rows/columns might be hidden)
             while (verticalHeader->isSectionHidden(verticalHeader->logicalIndex(bottom))) --bottom;
             QPen old = painter.pen();
             painter.setPen(gridPen);
@@ -2166,7 +2159,7 @@ int QTableView::sizeHintForRow(int row) const
             option.rect.setWidth(columnWidth(index.column()));
         }
         
-        QWidget *editor = d->editorForIndex(index).editor;
+        QWidget *editor = d->editorForIndex(index).widget.data();
         if (editor && d->persistent.contains(editor)) {
             hint = qMax(hint, editor->sizeHint().height());
             int min = editor->minimumSize().height();
@@ -2219,7 +2212,7 @@ int QTableView::sizeHintForColumn(int column) const
             continue;
         index = d->model->index(logicalRow, column, d->root);
         
-        QWidget *editor = d->editorForIndex(index).editor;
+        QWidget *editor = d->editorForIndex(index).widget.data();
         if (editor && d->persistent.contains(editor)) {
             hint = qMax(hint, editor->sizeHint().width());
             int min = editor->minimumSize().width();

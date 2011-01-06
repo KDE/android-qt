@@ -65,6 +65,7 @@
 #include "qcolormap.h"
 #include "qdebug.h"
 #include "private/qgraphicssystemfactory_p.h"
+#include "private/qgraphicssystem_p.h"
 #include "private/qstylesheetstyle_p.h"
 #include "private/qstyle_p.h"
 #include "qmessagebox.h"
@@ -93,6 +94,10 @@
 #include <private/qfont_p.h>
 
 #include <stdlib.h>
+
+#if defined(Q_WS_X11) && !defined(QT_NO_EGL)
+#include <link.h>
+#endif
 
 #include "qapplication_p.h"
 #include "qevent_p.h"
@@ -148,8 +153,6 @@ QT_BEGIN_NAMESPACE
 
 Q_CORE_EXPORT void qt_call_post_routines();
 
-int QApplicationPrivate::app_compile_version = 0x040000; //we don't know exactly, but it's at least 4.0.0
-
 QApplication::Type qt_appType=QApplication::Tty;
 QApplicationPrivate *QApplicationPrivate::self = 0;
 
@@ -164,8 +167,8 @@ bool QApplicationPrivate::autoSipEnabled = false;
 bool QApplicationPrivate::autoSipEnabled = true;
 #endif
 
-QApplicationPrivate::QApplicationPrivate(int &argc, char **argv, QApplication::Type type)
-    : QCoreApplicationPrivate(argc, argv)
+QApplicationPrivate::QApplicationPrivate(int &argc, char **argv, QApplication::Type type, int flags)
+    : QCoreApplicationPrivate(argc, argv, flags)
 {
     application_type = type;
     qt_appType = type;
@@ -475,11 +478,14 @@ bool Q_GUI_EXPORT qt_tab_all_widgets = true;
 bool qt_in_tab_key_event = false;
 int qt_antialiasing_threshold = -1;
 static int drag_time = 500;
+#ifndef QT_GUI_DRAG_DISTANCE
+#define QT_GUI_DRAG_DISTANCE 4
+#endif
 #ifdef Q_OS_SYMBIAN
 // The screens are a bit too small to for your thumb when using only 4 pixels drag distance.
-static int drag_distance = 12;
+static int drag_distance = 12; //XXX move to qplatformdefs.h
 #else
-static int drag_distance = 4;
+static int drag_distance = QT_GUI_DRAG_DISTANCE;
 #endif
 static Qt::LayoutDirection layout_direction = Qt::LeftToRight;
 QSize QApplicationPrivate::app_strut = QSize(0,0); // no default application strut
@@ -492,6 +498,7 @@ bool QApplicationPrivate::fade_tooltip = false;
 bool QApplicationPrivate::animate_toolbox = false;
 bool QApplicationPrivate::widgetCount = false;
 bool QApplicationPrivate::load_testability = false;
+QString QApplicationPrivate::qmljs_debug_arguments;
 #ifdef QT_KEYPAD_NAVIGATION
 #  ifdef Q_OS_SYMBIAN
 Qt::NavigationMode QApplicationPrivate::navigationMode = Qt::NavigationModeKeypadDirectional;
@@ -563,6 +570,8 @@ void QApplicationPrivate::process_cmdline()
         QString s;
         if (arg == "-qdevel" || arg == "-qdebug") {
             // obsolete argument
+        } else if (arg.indexOf("-qmljsdebugger=", 0) != -1) {
+            qmljs_debug_arguments = QString::fromLocal8Bit(arg.right(arg.length() - 15));
         } else if (arg.indexOf("-style=", 0) != -1) {
             s = QString::fromLocal8Bit(arg.right(arg.length() - 7).toLower());
         } else if (arg == "-style" && i < argc-1) {
@@ -668,6 +677,9 @@ void QApplicationPrivate::process_cmdline()
             Qt::RightToLeft
         \o  -graphicssystem, sets the backend to be used for on-screen widgets
             and QPixmaps. Available options are \c{raster} and \c{opengl}.
+        \o  -qmljsdebugger=, activates the QML/JS debugger with a specified port.
+            The value must be of format port:1234[,block], where block is optional
+            and will make the application wait until a debugger connects to it.
     \endlist
 
     The X11 version of Qt supports some traditional X11 command line options:
@@ -703,16 +715,22 @@ void QApplicationPrivate::process_cmdline()
             done.
     \endlist
 
+    \section1 X11 Notes
+
+    If QApplication fails to open the X11 display, it will terminate
+    the process. This behavior is consistent with most X11
+    applications.
+
     \sa arguments()
 */
 
 QApplication::QApplication(int &argc, char **argv)
-    : QCoreApplication(*new QApplicationPrivate(argc, argv, GuiClient))
+    : QCoreApplication(*new QApplicationPrivate(argc, argv, GuiClient, 0x040000))
 { Q_D(QApplication); d->construct(); }
 
 QApplication::QApplication(int &argc, char **argv, int _internal)
-    : QCoreApplication(*new QApplicationPrivate(argc, argv, GuiClient))
-{ Q_D(QApplication); d->construct(); QApplicationPrivate::app_compile_version = _internal;}
+    : QCoreApplication(*new QApplicationPrivate(argc, argv, GuiClient, _internal))
+{ Q_D(QApplication); d->construct(); }
 
 
 /*!
@@ -741,12 +759,12 @@ QApplication::QApplication(int &argc, char **argv, int _internal)
 */
 
 QApplication::QApplication(int &argc, char **argv, bool GUIenabled )
-    : QCoreApplication(*new QApplicationPrivate(argc, argv, GUIenabled ? GuiClient : Tty))
+    : QCoreApplication(*new QApplicationPrivate(argc, argv, GUIenabled ? GuiClient : Tty, 0x040000))
 { Q_D(QApplication); d->construct(); }
 
 QApplication::QApplication(int &argc, char **argv, bool GUIenabled , int _internal)
-    : QCoreApplication(*new QApplicationPrivate(argc, argv, GUIenabled ? GuiClient : Tty))
-{ Q_D(QApplication); d->construct();  QApplicationPrivate::app_compile_version = _internal;}
+    : QCoreApplication(*new QApplicationPrivate(argc, argv, GUIenabled ? GuiClient : Tty, _internal))
+{ Q_D(QApplication); d->construct();}
 
 
 
@@ -764,13 +782,20 @@ QApplication::QApplication(int &argc, char **argv, bool GUIenabled , int _intern
     \c -qws option).
 */
 QApplication::QApplication(int &argc, char **argv, Type type)
-    : QCoreApplication(*new QApplicationPrivate(argc, argv, type))
+    : QCoreApplication(*new QApplicationPrivate(argc, argv, type, 0x040000))
 { Q_D(QApplication); d->construct(); }
 
 QApplication::QApplication(int &argc, char **argv, Type type , int _internal)
-    : QCoreApplication(*new QApplicationPrivate(argc, argv, type))
-{ Q_D(QApplication); d->construct();  QApplicationPrivate::app_compile_version = _internal;}
+    : QCoreApplication(*new QApplicationPrivate(argc, argv, type, _internal))
+{ Q_D(QApplication); d->construct(); }
 
+#if defined(Q_WS_X11) && !defined(QT_NO_EGL)
+static int qt_matchLibraryName(dl_phdr_info *info, size_t, void *data)
+{
+    const char *name = static_cast<const char *>(data);
+    return strstr(info->dlpi_name, name) != 0;
+}
+#endif
 
 /*!
     \internal
@@ -789,6 +814,19 @@ void QApplicationPrivate::construct(
     // the environment variable has the lowest precedence of runtime graphicssystem switches
     if (graphics_system_name.isEmpty())
         graphics_system_name = QString::fromLocal8Bit(qgetenv("QT_GRAPHICSSYSTEM"));
+
+#if defined(Q_WS_X11) && !defined(QT_NO_EGL)
+    if (graphics_system_name.isEmpty()) {
+        bool linksWithMeeGoTouch = dl_iterate_phdr(qt_matchLibraryName, const_cast<char *>("libmeegotouchcore"));
+        bool linksWithMeeGoGraphicsSystemHelper = dl_iterate_phdr(qt_matchLibraryName, const_cast<char *>("libQtMeeGoGraphicsSystemHelper"));
+
+        if (linksWithMeeGoTouch && !linksWithMeeGoGraphicsSystemHelper) {
+            qWarning("Running non-meego graphics system enabled  MeeGo touch, forcing native graphicssystem\n");
+            graphics_system_name = QLatin1String("native");
+        }
+    }
+#endif
+
     // Must be called before initialize()
     qt_init(this, qt_appType
 #ifdef Q_WS_X11
@@ -856,7 +894,7 @@ static char *aargv[] = { (char*)"unknown", 0 };
     This function is only available on X11.
 */
 QApplication::QApplication(Display* dpy, Qt::HANDLE visual, Qt::HANDLE colormap)
-    : QCoreApplication(*new QApplicationPrivate(aargc, aargv, GuiClient))
+    : QCoreApplication(*new QApplicationPrivate(aargc, aargv, GuiClient, 0x040000))
 {
     if (! dpy)
         qWarning("QApplication: Invalid Display* argument");
@@ -865,7 +903,7 @@ QApplication::QApplication(Display* dpy, Qt::HANDLE visual, Qt::HANDLE colormap)
 }
 
 QApplication::QApplication(Display* dpy, Qt::HANDLE visual, Qt::HANDLE colormap, int _internal)
-    : QCoreApplication(*new QApplicationPrivate(aargc, aargv, GuiClient))
+    : QCoreApplication(*new QApplicationPrivate(aargc, aargv, GuiClient, _internal))
 {
     if (! dpy)
         qWarning("QApplication: Invalid Display* argument");
@@ -890,7 +928,7 @@ QApplication::QApplication(Display* dpy, Qt::HANDLE visual, Qt::HANDLE colormap,
 */
 QApplication::QApplication(Display *dpy, int &argc, char **argv,
                            Qt::HANDLE visual, Qt::HANDLE colormap)
-    : QCoreApplication(*new QApplicationPrivate(argc, argv, GuiClient))
+    : QCoreApplication(*new QApplicationPrivate(argc, argv, GuiClient, 0x040000))
 {
     if (! dpy)
         qWarning("QApplication: Invalid Display* argument");
@@ -900,7 +938,7 @@ QApplication::QApplication(Display *dpy, int &argc, char **argv,
 
 QApplication::QApplication(Display *dpy, int &argc, char **argv,
                            Qt::HANDLE visual, Qt::HANDLE colormap, int _internal)
-    : QCoreApplication(*new QApplicationPrivate(argc, argv, GuiClient))
+    : QCoreApplication(*new QApplicationPrivate(argc, argv, GuiClient, _internal))
 {
     if (! dpy)
         qWarning("QApplication: Invalid Display* argument");
@@ -1121,6 +1159,8 @@ QApplication::~QApplication()
     QApplicationPrivate::app_style = 0;
     delete QApplicationPrivate::app_icon;
     QApplicationPrivate::app_icon = 0;
+    delete QApplicationPrivate::graphics_system;
+    QApplicationPrivate::graphics_system = 0;
 #ifndef QT_NO_CURSOR
     d->cursor_list.clear();
 #endif
@@ -1393,10 +1433,18 @@ QStyle *QApplication::style()
         // Compile-time search for default style
         //
         QString style;
-        if (!QApplicationPrivate::styleOverride.isEmpty())
+#ifdef QT_BUILD_INTERNAL
+        QString envStyle = QString::fromLocal8Bit(qgetenv("QT_STYLE_OVERRIDE"));
+#else
+        QString envStyle;
+#endif
+        if (!QApplicationPrivate::styleOverride.isEmpty()) {
             style = QApplicationPrivate::styleOverride;
-        else
+        } else if (!envStyle.isEmpty()) {
+            style = envStyle;
+        } else {
             style = QApplicationPrivate::desktopStyleKey();
+        }
 
         QStyle *&app_style = QApplicationPrivate::app_style;
         app_style = QStyleFactory::create(style);
@@ -2373,8 +2421,13 @@ static const char *application_menu_strings[] = {
     };
 QString qt_mac_applicationmenu_string(int type)
 {
-    return qApp->translate("MAC_APPLICATION_MENU",
-                           application_menu_strings[type]);
+    QString menuString = QString::fromLatin1(application_menu_strings[type]);
+    QString translated = qApp->translate("QMenuBar", application_menu_strings[type]);
+    if (translated != menuString)
+        return translated;
+    else
+        return qApp->translate("MAC_APPLICATION_MENU",
+                               application_menu_strings[type]);
 }
 #endif
 #endif
@@ -3718,11 +3771,6 @@ bool QApplication::notify(QObject *receiver, QEvent *e)
     d->checkReceiverThread(receiver);
 #endif
 
-#ifdef QT3_SUPPORT
-    if (e->type() == QEvent::ChildRemoved && !receiver->d_func()->pendingChildInsertedEvents.isEmpty())
-        receiver->d_func()->removePendingChildInsertedEvents(static_cast<QChildEvent *>(e)->child());
-#endif // QT3_SUPPORT
-
     // capture the current mouse/keyboard state
     if(e->spontaneous()) {
         if (e->type() == QEvent::KeyPress
@@ -4359,11 +4407,13 @@ bool QApplication::notify(QObject *receiver, QEvent *e)
                     eventAccepted = ge.isAccepted();
                     for (int i = 0; i < gestures.size(); ++i) {
                         QGesture *g = gestures.at(i);
-                        if ((res && eventAccepted) || (!eventAccepted && ge.isAccepted(g))) {
+                        // Ignore res [event return value] because handling of multiple gestures
+                        // packed into a single QEvent depends on not consuming the event
+                        if (eventAccepted || ge.isAccepted(g)) {
                             // if the gesture was accepted, mark the target widget for it
                             gestureEvent->d_func()->targetWidgets[g->gestureType()] = w;
                             gestureEvent->setAccepted(g, true);
-                        } else if (!eventAccepted && !ge.isAccepted(g)) {
+                        } else {
                             // if the gesture was explicitly ignored by the application,
                             // put it back so a parent can get it
                             allGestures.append(g);
@@ -5823,12 +5873,12 @@ Q_GUI_EXPORT void qt_translateRawTouchEvent(QWidget *window,
 #ifndef QT_NO_GESTURES
 QGestureManager* QGestureManager::instance()
 {
-    if (QApplicationPrivate *qAppPriv = QApplicationPrivate::instance()) {
-        if (!qAppPriv->gestureManager)
-            qAppPriv->gestureManager = new QGestureManager(qApp);
-        return qAppPriv->gestureManager;
-    }
-    return 0;
+    QApplicationPrivate *qAppPriv = QApplicationPrivate::instance();
+    if (!qAppPriv)
+        return 0;
+    if (!qAppPriv->gestureManager)
+        qAppPriv->gestureManager = new QGestureManager(qApp);
+    return qAppPriv->gestureManager;
 }
 #endif // QT_NO_GESTURES
 
@@ -6056,6 +6106,11 @@ QPixmap QApplicationPrivate::getPixmapCursor(Qt::CursorShape cshape)
     Q_UNUSED(cshape);
 #endif
     return QPixmap();
+}
+
+QString QApplicationPrivate::qmljsDebugArgumentsString()
+{
+    return qmljs_debug_arguments;
 }
 
 QT_END_NAMESPACE

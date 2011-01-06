@@ -80,9 +80,13 @@ private slots:
     void preserveAspectRatio();
     void smooth();
     void svg();
+    void geometry();
+    void geometry_data();
     void big();
     void tiling_QTBUG_6716();
     void noLoading();
+    void paintedWidthHeight();
+    void sourceSize_QTBUG_14303();
 
 private:
     template<typename T>
@@ -97,7 +101,7 @@ tst_qdeclarativeimage::tst_qdeclarativeimage()
 
 void tst_qdeclarativeimage::noSource()
 {
-    QString componentStr = "import Qt 4.7\nImage { source: \"\" }";
+    QString componentStr = "import QtQuick 1.0\nImage { source: \"\" }";
     QDeclarativeComponent component(&engine);
     component.setData(componentStr.toLatin1(), QUrl::fromLocalFile(""));
     QDeclarativeImage *obj = qobject_cast<QDeclarativeImage*>(component.create());
@@ -154,7 +158,7 @@ void tst_qdeclarativeimage::imageSource()
     if (!error.isEmpty())
         QTest::ignoreMessage(QtWarningMsg, error.toUtf8());
 
-    QString componentStr = "import Qt 4.7\nImage { source: \"" + source + "\"; asynchronous: "
+    QString componentStr = "import QtQuick 1.0\nImage { source: \"" + source + "\"; asynchronous: "
         + (async ? QLatin1String("true") : QLatin1String("false")) + " }";
     QDeclarativeComponent component(&engine);
     component.setData(componentStr.toLatin1(), QUrl::fromLocalFile(""));
@@ -184,7 +188,7 @@ void tst_qdeclarativeimage::imageSource()
 
 void tst_qdeclarativeimage::clearSource()
 {
-    QString componentStr = "import Qt 4.7\nImage { source: srcImage }";
+    QString componentStr = "import QtQuick 1.0\nImage { source: srcImage }";
     QDeclarativeContext *ctxt = engine.rootContext();
     ctxt->setContextProperty("srcImage", QUrl::fromLocalFile(SRCDIR "/data/colors.png"));
     QDeclarativeComponent component(&engine);
@@ -206,7 +210,7 @@ void tst_qdeclarativeimage::clearSource()
 
 void tst_qdeclarativeimage::resized()
 {
-    QString componentStr = "import Qt 4.7\nImage { source: \"" SRCDIR "/data/colors.png\"; width: 300; height: 300 }";
+    QString componentStr = "import QtQuick 1.0\nImage { source: \"" SRCDIR "/data/colors.png\"; width: 300; height: 300 }";
     QDeclarativeComponent component(&engine);
     component.setData(componentStr.toLatin1(), QUrl::fromLocalFile(""));
     QDeclarativeImage *obj = qobject_cast<QDeclarativeImage*>(component.create());
@@ -241,7 +245,7 @@ void tst_qdeclarativeimage::preserveAspectRatio()
 
 void tst_qdeclarativeimage::smooth()
 {
-    QString componentStr = "import Qt 4.7\nImage { source: \"" SRCDIR "/data/colors.png\"; smooth: true; width: 300; height: 300 }";
+    QString componentStr = "import QtQuick 1.0\nImage { source: \"" SRCDIR "/data/colors.png\"; smooth: true; width: 300; height: 300 }";
     QDeclarativeComponent component(&engine);
     component.setData(componentStr.toLatin1(), QUrl::fromLocalFile(""));
     QDeclarativeImage *obj = qobject_cast<QDeclarativeImage*>(component.create());
@@ -257,7 +261,7 @@ void tst_qdeclarativeimage::smooth()
 void tst_qdeclarativeimage::svg()
 {
     QString src = QUrl::fromLocalFile(SRCDIR "/data/heart.svg").toString();
-    QString componentStr = "import Qt 4.7\nImage { source: \"" + src + "\"; sourceSize.width: 300; sourceSize.height: 300 }";
+    QString componentStr = "import QtQuick 1.0\nImage { source: \"" + src + "\"; sourceSize.width: 300; sourceSize.height: 300 }";
     QDeclarativeComponent component(&engine);
     component.setData(componentStr.toLatin1(), QUrl::fromLocalFile(""));
     QDeclarativeImage *obj = qobject_cast<QDeclarativeImage*>(component.create());
@@ -286,13 +290,85 @@ void tst_qdeclarativeimage::svg()
     delete obj;
 }
 
+void tst_qdeclarativeimage::geometry_data()
+{
+    QTest::addColumn<QString>("fillMode");
+    QTest::addColumn<bool>("explicitWidth");
+    QTest::addColumn<bool>("explicitHeight");
+    QTest::addColumn<double>("itemWidth");
+    QTest::addColumn<double>("paintedWidth");
+    QTest::addColumn<double>("boundingWidth");
+    QTest::addColumn<double>("itemHeight");
+    QTest::addColumn<double>("paintedHeight");
+    QTest::addColumn<double>("boundingHeight");
+
+    // tested image has width 200, height 100
+
+    // bounding rect and item rect are equal with fillMode PreserveAspectFit, painted rect may be smaller if the aspect ratio doesn't match
+    QTest::newRow("PreserveAspectFit") << "PreserveAspectFit" << false << false << 200.0 << 200.0 << 200.0 << 100.0 << 100.0 << 100.0;
+    QTest::newRow("PreserveAspectFit explicit width 300") << "PreserveAspectFit" << true << false << 300.0 << 200.0 << 300.0 << 100.0 << 100.0 << 100.0;
+    QTest::newRow("PreserveAspectFit explicit height 400") << "PreserveAspectFit" << false << true << 200.0 << 200.0 << 200.0 << 400.0 << 100.0 << 400.0;
+    QTest::newRow("PreserveAspectFit explicit width 300, height 400") << "PreserveAspectFit" << true << true << 300.0 << 300.0 << 300.0 << 400.0 << 150.0 << 400.0;
+
+    // bounding rect and painted rect are equal with fillMode PreserveAspectCrop, item rect may be smaller if the aspect ratio doesn't match
+    QTest::newRow("PreserveAspectCrop") << "PreserveAspectCrop" << false << false << 200.0 << 200.0 << 200.0 << 100.0 << 100.0 << 100.0;
+    QTest::newRow("PreserveAspectCrop explicit width 300") << "PreserveAspectCrop" << true << false << 300.0 << 300.0 << 300.0 << 100.0 << 150.0 << 150.0;
+    QTest::newRow("PreserveAspectCrop explicit height 400") << "PreserveAspectCrop" << false << true << 200.0 << 800.0 << 800.0 << 400.0 << 400.0 << 400.0;
+    QTest::newRow("PreserveAspectCrop explicit width 300, height 400") << "PreserveAspectCrop" << true << true << 300.0 << 800.0 << 800.0 << 400.0 << 400.0 << 400.0;
+
+    // bounding rect, painted rect and item rect are equal in stretching and tiling images
+    QStringList fillModes;
+    fillModes << "Stretch" << "Tile" << "TileVertically" << "TileHorizontally";
+    foreach (QString fillMode, fillModes) {
+        QTest::newRow(fillMode.toLatin1()) << fillMode << false << false << 200.0 << 200.0 << 200.0 << 100.0 << 100.0 << 100.0;
+        QTest::newRow(QString(fillMode + " explicit width 300").toLatin1()) << fillMode << true << false << 300.0 << 300.0 << 300.0 << 100.0 << 100.0 << 100.0;
+        QTest::newRow(QString(fillMode + " explicit height 400").toLatin1()) << fillMode << false << true << 200.0 << 200.0 << 200.0 << 400.0 << 400.0 << 400.0;
+        QTest::newRow(QString(fillMode + " explicit width 300, height 400").toLatin1()) << fillMode << true << true << 300.0 << 300.0 << 300.0 << 400.0 << 400.0 << 400.0;
+    }
+}
+
+void tst_qdeclarativeimage::geometry()
+{
+    QFETCH(QString, fillMode);
+    QFETCH(bool, explicitWidth);
+    QFETCH(bool, explicitHeight);
+    QFETCH(double, itemWidth);
+    QFETCH(double, itemHeight);
+    QFETCH(double, paintedWidth);
+    QFETCH(double, paintedHeight);
+    QFETCH(double, boundingWidth);
+    QFETCH(double, boundingHeight);
+
+    QString src = QUrl::fromLocalFile(SRCDIR "/data/rect.png").toString();
+    QString componentStr = "import QtQuick 1.0\nImage { source: \"" + src + "\"; fillMode: Image." + fillMode + "; ";
+
+    if (explicitWidth)
+        componentStr.append("width: 300; ");
+    if (explicitHeight)
+        componentStr.append("height: 400; ");
+    componentStr.append("}");
+    QDeclarativeComponent component(&engine);
+    component.setData(componentStr.toLatin1(), QUrl::fromLocalFile(""));
+    QDeclarativeImage *obj = qobject_cast<QDeclarativeImage*>(component.create());
+    QVERIFY(obj != 0);
+
+    QCOMPARE(obj->width(), itemWidth);
+    QCOMPARE(obj->paintedWidth(), paintedWidth);
+    QCOMPARE(obj->boundingRect().width(), boundingWidth);
+
+    QCOMPARE(obj->height(), itemHeight);
+    QCOMPARE(obj->paintedHeight(), paintedHeight);
+    QCOMPARE(obj->boundingRect().height(), boundingHeight);
+    delete obj;
+}
+
 void tst_qdeclarativeimage::big()
 {
     // If the JPEG loader does not implement scaling efficiently, it would
     // have to build a 400 MB image. That would be a bug in the JPEG loader.
 
     QString src = QUrl::fromLocalFile(SRCDIR "/data/big.jpeg").toString();
-    QString componentStr = "import Qt 4.7\nImage { source: \"" + src + "\"; width: 100; sourceSize.height: 256 }";
+    QString componentStr = "import QtQuick 1.0\nImage { source: \"" + src + "\"; width: 100; sourceSize.height: 256 }";
 
     QDeclarativeComponent component(&engine);
     component.setData(componentStr.toLatin1(), QUrl::fromLocalFile(""));
@@ -354,7 +430,7 @@ void tst_qdeclarativeimage::noLoading()
     server.serveDirectory(SRCDIR "/data");
     server.addRedirect("oldcolors.png", SERVER_ADDR "/colors.png");
 
-    QString componentStr = "import Qt 4.7\nImage { source: srcImage }";
+    QString componentStr = "import QtQuick 1.0\nImage { source: srcImage }";
     QDeclarativeContext *ctxt = engine.rootContext();
     ctxt->setContextProperty("srcImage", QUrl::fromLocalFile(SRCDIR "/data/heart.png"));
     QDeclarativeComponent component(&engine);
@@ -376,7 +452,7 @@ void tst_qdeclarativeimage::noLoading()
     QTRY_COMPARE(statusSpy.count(), 0);
 
     // Loading remote file
-    ctxt->setContextProperty("srcImage", QString(SERVER_ADDR) + "/oldcolors.png");
+    ctxt->setContextProperty("srcImage", QString(SERVER_ADDR) + "/heart200.png");
     QTRY_VERIFY(obj->status() == QDeclarativeImage::Loading);
     QTRY_VERIFY(obj->progress() == 0.0);
     QTRY_VERIFY(obj->status() == QDeclarativeImage::Ready);
@@ -387,12 +463,81 @@ void tst_qdeclarativeimage::noLoading()
 
     // Loading remote file again - should not go through 'Loading' state.
     ctxt->setContextProperty("srcImage", QUrl::fromLocalFile(SRCDIR "/data/colors.png"));
-    ctxt->setContextProperty("srcImage", QString(SERVER_ADDR) + "/oldcolors.png");
+    ctxt->setContextProperty("srcImage", QString(SERVER_ADDR) + "/heart200.png");
     QTRY_VERIFY(obj->status() == QDeclarativeImage::Ready);
     QTRY_VERIFY(obj->progress() == 1.0);
     QTRY_COMPARE(sourceSpy.count(), 4);
     QTRY_COMPARE(progressSpy.count(), 2);
     QTRY_COMPARE(statusSpy.count(), 2);
+}
+
+void tst_qdeclarativeimage::paintedWidthHeight()
+{
+    {
+        QString src = QUrl::fromLocalFile(SRCDIR "/data/heart.png").toString();
+        QString componentStr = "import QtQuick 1.0\nImage { source: \"" + src + "\"; width: 200; height: 25; fillMode: Image.PreserveAspectFit }";
+
+        QDeclarativeComponent component(&engine);
+        component.setData(componentStr.toLatin1(), QUrl::fromLocalFile(""));
+        QDeclarativeImage *obj = qobject_cast<QDeclarativeImage*>(component.create());
+        QVERIFY(obj != 0);
+        QCOMPARE(obj->pixmap().width(), 300);
+        QCOMPARE(obj->pixmap().height(), 300);
+        QCOMPARE(obj->width(), 200.0);
+        QCOMPARE(obj->height(), 25.0);
+        QCOMPARE(obj->paintedWidth(), 25.0);
+        QCOMPARE(obj->paintedHeight(), 25.0);
+        QCOMPARE(obj->pixmap(), QPixmap(SRCDIR "/data/heart.png"));
+
+        delete obj;
+    }
+
+    {
+        QString src = QUrl::fromLocalFile(SRCDIR "/data/heart.png").toString();
+        QString componentStr = "import QtQuick 1.0\nImage { source: \"" + src + "\"; width: 26; height: 175; fillMode: Image.PreserveAspectFit }";
+        QDeclarativeComponent component(&engine);
+        component.setData(componentStr.toLatin1(), QUrl::fromLocalFile(""));
+        QDeclarativeImage *obj = qobject_cast<QDeclarativeImage*>(component.create());
+        QVERIFY(obj != 0);
+        QCOMPARE(obj->pixmap().width(), 300);
+        QCOMPARE(obj->pixmap().height(), 300);
+        QCOMPARE(obj->width(), 26.0);
+        QCOMPARE(obj->height(), 175.0);
+        QCOMPARE(obj->paintedWidth(), 26.0);
+        QCOMPARE(obj->paintedHeight(), 26.0);
+        QCOMPARE(obj->pixmap(), QPixmap(SRCDIR "/data/heart.png"));
+
+        delete obj;
+    }
+}
+
+void tst_qdeclarativeimage::sourceSize_QTBUG_14303()
+{
+    QString componentStr = "import QtQuick 1.0\nImage { source: srcImage }";
+    QDeclarativeContext *ctxt = engine.rootContext();
+    ctxt->setContextProperty("srcImage", QUrl::fromLocalFile(SRCDIR "/data/heart200.png"));
+    QDeclarativeComponent component(&engine);
+    component.setData(componentStr.toLatin1(), QUrl::fromLocalFile(""));
+    QDeclarativeImage *obj = qobject_cast<QDeclarativeImage*>(component.create());
+
+    QSignalSpy sourceSizeSpy(obj, SIGNAL(sourceSizeChanged()));
+
+    QTRY_VERIFY(obj != 0);
+    QTRY_VERIFY(obj->status() == QDeclarativeImage::Ready);
+
+    QTRY_COMPARE(obj->sourceSize().width(), 200);
+    QTRY_COMPARE(obj->sourceSize().height(), 200);
+    QTRY_COMPARE(sourceSizeSpy.count(), 0);
+
+    ctxt->setContextProperty("srcImage", QUrl::fromLocalFile(SRCDIR "/data/colors.png"));
+    QTRY_COMPARE(obj->sourceSize().width(), 120);
+    QTRY_COMPARE(obj->sourceSize().height(), 120);
+    QTRY_COMPARE(sourceSizeSpy.count(), 1);
+
+    ctxt->setContextProperty("srcImage", QUrl::fromLocalFile(SRCDIR "/data/heart200.png"));
+    QTRY_COMPARE(obj->sourceSize().width(), 200);
+    QTRY_COMPARE(obj->sourceSize().height(), 200);
+    QTRY_COMPARE(sourceSizeSpy.count(), 2);
 }
 
 /*

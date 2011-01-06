@@ -64,6 +64,9 @@
 
 #ifdef Q_WS_MAC
 #include <private/qt_cocoa_helpers_mac_p.h>
+#include <QMainWindow>
+#include <private/qmainwindowlayout_p.h>
+#include <QToolBar>
 #endif
 
 QT_BEGIN_NAMESPACE
@@ -82,8 +85,8 @@ public:
     uint inSetGeometry : 1;
 };
 
-QRasterWindowSurface::QRasterWindowSurface(QWidget *window)
-    : QWindowSurface(window), d_ptr(new QRasterWindowSurfacePrivate)
+QRasterWindowSurface::QRasterWindowSurface(QWidget *window, bool setDefaultSurface)
+    : QWindowSurface(window, setDefaultSurface), d_ptr(new QRasterWindowSurfacePrivate)
 {
 #ifdef Q_WS_X11
     d_ptr->gc = XCreateGC(X11->display, window->handle(), 0, 0);
@@ -248,9 +251,29 @@ void QRasterWindowSurface::flush(QWidget *widget, const QRegion &rgn, const QPoi
 
 #ifdef Q_WS_MAC
 
-//     qDebug() << "Flushing" << widget << rgn << offset;
+    // This is mainly done for native components like native "open file" dialog.
+    if (widget->testAttribute(Qt::WA_DontShowOnScreen)) {
+        return;
+    }
 
-//     d->image->image.save("flush.png");
+#ifdef QT_MAC_USE_COCOA
+    // Unified toolbar hack.
+    QMainWindow* mWindow = qobject_cast<QMainWindow*>(widget->window());
+    if (mWindow) {
+        QMainWindowLayout *mLayout = qobject_cast<QMainWindowLayout*>(mWindow->layout());
+        QList<QToolBar *> toolbarList = mLayout->qtoolbarsInUnifiedToolbarList;
+
+        for (int i = 0; i < toolbarList.size(); ++i) {
+            QToolBar* toolbar = toolbarList.at(i);
+            if (mLayout->toolBarArea(toolbar) == Qt::TopToolBarArea) {
+                QWidget* tbWidget = (QWidget*) toolbar;
+                if (tbWidget->d_func()->unifiedSurface) {
+                    tbWidget->d_func()->unifiedSurface->flush(tbWidget, rgn, offset);
+                }
+            }
+        }
+    }
+#endif // QT_MAC_USE_COCOA
 
     Q_UNUSED(offset);
     // Get a context for the widget.
@@ -262,6 +285,7 @@ void QRasterWindowSurface::flush(QWidget *widget, const QRegion &rgn, const QPoi
     extern CGContextRef qt_mac_graphicsContextFor(QWidget *);
     CGContextRef context = qt_mac_graphicsContextFor(widget);
 #endif
+    CGContextRetain(context);
     CGContextSaveGState(context);
 
     // Flip context.
@@ -282,20 +306,21 @@ void QRasterWindowSurface::flush(QWidget *widget, const QRegion &rgn, const QPoi
     CGImageRef subImage = CGImageCreateWithImageInRect(image, area);
 
     qt_mac_drawCGImage(context, &area, subImage);
+
     CGImageRelease(subImage);
     CGImageRelease(image);
 
-//     CGSize size = { d->image->image.width(), d->image->image.height() };
-//     CGLayerRef layer = CGLayerCreateWithContext(d->image->cg, size, 0);
-//     CGPoint pt = { 0, 0 };
-//     CGContextDrawLayerAtPoint(context, pt, layer);
-//     CGLayerRelease(layer);
+#ifndef QT_MAC_USE_COCOA
+    QDEndCGContext(port, &context);
+#else
+    CGContextFlush(context);
+#endif
 
     // Restore context.
     CGContextRestoreGState(context);
-#ifndef QT_MAC_USE_COCOA
-    QDEndCGContext(port, &context);
-#endif
+    CGContextRelease(context);
+
+
 #endif // Q_WS_MAC
 
 #ifdef Q_OS_SYMBIAN
@@ -323,6 +348,25 @@ void QRasterWindowSurface::setGeometry(const QRect &rect)
             prepareBuffer(QNativeImage::systemFormat(), window());
     }
     d->inSetGeometry = false;
+
+#if defined(Q_WS_MAC) && defined(QT_MAC_USE_COCOA)
+    QMainWindow* mWindow = qobject_cast<QMainWindow*>(window());
+    if (mWindow) {
+        QMainWindowLayout *mLayout = qobject_cast<QMainWindowLayout*>(mWindow->layout());
+        QList<QToolBar *> toolbarList = mLayout->qtoolbarsInUnifiedToolbarList;
+
+        for (int i = 0; i < toolbarList.size(); ++i) {
+            QToolBar* toolbar = toolbarList.at(i);
+            if (mLayout->toolBarArea(toolbar) == Qt::TopToolBarArea) {
+                QWidget* tbWidget = (QWidget*) toolbar;
+                if (tbWidget->d_func()->unifiedSurface) {
+                    tbWidget->d_func()->unifiedSurface->setGeometry(rect);
+                }
+            }
+        }
+    }
+#endif // Q_WS_MAC && QT_MAC_USE_COCOA
+
 }
 
 // from qwindowsurface.cpp

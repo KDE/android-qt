@@ -178,7 +178,7 @@ QT_BEGIN_NAMESPACE
 
 QStateMachinePrivate::QStateMachinePrivate()
 {
-    QAbstractStatePrivate::isMachine = true;
+    isMachine = true;
 
     state = NotRunning;
     _startState = 0;
@@ -793,7 +793,7 @@ void QStateMachinePrivate::applyProperties(const QList<QAbstractTransition*> &tr
         }
         // We require that at least one animation is valid.
         // ### generalize
-        QList<QVariantAnimation*> variantAnims = qFindChildren<QVariantAnimation*>(anim);
+        QList<QVariantAnimation*> variantAnims = anim->findChildren<QVariantAnimation*>();
         if (QVariantAnimation *va = qobject_cast<QVariantAnimation*>(anim))
             variantAnims.append(va);
         
@@ -1178,7 +1178,7 @@ void QStateMachinePrivate::removeStartState()
 void QStateMachinePrivate::clearHistory()
 {
     Q_Q(QStateMachine);
-    QList<QHistoryState*> historyStates = qFindChildren<QHistoryState*>(q);
+    QList<QHistoryState*> historyStates = q->findChildren<QHistoryState*>();
     for (int i = 0; i < historyStates.size(); ++i) {
         QHistoryState *h = historyStates.at(i);
         QHistoryStatePrivate::get(h)->configuration.clear();
@@ -1389,7 +1389,7 @@ void QStateMachinePrivate::cancelAllDelayedEvents()
     delayedEvents.clear();
 }
 
-namespace {
+namespace _QStateMachine_Internal{
 
 class GoToStateTransition : public QAbstractTransition
 {
@@ -1403,7 +1403,9 @@ protected:
 };
 
 } // namespace
-
+// mingw compiler tries to export QObject::findChild<GoToStateTransition>(),
+// which doesn't work if its in an anonymous namespace.
+using namespace _QStateMachine_Internal;
 /*!
   \internal
 
@@ -1440,7 +1442,7 @@ void QStateMachinePrivate::goToState(QAbstractState *targetState)
     Q_ASSERT(sourceState != 0);
     // Reuse previous GoToStateTransition in case of several calls to
     // goToState() in a row.
-    GoToStateTransition *trans = qFindChild<GoToStateTransition*>(sourceState);
+    GoToStateTransition *trans = sourceState->findChild<GoToStateTransition*>();
     if (!trans) {
         trans = new GoToStateTransition(targetState);
         sourceState->addTransition(trans);
@@ -1562,7 +1564,7 @@ void QStateMachinePrivate::unregisterAllTransitions()
 {
     Q_Q(QStateMachine);
     {
-        QList<QSignalTransition*> transitions = qFindChildren<QSignalTransition*>(rootState());
+        QList<QSignalTransition*> transitions = rootState()->findChildren<QSignalTransition*>();
         for (int i = 0; i < transitions.size(); ++i) {
             QSignalTransition *t = transitions.at(i);
             if (t->machine() == q)
@@ -1570,7 +1572,7 @@ void QStateMachinePrivate::unregisterAllTransitions()
         }
     }
     {
-        QList<QEventTransition*> transitions = qFindChildren<QEventTransition*>(rootState());
+        QList<QEventTransition*> transitions = rootState()->findChildren<QEventTransition*>();
         for (int i = 0; i < transitions.size(); ++i) {
             QEventTransition *t = transitions.at(i);
             if (t->machine() == q)
@@ -2135,6 +2137,7 @@ void QStateMachine::endMicrostep(QEvent *event)
 
 /*!
   \reimp
+    This function will call start() to start the state machine.
 */
 void QStateMachine::onEntry(QEvent *event)
 {
@@ -2144,6 +2147,8 @@ void QStateMachine::onEntry(QEvent *event)
 
 /*!
   \reimp
+    This function will call stop() to stop the state machine and 
+    subsequently emit the stopped() signal.
 */
 void QStateMachine::onExit(QEvent *event)
 {

@@ -101,7 +101,7 @@ QVariant v;
 
 MyCustomStruct c;
 if (v.canConvert<MyCustomStruct>())
-    c = v.value<MyCustomStruct>(v);
+    c = v.value<MyCustomStruct>();
 
 v = 7;
 int i = v.value<int>();                        // same as v.toInt()
@@ -132,5 +132,5 @@ return QVariant::fromValue(s);
 
 //! [8]
 QObject *object = getObjectFromSomewhere();
-QVariant data = qVariantFromValue(object);
+QVariant data = QVariant::fromValue(object);
 //! [8]

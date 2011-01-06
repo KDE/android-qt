@@ -75,7 +75,7 @@
     is arranged according to the layout's alignment for that item. You can set
     an alignment for each item by calling setAlignment(), and check the
     alignment for any item by calling alignment(). By default, items are
-    centered both vertically and horizontally.
+    aligned to the top left.
 
     \section1 Spacing within QGraphicsLinearLayout
 
@@ -275,13 +275,17 @@ void QGraphicsLinearLayout::insertItem(int index, QGraphicsLayoutItem *item)
         qWarning("QGraphicsLinearLayout::insertItem: cannot insert itself");
         return;
     }
+    Q_ASSERT(item);
+
+    //the order of the following instructions is very important because
+    //invalidating the layout before adding the child item will make the layout happen
+    //before we try to paint the item
+    invalidate();
     d->addChildLayoutItem(item);
 
-    Q_ASSERT(item);
     d->fixIndex(&index);
     d->engine.insertRow(index, d->orientation);
     new QGridLayoutItem(&d->engine, item, d->gridRow(index), d->gridColumn(index), 1, 1, 0, index);
-    invalidate();
 }
 
 /*!
@@ -442,7 +446,7 @@ void QGraphicsLinearLayout::setAlignment(QGraphicsLayoutItem *item, Qt::Alignmen
 
 /*!
     Returns the alignment for \a item. The default alignment is
-    Qt::AlignCenter.
+    Qt::AlignTop | Qt::AlignLeft.
 
     The alignment decides how the item is positioned within its assigned space
     in the case where there's more space available in the layout than the

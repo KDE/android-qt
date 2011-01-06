@@ -1354,7 +1354,7 @@ QList<QSslCertificate> QSslSocket::defaultCaCertificates()
 */
 QList<QSslCertificate> QSslSocket::systemCaCertificates()
 {
-    QSslSocketPrivate::ensureInitialized();
+    // we are calling ensureInitialized() in the method below
     return QSslSocketPrivate::systemCaCertificates();
 }
 
@@ -2033,6 +2033,20 @@ void QSslSocketPrivate::createPlainSocket(QIODevice::OpenMode openMode)
     configuration.peerCertificateChain.clear();
     mode = QSslSocket::UnencryptedMode;
     q->setReadBufferSize(readBufferMaxSize);
+}
+
+void QSslSocketPrivate::pauseSocketNotifiers(QSslSocket *socket)
+{
+    if (!socket->d_func()->plainSocket)
+        return;
+    QAbstractSocketPrivate::pauseSocketNotifiers(socket->d_func()->plainSocket);
+}
+
+void QSslSocketPrivate::resumeSocketNotifiers(QSslSocket *socket)
+{
+    if (!socket->d_func()->plainSocket)
+        return;
+    QAbstractSocketPrivate::resumeSocketNotifiers(socket->d_func()->plainSocket);
 }
 
 /*!

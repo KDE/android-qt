@@ -79,7 +79,7 @@
 
 QT_BEGIN_NAMESPACE
 
-extern QImage qt_imageForBrush(int brushStyle, bool invert); //in qbrush.cpp
+Q_DECL_IMPORT extern QImage qt_imageForBrush(int brushStyle, bool invert); //in qbrush.cpp
 #ifdef QT_MAC_USE_COCOA
 extern void *qt_current_nsopengl_context(); // qgl_mac.mm
 #endif
@@ -506,12 +506,12 @@ struct QDrawQueueItem
 
 ////////// GL program cache: start
 
-typedef struct {
+struct GLProgram {
     int brush; // brush index or mask index
     int mode;  // composition mode index
     bool mask;
     GLuint program;
-} GLProgram;
+};
 
 typedef QMultiHash<const QGLContext *, GLProgram> QGLProgramHash;
 
@@ -921,6 +921,7 @@ static inline QPainterPath strokeForPath(const QPainterPath &path, const QPen &c
     stroker.setCapStyle(cpen.capStyle());
     stroker.setJoinStyle(cpen.joinStyle());
     stroker.setMiterLimit(cpen.miterLimit());
+    stroker.setDashOffset(cpen.dashOffset());
 
     qreal width = cpen.widthF();
     if (width == 0)
@@ -4734,9 +4735,11 @@ void QGLGlyphCache::cacheGlyphs(QGLContext *context, QFontEngine *fontEngine,
         font_cache = new QGLFontGlyphHash;
 //         qDebug() << "new context" << context << font_cache;
         qt_context_cache.insert(context, font_cache);
-        if (context->isValid() && context->device()->devType() == QInternal::Widget) {
-            QWidget *widget = static_cast<QWidget *>(context->device());
-            connect(widget, SIGNAL(destroyed(QObject*)), SLOT(widgetDestroyed(QObject*)));
+        if (context->isValid()) {
+            if (context->device()->devType() == QInternal::Widget) {
+                QWidget *widget = static_cast<QWidget *>(context->device());
+                connect(widget, SIGNAL(destroyed(QObject*)), SLOT(widgetDestroyed(QObject*)));
+            }
             connect(QGLSignalProxy::instance(),
                     SIGNAL(aboutToDestroyContext(const QGLContext*)),
                     SLOT(cleanupContext(const QGLContext*)));
@@ -4915,7 +4918,7 @@ void QOpenGLPaintEngine::drawStaticTextItem(QStaticTextItem *textItem)
     d->flushDrawQueue();
 
     // make sure the glyphs we want to draw are in the cache
-    qt_glyph_cache()->cacheGlyphs(d->device->context(), textItem->fontEngine, textItem->glyphs,
+    qt_glyph_cache()->cacheGlyphs(d->device->context(), textItem->fontEngine(), textItem->glyphs,
                                   textItem->numGlyphs);
 
     d->setGradientOps(Qt::SolidPattern, QRectF()); // turns off gradient ops
@@ -4938,13 +4941,13 @@ void QOpenGLPaintEngine::drawStaticTextItem(QStaticTextItem *textItem)
 
     glEnableClientState(GL_VERTEX_ARRAY);
     glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-    bool antialias = !(textItem->fontEngine->fontDef.styleStrategy & QFont::NoAntialias)
+    bool antialias = !(textItem->fontEngine()->fontDef.styleStrategy & QFont::NoAntialias)
 				   && (d->matrix.type() > QTransform::TxTranslate);
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, antialias ? GL_LINEAR : GL_NEAREST);
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, antialias ? GL_LINEAR : GL_NEAREST);
 
     for (int i=0; i< textItem->numGlyphs; ++i) {
-        QGLGlyphCoord *g = qt_glyph_cache()->lookup(textItem->fontEngine, textItem->glyphs[i]);
+        QGLGlyphCoord *g = qt_glyph_cache()->lookup(textItem->fontEngine(), textItem->glyphs[i]);
 
         // we don't cache glyphs with no width/height
         if (!g)
@@ -5000,7 +5003,7 @@ void QOpenGLPaintEngine::drawTextItem(const QPointF &p, const QTextItem &textIte
     {
         QStaticTextItem staticTextItem;
         staticTextItem.chars = const_cast<QChar *>(ti.chars);
-        staticTextItem.fontEngine = ti.fontEngine;
+        staticTextItem.setFontEngine(ti.fontEngine);
         staticTextItem.glyphs = glyphs.data();
         staticTextItem.numChars = ti.num_chars;
         staticTextItem.numGlyphs = glyphs.size();

@@ -22,20 +22,26 @@ function rand(n)
 
 function scheduleDirection(dir)
 {
-    direction = dir;
-    if(scheduledDirections[scheduledDirections.length-1]!=direction)
-        scheduledDirections.push(direction);
+    if (state == "starting") {
+        direction = dir;
+        headDirection = direction;
+        head.rotation = headDirection;
+    } else if (state == "running"){
+        direction = dir;
+        if(scheduledDirections[scheduledDirections.length-1]!=direction)
+            scheduledDirections.push(direction);
+    }
 }
 
 function startNewGame()
 {
-    if (state == "starting")
+    if (state == "starting") {
         return;
+    }
 
-    if (heartbeat.running) {
+    if (activeGame) {
         endGame();
         startNewGameTimer.running = true;
-        state = "";
         return;
     }
 
@@ -87,7 +93,7 @@ function startNewGame()
 
 function endGame()
 {
-    heartbeat.running = false;
+    activeGame = false;
     for(var i in snake)
         snake[i].dying = true;
     if (cookie) {

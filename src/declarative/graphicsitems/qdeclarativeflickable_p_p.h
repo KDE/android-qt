@@ -66,6 +66,9 @@
 
 QT_BEGIN_NAMESPACE
 
+// Really slow flicks can be annoying.
+const qreal MinimumFlickVelocity = 75.0;
+
 class QDeclarativeFlickableVisibleArea;
 class QDeclarativeFlickablePrivate : public QDeclarativeItemPrivate, public QDeclarativeItemChangeListener
 {
@@ -141,6 +144,7 @@ public:
     bool stealMouse : 1;
     bool pressed : 1;
     bool interactive : 1;
+    bool calcVelocity : 1;
     QElapsedTimer lastPosTime;
     QPointF lastPos;
     QPointF pressPos;
@@ -172,16 +176,19 @@ public:
 
     // flickableData property
     static void data_append(QDeclarativeListProperty<QObject> *, QObject *);
+    static int data_count(QDeclarativeListProperty<QObject> *);
+    static QObject *data_at(QDeclarativeListProperty<QObject> *, int);
+    static void data_clear(QDeclarativeListProperty<QObject> *);
 };
 
 class QDeclarativeFlickableVisibleArea : public QObject
 {
     Q_OBJECT
 
-    Q_PROPERTY(qreal xPosition READ xPosition NOTIFY pageChanged)
-    Q_PROPERTY(qreal yPosition READ yPosition NOTIFY pageChanged)
-    Q_PROPERTY(qreal widthRatio READ widthRatio NOTIFY pageChanged)
-    Q_PROPERTY(qreal heightRatio READ heightRatio NOTIFY pageChanged)
+    Q_PROPERTY(qreal xPosition READ xPosition NOTIFY xPositionChanged)
+    Q_PROPERTY(qreal yPosition READ yPosition NOTIFY yPositionChanged)
+    Q_PROPERTY(qreal widthRatio READ widthRatio NOTIFY widthRatioChanged)
+    Q_PROPERTY(qreal heightRatio READ heightRatio NOTIFY heightRatioChanged)
 
 public:
     QDeclarativeFlickableVisibleArea(QDeclarativeFlickable *parent=0);
@@ -194,7 +201,10 @@ public:
     void updateVisible();
 
 signals:
-    void pageChanged();
+    void xPositionChanged(qreal xPosition);
+    void yPositionChanged(qreal yPosition);
+    void widthRatioChanged(qreal widthRatio);
+    void heightRatioChanged(qreal heightRatio);
 
 private:
     QDeclarativeFlickable *flickable;

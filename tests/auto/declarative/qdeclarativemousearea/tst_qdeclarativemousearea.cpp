@@ -62,6 +62,8 @@ private slots:
     void updateMouseAreaPosOnResize();
     void noOnClickedWithPressAndHold();
     void onMousePressRejected();
+    void doubleClick();
+    void clickTwice();
 
 private:
     QDeclarativeView *createView();
@@ -214,7 +216,14 @@ void tst_QDeclarativeMouseArea::dragging()
     QCOMPARE(blackRect->x(), 50.0);
     QCOMPARE(blackRect->y(), 50.0);
 
+    // First move event triggers drag, second is acted upon.
+    // This is due to possibility of higher stacked area taking precedence.
     QGraphicsSceneMouseEvent moveEvent(QEvent::GraphicsSceneMouseMove);
+    moveEvent.setScenePos(QPointF(106, 106));
+    moveEvent.setButton(Qt::LeftButton);
+    moveEvent.setButtons(Qt::LeftButton);
+    QApplication::sendEvent(scene, &moveEvent);
+
     moveEvent.setScenePos(QPointF(110, 110));
     moveEvent.setButton(Qt::LeftButton);
     moveEvent.setButtons(Qt::LeftButton);
@@ -355,6 +364,7 @@ void tst_QDeclarativeMouseArea::onMousePressRejected()
     canvas->show();
     canvas->setFocus();
     QVERIFY(canvas->rootObject() != 0);
+    QVERIFY(canvas->rootObject()->property("enabled").toBool());
 
     QVERIFY(!canvas->rootObject()->property("mr1_pressed").toBool());
     QVERIFY(!canvas->rootObject()->property("mr1_released").toBool());
@@ -388,6 +398,83 @@ void tst_QDeclarativeMouseArea::onMousePressRejected()
     QVERIFY(canvas->rootObject()->property("mr1_released").toBool());
     QVERIFY(!canvas->rootObject()->property("mr1_canceled").toBool());
     QVERIFY(!canvas->rootObject()->property("mr2_released").toBool());
+}
+
+void tst_QDeclarativeMouseArea::doubleClick()
+{
+    QDeclarativeView *canvas = createView();
+    canvas->setSource(QUrl::fromLocalFile(SRCDIR "/data/doubleclick.qml"));
+    canvas->show();
+    canvas->setFocus();
+    QVERIFY(canvas->rootObject() != 0);
+
+    QGraphicsScene *scene = canvas->scene();
+    QGraphicsSceneMouseEvent pressEvent(QEvent::GraphicsSceneMousePress);
+    pressEvent.setScenePos(QPointF(100, 100));
+    pressEvent.setButton(Qt::LeftButton);
+    pressEvent.setButtons(Qt::LeftButton);
+    QApplication::sendEvent(scene, &pressEvent);
+
+    QGraphicsSceneMouseEvent releaseEvent(QEvent::GraphicsSceneMouseRelease);
+    releaseEvent.setScenePos(QPointF(100, 100));
+    releaseEvent.setButton(Qt::LeftButton);
+    releaseEvent.setButtons(Qt::LeftButton);
+    QApplication::sendEvent(scene, &releaseEvent);
+
+    QCOMPARE(canvas->rootObject()->property("released").toInt(), 1);
+
+    QGraphicsSceneMouseEvent dblClickEvent(QEvent::GraphicsSceneMouseDoubleClick);
+    dblClickEvent.setScenePos(QPointF(100, 100));
+    dblClickEvent.setButton(Qt::LeftButton);
+    dblClickEvent.setButtons(Qt::LeftButton);
+    QApplication::sendEvent(scene, &dblClickEvent);
+
+    QApplication::sendEvent(scene, &releaseEvent);
+
+    QCOMPARE(canvas->rootObject()->property("clicked").toInt(), 1);
+    QCOMPARE(canvas->rootObject()->property("doubleClicked").toInt(), 1);
+    QCOMPARE(canvas->rootObject()->property("released").toInt(), 2);
+
+}
+
+// QTBUG-14832
+void tst_QDeclarativeMouseArea::clickTwice()
+{
+    QDeclarativeView *canvas = createView();
+    canvas->setSource(QUrl::fromLocalFile(SRCDIR "/data/clicktwice.qml"));
+    canvas->show();
+    canvas->setFocus();
+    QVERIFY(canvas->rootObject() != 0);
+
+    QGraphicsScene *scene = canvas->scene();
+    QGraphicsSceneMouseEvent pressEvent(QEvent::GraphicsSceneMousePress);
+    pressEvent.setScenePos(QPointF(100, 100));
+    pressEvent.setButton(Qt::LeftButton);
+    pressEvent.setButtons(Qt::LeftButton);
+    QApplication::sendEvent(scene, &pressEvent);
+
+    QGraphicsSceneMouseEvent releaseEvent(QEvent::GraphicsSceneMouseRelease);
+    releaseEvent.setScenePos(QPointF(100, 100));
+    releaseEvent.setButton(Qt::LeftButton);
+    releaseEvent.setButtons(Qt::LeftButton);
+    QApplication::sendEvent(scene, &releaseEvent);
+
+    QCOMPARE(canvas->rootObject()->property("pressed").toInt(), 1);
+    QCOMPARE(canvas->rootObject()->property("released").toInt(), 1);
+    QCOMPARE(canvas->rootObject()->property("clicked").toInt(), 1);
+
+    QGraphicsSceneMouseEvent dblClickEvent(QEvent::GraphicsSceneMouseDoubleClick);
+    dblClickEvent.setScenePos(QPointF(100, 100));
+    dblClickEvent.setButton(Qt::LeftButton);
+    dblClickEvent.setButtons(Qt::LeftButton);
+    QApplication::sendEvent(scene, &dblClickEvent);
+
+    QApplication::sendEvent(scene, &pressEvent);
+    QApplication::sendEvent(scene, &releaseEvent);
+
+    QCOMPARE(canvas->rootObject()->property("pressed").toInt(), 2);
+    QCOMPARE(canvas->rootObject()->property("released").toInt(), 2);
+    QCOMPARE(canvas->rootObject()->property("clicked").toInt(), 2);
 }
 
 QTEST_MAIN(tst_QDeclarativeMouseArea)

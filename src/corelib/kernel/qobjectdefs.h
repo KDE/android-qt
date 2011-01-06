@@ -117,7 +117,7 @@ class QString;
 # define QT_TR_FUNCTIONS
 #endif
 
-#if defined(QT_NO_MEMBER_TEMPLATES) || defined(QT_NO_QOBJECT_CHECK)
+#if defined(QT_NO_QOBJECT_CHECK)
 /* tmake ignore Q_OBJECT */
 #define Q_OBJECT_CHECK
 #else
@@ -144,7 +144,7 @@ inline int qYouForgotTheQ_OBJECT_Macro(T, T) { return 0; }
 
 template <typename T1, typename T2>
 inline void qYouForgotTheQ_OBJECT_Macro(T1, T2) {}
-#endif // QT_NO_MEMBER_TEMPLATES
+#endif // QT_NO_QOBJECT_CHECK
 
 #ifdef Q_NO_DATA_RELOCATION
 #define Q_OBJECT_GETSTATICMETAOBJECT static const QMetaObject &getStaticMetaObject();
@@ -215,11 +215,15 @@ Q_CORE_EXPORT const char *qFlagLocation(const char *method);
 #define QTOSTRING(s) QTOSTRING_HELPER(s)
 #ifndef QT_NO_DEBUG
 # define QLOCATION "\0"__FILE__":"QTOSTRING(__LINE__)
-# define METHOD(a)   qFlagLocation("0"#a QLOCATION)
+# ifndef QT_NO_KEYWORDS
+#  define METHOD(a)   qFlagLocation("0"#a QLOCATION)
+# endif
 # define SLOT(a)     qFlagLocation("1"#a QLOCATION)
 # define SIGNAL(a)   qFlagLocation("2"#a QLOCATION)
 #else
-# define METHOD(a)   "0"#a
+# ifndef QT_NO_KEYWORDS
+#  define METHOD(a)   "0"#a
+# endif
 # define SLOT(a)     "1"#a
 # define SIGNAL(a)   "2"#a
 #endif
@@ -298,6 +302,7 @@ struct Q_CORE_EXPORT QMetaObject
     const QMetaObject *superClass() const;
 
     QObject *cast(QObject *obj) const;
+    const QObject *cast(const QObject *obj) const;
 
 #ifndef QT_NO_TRANSLATION
     // ### Qt 4: Merge overloads

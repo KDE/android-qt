@@ -115,7 +115,6 @@ public:
     virtual bool start();
 #endif
     virtual void closeDownstreamChannel() = 0;
-    virtual bool waitForDownstreamReadyRead(int msecs) = 0;
 
     // slot-like:
     virtual void downstreamReadyWrite();
@@ -176,6 +175,10 @@ protected:
     // that is, data that has come via the connection and is going out the backend
     qint64 nextDownstreamBlockSize() const;
     void writeDownstreamData(QByteDataBuffer &list);
+
+    // not actually appending data, it was already written to the user buffer
+    void writeDownstreamDataDownloadBuffer(qint64, qint64);
+    char* getDownloadBuffer(qint64);
 
 public slots:
     // for task 251801, needs to be a slot to be called asynchronously

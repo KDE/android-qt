@@ -350,6 +350,10 @@ static void processProjects(
         ProFileEvaluator visitor;
         visitor.setVerbose(options & Verbose);
 
+        QHash<QString, QStringList> lupdateConfig;
+        lupdateConfig.insert(QLatin1String("CONFIG"), QStringList(QLatin1String("lupdate_run")));
+        visitor.addVariables(lupdateConfig);
+
         QFileInfo pfi(proFile);
         ProFile pro(pfi.absoluteFilePath());
         if (!visitor.queryProFile(&pro) || !visitor.accept(&pro)) {
@@ -412,6 +416,7 @@ static void processProjects(
 int main(int argc, char **argv)
 {
     QCoreApplication app(argc, argv);
+#ifndef Q_OS_WIN32
     QTranslator translator;
     QTranslator qtTranslator;
     QString sysLocale = QLocale::system().name();
@@ -421,6 +426,7 @@ int main(int argc, char **argv)
         app.installTranslator(&translator);
         app.installTranslator(&qtTranslator);
     }
+#endif // Q_OS_WIN32
 
     m_defaultExtensions = QLatin1String("java,jui,ui,c,c++,cc,cpp,cxx,ch,h,h++,hh,hpp,hxx,js,qs,qml");
 

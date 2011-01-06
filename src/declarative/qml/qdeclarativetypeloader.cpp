@@ -44,6 +44,7 @@
 #include <private/qdeclarativeengine_p.h>
 #include <private/qdeclarativecompiler_p.h>
 #include <private/qdeclarativecomponent_p.h>
+#include <private/qdeclarativeglobal_p.h>
 
 #include <QtDeclarative/qdeclarativecomponent.h>
 #include <QtCore/qdebug.h>
@@ -493,6 +494,13 @@ void QDeclarativeDataLoader::load(QDeclarativeDataBlob *blob)
     QString lf = QDeclarativeEnginePrivate::urlToLocalFileOrQrc(blob->m_url);
 
     if (!lf.isEmpty()) {
+        if (!QDeclarative_isFileCaseCorrect(lf)) {
+            QDeclarativeError error;
+            error.setUrl(blob->m_url);
+            error.setDescription(QLatin1String("File name case mismatch"));
+            blob->setError(error);
+            return;
+        }
         QFile file(lf);
         if (file.open(QFile::ReadOnly)) {
             QByteArray data = file.readAll();
@@ -711,7 +719,7 @@ void QDeclarativeTypeLoader::clearCache()
 QDeclarativeTypeData::QDeclarativeTypeData(const QUrl &url, QDeclarativeTypeLoader::Options options, 
                                            QDeclarativeTypeLoader *manager)
 : QDeclarativeDataBlob(url, QmlFile), m_options(options), m_typesResolved(false), 
-  m_compiledData(0), m_component(0), m_typeLoader(manager)
+  m_compiledData(0), m_typeLoader(manager)
 {
 }
 
@@ -760,23 +768,6 @@ QDeclarativeCompiledData *QDeclarativeTypeData::compiledData() const
     return m_compiledData;
 }
 
-QDeclarativeComponent *QDeclarativeTypeData::component() const
-{
-    if (!m_component) {
-
-        if (m_compiledData) {
-            m_component = new QDeclarativeComponent(typeLoader()->engine(), m_compiledData, -1, -1, 0);
-        } else {
-            m_component = new QDeclarativeComponent(typeLoader()->engine());
-            QDeclarativeComponentPrivate::get(m_component)->url = finalUrl();
-            QDeclarativeComponentPrivate::get(m_component)->state.errors = errors();
-        }
-
-    }
-
-    return m_component;
-}
-
 void QDeclarativeTypeData::registerCallback(TypeDataCallback *callback)
 {
     Q_ASSERT(!m_callbacks.contains(callback));
@@ -804,7 +795,7 @@ void QDeclarativeTypeData::done()
             error.setUrl(finalUrl());
             error.setLine(script.location.line);
             error.setColumn(script.location.column);
-            error.setDescription(typeLoader()->tr("Script %1 unavailable").arg(script.script->url().toString()));
+            error.setDescription(QDeclarativeTypeLoader::tr("Script %1 unavailable").arg(script.script->url().toString()));
             errors.prepend(error);
             setError(errors);
         }
@@ -822,7 +813,7 @@ void QDeclarativeTypeData::done()
             error.setUrl(finalUrl());
             error.setLine(type.location.line);
             error.setColumn(type.location.column);
-            error.setDescription(typeLoader()->tr("Type %1 unavailable").arg(typeName));
+            error.setDescription(QDeclarativeTypeLoader::tr("Type %1 unavailable").arg(typeName));
             errors.prepend(error);
             setError(errors);
         }
@@ -995,9 +986,9 @@ void QDeclarativeTypeData::resolveTypes()
             QString userTypeName = parserRef->name;
             userTypeName.replace(QLatin1Char('/'),QLatin1Char('.'));
             if (typeNamespace)
-                error.setDescription(typeLoader()->tr("Namespace %1 cannot be used as a type").arg(userTypeName));
+                error.setDescription(QDeclarativeTypeLoader::tr("Namespace %1 cannot be used as a type").arg(userTypeName));
             else
-                error.setDescription(typeLoader()->tr("%1 %2").arg(userTypeName).arg(errorString));
+                error.setDescription(QDeclarativeTypeLoader::tr("%1 %2").arg(userTypeName).arg(errorString));
 
             if (!parserRef->refObjects.isEmpty()) {
                 QDeclarativeParser::Object *obj = parserRef->refObjects.first();

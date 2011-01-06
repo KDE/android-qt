@@ -173,7 +173,8 @@ void QAdoptedThread::run()
 */
 
 QThreadPrivate::QThreadPrivate(QThreadData *d)
-    : QObjectPrivate(), running(false), finished(false), terminated(false), exited(false), returnCode(-1),
+    : QObjectPrivate(), running(false), finished(false), terminated(false),
+      isInFinish(false), exited(false), returnCode(-1),
       stackSize(0), priority(QThread::InheritPriority), data(d)
 {
 #if defined (Q_OS_UNIX)
@@ -403,6 +404,11 @@ QThread::~QThread()
     Q_D(QThread);
     {
         QMutexLocker locker(&d->mutex);
+        if (d->isInFinish) {
+            locker.unlock();
+            wait();
+            locker.relock();
+        }
         if (d->running && !d->finished)
             qWarning("QThread: Destroyed while thread is still running");
 
@@ -482,8 +488,10 @@ int QThread::exec()
     Q_D(QThread);
     QMutexLocker locker(&d->mutex);
     d->data->quitNow = false;
-    if (d->exited)
+    if (d->exited) {
+        d->exited = false;
         return d->returnCode;
+    }
     locker.unlock();
 
     QEventLoop eventLoop;
@@ -667,9 +675,9 @@ QThread::Priority QThread::priority() const
     to finish will be woken up.
 
     \warning This function is dangerous and its use is discouraged.
-    The thread can be terminate at any point in its code path.
+    The thread can be terminated at any point in its code path.
     Threads can be terminated while modifying data. There is no
-    chance for the thread to cleanup after itself, unlock any held
+    chance for the thread to clean up after itself, unlock any held
     mutexes, etc. In short, use this function only if absolutely
     necessary.
 

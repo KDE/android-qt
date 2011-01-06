@@ -109,6 +109,18 @@ contains( styles, plastique ) {
 	DEFINES += QT_NO_STYLE_PLASTIQUE
 }
 
+contains( styles, android ) {
+       HEADERS += styles/qandroidstyle.h
+       SOURCES += styles/qandroidstyle.cpp
+       !contains( styles, windows ) {
+               message( android requires windows )
+               styles += windows
+               DEFINES+= QT_STYLE_WINDOWS
+       }
+} else {
+       DEFINES += QT_NO_STYLE_ANDROID
+}
+
 contains( styles, gtk ) {
         HEADERS += styles/qgtkstyle.h
         HEADERS += styles/qgtkpainter_p.h

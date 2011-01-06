@@ -310,7 +310,7 @@ static int defaultScreen = -1;
   QPixmap member functions
  *****************************************************************************/
 
-static int qt_pixmap_serial = 0;
+QBasicAtomicInt qt_pixmap_serial = Q_BASIC_ATOMIC_INITIALIZER(0);
 int Q_GUI_EXPORT qt_x11_preferred_pixmap_depth = 0;
 
 QX11PixmapData::QX11PixmapData(PixelType type)
@@ -327,7 +327,7 @@ QPixmapData *QX11PixmapData::createCompatiblePixmapData() const
 
 void QX11PixmapData::resize(int width, int height)
 {
-    setSerialNumber(++qt_pixmap_serial);
+    setSerialNumber(qt_pixmap_serial.fetchAndAddRelaxed(1));
 
     w = width;
     h = height;
@@ -410,7 +410,7 @@ struct QX11AlphaDetector
 void QX11PixmapData::fromImage(const QImage &img,
                                Qt::ImageConversionFlags flags)
 {
-    setSerialNumber(++qt_pixmap_serial);
+    setSerialNumber(qt_pixmap_serial.fetchAndAddRelaxed(1));
 
     w = img.width();
     h = img.height();
@@ -1321,7 +1321,6 @@ QBitmap QX11PixmapData::mask() const
     return mask;
 }
 
-
 /*!
     Sets a mask bitmap.
 
@@ -1549,7 +1548,7 @@ QImage QX11PixmapData::toImage(const QRect &rect) const
     if (!xiWrapper.xi)
         return QImage();
 
-    if (canTakeQImageFromXImage(xiWrapper))
+    if (!x11_mask && canTakeQImageFromXImage(xiWrapper))
         return takeQImageFromXImage(xiWrapper);
 
     QImage image = toImage(xiWrapper, rect);
@@ -2014,7 +2013,7 @@ QPixmap QX11PixmapData::transformed(const QTransform &transform,
         x11Data->hd = (Qt::HANDLE)XCreatePixmap(X11->display,
                                                 RootWindow(X11->display, xinfo.screen()),
                                                 w, h, d);
-        x11Data->setSerialNumber(++qt_pixmap_serial);
+        x11Data->setSerialNumber(qt_pixmap_serial.fetchAndAddRelaxed(1));
 
 #ifndef QT_NO_XRENDER
         if (X11->use_xrender) {
@@ -2265,7 +2264,7 @@ void QX11PixmapData::copy(const QPixmapData *data, const QRect &rect)
 
     const QX11PixmapData *x11Data = static_cast<const QX11PixmapData*>(data);
 
-    setSerialNumber(++qt_pixmap_serial);
+    setSerialNumber(qt_pixmap_serial.fetchAndAddRelaxed(1));
 
     flags &= ~Uninitialized;
     xinfo = x11Data->xinfo;
@@ -2385,7 +2384,7 @@ QPixmap QPixmap::fromX11Pixmap(Qt::HANDLE pixmap, QPixmap::ShareMode mode)
     }
 
     QX11PixmapData *data = new QX11PixmapData(depth == 1 ? QPixmapData::BitmapType : QPixmapData::PixmapType);
-    data->setSerialNumber(++qt_pixmap_serial);
+    data->setSerialNumber(qt_pixmap_serial.fetchAndAddRelaxed(1));
     data->flags = QX11PixmapData::Readonly;
     data->share_mode = mode;
     data->w = width;

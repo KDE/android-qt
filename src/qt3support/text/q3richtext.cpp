@@ -64,7 +64,6 @@
 #include "q3stylesheet.h"
 #include "qtextstream.h"
 #include <private/qtextengine_p.h>
-#include <private/qunicodetables_p.h>
 
 #include <stdlib.h>
 
@@ -2915,7 +2914,7 @@ QString Q3TextDocument::selectedText(int id, bool asRichText) const
         }
     }
     // ### workaround for plain text export until we get proper
-    // mime types: turn unicode line seperators into the more
+    // mime types: turn unicode line separators into the more
     // widely understood \n. Makes copy and pasting code snipplets
     // from within Assistent possible
     QChar* uc = (QChar*) s.unicode();
@@ -8079,9 +8078,9 @@ bool Q3TextTable::down(Q3TextCursor *c, Q3TextDocument *&doc, Q3TextParagraph *&
             break;
         }
     }
-    doc = cell->richText();
     if (!cell)
         return false;
+    doc = cell->richText();
     parag = doc->firstParagraph();
     idx = 0;
     ox += cell->geometry().x() + cell->horizontalAlignmentOffset() + outerborder + parent->x();
@@ -8117,9 +8116,9 @@ bool Q3TextTable::up(Q3TextCursor *c, Q3TextDocument *&doc, Q3TextParagraph *&pa
             break;
         }
     }
-    doc = cell->richText();
     if (!cell)
         return false;
+    doc = cell->richText();
     parag = doc->lastParagraph();
     idx = parag->length() - 1;
     ox += cell->geometry().x() + cell->horizontalAlignmentOffset() + outerborder + parent->x();

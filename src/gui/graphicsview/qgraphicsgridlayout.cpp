@@ -64,6 +64,17 @@
     removeAt() will remove an item from the layout, without
     destroying it.
 
+    \section1 Size Hints and Size Policies in QGraphicsGridLayout
+
+    QGraphicsGridLayout respects each item's size hints and size policies,
+    and when a cell in the grid has more space than the items can fill, each item
+    is arranged according to the layout's alignment for that item. You can set
+    an alignment for each item by calling setAlignment(), and check the
+    alignment for any item by calling alignment(). You can also set the alignment
+    for an entire row or column by calling setRowAlignment() and setColumnAlignment()
+    respectively.  By default, items are aligned to the top left.
+
+
     \sa QGraphicsLinearLayout, QGraphicsWidget
 */
 
@@ -588,6 +599,18 @@ void QGraphicsGridLayout::removeAt(int index)
     }
 }
 
+/*!
+    Removes the layout item \a item without destroying it.
+    Ownership of the item is transferred to the caller.
+
+    \sa addItem()
+*/
+void QGraphicsGridLayout::removeItem(QGraphicsLayoutItem *item)
+{
+    Q_D(QGraphicsGridLayout);
+    int index = d->engine.indexOf(item);
+    removeAt(index);
+}
 /*!
     \reimp
 */

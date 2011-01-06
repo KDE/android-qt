@@ -63,7 +63,9 @@ QAudioDeviceInfoInternal::QAudioDeviceInfoInternal(QByteArray dev, QAudio::Mode 
     device = QLatin1String(dev);
     this->mode = mode;
 
+#if (SND_LIB_MAJOR == 1 && SND_LIB_MINOR == 0 && SND_LIB_SUBMINOR >= 14)
     checkSurround();
+#endif
 }
 
 QAudioDeviceInfoInternal::~QAudioDeviceInfoInternal()
@@ -257,37 +259,40 @@ bool QAudioDeviceInfoInternal::testSettings(const QAudioFormat& format) const
     // set the values!
     snd_pcm_hw_params_set_channels(handle,params,format.channels());
     snd_pcm_hw_params_set_rate(handle,params,format.frequency(),dir);
+
+    err = -1;
+
     switch(format.sampleSize()) {
         case 8:
             if(format.sampleType() == QAudioFormat::SignedInt)
-                snd_pcm_hw_params_set_format(handle,params,SND_PCM_FORMAT_S8);
+                err = snd_pcm_hw_params_set_format(handle,params,SND_PCM_FORMAT_S8);
             else if(format.sampleType() == QAudioFormat::UnSignedInt)
-                snd_pcm_hw_params_set_format(handle,params,SND_PCM_FORMAT_U8);
+                err = snd_pcm_hw_params_set_format(handle,params,SND_PCM_FORMAT_U8);
             break;
         case 16:
             if(format.sampleType() == QAudioFormat::SignedInt) {
                 if(format.byteOrder() == QAudioFormat::LittleEndian)
-                    snd_pcm_hw_params_set_format(handle,params,SND_PCM_FORMAT_S16_LE);
+                    err = snd_pcm_hw_params_set_format(handle,params,SND_PCM_FORMAT_S16_LE);
                 else if(format.byteOrder() == QAudioFormat::BigEndian)
-                    snd_pcm_hw_params_set_format(handle,params,SND_PCM_FORMAT_S16_BE);
+                    err = snd_pcm_hw_params_set_format(handle,params,SND_PCM_FORMAT_S16_BE);
             } else if(format.sampleType() == QAudioFormat::UnSignedInt) {
                 if(format.byteOrder() == QAudioFormat::LittleEndian)
-                    snd_pcm_hw_params_set_format(handle,params,SND_PCM_FORMAT_U16_LE);
+                    err = snd_pcm_hw_params_set_format(handle,params,SND_PCM_FORMAT_U16_LE);
                 else if(format.byteOrder() == QAudioFormat::BigEndian)
-                    snd_pcm_hw_params_set_format(handle,params,SND_PCM_FORMAT_U16_BE);
+                    err = snd_pcm_hw_params_set_format(handle,params,SND_PCM_FORMAT_U16_BE);
             }
             break;
         case 32:
             if(format.sampleType() == QAudioFormat::SignedInt) {
                 if(format.byteOrder() == QAudioFormat::LittleEndian)
-                    snd_pcm_hw_params_set_format(handle,params,SND_PCM_FORMAT_S32_LE);
+                    err = snd_pcm_hw_params_set_format(handle,params,SND_PCM_FORMAT_S32_LE);
                 else if(format.byteOrder() == QAudioFormat::BigEndian)
-                    snd_pcm_hw_params_set_format(handle,params,SND_PCM_FORMAT_S32_BE);
+                    err = snd_pcm_hw_params_set_format(handle,params,SND_PCM_FORMAT_S32_BE);
             } else if(format.sampleType() == QAudioFormat::UnSignedInt) {
                 if(format.byteOrder() == QAudioFormat::LittleEndian)
-                    snd_pcm_hw_params_set_format(handle,params,SND_PCM_FORMAT_U32_LE);
+                    err = snd_pcm_hw_params_set_format(handle,params,SND_PCM_FORMAT_U32_LE);
                 else if(format.byteOrder() == QAudioFormat::BigEndian)
-                    snd_pcm_hw_params_set_format(handle,params,SND_PCM_FORMAT_U32_BE);
+                    err = snd_pcm_hw_params_set_format(handle,params,SND_PCM_FORMAT_U32_BE);
             }
     }
 
@@ -391,9 +396,11 @@ void QAudioDeviceInfoInternal::updateLists()
     }
     channelz.append(1);
     channelz.append(2);
+#if (SND_LIB_MAJOR == 1 && SND_LIB_MINOR == 0 && SND_LIB_SUBMINOR >= 14)
     if (surround40) channelz.append(4);
     if (surround51) channelz.append(6);
     if (surround71) channelz.append(8);
+#endif
     sizez.append(8);
     sizez.append(16);
     sizez.append(32);
@@ -491,6 +498,7 @@ QByteArray QAudioDeviceInfoInternal::defaultOutputDevice()
     return devices.first();
 }
 
+#if (SND_LIB_MAJOR == 1 && SND_LIB_MINOR == 0 && SND_LIB_SUBMINOR >= 14)
 void QAudioDeviceInfoInternal::checkSurround()
 {
     QList<QByteArray> devices;
@@ -531,5 +539,6 @@ void QAudioDeviceInfoInternal::checkSurround()
     }
     snd_device_name_free_hint(hints);
 }
+#endif
 
 QT_END_NAMESPACE

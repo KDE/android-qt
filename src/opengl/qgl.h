@@ -48,6 +48,10 @@
 #include <QtCore/qmap.h>
 #include <QtCore/qscopedpointer.h>
 
+#ifdef Q_WS_QPA
+#include <QtGui/QPlatformWindowFormat>
+#endif
+
 QT_BEGIN_HEADER
 
 #if defined(Q_WS_WIN)
@@ -56,7 +60,6 @@ QT_BEGIN_HEADER
 
 #if defined(Q_WS_MAC)
 # include <OpenGL/gl.h>
-# include <OpenGL/glu.h>
 #elif defined(QT_OPENGL_ES_1)
 # include <GLES/gl.h>
 #ifndef GL_DOUBLE
@@ -75,9 +78,6 @@ typedef GLfloat GLdouble;
 #endif
 #else
 # include <GL/gl.h>
-# ifndef QT_LINUXBASE
-#   include <GL/glu.h>
-# endif
 #endif
 
 QT_BEGIN_NAMESPACE
@@ -274,6 +274,10 @@ public:
 
     static OpenGLVersionFlags openGLVersionFlags();
 
+#if defined(Q_WS_QPA)
+    static QGLFormat fromPlatformWindowFormat(const QPlatformWindowFormat &format);
+    static QPlatformWindowFormat toPlatformWindowFormat(const QGLFormat &format);
+#endif
 private:
     QGLFormatPrivate *d;
 
@@ -379,6 +383,9 @@ public:
 
     static const QGLContext* currentContext();
 
+#ifdef Q_WS_QPA
+    static QGLContext *fromPlatformGLContext(QPlatformGLContext *platformContext);
+#endif
 protected:
     virtual bool chooseContext(const QGLContext* shareContext = 0);
 
@@ -408,6 +415,10 @@ protected:
     static QGLContext* currentCtx;
 
 private:
+#ifdef Q_WS_QPA
+    QGLContext(QPlatformGLContext *platformContext);
+#endif
+
     QScopedPointer<QGLContextPrivate> d_ptr;
 
     friend class QGLPixelBuffer;
@@ -424,10 +435,12 @@ private:
     friend class QGLPixmapData;
     friend class QGLPixmapFilterBase;
     friend class QGLTextureGlyphCache;
+    friend struct QGLGlyphTexture;
     friend class QGLContextGroup;
     friend class QGLSharedResourceGuard;
     friend class QGLPixmapBlurFilter;
     friend class QGLExtensions;
+    friend class QGLTexture;
     friend QGLFormat::OpenGLVersionFlags QGLFormat::openGLVersionFlags();
 #ifdef Q_WS_MAC
 public:
@@ -443,6 +456,7 @@ private:
     friend class QGLWidgetGLPaintDevice;
     friend class QX11GLPixmapData;
     friend class QX11GLSharedContexts;
+    friend class QGLContextResourceBase;
 private:
     Q_DISABLE_COPY(QGLContext)
 };

@@ -2,6 +2,9 @@ TEMPLATE = lib
 TARGET = QtDesignerComponents
 contains(QT_CONFIG, reduce_exports):CONFIG += hide_symbols
 CONFIG += qt depend_prl no_objective_c designer
+android-g++ {
+    QT -= android
+}
 win32|mac: CONFIG += debug_and_release
 QTDIR_build { 
     DESTDIR = $$QT_BUILD_TREE/lib

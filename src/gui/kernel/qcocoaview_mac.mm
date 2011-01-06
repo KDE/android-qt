@@ -207,6 +207,7 @@ static int qCocoaViewCount = 0;
 
     composing = false;
     sendKeyEvents = true;
+    fromKeyDownEvent = false;
     [self setHidden:YES];
     return self;
 }
@@ -301,7 +302,6 @@ static int qCocoaViewCount = 0;
     QMimeData *mimeData = dropData;
     if (QDragManager::self()->source())
         mimeData = QDragManager::self()->dragPrivate()->data;
-    NSPoint globalPoint = [[sender draggingDestinationWindow] convertBaseToScreen:windowPoint];
     NSPoint localPoint = [self convertPoint:windowPoint fromView:nil];
     QPoint posDrag(localPoint.x, localPoint.y);
     NSDragOperation nsActions = [sender draggingSourceOperationMask];
@@ -364,7 +364,6 @@ static int qCocoaViewCount = 0;
         return NSDragOperationNone;
     }
     // return last value, if we are still in the answerRect.
-    NSPoint globalPoint = [[sender draggingDestinationWindow] convertBaseToScreen:windowPoint];
     NSPoint localPoint = [self convertPoint:windowPoint fromView:nil];
     NSDragOperation nsActions = [sender draggingSourceOperationMask];
     QPoint posDrag(localPoint.x, localPoint.y);
@@ -433,7 +432,6 @@ static int qCocoaViewCount = 0;
     dragEnterSequence = -1;
     [self addDropData:sender];
 
-    NSPoint globalPoint = [[sender draggingDestinationWindow] convertBaseToScreen:windowPoint];
     NSPoint localPoint = [self convertPoint:windowPoint fromView:nil];
     QPoint posDrop(localPoint.x, localPoint.y);
 
@@ -469,14 +467,14 @@ static int qCocoaViewCount = 0;
     [super dealloc];
 }
 
-- (BOOL)isOpaque;
+- (BOOL)isOpaque
 {
     if (!qwidgetprivate)
         return [super isOpaque];
     return qwidgetprivate->isOpaque;
 }
 
-- (BOOL)isFlipped;
+- (BOOL)isFlipped
 {
     return YES;
 }
@@ -508,7 +506,7 @@ static int qCocoaViewCount = 0;
     }
 
     // Make sure the opengl context is updated on resize.
-    if (qwidgetprivate && qwidgetprivate->isGLWidget) {
+    if (qwidgetprivate && qwidgetprivate->isGLWidget && [self window]) {
         qwidgetprivate->needWindowChange = true;
         QEvent event(QEvent::MacGLWindowChange);
         qApp->sendEvent(qwidget, &event);
@@ -532,16 +530,41 @@ static int qCocoaViewCount = 0;
     if (!qwidget)
         return;
 
-    if (QApplicationPrivate::graphicsSystem() != 0) {
-        if (qwidgetprivate->maybeBackingStore()) {
-            // Drawing is handled on the window level
-            // See qcocoasharedwindowmethods_mac_p.h
-            if (!qwidget->testAttribute(Qt::WA_PaintOnScreen))
-                return;
+    // We use a different graphics system.
+    if (QApplicationPrivate::graphicsSystem() != 0 && !qwidgetprivate->isInUnifiedToolbar) {
+
+        // Qt handles the painting occuring inside the window.
+        // Cocoa also keeps track of all widgets as NSView and therefore might
+        // ask for a repainting of a widget even if Qt is already taking care of it.
+        //
+        // The only valid reason for Cocoa to call drawRect: is for window manipulation
+        // (ie. resize, ...).
+        //
+        // Qt will then forward the update to the children.
+        if (qwidget->isWindow()) {
+            qwidget->update(qwidget->rect());
+            qwidgetprivate->syncBackingStore(qwidget->rect());
         }
+
+        // Since we don't want to use the native engine, we must exit, however
+        // widgets that are set to paint on screen, spesifically QGLWidget,
+        // requires the following code to execute in order to be drawn.
+        if (!qwidget->testAttribute(Qt::WA_PaintOnScreen))
+            return;
     }
+
     CGContextRef cg = (CGContextRef)[[NSGraphicsContext currentContext] graphicsPort];
+    CGContextRetain(cg);
     qwidgetprivate->hd = cg;
+
+    // We steal the CGContext for flushing in the unified toolbar with the raster engine.
+    if (QApplicationPrivate::graphicsSystem() != 0 && qwidgetprivate->isInUnifiedToolbar) {
+        qwidgetprivate->cgContext = cg;
+        qwidgetprivate->hasOwnContext = true;
+        qwidgetprivate->unifiedSurface->flush(qwidget, qwidgetprivate->ut_rg, qwidgetprivate->ut_pt);
+        return;
+    }
+
     CGContextSaveGState(cg);
 
     if (qwidget->isVisible() && qwidget->updatesEnabled()) { //process the actual paint event.
@@ -595,8 +618,8 @@ static int qCocoaViewCount = 0;
         // is the case. This makes sure child widgets are drawn as well, Cocoa does not know about
         // those and wont send them drawRect calls.
         if (qwidget->testAttribute(Qt::WA_NativeWindow) && qt_widget_private(qwidget)->hasAlienChildren == false) {
-        if (engine && !qwidget->testAttribute(Qt::WA_NoSystemBackground)
-            && (qwidget->isWindow() || qwidget->autoFillBackground())
+        if ((engine && !qwidget->testAttribute(Qt::WA_NoSystemBackground)
+             && (qwidget->isWindow() || qwidget->autoFillBackground()))
                 || qwidget->testAttribute(Qt::WA_TintedBackground)
                 || qwidget->testAttribute(Qt::WA_StyledBackground)) {
 #ifdef DEBUG_WIDGET_PAINT
@@ -631,6 +654,7 @@ static int qCocoaViewCount = 0;
     }
     qwidgetprivate->hd = 0;
     CGContextRestoreGState(cg);
+    CGContextRelease(cg);
 }
 
 - (BOOL)acceptsFirstMouse:(NSEvent *)theEvent
@@ -939,10 +963,6 @@ static int qCocoaViewCount = 0;
         }
     }
 #endif //QT_NO_WHEELEVENT
-
-    if (!wheelOK) {
-        return [super scrollWheel:theEvent];
-    }
 }
 
 - (void)tabletProximity:(NSEvent *)tabletEvent
@@ -957,32 +977,32 @@ static int qCocoaViewCount = 0;
 }
 
 #if MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_6
-- (void)touchesBeganWithEvent:(NSEvent *)event;
+- (void)touchesBeganWithEvent:(NSEvent *)event
 {
     bool all = qwidget->testAttribute(Qt::WA_TouchPadAcceptSingleTouchEvents);
     qt_translateRawTouchEvent(qwidget, QTouchEvent::TouchPad, QCocoaTouch::getCurrentTouchPointList(event, all));
 }
 
-- (void)touchesMovedWithEvent:(NSEvent *)event;
+- (void)touchesMovedWithEvent:(NSEvent *)event
 {
     bool all = qwidget->testAttribute(Qt::WA_TouchPadAcceptSingleTouchEvents);
     qt_translateRawTouchEvent(qwidget, QTouchEvent::TouchPad, QCocoaTouch::getCurrentTouchPointList(event, all));
 }
 
-- (void)touchesEndedWithEvent:(NSEvent *)event;
+- (void)touchesEndedWithEvent:(NSEvent *)event
 {
     bool all = qwidget->testAttribute(Qt::WA_TouchPadAcceptSingleTouchEvents);
     qt_translateRawTouchEvent(qwidget, QTouchEvent::TouchPad, QCocoaTouch::getCurrentTouchPointList(event, all));
 }
 
-- (void)touchesCancelledWithEvent:(NSEvent *)event;
+- (void)touchesCancelledWithEvent:(NSEvent *)event
 {
     bool all = qwidget->testAttribute(Qt::WA_TouchPadAcceptSingleTouchEvents);
     qt_translateRawTouchEvent(qwidget, QTouchEvent::TouchPad, QCocoaTouch::getCurrentTouchPointList(event, all));
 }
 #endif // MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_6
 
-- (void)magnifyWithEvent:(NSEvent *)event;
+- (void)magnifyWithEvent:(NSEvent *)event
 {
     if (!QApplicationPrivate::tryModalHelper(qwidget, 0))
         return;
@@ -997,7 +1017,7 @@ static int qCocoaViewCount = 0;
 #endif // QT_NO_GESTURES
 }
 
-- (void)rotateWithEvent:(NSEvent *)event;
+- (void)rotateWithEvent:(NSEvent *)event
 {
     if (!QApplicationPrivate::tryModalHelper(qwidget, 0))
         return;
@@ -1012,7 +1032,7 @@ static int qCocoaViewCount = 0;
 #endif // QT_NO_GESTURES
 }
 
-- (void)swipeWithEvent:(NSEvent *)event;
+- (void)swipeWithEvent:(NSEvent *)event
 {
     if (!QApplicationPrivate::tryModalHelper(qwidget, 0))
         return;
@@ -1034,7 +1054,7 @@ static int qCocoaViewCount = 0;
 #endif // QT_NO_GESTURES
 }
 
-- (void)beginGestureWithEvent:(NSEvent *)event;
+- (void)beginGestureWithEvent:(NSEvent *)event
 {
     if (!QApplicationPrivate::tryModalHelper(qwidget, 0))
         return;
@@ -1048,7 +1068,7 @@ static int qCocoaViewCount = 0;
 #endif // QT_NO_GESTURES
 }
 
-- (void)endGestureWithEvent:(NSEvent *)event;
+- (void)endGestureWithEvent:(NSEvent *)event
 {
     if (!QApplicationPrivate::tryModalHelper(qwidget, 0))
         return;
@@ -1203,7 +1223,9 @@ static int qCocoaViewCount = 0;
             && !(widgetToGetKey->inputMethodHints() & Qt::ImhDigitsOnly
                  || widgetToGetKey->inputMethodHints() & Qt::ImhFormattedNumbersOnly
                  || widgetToGetKey->inputMethodHints() & Qt::ImhHiddenText)) {
+        fromKeyDownEvent = true;
         [qt_mac_nativeview_for(widgetToGetKey) interpretKeyEvents:[NSArray arrayWithObject: theEvent]];
+        fromKeyDownEvent = false;
     }
     if (sendKeyEvents && !composing) {
         bool keyOK = qt_dispatchKeyEvent(theEvent, widgetToGetKey);
@@ -1273,7 +1295,10 @@ static int qCocoaViewCount = 0;
         };
     }
 
-    if ([aString length] && composing) {
+    // When entering characters through Character Viewer or Keyboard Viewer, the text is passed
+    // through this insertText method. Since we dont receive a keyDown Event in such cases, the
+    // composing flag will be false.
+    if (([aString length] && composing) ||  !fromKeyDownEvent) {
         // Send the commit string to the widget.
         composing = false;
         sendKeyEvents = false;
@@ -1387,7 +1412,7 @@ static int qCocoaViewCount = 0;
     if (!selectedText.isEmpty()) {
         QCFString string(selectedText.mid(theRange.location, theRange.length));
         const NSString *tmpString = reinterpret_cast<const NSString *>((CFStringRef)string);
-        return [[[NSAttributedString alloc]  initWithString:tmpString] autorelease];
+        return [[[NSAttributedString alloc]  initWithString:const_cast<NSString *>(tmpString)] autorelease];
     } else {
         return nil;
     }
@@ -1583,7 +1608,6 @@ Qt::DropAction QDragManager::drag(QDrag *o)
                         dndParams.localPoint.y + pix.height() - hotspot.y()};
     NSSize mouseOffset = {0.0, 0.0};
     NSPasteboard *pboard = [NSPasteboard pasteboardWithName:NSDragPboard];
-    NSPoint windowPoint = [dndParams.theEvent locationInWindow];
     dragPrivate()->executed_action = Qt::ActionMask;
     // do the drag
     [dndParams.view retain];

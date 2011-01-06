@@ -1,4 +1,4 @@
-import Qt 4.7
+import QtQuick 1.0
 
 Rectangle {
     color: "blue"
@@ -8,10 +8,10 @@ Rectangle {
     ListModel {
         id: model
         ListElement {
-            name: "January"
+            name: "palegoldenrod"
         }
         ListElement {
-            name: "February"
+            name: "lightsteelblue"
         }
     }
     Component {
@@ -20,8 +20,11 @@ Rectangle {
             color: "red"
             width: 100
             height: 100
-            Text {
-                text: name
+            Rectangle {
+                anchors.centerIn: parent
+                width: 60
+                height: 60
+                color: name 
             }
         }
     }

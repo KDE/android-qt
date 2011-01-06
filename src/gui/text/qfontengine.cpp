@@ -46,7 +46,6 @@
 #include "qpainter.h"
 #include "qpainterpath.h"
 #include "qvarlengtharray.h"
-#include <private/qpdf_p.h>
 #include <qmath.h>
 #include <qendian.h>
 #include <private/qharfbuzz_p.h>
@@ -185,10 +184,6 @@ QFontEngine::QFontEngine()
 
 QFontEngine::~QFontEngine()
 {
-    for (QLinkedList<GlyphCacheEntry>::const_iterator it = m_glyphCaches.constBegin(),
-            end = m_glyphCaches.constEnd(); it != end; ++it) {
-        delete it->cache;
-    }
     m_glyphCaches.clear();
     qHBFreeFace(hbFace);
 }
@@ -240,6 +235,24 @@ glyph_metrics_t QFontEngine::boundingBox(glyph_t glyph, const QTransform &matrix
         return metrics.transformed(matrix);
     }
     return metrics;
+}
+
+QFont QFontEngine::createExplicitFont() const
+{
+    return createExplicitFontWithName(fontDef.family);
+}
+
+QFont QFontEngine::createExplicitFontWithName(const QString &familyName) const
+{
+    QFont font(familyName);
+    font.setStyleStrategy(QFont::NoFontMerging);
+    font.setWeight(fontDef.weight);
+    font.setItalic(fontDef.style == QFont::StyleItalic);
+    if (fontDef.pointSize < 0)
+        font.setPixelSize(fontDef.pixelSize);
+    else
+        font.setPointSizeF(fontDef.pointSize);
+    return font;
 }
 
 QFixed QFontEngine::xHeight() const
@@ -592,6 +605,12 @@ void QFontEngine::addGlyphsToPath(glyph_t *glyphs, QFixedPoint *positions, int n
     addBitmapFontToPath(x, y, g, path, flags);
 }
 
+QImage QFontEngine::alphaMapForGlyph(glyph_t glyph, QFixed /*subPixelPosition*/)
+{
+    // For font engines don't support subpixel positioning
+    return alphaMapForGlyph(glyph);
+}
+
 QImage QFontEngine::alphaMapForGlyph(glyph_t glyph, const QTransform &t)
 {
     QImage i = alphaMapForGlyph(glyph);
@@ -602,7 +621,20 @@ QImage QFontEngine::alphaMapForGlyph(glyph_t glyph, const QTransform &t)
     return i;
 }
 
-QImage QFontEngine::alphaRGBMapForGlyph(glyph_t glyph, int /* margin */, const QTransform &t)
+QImage QFontEngine::alphaMapForGlyph(glyph_t glyph, QFixed subPixelPosition, const QTransform &t)
+{
+    if (! supportsSubPixelPositions())
+        return alphaMapForGlyph(glyph, t);
+
+    QImage i = alphaMapForGlyph(glyph, subPixelPosition);
+    if (t.type() > QTransform::TxTranslate)
+        i = i.transformed(t).convertToFormat(QImage::Format_Indexed8);
+    Q_ASSERT(i.depth() <= 8); // To verify that transformed didn't change the format...
+
+    return i;
+}
+
+QImage QFontEngine::alphaRGBMapForGlyph(glyph_t glyph, QFixed /*subPixelPosition*/, int /* margin */, const QTransform &t)
 {
     QImage alphaMask = alphaMapForGlyph(glyph, t);
     QImage rgbMask(alphaMask.width(), alphaMask.height(), QImage::Format_RGB32);
@@ -631,10 +663,10 @@ QImage QFontEngine::alphaMapForGlyph(glyph_t glyph)
     if (glyph_width <= 0 || glyph_height <= 0)
         return QImage();
     QFixedPoint pt;
-    pt.x = 0;
+    pt.x = -glyph_x;
     pt.y = -glyph_y; // the baseline
     QPainterPath path;
-    QImage im(glyph_width + qAbs(glyph_x) + 4, glyph_height, QImage::Format_ARGB32_Premultiplied);
+    QImage im(glyph_width + 4, glyph_height, QImage::Format_ARGB32_Premultiplied);
     im.fill(Qt::transparent);
     QPainter p(&im);
     p.setRenderHint(QPainter::Antialiasing);
@@ -667,11 +699,7 @@ void QFontEngine::removeGlyphFromCache(glyph_t)
 QFontEngine::Properties QFontEngine::properties() const
 {
     Properties p;
-#ifndef QT_NO_PRINTER
-    QByteArray psname = QPdf::stripSpecialCharacters(fontDef.family.toUtf8());
-#else
-    QByteArray psname = fontDef.family.toUtf8();
-#endif
+    QByteArray psname = QFontEngine::convertToPostscriptFontFamilyName(fontDef.family.toUtf8());
     psname += '-';
     psname += QByteArray::number(fontDef.style);
     psname += '-';
@@ -716,14 +744,16 @@ void QFontEngine::setGlyphCache(void *key, QFontEngineGlyphCache *data)
 {
     Q_ASSERT(data);
 
-    GlyphCacheEntry entry = { key, data };
+    GlyphCacheEntry entry;
+    entry.context = key;
+    entry.cache = data;
     if (m_glyphCaches.contains(entry))
         return;
 
     // Limit the glyph caches to 4. This covers all 90 degree rotations and limits
-    // memory use when there is continous or random rotation
+    // memory use when there is continuous or random rotation
     if (m_glyphCaches.size() == 4)
-        delete m_glyphCaches.takeLast().cache;
+        m_glyphCaches.removeLast();
 
     m_glyphCaches.push_front(entry);
 
@@ -732,7 +762,7 @@ void QFontEngine::setGlyphCache(void *key, QFontEngineGlyphCache *data)
 QFontEngineGlyphCache *QFontEngine::glyphCache(void *key, QFontEngineGlyphCache::Type type, const QTransform &transform) const
 {
     for (QLinkedList<GlyphCacheEntry>::const_iterator it = m_glyphCaches.constBegin(), end = m_glyphCaches.constEnd(); it != end; ++it) {
-        QFontEngineGlyphCache *c = it->cache;
+        QFontEngineGlyphCache *c = it->cache.data();
         if (key == it->context
             && type == c->cacheType()
             && qtransform_equals_no_translate(c->m_transform, transform)) {
@@ -1079,6 +1109,23 @@ quint32 QFontEngine::getTrueTypeGlyphIndex(const uchar *cmap, uint unicode)
     }
 
     return 0;
+}
+
+QByteArray QFontEngine::convertToPostscriptFontFamilyName(const QByteArray &family)
+{
+    QByteArray f = family;
+    f.replace(' ', "");
+    f.replace('(', "");
+    f.replace(')', "");
+    f.replace('<', "");
+    f.replace('>', "");
+    f.replace('[', "");
+    f.replace(']', "");
+    f.replace('{', "");
+    f.replace('}', "");
+    f.replace('/', "");
+    f.replace('%', "");
+    return f;
 }
 
 Q_GLOBAL_STATIC_WITH_INITIALIZER(QVector<QRgb>, qt_grayPalette, {

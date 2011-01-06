@@ -78,8 +78,14 @@ Win32MakefileGenerator::findHighestVersion(const QString &d, const QString &stem
 
     int biggest=-1;
     if(!project->isActiveConfig("no_versionlink")) {
-        QDir dir(bd);
-        QStringList entries = dir.entryList();
+        static QHash<QString, QStringList> dirEntryListCache;
+        QStringList entries = dirEntryListCache.value(bd);
+        if (entries.isEmpty()) {
+            QDir dir(bd);
+            entries = dir.entryList();
+            dirEntryListCache.insert(bd, entries);
+        }
+
         QRegExp regx(QString("((lib)?%1([0-9]*)).(%2|prl)$").arg(dllStem).arg(ext), Qt::CaseInsensitive);
         for(QStringList::Iterator it = entries.begin(); it != entries.end(); ++it) {
             if(regx.exactMatch((*it))) {
@@ -290,6 +296,11 @@ void Win32MakefileGenerator::processVars()
     }
 
     project->values("QMAKE_ORIG_TARGET") = project->values("TARGET");
+    if (project->isEmpty("QMAKE_PROJECT_NAME"))
+        project->values("QMAKE_PROJECT_NAME") = project->values("QMAKE_ORIG_TARGET");
+    else if (project->first("TEMPLATE").startsWith("vc"))
+        project->values("MAKEFILE") = project->values("QMAKE_PROJECT_NAME");
+
     if (!project->values("QMAKE_INCDIR").isEmpty())
         project->values("INCLUDEPATH") += project->values("QMAKE_INCDIR");
 
@@ -646,7 +657,7 @@ void Win32MakefileGenerator::writeStandardParts(QTextStream &t)
 
     t << "DIST          = " << varList("DISTFILES") << endl;
     t << "QMAKE_TARGET  = " << var("QMAKE_ORIG_TARGET") << endl;
-    // The comment is important to maintain variable compatability with Unix
+    // The comment is important to maintain variable compatibility with Unix
     // Makefiles, while not interpreting a trailing-slash as a linebreak
     t << "DESTDIR        = " << escapeFilePath(destDir) << " #avoid trailing-slash linebreak" << endl;
     t << "TARGET         = " << escapeFilePath(target) << endl;
@@ -770,11 +781,6 @@ QString Win32MakefileGenerator::getLibTarget()
     return QString(project->first("TARGET") + project->first("TARGET_VERSION_EXT") + ".lib");
 }
 
-QString Win32MakefileGenerator::getPdbTarget()
-{
-    return QString(project->first("TARGET") + project->first("TARGET_VERSION_EXT") + ".pdb");
-}
-
 QString Win32MakefileGenerator::defaultInstall(const QString &t)
 {
     if((t != "target" && t != "dlltarget") ||
@@ -808,18 +814,6 @@ QString Win32MakefileGenerator::defaultInstall(const QString &t)
             lib_target.remove('"');
             QString src_targ = (project->isEmpty("DESTDIR") ? QString("$(DESTDIR)") : project->first("DESTDIR")) + lib_target;
             QString dst_targ = filePrefixRoot(root, fileFixify(targetdir + lib_target, FileFixifyAbsolute));
-            if(!ret.isEmpty())
-                ret += "\n\t";
-            ret += QString("-$(INSTALL_FILE)") + " \"" + src_targ + "\" \"" + dst_targ + "\"";
-            if(!uninst.isEmpty())
-                uninst.append("\n\t");
-            uninst.append("-$(DEL_FILE) \"" + dst_targ + "\"");
-        }
-        if(project->isActiveConfig("shared") && project->isActiveConfig("debug")) {
-            QString pdb_target = getPdbTarget();
-            pdb_target.remove('"');
-            QString src_targ = (project->isEmpty("DESTDIR") ? QString("$(DESTDIR)") : project->first("DESTDIR")) + pdb_target;
-            QString dst_targ = filePrefixRoot(root, fileFixify(targetdir + pdb_target, FileFixifyAbsolute));
             if(!ret.isEmpty())
                 ret += "\n\t";
             ret += QString("-$(INSTALL_FILE)") + " \"" + src_targ + "\" \"" + dst_targ + "\"";

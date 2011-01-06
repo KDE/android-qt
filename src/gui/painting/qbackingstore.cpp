@@ -469,7 +469,7 @@ QRegion QWidgetBackingStore::dirtyRegion(QWidget *widget) const
 
 /*!
     Returns the static content inside the \a parent if non-zero; otherwise the static content
-    for the entire backing store is returned. The content will be clipped to \a withingClipRect
+    for the entire backing store is returned. The content will be clipped to \a withinClipRect
     if non-empty.
 */
 QRegion QWidgetBackingStore::staticContents(QWidget *parent, const QRect &withinClipRect) const
@@ -1620,7 +1620,11 @@ void QWidgetPrivate::repaint_sys(const QRegion &rgn)
         extra->staticContentsSize = data.crect.size();
     }
 
+#ifdef Q_WS_QPA //Dont even call q->p
+    QPaintEngine *engine = 0;
+#else
     QPaintEngine *engine = q->paintEngine();
+#endif
     // QGLWidget does not support partial updates if:
     // 1) The context is double buffered
     // 2) The context is single buffered and auto-fill background is enabled.

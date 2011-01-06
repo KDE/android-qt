@@ -70,6 +70,7 @@
 #include <qtoolbar.h>
 #include <QtGui/qpaintengine.h>
 #include <private/qbackingstore_p.h>
+#include <qmenubar.h>
 
 #include <QtGui/QGraphicsView>
 #include <QtGui/QGraphicsProxyWidget>
@@ -81,8 +82,14 @@
 #include <avkon.hrh>                // EEikStatusPaneUidTitle
 #include <akntitle.h>               // CAknTitlePane
 #include <akncontext.h>             // CAknContextPane
+#endif
+
+#ifdef Q_OS_SYMBIAN
 #include <eikspane.h>               // CEikStatusPane
 #include <eikbtgpc.h>               // CEikButtonGroupContainer
+#include <eikenv.h>                 // CEikonEnv
+#include <eikaufty.h>               // MEikAppUiFactory
+#include <eikmenub.h>               // CEikMenuBar
 #endif
 
 #ifdef Q_WS_QWS
@@ -357,7 +364,7 @@ private slots:
 
     void setClearAndResizeMask();
     void maskedUpdate();
-#if defined(Q_WS_WIN) || defined(Q_WS_X11) || defined(Q_WS_QWS)
+#if defined(Q_WS_WIN) || defined(Q_WS_X11) || defined(Q_WS_QWS) || defined(Q_WS_QPA)
     void syntheticEnterLeave();
     void taskQTBUG_4055_sendSyntheticEnterLeave();
 #endif
@@ -387,6 +394,7 @@ private slots:
     void maximizedWindowModeTransitions();
     void minimizedWindowModeTransitions();
     void normalWindowModeTransitions();
+    void focusSwitchClosesPopupMenu();
 #endif
 
     void focusProxyAndInputMethods();
@@ -458,11 +466,7 @@ void tst_QWidget::getSetCheck()
     QCOMPARE(obj1.minimumWidth(), 0); // A widgets width can never be less than 0
     obj1.setMinimumWidth(INT_MAX);
 #ifndef Q_WS_QWS  //QWS doesn't allow toplevels to be bigger than the screen
-#if defined(Q_CC_MSVC) && !defined(Q_CC_MSVC_NET)
-    QCOMPARE((long)obj1.minimumWidth(), QWIDGETSIZE_MAX); // The largest minimum size should only be as big as the maximium
-#else
     QCOMPARE(obj1.minimumWidth(), QWIDGETSIZE_MAX); // The largest minimum size should only be as big as the maximium
-#endif
 #endif
 
     child1.setMinimumWidth(0);
@@ -470,11 +474,7 @@ void tst_QWidget::getSetCheck()
     child1.setMinimumWidth(INT_MIN);
     QCOMPARE(child1.minimumWidth(), 0); // A widgets width can never be less than 0
     child1.setMinimumWidth(INT_MAX);
-#if defined(Q_CC_MSVC) && !defined(Q_CC_MSVC_NET)
-    QCOMPARE((long)child1.minimumWidth(), QWIDGETSIZE_MAX); // The largest minimum size should only be as big as the maximium
-#else
     QCOMPARE(child1.minimumWidth(), QWIDGETSIZE_MAX); // The largest minimum size should only be as big as the maximium
-#endif
 
     // int QWidget::minimumHeight()
     // void QWidget::setMinimumHeight(int)
@@ -484,11 +484,7 @@ void tst_QWidget::getSetCheck()
     QCOMPARE(obj1.minimumHeight(), 0); // A widgets height can never be less than 0
     obj1.setMinimumHeight(INT_MAX);
 #ifndef Q_WS_QWS    //QWS doesn't allow toplevels to be bigger than the screen
-#if defined(Q_CC_MSVC) && !defined(Q_CC_MSVC_NET)
-    QCOMPARE((long)obj1.minimumHeight(), QWIDGETSIZE_MAX); // The largest minimum size should only be as big as the maximium
-#else
     QCOMPARE(obj1.minimumHeight(), QWIDGETSIZE_MAX); // The largest minimum size should only be as big as the maximium
-#endif
 #endif
 
     child1.setMinimumHeight(0);
@@ -496,26 +492,16 @@ void tst_QWidget::getSetCheck()
     child1.setMinimumHeight(INT_MIN);
     QCOMPARE(child1.minimumHeight(), 0); // A widgets height can never be less than 0
     child1.setMinimumHeight(INT_MAX);
-#if defined(Q_CC_MSVC) && !defined(Q_CC_MSVC_NET)
-    QCOMPARE((long)child1.minimumHeight(), QWIDGETSIZE_MAX); // The largest minimum size should only be as big as the maximium
-#else
     QCOMPARE(child1.minimumHeight(), QWIDGETSIZE_MAX); // The largest minimum size should only be as big as the maximium
-#endif
 
-
-
-// int QWidget::maximumWidth()
+    // int QWidget::maximumWidth()
     // void QWidget::setMaximumWidth(int)
     obj1.setMaximumWidth(0);
     QCOMPARE(obj1.maximumWidth(), 0);
     obj1.setMaximumWidth(INT_MIN);
     QCOMPARE(obj1.maximumWidth(), 0); // A widgets width can never be less than 0
     obj1.setMaximumWidth(INT_MAX);
-#if defined(Q_CC_MSVC) && !defined(Q_CC_MSVC_NET)
-    QCOMPARE((long)obj1.maximumWidth(), QWIDGETSIZE_MAX); // QWIDGETSIZE_MAX is the abs max, not INT_MAX
-#else
     QCOMPARE(obj1.maximumWidth(), QWIDGETSIZE_MAX); // QWIDGETSIZE_MAX is the abs max, not INT_MAX
-#endif
 
     // int QWidget::maximumHeight()
     // void QWidget::setMaximumHeight(int)
@@ -524,11 +510,7 @@ void tst_QWidget::getSetCheck()
     obj1.setMaximumHeight(INT_MIN);
     QCOMPARE(obj1.maximumHeight(), 0); // A widgets height can never be less than 0
     obj1.setMaximumHeight(INT_MAX);
-#if defined(Q_CC_MSVC) && !defined(Q_CC_MSVC_NET)
-    QCOMPARE((long)obj1.maximumHeight(), QWIDGETSIZE_MAX); // QWIDGETSIZE_MAX is the abs max, not INT_MAX
-#else
     QCOMPARE(obj1.maximumHeight(), QWIDGETSIZE_MAX); // QWIDGETSIZE_MAX is the abs max, not INT_MAX
-#endif
 
     // back to normal
     obj1.setMinimumWidth(0);
@@ -1984,7 +1966,7 @@ void tst_QWidget::showMaximized()
     layouted.showNormal();
     QVERIFY(!(layouted.windowState() & Qt::WindowMaximized));
 
-#if !defined(Q_WS_QWS) && !defined(Q_OS_WINCE) && !defined(Q_WS_S60)
+#if !defined(Q_WS_QWS) && !defined(Q_OS_WINCE) && !defined(Q_WS_S60) && !defined(Q_WS_QPA)
 //embedded may choose a different size to fit on the screen.
     QCOMPARE(layouted.size(), layouted.sizeHint());
 #endif
@@ -2083,7 +2065,7 @@ void tst_QWidget::showFullScreen()
     layouted.showNormal();
     QVERIFY(!(layouted.windowState() & Qt::WindowFullScreen));
 
-#if !defined(Q_WS_QWS) && !defined(Q_OS_WINCE) && !defined (Q_WS_S60)
+#if !defined(Q_WS_QWS) && !defined(Q_OS_WINCE) && !defined (Q_WS_S60) && !defined(Q_WS_QPA)
 //embedded may choose a different size to fit on the screen.
     QCOMPARE(layouted.size(), layouted.sizeHint());
 #endif
@@ -2172,7 +2154,10 @@ void tst_QWidget::resizeEvent()
         wParent.show();
         QCOMPARE (wChild.m_resizeEventCount, 1); // initial resize event before paint
         wParent.hide();
-        wChild.resize(QSize(640,480));
+        QSize safeSize(640,480);
+        if (wChild.size() == safeSize)
+            safeSize.setWidth(639);
+        wChild.resize(safeSize);
         QCOMPARE (wChild.m_resizeEventCount, 1);
         wParent.show();
         QCOMPARE (wChild.m_resizeEventCount, 2);
@@ -2183,7 +2168,10 @@ void tst_QWidget::resizeEvent()
         wTopLevel.show();
         QCOMPARE (wTopLevel.m_resizeEventCount, 1); // initial resize event before paint for toplevels
         wTopLevel.hide();
-        wTopLevel.resize(QSize(640,480));
+        QSize safeSize(640,480);
+        if (wTopLevel.size() == safeSize)
+            safeSize.setWidth(639);
+        wTopLevel.resize(safeSize);
         QCOMPARE (wTopLevel.m_resizeEventCount, 1);
         wTopLevel.show();
         QCOMPARE (wTopLevel.m_resizeEventCount, 2);
@@ -3380,6 +3368,10 @@ void tst_QWidget::widgetAt()
 #if defined(Q_OS_SYMBIAN)
     QEXPECT_FAIL("", "Symbian/S60 does only support rectangular regions", Continue); //See also task 147191
 #endif
+#if defined(Q_WS_QPA)
+    QEXPECT_FAIL("", "Window mask not implemented on Lighthouse", Continue); 
+#endif
+
     QTRY_COMPARE(QApplication::widgetAt(100,100)->objectName(), w1->objectName());
     QTRY_COMPARE(QApplication::widgetAt(101,101)->objectName(), w2->objectName());
 
@@ -3397,6 +3389,9 @@ void tst_QWidget::widgetAt()
 #endif
 #if defined(Q_OS_SYMBIAN)
     QEXPECT_FAIL("", "Symbian/S60 does only support rectangular regions", Continue); //See also task 147191
+#endif
+#if defined(Q_WS_QPA)
+    QEXPECT_FAIL("", "Window mask not implemented on Lighthouse", Continue); 
 #endif
     QTRY_VERIFY(QApplication::widgetAt(100,100) == w1);
     QTRY_VERIFY(QApplication::widgetAt(101,101) == w2);
@@ -4381,7 +4376,6 @@ class WinIdChangeWidget : public QWidget {
 public:
     WinIdChangeWidget(QWidget *p = 0)
         : QWidget(p)
-        , m_winIdChangeEventCount(0)
     {
 
     }
@@ -4389,13 +4383,14 @@ protected:
     bool event(QEvent *e)
     {
         if (e->type() == QEvent::WinIdChange) {
-            ++m_winIdChangeEventCount;
+            m_winIdList.append(internalWinId());
             return true;
         }
         return QWidget::event(e);
     }
 public:
-    int m_winIdChangeEventCount;
+    QList<WId> m_winIdList;
+    int winIdChangeEventCount() const { return m_winIdList.count(); }
 };
 
 void tst_QWidget::winIdChangeEvent()
@@ -4406,7 +4401,7 @@ void tst_QWidget::winIdChangeEvent()
         const WId winIdBefore = widget.internalWinId();
         const WId winIdAfter = widget.winId();
         QVERIFY(winIdBefore != winIdAfter);
-        QCOMPARE(widget.m_winIdChangeEventCount, 1);
+        QCOMPARE(widget.winIdChangeEventCount(), 1);
     }
 
     {
@@ -4415,11 +4410,13 @@ void tst_QWidget::winIdChangeEvent()
         QWidget parent1, parent2;
         WinIdChangeWidget child(&parent1);
         const WId winIdBefore = child.winId();
-        QCOMPARE(child.m_winIdChangeEventCount, 1);
+        QCOMPARE(child.winIdChangeEventCount(), 1);
         child.setParent(&parent2);
         const WId winIdAfter = child.internalWinId();
         QVERIFY(winIdBefore != winIdAfter);
-        QCOMPARE(child.m_winIdChangeEventCount, 2);
+        QCOMPARE(child.winIdChangeEventCount(), 3);
+        // winId is set to zero during reparenting
+        QVERIFY(0 == child.m_winIdList[1]);
     }
 
     {
@@ -4429,15 +4426,16 @@ void tst_QWidget::winIdChangeEvent()
         QWidget parent(&grandparent1);
         WinIdChangeWidget child(&parent);
         const WId winIdBefore = child.winId();
-        QCOMPARE(child.m_winIdChangeEventCount, 1);
+        QCOMPARE(child.winIdChangeEventCount(), 1);
         parent.setParent(&grandparent2);
         const WId winIdAfter = child.internalWinId();
 #ifdef Q_OS_SYMBIAN
         QVERIFY(winIdBefore != winIdAfter);
-        QCOMPARE(child.m_winIdChangeEventCount, 2);
+        QVERIFY(winIdAfter != 0);
+        QCOMPARE(child.winIdChangeEventCount(), 2);
 #else
         QCOMPARE(winIdBefore, winIdAfter);
-        QCOMPARE(child.m_winIdChangeEventCount, 1);
+        QCOMPARE(child.winIdChangeEventCount(), 1);
 #endif
     }
 
@@ -4449,7 +4447,7 @@ void tst_QWidget::winIdChangeEvent()
         child.setParent(&parent2);
         const WId winIdAfter = child.internalWinId();
         QCOMPARE(winIdBefore, winIdAfter);
-        QCOMPARE(child.m_winIdChangeEventCount, 0);
+        QCOMPARE(child.winIdChangeEventCount(), 0);
     }
 
     {
@@ -4458,12 +4456,14 @@ void tst_QWidget::winIdChangeEvent()
         WinIdChangeWidget child(&parent);
         child.winId();
         const WId winIdBefore = child.internalWinId();
-        QCOMPARE(child.m_winIdChangeEventCount, 1);
+        QCOMPARE(child.winIdChangeEventCount(), 1);
         const Qt::WindowFlags flags = child.windowFlags();
         child.setWindowFlags(flags | Qt::Window);
         const WId winIdAfter = child.internalWinId();
         QVERIFY(winIdBefore != winIdAfter);
-        QCOMPARE(child.m_winIdChangeEventCount, 2);
+        QCOMPARE(child.winIdChangeEventCount(), 3);
+        // winId is set to zero during reparenting
+        QVERIFY(0 == child.m_winIdList[1]);
     }
 }
 
@@ -6367,7 +6367,7 @@ void tst_QWidget::compatibilityChildInsertedEvents()
             EventRecorder::EventList()
             << qMakePair(&widget, QEvent::PolishRequest)
             << qMakePair(&widget, QEvent::Type(QEvent::User + 1))
-#if defined(Q_WS_X11) || defined(Q_WS_WIN) || defined(Q_WS_QWS) || defined(Q_WS_S60)
+#if defined(Q_WS_X11) || defined(Q_WS_WIN) || defined(Q_WS_QWS) || defined(Q_WS_S60) || defined(Q_WS_QPA)
             << qMakePair(&widget, QEvent::UpdateRequest)
 #endif
             ;
@@ -6463,7 +6463,7 @@ void tst_QWidget::compatibilityChildInsertedEvents()
             << qMakePair(&widget, QEvent::PolishRequest)
             << qMakePair(&widget, QEvent::Type(QEvent::User + 1))
             << qMakePair(&widget, QEvent::Type(QEvent::User + 2))
-#if defined(Q_WS_X11) || defined(Q_WS_WIN) || defined(Q_WS_QWS) || defined(Q_WS_S60)
+#if defined(Q_WS_X11) || defined(Q_WS_WIN) || defined(Q_WS_QWS) || defined(Q_WS_S60) || defined(Q_WS_QPA)
             << qMakePair(&widget, QEvent::UpdateRequest)
 #endif
             ;
@@ -6559,7 +6559,7 @@ void tst_QWidget::compatibilityChildInsertedEvents()
             << qMakePair(&widget, QEvent::PolishRequest)
             << qMakePair(&widget, QEvent::Type(QEvent::User + 1))
             << qMakePair(&widget, QEvent::Type(QEvent::User + 2))
-#if defined(Q_WS_X11) || defined(Q_WS_WIN) || defined(Q_WS_QWS) || defined(Q_WS_S60)
+#if defined(Q_WS_X11) || defined(Q_WS_WIN) || defined(Q_WS_QWS) || defined(Q_WS_S60) || defined(Q_WS_QPA)
             << qMakePair(&widget, QEvent::UpdateRequest)
 #endif
             ;
@@ -9172,7 +9172,7 @@ void tst_QWidget::maskedUpdate()
     QTRY_COMPARE(grandChild.paintedRegion, QRegion(grandChild.rect())); // Full update.
 }
 
-#if defined(Q_WS_X11) || defined(Q_WS_WIN) || defined(Q_WS_QWS)
+#if defined(Q_WS_X11) || defined(Q_WS_WIN) || defined(Q_WS_QWS) || defined(Q_WS_QPA)
 void tst_QWidget::syntheticEnterLeave()
 {
     class MyWidget : public QWidget
@@ -9713,14 +9713,25 @@ void tst_QWidget::destroyBackingStoreWhenHidden()
     child.setAutoFillBackground(true);
     child.setPalette(Qt::blue);
 
+    QWidget grandChild(&child);
+    grandChild.setAutoFillBackground(true);
+    grandChild.setPalette(Qt::yellow);
+
     QVBoxLayout layout(&parent);
     layout.setContentsMargins(10, 10, 10, 10);
     layout.addWidget(&child);
     parent.setLayout(&layout);
 
-    child.winId();
+    QVBoxLayout childLayout(&child);
+    childLayout.setContentsMargins(10, 10, 10, 10);
+    childLayout.addWidget(&grandChild);
+    child.setLayout(&childLayout);
+
+    // Ensure that this widget and all its ancestors are native
+    grandChild.winId();
 
     parent.show();
+
     QTest::qWaitForWindowShown(&parent);
 
     // Check that child window does not obscure parent window
@@ -9729,18 +9740,24 @@ void tst_QWidget::destroyBackingStoreWhenHidden()
     // Native child widget should share parent's backing store
     QVERIFY(0 != backingStore(parent));
     QVERIFY(0 == backingStore(child));
+    QVERIFY(0 == backingStore(grandChild));
 
     // Make child widget full screen
     child.setWindowFlags((child.windowFlags() | Qt::Window) ^ Qt::SubWindow);
     child.setWindowState(child.windowState() | Qt::WindowFullScreen);
     child.show();
+
+    // Paint into the child to ensure that it gets a backing store
+    QPainter painter(&child);
+    painter.fillRect(QRect(0, 0, 90, 90), Qt::white);
+
     QTest::qWaitForWindowShown(&child);
 
     // Ensure that 'window hidden' event is received by parent
     qApp->processEvents();
 
     // Check that child window obscures parent window
-    QVERIFY(parent.visibleRegion().subtracted(child.visibleRegion()).isEmpty());
+    QVERIFY(parent.visibleRegion().subtracted(child.visibleRegion() + grandChild.visibleRegion()).isEmpty());
 
     // Now that extent of child widget goes beyond parent's extent,
     // a new backing store should be created for the child widget.
@@ -9756,11 +9773,12 @@ void tst_QWidget::destroyBackingStoreWhenHidden()
     QTest::qWaitForWindowShown(&child);
 
     // Check that parent is now visible again
-    QVERIFY(!parent.visibleRegion().subtracted(child.visibleRegion()).isEmpty());
+    QVERIFY(!parent.visibleRegion().subtracted(child.visibleRegion() + grandChild.visibleRegion()).isEmpty());
 
     // Native child widget should once again share parent's backing store
     QVERIFY(0 != backingStore(parent));
     QVERIFY(0 == backingStore(child));
+    QVERIFY(0 == backingStore(grandChild));
     }
 
     // 6. Partial reveal followed by full reveal
@@ -10255,6 +10273,31 @@ void tst_QWidget::normalWindowModeTransitions()
     QCOMPARE(widget.geometry(), normalGeometry);
     QVERIFY(!buttonGroup->IsVisible());
     QVERIFY(!statusPane->IsVisible());
+}
+
+void tst_QWidget::focusSwitchClosesPopupMenu()
+{
+    QMainWindow mainWindow;
+    QAction action("Test action", &mainWindow);
+    mainWindow.menuBar()->addAction(&action);
+
+    mainWindow.show();
+    QT_TRAP_THROWING(CEikonEnv::Static()->AppUiFactory()->MenuBar()->TryDisplayMenuBarL());
+    QVERIFY(CEikonEnv::Static()->AppUiFactory()->MenuBar()->IsDisplayed());
+
+    // Close the popup by opening a new window.
+    QMainWindow mainWindow2;
+    QAction action2("Test action", &mainWindow2);
+    mainWindow2.menuBar()->addAction(&action2);
+    mainWindow2.show();
+    QVERIFY(!CEikonEnv::Static()->AppUiFactory()->MenuBar()->IsDisplayed());
+
+    QT_TRAP_THROWING(CEikonEnv::Static()->AppUiFactory()->MenuBar()->TryDisplayMenuBarL());
+    QVERIFY(CEikonEnv::Static()->AppUiFactory()->MenuBar()->IsDisplayed());
+
+    // Close the popup by switching focus.
+    mainWindow.activateWindow();
+    QVERIFY(!CEikonEnv::Static()->AppUiFactory()->MenuBar()->IsDisplayed());
 }
 #endif
 

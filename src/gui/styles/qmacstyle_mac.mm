@@ -1566,8 +1566,7 @@ void QMacStylePrivate::timerEvent(QTimerEvent *)
                 progressBars.removeAt(i);
             } else {
                 if (QProgressBar *pb = qobject_cast<QProgressBar *>(maybeProgress)) {
-                    if (pb->maximum() == 0 || pb->value() > 0
-                        && pb->value() < pb->maximum()) {
+                    if (pb->maximum() == 0 || (pb->value() > 0 && pb->value() < pb->maximum())) {
                         if (doAnimate(AquaProgressBar))
                             pb->update();
                     }
@@ -1642,7 +1641,7 @@ bool QMacStylePrivate::eventFilter(QObject *o, QEvent *e)
         case QEvent::FocusOut:
         case QEvent::Show:
         case QEvent::WindowActivate: {
-            QList<QPushButton *> list = qFindChildren<QPushButton *>(btn->window());
+            QList<QPushButton *> list = btn->window()->findChildren<QPushButton *>();
             for (int i = 0; i < list.size(); ++i) {
                 QPushButton *pBtn = list.at(i);
                 if ((e->type() == QEvent::FocusOut
@@ -1948,10 +1947,9 @@ void QMacStyle::unpolish(QWidget* w)
         rubber->setAttribute(Qt::WA_NoSystemBackground, true);
     }
 
-    if (QFocusFrame *frame = qobject_cast<QFocusFrame *>(w)) {
+    if (QFocusFrame *frame = qobject_cast<QFocusFrame *>(w))
         frame->setAttribute(Qt::WA_NoSystemBackground, true);
-        frame->setAutoFillBackground(true);
-    }
+
     QWindowsStyle::unpolish(w);
 }
 
@@ -3336,6 +3334,8 @@ void QMacStyle::drawControl(ControlElement ce, const QStyleOption *opt, QPainter
                     if (needText) {
                         QPalette pal = tb->palette;
                         QPalette::ColorRole role = QPalette::NoRole;
+                        if (!proxy()->styleHint(SH_UnderlineShortcut, tb, w))
+                            alignment |= Qt::TextHideMnemonic;
                         if (down)
                             cr.translate(shiftX, shiftY);
                         if (QSysInfo::MacintoshVersion >= QSysInfo::MV_10_5
@@ -3353,13 +3353,13 @@ void QMacStyle::drawControl(ControlElement ce, const QStyleOption *opt, QPainter
                                 role = QPalette::HighlightedText;
                             }
                         }
-                        drawItemText(p, cr, alignment, pal,
-                                     tb->state & State_Enabled, tb->text, role);
+                        proxy()->drawItemText(p, cr, alignment, pal,
+                                              tb->state & State_Enabled, tb->text, role);
                         if (QSysInfo::MacintoshVersion < QSysInfo::MV_10_5 &&
                             (tb->state & State_Sunken)) {
                             // Draw a "drop shadow" in earlier versions.
-                            drawItemText(p, cr.adjusted(0, 1, 0, 1), alignment,
-                                         tb->palette, tb->state & State_Enabled, tb->text);
+                            proxy()->drawItemText(p, cr.adjusted(0, 1, 0, 1), alignment,
+                                                  tb->palette, tb->state & State_Enabled, tb->text);
                         }
                     }
                 } else {
@@ -3607,7 +3607,7 @@ void QMacStyle::drawControl(ControlElement ce, const QStyleOption *opt, QPainter
                     break;
                 }
             }
-            bool stretchTabs = (!verticalTabs && tabRect.height() > 22 || verticalTabs && tabRect.width() > 22);
+            bool stretchTabs = (!verticalTabs && tabRect.height() > 22) || (verticalTabs && tabRect.width() > 22);
 
             switch (tp) {
             case QStyleOptionTab::Beginning:
@@ -4032,7 +4032,6 @@ void QMacStyle::drawControl(ControlElement ce, const QStyleOption *opt, QPainter
                 bdi.version = qt_mac_hitheme_version;
                 bdi.state = kThemeMenuBarNormal;
                 bdi.attributes = 0;
-                HIRect hirect = qt_hirectForQRect(mi->rect);
                 HIThemeDrawMenuBarBackground(&menuRect, &bdi, cg, kHIThemeOrientationNormal);
             }
 
@@ -5334,8 +5333,8 @@ QRect QMacStyle::subControlRect(ComplexControl cc, const QStyleOptionComplex *op
             case SC_GroupBoxCheckBox: {
                 // Cheat and use the smaller font if we need to
                 bool checkable = groupBox->subControls & SC_GroupBoxCheckBox;
-                bool fontIsSet = (widget && widget->testAttribute(Qt::WA_SetFont)
-                                  || !QApplication::desktopSettingsAware());
+                bool fontIsSet = (widget && widget->testAttribute(Qt::WA_SetFont))
+                                  || !QApplication::desktopSettingsAware();
                 int tw;
                 int h;
                 int margin =  flat || hasNoText ? 0 : 12;
@@ -5537,6 +5536,57 @@ QSize QMacStyle::sizeFromContents(ContentsType ct, const QStyleOption *opt,
     case QStyle::CT_SpinBox:
          // hack to work around horrible sizeHint() code in QAbstractSpinBox
         sz.setHeight(sz.height() - 3);
+        break;
+	case QStyle::CT_TabWidget:
+        // the size between the pane and the "contentsRect" (+4,+4)
+        // (the "contentsRect" is on the inside of the pane)
+        sz = QWindowsStyle::sizeFromContents(ct, opt, csz, widget);
+        /**
+            This is supposed to show the relationship between the tabBar and
+            the stack widget of a QTabWidget.
+            Unfortunately ascii is not a good way of representing graphics.....
+            PS: The '=' line is the painted frame.
+
+               top    ---+
+                         |
+                         |
+                         |
+                         |                vvv just outside the painted frame is the "pane"
+                      - -|- - - - - - - - - - <-+
+            TAB BAR      +=====^============    | +2 pixels
+                    - - -|- - -|- - - - - - - <-+
+                         |     |      ^   ^^^ just inside the painted frame is the "contentsRect"
+                         |     |      |
+                         |   overlap  |
+                         |     |      |
+            bottom ------+   <-+     +14 pixels
+                                      |
+                                      v
+                ------------------------------  <- top of stack widget
+
+
+        To summarize: 
+             * 2 is the distance between the pane and the contentsRect 
+             * The 14 and the 1's are the distance from the contentsRect to the stack widget.
+               (same value as used in SE_TabWidgetTabContents)
+             * overlap is how much the pane should overlap the tab bar
+        */	
+        // then add the size between the stackwidget and the "contentsRect"
+
+        if (const QStyleOptionTabWidgetFrame *twf
+                = qstyleoption_cast<const QStyleOptionTabWidgetFrame *>(opt)) {
+            QSize extra(0,0);
+            const int overlap = pixelMetric(PM_TabBarBaseOverlap, opt, widget);
+            const int gapBetweenTabbarAndStackWidget = 2 + 14 - overlap;
+
+            if (getTabDirection(twf->shape) == kThemeTabNorth || getTabDirection(twf->shape) == kThemeTabSouth) {
+                extra = QSize(2, gapBetweenTabbarAndStackWidget + 1);
+            } else {
+                extra = QSize(gapBetweenTabbarAndStackWidget + 1, 2);
+            }
+            sz+= extra;
+        }
+
         break;
     case QStyle::CT_TabBarTab:
         if (const QStyleOptionTabV3 *tab = qstyleoption_cast<const QStyleOptionTabV3 *>(opt)) {

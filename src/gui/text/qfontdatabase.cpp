@@ -81,10 +81,6 @@
 #  define FM_DEBUG if (false) qDebug
 #endif
 
-#if defined(Q_CC_MSVC) && !defined(Q_CC_MSVC_NET)
-#  define for if(0){}else for
-#endif
-
 QT_BEGIN_NAMESPACE
 
 #define SMOOTH_SCALABLE 0xffff
@@ -2460,10 +2456,12 @@ QString QFontDatabase::writingSystemSample(WritingSystem writingSystem)
         sample += QChar(0x4f8b);
         break;
     case Japanese:
-        sample += QChar(0x3050);
-        sample += QChar(0x3060);
-        sample += QChar(0x30b0);
-        sample += QChar(0x30c0);
+        sample += QChar(0x30b5);
+        sample += QChar(0x30f3);
+        sample += QChar(0x30d7);
+        sample += QChar(0x30eb);
+        sample += QChar(0x3067);
+        sample += QChar(0x3059);
         break;
     case Korean:
         sample += QChar(0xac00);

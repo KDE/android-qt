@@ -81,7 +81,11 @@ public:
     QRegion(const QBitmap &bitmap);
     ~QRegion();
     QRegion &operator=(const QRegion &);
-
+#ifdef Q_COMPILER_RVALUE_REFS
+    inline QRegion &operator=(QRegion &&other)
+    { qSwap(d, other.d); return *this; }
+#endif
+    inline void swap(QRegion &other) { qSwap(d, other.d); }
 #ifdef QT3_SUPPORT
     inline QT3_SUPPORT bool isNull() const { return isEmpty(); }
 #endif
@@ -201,7 +205,7 @@ private:
         Region rgn;
         void *xrectangles;
 #elif defined(Q_WS_MAC) && !defined(QT_MAC_USE_COCOA)
-        mutable RgnHandle unused; // Here for binary compatability reasons. ### Qt 5 remove.
+        mutable RgnHandle unused; // Here for binary compatibility reasons. ### Qt 5 remove.
 #endif
 #if defined(Q_WS_QWS) || defined(Q_WS_QPA) || defined(Q_WS_X11) || defined(Q_WS_MAC) || defined(Q_WS_WIN) || defined(Q_OS_SYMBIAN)
         QRegionPrivate *qt_rgn;

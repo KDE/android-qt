@@ -168,11 +168,11 @@ static void qt_symbian_insert_action(QSymbianMenuAction* action, QList<SymbianMe
 
             if (action->action->menu()->actions().size() > 0) {
                 for (int c2= 0; c2 < action->action->menu()->actions().size(); ++c2) {
-                    QSymbianMenuAction *symbianAction2 = new QSymbianMenuAction;
+                    QScopedPointer<QSymbianMenuAction> symbianAction2(new QSymbianMenuAction);
                     symbianAction2->action = action->action->menu()->actions().at(c2);
                     QMenu * menu = symbianAction2->action->menu();
                     symbianAction2->command = qt_symbian_menu_static_cmd_id++;
-                    qt_symbian_insert_action(symbianAction2, &(menuItem->children));
+                    qt_symbian_insert_action(symbianAction2.data(), &(menuItem->children));
                 }
             }
 
@@ -264,7 +264,8 @@ void qt_symbian_show_submenu( CEikMenuPane* menuPane, int id)
         // However if we don't have any items, we still need the item array. Otherwise
         // menupane will crash. That's why we create item array here manually, and
         // AddMenuItemL will then use the existing array.
-        CEikMenuPane::CItemArray* itemArray = q_check_ptr(new CEikMenuPane::CItemArray);
+        CEikMenuPane::CItemArray* itemArray = new CEikMenuPane::CItemArray;
+        Q_CHECK_PTR(itemArray);
         menuPane->SetItemArray(itemArray);
         menuPane->SetItemArrayOwnedExternally(EFalse);
 
@@ -432,11 +433,11 @@ void QMenuBarPrivate::QSymbianMenuBarPrivate::removeAction(QSymbianMenuAction *a
 void QMenuBarPrivate::QSymbianMenuBarPrivate::insertNativeMenuItems(const QList<QAction*> &actions)
 {
     for (int i = 0; i <actions.size(); ++i) {
-        QSymbianMenuAction *symbianActionTopLevel = new QSymbianMenuAction;
+        QScopedPointer<QSymbianMenuAction> symbianActionTopLevel(new QSymbianMenuAction);
         symbianActionTopLevel->action = actions.at(i);
         symbianActionTopLevel->parent = 0;
         symbianActionTopLevel->command = qt_symbian_menu_static_cmd_id++;
-        qt_symbian_insert_action(symbianActionTopLevel, &symbianMenus);
+        qt_symbian_insert_action(symbianActionTopLevel.data(), &symbianMenus);
     }
 }
 

@@ -152,18 +152,12 @@ void QS60Data::controlVisibilityChanged(CCoeControl *control, bool visible)
                 if (backingStore.data()) {
                     backingStore.registerWidget(widget);
                 } else {
-#ifdef SYMBIAN_GRAPHICS_WSERV_QT_EFFECTS
-                    S60->wsSession().SendEffectCommand(ETfxCmdRestoreLayer);
-#endif
                     backingStore.create(window);
                     backingStore.registerWidget(widget);
                     qt_widget_private(widget)->invalidateBuffer(widget->rect());
                     widget->repaint();
                 }
             } else {
-#ifdef  SYMBIAN_GRAPHICS_WSERV_QT_EFFECTS
-                S60->wsSession().SendEffectCommand(ETfxCmdDeallocateLayer);
-#endif
                 backingStore.unregisterWidget(widget);
                 // In order to ensure that any resources used by the window surface
                 // are immediately freed, we flush the WSERV command buffer.
@@ -673,6 +667,9 @@ void QSymbianControl::HandleStatusPaneSizeChange()
 {
     QS60MainAppUi *s60AppUi = static_cast<QS60MainAppUi *>(S60->appUi());
     s60AppUi->HandleStatusPaneSizeChange();
+    // Send resize event to trigger desktopwidget workAreaResized signal
+    QResizeEvent e(qt_desktopWidget->size(), qt_desktopWidget->size());
+    QApplication::sendEvent(qt_desktopWidget, &e);
 }
 #endif
 
@@ -1240,10 +1237,11 @@ void QSymbianControl::FocusChanged(TDrawNow /* aDrawNow */)
         qwidget->d_func()->setWindowTitle_sys(qwidget->windowTitle());
 #ifdef Q_WS_S60
         // If widget is fullscreen/minimized, hide status pane and button container otherwise show them.
-        const bool visible = !(qwidget->windowState() & (Qt::WindowFullScreen | Qt::WindowMinimized));
+        QWidget *const window = qwidget->window();
+        const bool visible = !(window->windowState() & (Qt::WindowFullScreen | Qt::WindowMinimized));
         const bool statusPaneVisibility = visible;
-        const bool isFullscreen = qwidget->windowState() & Qt::WindowFullScreen;
-        const bool cbaVisibilityHint = qwidget->windowFlags() & Qt::WindowSoftkeysVisibleHint;
+        const bool isFullscreen = window->windowState() & Qt::WindowFullScreen;
+        const bool cbaVisibilityHint = window->windowFlags() & Qt::WindowSoftkeysVisibleHint;
         const bool buttonGroupVisibility = (visible || (isFullscreen && cbaVisibilityHint));
         S60->setStatusPaneAndButtonGroupVisibility(statusPaneVisibility, buttonGroupVisibility);
 #endif
@@ -1341,6 +1339,10 @@ void QSymbianControl::setFocusSafely(bool focus)
     // focus in Symbian. If this is not executed, the control which happens to be on
     // the top of the stack may randomly be assigned focus by Symbian, for example
     // when creating new windows (specifically in CCoeAppUi::HandleStackChanged()).
+
+    // Close any popups.
+    CEikonEnv::Static()->EikAppUi()->StopDisplayingMenuBar();
+
     if (focus) {
         S60->appUi()->RemoveFromStack(this);
         // Symbian doesn't automatically remove focus from the last focused control, so we need to
@@ -1389,7 +1391,7 @@ bool QSymbianControl::isControlActive()
     This function is only available on S60.
 */
 QApplication::QApplication(QApplication::QS60MainApplicationFactory factory, int &argc, char **argv)
-    : QCoreApplication(*new QApplicationPrivate(argc, argv, GuiClient))
+    : QCoreApplication(*new QApplicationPrivate(argc, argv, GuiClient, 0x040000))
 {
     Q_D(QApplication);
     S60->s60ApplicationFactory = factory;
@@ -1397,7 +1399,7 @@ QApplication::QApplication(QApplication::QS60MainApplicationFactory factory, int
 }
 
 QApplication::QApplication(QApplication::QS60MainApplicationFactory factory, int &argc, char **argv, int _internal)
-    : QCoreApplication(*new QApplicationPrivate(argc, argv, GuiClient))
+    : QCoreApplication(*new QApplicationPrivate(argc, argv, GuiClient, _internal))
 {
     Q_D(QApplication);
     S60->s60ApplicationFactory = factory;
@@ -1423,7 +1425,7 @@ void qt_init(QApplicationPrivate * /* priv */, int)
         TInt err = CApaCommandLine::GetCommandLineFromProcessEnvironment(commandLine);
         // After this construction, CEikonEnv will be available from CEikonEnv::Static().
         // (much like our qApp).
-        CEikonEnv* coe = new CEikonEnv;
+        QtEikonEnv* coe = new QtEikonEnv;
         //not using QT_TRAP_THROWING, because coe owns the cleanupstack so it can't be pushed there.
         if(err == KErrNone)
             TRAP(err, coe->ConstructAppFromCommandLineL(factory,*commandLine));
@@ -2053,6 +2055,17 @@ int QApplicationPrivate::symbianProcessWsEvent(const QSymbianEvent *symbianEvent
         }
 #endif
         break;
+#ifdef Q_SYMBIAN_SUPPORTS_SURFACES
+    case EEventUser:
+        {
+            // GOOM is looking for candidates to kill so indicate that we are
+            // capable of cleaning up by handling this event
+            TInt32 *data = reinterpret_cast<TInt32 *>(event->EventData());
+            if (data[0] == EApaSystemEventShutdown && data[1] == KGoomMemoryLowEvent)
+                return 1;
+        }
+        break;
+#endif
     default:
         break;
     }

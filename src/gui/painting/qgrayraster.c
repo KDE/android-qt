@@ -233,7 +233,7 @@
   /* new algorithms                                                       */
 
   typedef int   TCoord;   /* integer scanline/pixel coordinate */
-  typedef long  TPos;     /* sub-pixel coordinate              */
+  typedef int   TPos;     /* sub-pixel coordinate              */
 
   /* determine the type used to store cell areas.  This normally takes at */
   /* least PIXEL_BITS*2 + 1 bits.  On 16-bit systems, we need to use      */
@@ -317,6 +317,7 @@
     PCell*     ycells;
     int        ycount;
 
+    int        skip_spans;
   } TWorker, *PWorker;
 
 
@@ -324,13 +325,19 @@
   {
     void*    buffer;
     long     buffer_size;
+    long     buffer_allocated_size;
     int      band_size;
     void*    memory;
     PWorker  worker;
 
   } TRaster, *PRaster;
 
-
+  int q_gray_rendered_spans(TRaster *raster)
+  {
+    if ( raster && raster->worker )
+      return raster->worker->skip_spans > 0 ? 0 : -raster->worker->skip_spans;
+    return 0;
+  }
 
   /*************************************************************************/
   /*                                                                       */
@@ -401,25 +408,31 @@
   /*                                                                       */
   /* Record the current cell in the table.                                 */
   /*                                                                       */
-  static PCell
-  gray_find_cell( RAS_ARG )
+  static void
+  gray_record_cell( RAS_ARG )
   {
     PCell  *pcell, cell;
     int     x = ras.ex;
 
+    if ( ras.invalid || !( ras.area | ras.cover ) )
+        return;
 
     if ( x > ras.max_ex )
       x = ras.max_ex;
 
     pcell = &ras.ycells[ras.ey];
+
     for (;;)
     {
       cell = *pcell;
       if ( cell == NULL || cell->x > x )
         break;
 
-      if ( cell->x == x )
-        goto Exit;
+      if ( cell->x == x ) {
+          cell->area  += ras.area;
+          cell->cover += ras.cover;
+          return;
+      }
 
       pcell = &cell->next;
     }
@@ -429,28 +442,11 @@
 
     cell        = ras.cells + ras.num_cells++;
     cell->x     = x;
-    cell->area  = 0;
-    cell->cover = 0;
+    cell->area  = ras.area;
+    cell->cover = ras.cover;
 
     cell->next  = *pcell;
     *pcell      = cell;
-
-  Exit:
-    return cell;
-  }
-
-
-  static void
-  gray_record_cell( RAS_ARG )
-  {
-    if ( !ras.invalid && ( ras.area | ras.cover ) )
-    {
-      PCell  cell = gray_find_cell( RAS_VAR );
-
-
-      cell->area  += ras.area;
-      cell->cover += ras.cover;
-    }
   }
 
 
@@ -538,7 +534,7 @@
                                  TCoord  y2 )
   {
     TCoord  ex1, ex2, fx1, fx2, delta;
-    long    p, first, dx;
+    int     p, first, dx;
     int     incr, lift, mod, rem;
 
 
@@ -643,7 +639,7 @@
   {
     TCoord  ey1, ey2, fy1, fy2;
     TPos    dx, dy, x, x2;
-    long    p, first;
+    int     p, first;
     int     delta, rem, mod, lift, incr;
 
 
@@ -1178,6 +1174,7 @@
   {
     QT_FT_Span*  span;
     int       coverage;
+    int       skip;
 
 
     /* compute the coverage line's coverage, depending on the    */
@@ -1228,9 +1225,16 @@
 
       if ( ras.num_gray_spans >= QT_FT_MAX_GRAY_SPANS )
       {
-        if ( ras.render_span )
-          ras.render_span( ras.num_gray_spans, ras.gray_spans,
+        if ( ras.render_span && ras.num_gray_spans > ras.skip_spans )
+        {
+          skip = ras.skip_spans > 0 ? ras.skip_spans : 0;
+          ras.render_span( ras.num_gray_spans - skip,
+                           ras.gray_spans + skip,
                            ras.render_span_data );
+        }
+
+        ras.skip_spans -= ras.num_gray_spans;
+
         /* ras.render_span( span->y, ras.gray_spans, count ); */
 
 #ifdef DEBUG_GRAYS
@@ -1600,7 +1604,8 @@
     TBand* volatile  band;
     int volatile     n, num_bands;
     TPos volatile    min, max, max_y;
-    QT_FT_BBox*         clip;
+    QT_FT_BBox*      clip;
+    int              skip;
 
     ras.num_gray_spans = 0;
 
@@ -1670,7 +1675,7 @@
         {
           PCell  cells_max;
           int    yindex;
-          long   cell_start, cell_end, cell_mod;
+          int    cell_start, cell_end, cell_mod;
 
 
           ras.ycells = (PCell*)ras.buffer;
@@ -1741,9 +1746,15 @@
       }
     }
 
-    if ( ras.render_span && ras.num_gray_spans > 0 )
-        ras.render_span( ras.num_gray_spans,
-                         ras.gray_spans, ras.render_span_data );
+    if ( ras.render_span && ras.num_gray_spans > ras.skip_spans )
+    {
+        skip = ras.skip_spans > 0 ? ras.skip_spans : 0;
+        ras.render_span( ras.num_gray_spans - skip,
+                         ras.gray_spans + skip,
+                         ras.render_span_data );
+    }
+
+    ras.skip_spans -= ras.num_gray_spans;
 
     if ( ras.band_shoot > 8 && ras.band_size > 16 )
       ras.band_size = ras.band_size / 2;
@@ -1764,10 +1775,13 @@
     if ( !raster || !raster->buffer || !raster->buffer_size )
       return ErrRaster_Invalid_Argument;
 
+    if ( raster->worker )
+      raster->worker->skip_spans = params->skip_spans;
+
     // If raster object and raster buffer are allocated, but
     // raster size isn't of the minimum size, indicate out of
     // memory.
-    if (raster && raster->buffer && raster->buffer_size < MINIMUM_POOL_SIZE )
+    if (raster->buffer_allocated_size < MINIMUM_POOL_SIZE )
       return ErrRaster_OutOfMemory;
 
     /* return immediately if the outline is empty */
@@ -1906,6 +1920,7 @@
         rast->buffer_size = 0;
         rast->worker      = NULL;
       }
+      rast->buffer_allocated_size = pool_size;
     }
   }
 

@@ -778,6 +778,7 @@ QString QDir::relativeFilePath(const QString &fileName) const
     return result;
 }
 
+#ifndef QT_NO_DEPRECATED
 /*!
     \obsolete
 
@@ -787,6 +788,7 @@ QString QDir::convertSeparators(const QString &pathName)
 {
     return toNativeSeparators(pathName);
 }
+#endif
 
 /*!
     \since 4.2
@@ -1550,10 +1552,11 @@ bool QDir::makeAbsolute() // ### What do the return values signify?
     QScopedPointer<QDirPrivate> dir(new QDirPrivate(*d_ptr.constData()));
     dir->setPath(absolutePath);
 
-    if (!(dir->fileEngine->fileFlags(QAbstractFileEngine::TypesMask) & QAbstractFileEngine::DirectoryType))
+    d_ptr = dir.take();
+
+    if (!(d_ptr->fileEngine->fileFlags(QAbstractFileEngine::TypesMask) & QAbstractFileEngine::DirectoryType))
         return false;
 
-    d_ptr = dir.take();
     return true;
 }
 
@@ -1853,7 +1856,8 @@ QString QDir::homePath()
 /*!
     Returns the absolute path of the system's temporary directory.
 
-    On Unix/Linux systems this is usually \c{/tmp}; on Windows this is
+    On Unix/Linux systems this is the path in the \c TMPDIR environment
+    variable or \c{/tmp} if \c TMPDIR is not defined. On Windows this is
     usually the path in the \c TEMP or \c TMP environment
     variable. Whether a directory separator is added to the end or
     not, depends on the operating system.

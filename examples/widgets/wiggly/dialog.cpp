@@ -51,8 +51,8 @@ Dialog::Dialog(QWidget *parent, bool smallScreen)
     QLineEdit *lineEdit = new QLineEdit;
 
     QVBoxLayout *layout = new QVBoxLayout;
-    layout->addWidget(wigglyWidget);
     layout->addWidget(lineEdit);
+    layout->addWidget(wigglyWidget);
     setLayout(layout);
 
 #ifdef QT_SOFTKEYS_ENABLED

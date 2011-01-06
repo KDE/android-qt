@@ -602,7 +602,7 @@ int QAccessibleDisplay::navigate(RelationFlag rel, int entry, QAccessibleInterfa
     return QAccessibleWidgetEx::navigate(rel, entry, target);
 }
 
-/*! \reimp */
+/*! \internal */
 QString QAccessibleDisplay::imageDescription()
 {
 #ifndef QT_NO_TOOLTIP
@@ -612,7 +612,7 @@ QString QAccessibleDisplay::imageDescription()
 #endif
 }
 
-/*! \reimp */
+/*! \internal */
 QSize QAccessibleDisplay::imageSize()
 {
     QLabel *label = qobject_cast<QLabel *>(widget());
@@ -624,7 +624,7 @@ QSize QAccessibleDisplay::imageSize()
     return pixmap->size();
 }
 
-/*! \reimp */
+/*! \internal */
 QRect QAccessibleDisplay::imagePosition(QAccessible2::CoordinateType coordType)
 {
     QLabel *label = qobject_cast<QLabel *>(widget());
@@ -732,7 +732,7 @@ QVariant QAccessibleLineEdit::invokeMethodEx(QAccessible::Method method, int chi
     case ListSupportedMethods: {
         QSet<QAccessible::Method> set;
         set << ListSupportedMethods << SetCursorPosition << GetCursorPosition;
-        return qVariantFromValue(set | qvariant_cast<QSet<QAccessible::Method> >(
+        return QVariant::fromValue(set | qvariant_cast<QSet<QAccessible::Method> >(
                 QAccessibleWidgetEx::invokeMethodEx(method, child, params)));
     }
     case SetCursorPosition:

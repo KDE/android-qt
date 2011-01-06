@@ -391,6 +391,14 @@ void QRegion::exec(const QByteArray &buffer, int ver, QDataStream::ByteOrder byt
 */
 
 /*!
+    \fn void QRegion::swap(QRegion &other)
+    \since 4.8
+
+    Swaps region \a other with this region. This operation is very
+    fast and never fails.
+*/
+
+/*!
     \relates QRegion
 
     Writes the region \a r to the stream \a s and returns a reference
@@ -1699,8 +1707,8 @@ QT_BEGIN_INCLUDE_NAMESPACE
 #include <limits.h>
 QT_END_INCLUDE_NAMESPACE
 
-/*  1 if two BOXs overlap.
- *  0 if two BOXs do not overlap.
+/*  1 if two BOXes overlap.
+ *  0 if two BOXes do not overlap.
  *  Remember, x2 and y2 are not in the region
  */
 #define EXTENTCHECK(r1, r2) \

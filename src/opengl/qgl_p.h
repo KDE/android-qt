@@ -221,10 +221,8 @@ public:
 #endif
 };
 
-class QGLContextResource;
+class QGLContextGroupResourceBase;
 class QGLSharedResourceGuard;
-
-typedef QHash<QString, GLuint> QGLDDSCache;
 
 // QGLContextPrivate has the responsibility of creating context groups.
 // QGLContextPrivate maintains the reference counter and destroys
@@ -244,22 +242,22 @@ public:
 
     static void addShare(const QGLContext *context, const QGLContext *share);
     static void removeShare(const QGLContext *context);
+
 private:
     QGLContextGroup(const QGLContext *context);
 
     QGLExtensionFuncs m_extensionFuncs;
     const QGLContext *m_context; // context group's representative
     QList<const QGLContext *> m_shares;
-    QHash<QGLContextResource *, void *> m_resources;
+    QHash<QGLContextGroupResourceBase *, void *> m_resources;
     QGLSharedResourceGuard *m_guards; // double-linked list of active guards.
     QAtomicInt m_refs;
-    QGLDDSCache m_dds_cache;
 
     void cleanupResources(const QGLContext *ctx);
 
     friend class QGLContext;
     friend class QGLContextPrivate;
-    friend class QGLContextResource;
+    friend class QGLContextGroupResourceBase;
 };
 
 // Get the context that resources for "ctx" will transfer to once
@@ -289,7 +287,8 @@ public:
         ETC1TextureCompression  = 0x00010000,
         PVRTCTextureCompression = 0x00020000,
         FragmentShader          = 0x00040000,
-        ES2Compatibility        = 0x00080000
+        ElementIndexUint        = 0x00080000,
+        Depth24                 = 0x00100000
     };
     Q_DECLARE_FLAGS(Extensions, Extension)
 
@@ -320,16 +319,19 @@ private:
 };
 
 class QGLTexture;
+class QGLTextureDestroyer;
 
 // This probably needs to grow to GL_MAX_VERTEX_ATTRIBS, but 3 is ok for now as that's
 // all the GL2 engine uses:
 #define QT_GL_VERTEX_ARRAY_TRACKED_COUNT 3
 
+class QGLContextResourceBase;
+
 class QGLContextPrivate
 {
     Q_DECLARE_PUBLIC(QGLContext)
 public:
-    explicit QGLContextPrivate(QGLContext *context) : internal_context(false), q_ptr(context) {group = new QGLContextGroup(context);}
+    explicit QGLContextPrivate(QGLContext *context);
     ~QGLContextPrivate();
     QGLTexture *bindTexture(const QImage &image, GLenum target, GLint format,
                             QGLContext::BindOptions options);
@@ -346,7 +348,7 @@ public:
 
     void setVertexAttribArrayEnabled(int arrayIndex, bool enabled = true);
     void syncGlState(); // Makes sure the GL context's state is what we think it is
-    void swapRegion(const QRegion *region);
+    void swapRegion(const QRegion &region);
 
 #if defined(Q_WS_WIN)
     void updateFormatVersion();
@@ -360,6 +362,7 @@ public:
     QGLCmap* cmap;
     HBITMAP hbitmap;
     HDC hbitmap_hdc;
+    Qt::HANDLE threadId;
 #endif
 #ifndef QT_NO_EGL
     QEglContext *eglContext;
@@ -427,6 +430,8 @@ public:
     GLuint current_fbo;
     GLuint default_fbo;
     QPaintEngine *active_engine;
+    QHash<QGLContextResourceBase *, void *> m_resources;
+    QGLTextureDestroyer *texture_destroyer;
 
     bool vertexAttributeArraysEnabledState[QT_GL_VERTEX_ARRAY_TRACKED_COUNT];
 
@@ -436,26 +441,12 @@ public:
     static inline QGLExtensionFuncs& extensionFuncs(const QGLContext *ctx) { return ctx->d_ptr->group->extensionFuncs(); }
 #endif
 
-#if defined(Q_WS_X11) || defined(Q_WS_MAC) || defined(Q_WS_QWS) || defined(Q_WS_QPA) || defined(Q_OS_SYMBIAN)
-    static QGLExtensionFuncs qt_extensionFuncs;
+#if defined(Q_WS_X11) || defined(Q_WS_MAC) || defined(Q_WS_QWS) || defined(Q_WS_QPA) || defined(Q_OS_SYMBIAN) 
+    static Q_OPENGL_EXPORT QGLExtensionFuncs qt_extensionFuncs;
     static Q_OPENGL_EXPORT QGLExtensionFuncs& extensionFuncs(const QGLContext *);
 #endif
 
     static void setCurrentContext(QGLContext *context);
-};
-
-// ### make QGLContext a QObject in 5.0 and remove the proxy stuff
-class Q_OPENGL_EXPORT QGLSignalProxy : public QObject
-{
-    Q_OBJECT
-public:
-    QGLSignalProxy() : QObject() {}
-    void emitAboutToDestroyContext(const QGLContext *context) {
-        emit aboutToDestroyContext(context);
-    }
-    static QGLSignalProxy *instance();
-Q_SIGNALS:
-    void aboutToDestroyContext(const QGLContext *context);
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(QGLExtensions::Extensions)
@@ -500,6 +491,57 @@ private:
     QGLContext *m_ctx;
 };
 
+class QGLTextureDestroyer : public QObject
+{
+    Q_OBJECT
+public:
+    QGLTextureDestroyer() : QObject() {
+        qRegisterMetaType<GLuint>("GLuint");
+        connect(this, SIGNAL(freeTexture(QGLContext *, QPixmapData *, GLuint)),
+                this, SLOT(freeTexture_slot(QGLContext *, QPixmapData *, GLuint)));
+    }
+    void emitFreeTexture(QGLContext *context, QPixmapData *boundPixmap, GLuint id) {
+        emit freeTexture(context, boundPixmap, id);
+    }
+
+Q_SIGNALS:
+    void freeTexture(QGLContext *context, QPixmapData *boundPixmap, GLuint id);
+
+private slots:
+    void freeTexture_slot(QGLContext *context, QPixmapData *boundPixmap, GLuint id) {
+#if defined(Q_WS_X11)
+        if (boundPixmap) {
+            QGLContext *oldContext = const_cast<QGLContext *>(QGLContext::currentContext());
+            context->makeCurrent();
+            // Although glXReleaseTexImage is a glX call, it must be called while there
+            // is a current context - the context the pixmap was bound to a texture in.
+            // Otherwise the release doesn't do anything and you get BadDrawable errors
+            // when you come to delete the context.
+            QGLContextPrivate::unbindPixmapFromTexture(boundPixmap);
+            glDeleteTextures(1, &id);
+            if (oldContext)
+                oldContext->makeCurrent();
+            return;
+        }
+#endif
+        QGLShareContextScope scope(context);
+        glDeleteTextures(1, &id);
+    }
+};
+
+// ### make QGLContext a QObject in 5.0 and remove the proxy stuff
+class Q_OPENGL_EXPORT QGLSignalProxy : public QObject
+{
+    Q_OBJECT
+public:
+    void emitAboutToDestroyContext(const QGLContext *context) {
+        emit aboutToDestroyContext(context);
+    }
+    static QGLSignalProxy *instance();
+Q_SIGNALS:
+    void aboutToDestroyContext(const QGLContext *context);
+};
+
 class QGLTexture {
 public:
     QGLTexture(QGLContext *ctx = 0, GLuint tx_id = 0, GLenum tx_target = GL_TEXTURE_2D,
@@ -516,16 +558,10 @@ public:
     ~QGLTexture() {
         if (options & QGLContext::MemoryManagedBindOption) {
             Q_ASSERT(context);
-            QGLShareContextScope scope(context);
-#if defined(Q_WS_X11)
-            // Although glXReleaseTexImage is a glX call, it must be called while there
-            // is a current context - the context the pixmap was bound to a texture in.
-            // Otherwise the release doesn't do anything and you get BadDrawable errors
-            // when you come to delete the context.
-            if (boundPixmap)
-                QGLContextPrivate::unbindPixmapFromTexture(boundPixmap);
+#if !defined(Q_WS_X11)
+            QPixmapData *boundPixmap = 0;
 #endif
-            glDeleteTextures(1, &id);
+            context->d_ptr->texture_destroyer->emitFreeTexture(context, boundPixmap, id);
         }
      }
 
@@ -635,22 +671,128 @@ inline GLenum qt_gl_preferredTextureTarget()
 #endif
 }
 
-// One resource per group of shared contexts.
-class Q_OPENGL_EXPORT QGLContextResource
+/*
+   Base for resources that are shared in a context group.
+*/
+class Q_OPENGL_EXPORT QGLContextGroupResourceBase
 {
 public:
-    typedef void (*FreeFunc)(void *);
-    QGLContextResource(FreeFunc f);
-    ~QGLContextResource();
-    // Set resource 'value' for 'key' and all its shared contexts.
-    void insert(const QGLContext *key, void *value);
-    // Return resource for 'key' or a shared context.
-    void *value(const QGLContext *key);
-    // Cleanup 'value' in response to a context group being destroyed.
-    void cleanup(const QGLContext *ctx, void *value);
+    QGLContextGroupResourceBase();
+    virtual ~QGLContextGroupResourceBase();
+    void insert(const QGLContext *context, void *value);
+    void *value(const QGLContext *context);
+    void cleanup(const QGLContext *context, void *value);
+    virtual void freeResource(void *value) = 0;
+
+protected:
+    QList<QGLContextGroup *> m_groups;
+
 private:
-    FreeFunc free;
     QAtomicInt active;
+};
+
+/*
+   The QGLContextGroupResource template is used to manage a resource
+   for a group of sharing GL contexts. When the last context in the
+   group is destroyed, or when the QGLContextGroupResource object
+   itself is destroyed (implies potential context switches), the
+   resource will be freed.
+
+   The class used as the template class type needs to have a
+   constructor with the following signature:
+     T(const QGLContext *);
+*/
+template <class T>
+class QGLContextGroupResource : public QGLContextGroupResourceBase
+{
+public:
+    ~QGLContextGroupResource() {
+        for (int i = 0; i < m_groups.size(); ++i) {
+            const QGLContext *context = m_groups.at(i)->context();
+            T *resource = reinterpret_cast<T *>(QGLContextGroupResourceBase::value(context));
+            if (resource) {
+                QGLShareContextScope scope(context);
+                delete resource;
+            }
+        }
+    }
+
+    T *value(const QGLContext *context) {
+        T *resource = reinterpret_cast<T *>(QGLContextGroupResourceBase::value(context));
+        if (!resource) {
+            resource = new T(context);
+            insert(context, resource);
+        }
+        return resource;
+    }
+
+protected:
+    void freeResource(void *resource) {
+        delete reinterpret_cast<T *>(resource);
+    }
+};
+
+/*
+   Base for resources that are context specific.
+*/
+class Q_OPENGL_EXPORT QGLContextResourceBase
+{
+public:
+    virtual ~QGLContextResourceBase() {
+        for (int i = 0; i < m_contexts.size(); ++i)
+            m_contexts.at(i)->d_ptr->m_resources.remove(this);
+    }
+
+    void insert(const QGLContext *context, void *value) {
+        context->d_ptr->m_resources.insert(this, value);
+    }
+
+    void *value(const QGLContext *context) {
+        return context->d_ptr->m_resources.value(this, 0);
+    }
+    virtual void freeResource(void *value) = 0;
+
+protected:
+    QList<const QGLContext *> m_contexts;
+};
+
+/*
+   The QGLContextResource template is used to manage a resource for a
+   single GL context. Just before the context is destroyed (while it's
+   still the current context), or when the QGLContextResource object
+   itself is destroyed (implies potential context switches), the
+   resource will be freed.  The class used as the template class type
+   needs to have a constructor with the following signature: T(const
+   QGLContext *);
+*/
+template <class T>
+class QGLContextResource : public QGLContextResourceBase
+{
+public:
+    ~QGLContextResource() {
+        for (int i = 0; i < m_contexts.size(); ++i) {
+            const QGLContext *context = m_contexts.at(i);
+            T *resource = reinterpret_cast<T *>(QGLContextResourceBase::value(context));
+            if (resource) {
+                QGLShareContextScope scope(context);
+                delete resource;
+            }
+        }
+    }
+
+    T *value(const QGLContext *context) {
+        T *resource = reinterpret_cast<T *>(QGLContextResourceBase::value(context));
+        if (!resource) {
+            resource = new T(context);
+            insert(context, resource);
+        }
+        return resource;
+    }
+
+protected:
+    void freeResource(void *resource) {
+        delete reinterpret_cast<T *>(resource);
+    }
 };
 
 // Put a guard around a GL object identifier and its context.
@@ -742,6 +884,24 @@ private:
     int gl_extensions_length;
 };
 
+
+// this is a class that wraps a QThreadStorage object for storing
+// thread local instances of the GL 1 and GL 2 paint engines
+
+template <class T>
+class QGLEngineThreadStorage
+{
+public:
+    QPaintEngine *engine() {
+        QPaintEngine *&localEngine = storage.localData();
+        if (!localEngine)
+            localEngine = new T;
+        return localEngine;
+    }
+
+private:
+    QThreadStorage<QPaintEngine *> storage;
+};
 QT_END_NAMESPACE
 
 #endif // QGL_P_H

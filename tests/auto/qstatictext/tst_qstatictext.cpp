@@ -79,8 +79,11 @@ private slots:
     void rotatedPainter();
     void scaledPainter();
     void projectedPainter();
+#if 0
+    void rotatedScaledAndTranslatedPainter_data();
     void rotatedScaledAndTranslatedPainter();
-    void transformationChanged();    
+#endif
+    void transformationChanged();
 
     void plainTextVsRichText();
 
@@ -91,6 +94,8 @@ private slots:
     void drawStruckOutText();
     void drawOverlinedText();
     void drawUnderlinedText();
+
+    void unprintableCharacter_qtbug12614();
 };
 
 void tst_QStaticText::init()
@@ -356,7 +361,7 @@ bool tst_QStaticText::supportsTransformations() const
     QPaintEngine::Type type = engine->type();
 
     if (type == QPaintEngine::OpenGL
-#if !defined Q_WS_WIN
+#if !defined(Q_WS_WIN) && !defined(Q_WS_X11)
         || type == QPaintEngine::Raster
 #endif
         )
@@ -453,12 +458,26 @@ void tst_QStaticText::projectedPainter()
     QCOMPARE(imageDrawStaticText, imageDrawText);
 }
 
+#if 0
+void tst_QStaticText::rotatedScaledAndTranslatedPainter_data()
+{
+    QTest::addColumn<qreal>("offset");
+
+    for (int i=0; i<100; ++i) {
+        qreal offset = 300 + i / 100.;
+        QTest::newRow(QByteArray::number(offset).constData()) << offset;
+    }
+}
+
 void tst_QStaticText::rotatedScaledAndTranslatedPainter()
 {
+    QFETCH(qreal, offset);
+
     QPixmap imageDrawText(1000, 1000);
     imageDrawText.fill(Qt::white);
     {
         QPainter p(&imageDrawText);
+        p.translate(offset, 0);
         p.rotate(45.0);
         p.scale(2.0, 2.0);
         p.translate(100, 200);
@@ -470,6 +489,7 @@ void tst_QStaticText::rotatedScaledAndTranslatedPainter()
     imageDrawStaticText.fill(Qt::white);
     {
         QPainter p(&imageDrawStaticText);
+        p.translate(offset, 0);
         p.rotate(45.0);
         p.scale(2.0, 2.0);
         p.translate(100, 200);
@@ -489,6 +509,7 @@ void tst_QStaticText::rotatedScaledAndTranslatedPainter()
       QEXPECT_FAIL("", "Graphics system does not support transformed text on this platform", Abort);
     QCOMPARE(imageDrawStaticText, imageDrawText);
 }
+#endif
 
 void tst_QStaticText::transformationChanged()
 {
@@ -751,6 +772,15 @@ void tst_QStaticText::drawUnderlinedText()
 #endif
 
     QCOMPARE(imageDrawText, imageDrawStaticText);
+}
+
+void tst_QStaticText::unprintableCharacter_qtbug12614()
+{
+    QString s(QChar(0x200B)); // U+200B, ZERO WIDTH SPACE
+
+    QStaticText staticText(s);
+
+    QVERIFY(staticText.size().isValid()); // Force layout. Should not crash.
 }
 
 QTEST_MAIN(tst_QStaticText)

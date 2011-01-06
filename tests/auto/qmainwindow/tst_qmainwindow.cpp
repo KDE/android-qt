@@ -55,6 +55,7 @@
 #include <qtextedit.h>
 #include <private/qmainwindowlayout_p.h>
 #include <private/qdockarealayout_p.h>
+#include "../platformquirks.h"
 
 //TESTED_FILES=
 
@@ -109,6 +110,7 @@ private slots:
     void centralWidgetSize();
     void dockWidgetSize();
     void QTBUG2774_stylechange();
+    void toggleUnifiedTitleAndToolBarOnMac();
 };
 
 // Testing get/set functions
@@ -700,10 +702,12 @@ void tst_QMainWindow::statusBar()
         // deleting the status bar should remove it from the main window
         QMainWindow mw;
         QStatusBar *sb = mw.statusBar();
-        int indexOfSb = mw.layout()->indexOf(sb);
+        QMainWindowLayout *l = qFindChild<QMainWindowLayout *>(&mw);
+        QVERIFY(l);
+        int indexOfSb = l->indexOf(sb);
         QVERIFY(indexOfSb != -1);
         delete sb;
-        indexOfSb = mw.layout()->indexOf(sb);
+        indexOfSb = l->indexOf(sb);
         QVERIFY(indexOfSb == -1);
     }
 }
@@ -1449,8 +1453,7 @@ Q_DECLARE_METATYPE(MoveList)
 
 void MoveSeparator::apply(QMainWindow *mw) const
 {
-
-    QMainWindowLayout *l = qobject_cast<QMainWindowLayout*>(mw->layout());
+    QMainWindowLayout *l = qFindChild<QMainWindowLayout *>(mw);
     QVERIFY(l);
 
     QList<int> path;
@@ -1677,6 +1680,9 @@ void tst_QMainWindow::addToolbarAfterShow()
 
 void tst_QMainWindow::centralWidgetSize()
 {
+    if(PlatformQuirks::isAutoMaximizing())
+        QSKIP("The platform is auto maximizing, so the test makes no sense", SkipAll);;
+
     QMainWindow mainWindow;
     mainWindow.menuBar()->addMenu("menu");
 
@@ -1748,6 +1754,24 @@ void tst_QMainWindow::QTBUG2774_stylechange()
     }
 }
 
+void tst_QMainWindow::toggleUnifiedTitleAndToolBarOnMac()
+{
+#ifdef Q_OS_MAC
+    QMainWindow mw;
+    QToolBar *tb = new QToolBar;
+    tb->addAction("Test");
+    mw.addToolBar(tb);
+    mw.setUnifiedTitleAndToolBarOnMac(true);
+    mw.show();
+    QRect frameGeometry = mw.frameGeometry();
+    mw.setUnifiedTitleAndToolBarOnMac(false);
+    QVERIFY(frameGeometry.topLeft() == mw.frameGeometry().topLeft());
+    mw.setUnifiedTitleAndToolBarOnMac(true);
+    QVERIFY(frameGeometry.topLeft() == mw.frameGeometry().topLeft());
+#else
+    QSKIP("Mac specific test", SkipAll);
+#endif
+}
 
 
 QTEST_MAIN(tst_QMainWindow)

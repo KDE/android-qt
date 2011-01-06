@@ -4,7 +4,7 @@
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
-** This file is part of the QtDeclarative module of the Qt Toolkit.
+** This file is part of the documentation of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:BSD$
 ** You may use this file under the terms of the BSD license as follows:
@@ -39,9 +39,8 @@
 ****************************************************************************/
 
 //![0]
-import Qt 4.7
+// main.qml
+import QtQuick 1.0
 
-Image {
-    source: "images/background.png"
-}
+Image { source: "images/background.png" }
 //![0]

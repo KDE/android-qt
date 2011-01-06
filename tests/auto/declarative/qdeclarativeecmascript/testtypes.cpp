@@ -102,12 +102,14 @@ public:
 
 void registerTypes()
 {
+    qmlRegisterType<MyQmlObject>("Qt.test", 1,0, "MyQmlObjectAlias");
     qmlRegisterType<MyQmlObject>("Qt.test", 1,0, "MyQmlObject");
     qmlRegisterType<MyDeferredObject>("Qt.test", 1,0, "MyDeferredObject");
     qmlRegisterType<MyQmlContainer>("Qt.test", 1,0, "MyQmlContainer");
     qmlRegisterExtendedType<MyBaseExtendedObject, BaseExtensionObject>("Qt.test", 1,0, "MyBaseExtendedObject");
     qmlRegisterExtendedType<MyExtendedObject, ExtensionObject>("Qt.test", 1,0, "MyExtendedObject");
     qmlRegisterType<MyTypeObject>("Qt.test", 1,0, "MyTypeObject");
+    qmlRegisterType<MyDerivedObject>("Qt.test", 1,0, "MyDerivedObject");
     qmlRegisterType<NumberAssignment>("Qt.test", 1,0, "NumberAssignment");
     qmlRegisterExtendedType<DefaultPropertyExtendedObject, DefaultPropertyExtensionObject>("Qt.test", 1,0, "DefaultPropertyExtendedObject");
     qmlRegisterType<OverrideDefaultPropertyObject>("Qt.test", 1,0, "OverrideDefaultPropertyObject");

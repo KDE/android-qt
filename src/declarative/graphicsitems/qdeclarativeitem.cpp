@@ -44,6 +44,7 @@
 
 #include "private/qdeclarativeevents_p_p.h"
 #include <private/qdeclarativeengine_p.h>
+#include <private/qgraphicsitem_p.h>
 
 #include <qdeclarativeengine.h>
 #include <qdeclarativeopenmetaobject_p.h>
@@ -55,7 +56,6 @@
 
 #include <QDebug>
 #include <QPen>
-#include <QFile>
 #include <QEvent>
 #include <QGraphicsSceneMouseEvent>
 #include <QtCore/qnumeric.h>
@@ -100,7 +100,7 @@ QT_BEGIN_NAMESPACE
     The following example moves the Y axis of the \l Rectangle elements while still allowing the \l Row element
     to lay the items out as if they had not been transformed:
     \qml
-    import Qt 4.7
+    import QtQuick 1.0
 
     Row {
         Rectangle {
@@ -728,41 +728,39 @@ void QDeclarativeKeyNavigationAttached::keyReleased(QKeyEvent *event, bool post)
     \since 4.7
     \brief The Keys attached property provides key handling to Items.
 
-    All visual primitives support key handling via the \e Keys
-    attached property.  Keys can be handled via the \e onPressed
-    and \e onReleased signal properties.
+    All visual primitives support key handling via the Keys
+    attached property.  Keys can be handled via the onPressed
+    and onReleased signal properties.
 
     The signal properties have a \l KeyEvent parameter, named
     \e event which contains details of the event.  If a key is
     handled \e event.accepted should be set to true to prevent the
     event from propagating up the item hierarchy.
 
-    \code
-    Item {
-        focus: true
-        Keys.onPressed: {
-            if (event.key == Qt.Key_Left) {
-                console.log("move left");
-                event.accepted = true;
-            }
-        }
-    }
-    \endcode
+    \section1 Example Usage
+
+    The following example shows how the general onPressed handler can
+    be used to test for a certain key; in this case, the left cursor
+    key:
+
+    \snippet doc/src/snippets/declarative/keys/keys-pressed.qml key item
 
     Some keys may alternatively be handled via specific signal properties,
     for example \e onSelectPressed.  These handlers automatically set
     \e event.accepted to true.
 
-    \code
-    Item {
-        focus: true
-        Keys.onLeftPressed: console.log("move left")
-    }
-    \endcode
+    \snippet doc/src/snippets/declarative/keys/keys-handler.qml key item
 
-    See \l {Qt::Key}{Qt.Key} for the list of keyboard codes.
+    See \l{Qt::Key}{Qt.Key} for the list of keyboard codes.
 
-    If priority is Keys.BeforeItem (default) the order of key event processing is:
+    \section1 Key Handling Priorities
+
+    The Keys attached property can be configured to handle key events
+    before or after the item it is attached to. This makes it possible
+    to intercept events in order to override an item's default behavior,
+    or act as a fallback for keys not handled by the item.
+
+    If \l priority is Keys.BeforeItem (default) the order of key event processing is:
 
     \list 1
     \o Items specified in \c forwardTo
@@ -773,6 +771,7 @@ void QDeclarativeKeyNavigationAttached::keyReleased(QKeyEvent *event, bool post)
     \endlist
 
     If priority is Keys.AfterItem the order of key event processing is:
+
     \list 1
     \o Item specific key handling, e.g. TextInput key handling
     \o Items specified in \c forwardTo
@@ -1180,7 +1179,7 @@ void QDeclarativeKeysAttached::keyPressed(QKeyEvent *event, bool post)
         d->inPress = true;
         for (int ii = 0; ii < d->targets.count(); ++ii) {
             QGraphicsItem *i = d->finalFocusProxy(d->targets.at(ii));
-            if (i) {
+            if (i && i->isVisible()) {
                 d->item->scene()->sendEvent(i, event);
                 if (event->isAccepted()) {
                     d->inPress = false;
@@ -1222,7 +1221,7 @@ void QDeclarativeKeysAttached::keyReleased(QKeyEvent *event, bool post)
         d->inRelease = true;
         for (int ii = 0; ii < d->targets.count(); ++ii) {
             QGraphicsItem *i = d->finalFocusProxy(d->targets.at(ii));
-            if (i) {
+            if (i && i->isVisible()) {
                 d->item->scene()->sendEvent(i, event);
                 if (event->isAccepted()) {
                     d->inRelease = false;
@@ -1247,7 +1246,7 @@ void QDeclarativeKeysAttached::inputMethodEvent(QInputMethodEvent *event, bool p
         d->inIM = true;
         for (int ii = 0; ii < d->targets.count(); ++ii) {
             QGraphicsItem *i = d->finalFocusProxy(d->targets.at(ii));
-            if (i && (i->flags() & QGraphicsItem::ItemAcceptsInputMethod)) {
+            if (i && i->isVisible() && (i->flags() & QGraphicsItem::ItemAcceptsInputMethod)) {
                 d->item->scene()->sendEvent(i, event);
                 if (event->isAccepted()) {
                     d->imeItem = i;
@@ -1275,7 +1274,7 @@ QVariant QDeclarativeKeysAttached::inputMethodQuery(Qt::InputMethodQuery query) 
     if (d->item) {
         for (int ii = 0; ii < d->targets.count(); ++ii) {
                 QGraphicsItem *i = d->finalFocusProxy(d->targets.at(ii));
-            if (i && (i->flags() & QGraphicsItem::ItemAcceptsInputMethod) && i == d->imeItem) { //### how robust is i == d->imeItem check?
+            if (i && i->isVisible() && (i->flags() & QGraphicsItem::ItemAcceptsInputMethod) && i == d->imeItem) { //### how robust is i == d->imeItem check?
                 QVariant v = static_cast<QDeclarativeItemAccessor *>(i)->doInputMethodQuery(query);
                 if (v.userType() == QVariant::RectF)
                     v = d->item->mapRectFromItem(i, v.toRectF());  //### cost?
@@ -1613,10 +1612,66 @@ void QDeclarativeItemPrivate::data_append(QDeclarativeListProperty<QObject> *pro
     while (mo && mo != &QGraphicsObject::staticMetaObject) mo = mo->d.superdata;
 
     if (mo) {
-        QGraphicsItemPrivate::get(static_cast<QGraphicsObject *>(o))->setParentItemHelper(that, 0, 0);
+        QGraphicsObject *graphicsObject = static_cast<QGraphicsObject *>(o);
+        QDeclarativeItemPrivate *contentItemPrivate = static_cast<QDeclarativeItemPrivate *>(QGraphicsItemPrivate::get(graphicsObject));
+        if (contentItemPrivate->componentComplete) {
+            graphicsObject->setParentItem(that);
+        } else {
+            contentItemPrivate->setParentItemHelper(that, /*newParentVariant=*/0, /*thisPointerVariant=*/0);
+        }
     } else {
         o->setParent(that);
     }
+}
+
+static inline int children_count_helper(QDeclarativeListProperty<QObject> *prop)
+{
+    QGraphicsItemPrivate *d = QGraphicsItemPrivate::get(static_cast<QGraphicsObject *>(prop->object));
+    return d->children.count();
+}
+
+static inline QObject *children_at_helper(QDeclarativeListProperty<QObject> *prop, int index)
+{
+    QGraphicsItemPrivate *d = QGraphicsItemPrivate::get(static_cast<QGraphicsObject *>(prop->object));
+    if (index >= 0 && index < d->children.count())
+        return d->children.at(index)->toGraphicsObject();
+    else
+        return 0;
+}
+
+static inline void children_clear_helper(QDeclarativeListProperty<QObject> *prop)
+{
+    QDeclarativeItemPrivate *d = static_cast<QDeclarativeItemPrivate*>(QGraphicsItemPrivate::get(static_cast<QGraphicsObject *>(prop->object)));
+    int childCount = d->children.count();
+    if (d->componentComplete) {
+        for (int index = 0 ;index < childCount; index++)
+            d->children.at(0)->setParentItem(0);
+    } else {
+        for (int index = 0 ;index < childCount; index++)
+            QGraphicsItemPrivate::get(d->children.at(0))->setParentItemHelper(0, /*newParentVariant=*/0, /*thisPointerVariant=*/0);
+    }
+}
+
+int QDeclarativeItemPrivate::data_count(QDeclarativeListProperty<QObject> *prop)
+{
+    return resources_count(prop) + children_count_helper(prop);
+}
+
+QObject *QDeclarativeItemPrivate::data_at(QDeclarativeListProperty<QObject> *prop, int i)
+{
+    int resourcesCount = resources_count(prop);
+    if (i < resourcesCount)
+        return resources_at(prop, i);
+    const int j = i - resourcesCount;
+    if (j < children_count_helper(prop))
+        return children_at_helper(prop, j);
+    return 0;
+}
+
+void QDeclarativeItemPrivate::data_clear(QDeclarativeListProperty<QObject> *prop)
+{
+    resources_clear(prop);
+    children_clear_helper(prop);
 }
 
 QObject *QDeclarativeItemPrivate::resources_at(QDeclarativeListProperty<QObject> *prop, int index)
@@ -1638,6 +1693,13 @@ int QDeclarativeItemPrivate::resources_count(QDeclarativeListProperty<QObject> *
     return prop->object->children().count();
 }
 
+void QDeclarativeItemPrivate::resources_clear(QDeclarativeListProperty<QObject> *prop)
+{
+    const QObjectList children = prop->object->children();
+    for (int index = 0; index < children.count(); index++)
+        children.at(index)->setParent(0);
+}
+
 int QDeclarativeItemPrivate::transform_count(QDeclarativeListProperty<QGraphicsTransform> *list)
 {
     QGraphicsObject *object = qobject_cast<QGraphicsObject *>(list->object);
@@ -1652,7 +1714,7 @@ int QDeclarativeItemPrivate::transform_count(QDeclarativeListProperty<QGraphicsT
 void QDeclarativeItemPrivate::transform_append(QDeclarativeListProperty<QGraphicsTransform> *list, QGraphicsTransform *item)
 {
     QGraphicsObject *object = qobject_cast<QGraphicsObject *>(list->object);
-    if (object) // QGraphicsItem applies the list in the wrong order, so we prepend.
+    if (object && item) // QGraphicsItem applies the list in the wrong order, so we prepend.
         QGraphicsItemPrivate::get(object)->prependGraphicsTransform(item);
 }
 
@@ -1692,8 +1754,8 @@ void QDeclarativeItemPrivate::parentProperty(QObject *o, void *rv, QDeclarativeN
     \qmlproperty list<Object> Item::data
     \default
 
-    The data property is allows you to freely mix visual children and resources
-    of an item.  If you assign a visual item to the data list it becomes
+    The data property allows you to freely mix visual children and resources
+    in an item.  If you assign a visual item to the data list it becomes
     a child and if you assign any other object type, it is added as a resource.
 
     So you can write:
@@ -1724,7 +1786,11 @@ void QDeclarativeItemPrivate::parentProperty(QObject *o, void *rv, QDeclarativeN
 
 QDeclarativeListProperty<QObject> QDeclarativeItemPrivate::data()
 {
-    return QDeclarativeListProperty<QObject>(q_func(), 0, QDeclarativeItemPrivate::data_append);
+    return QDeclarativeListProperty<QObject>(q_func(), 0, QDeclarativeItemPrivate::data_append,
+                                             QDeclarativeItemPrivate::data_count,
+                                             QDeclarativeItemPrivate::data_at,
+                                             QDeclarativeItemPrivate::data_clear
+                                             );
 }
 
 /*!
@@ -1889,12 +1955,8 @@ void QDeclarativeItem::geometryChanged(const QRectF &newGeometry,
             change.listener->itemGeometryChanged(this, newGeometry, oldGeometry);
     }
 
-    if (newGeometry.x() != oldGeometry.x())
-        emit xChanged();
     if (newGeometry.width() != oldGeometry.width())
         emit widthChanged();
-    if (newGeometry.y() != oldGeometry.y())
-        emit yChanged();
     if (newGeometry.height() != oldGeometry.height())
         emit heightChanged();
 }
@@ -2413,7 +2475,9 @@ QDeclarativeListProperty<QObject> QDeclarativeItemPrivate::resources()
 {
     return QDeclarativeListProperty<QObject>(q_func(), 0, QDeclarativeItemPrivate::resources_append,
                                              QDeclarativeItemPrivate::resources_count,
-                                             QDeclarativeItemPrivate::resources_at);
+                                             QDeclarativeItemPrivate::resources_at,
+                                             QDeclarativeItemPrivate::resources_clear
+                                             );
 }
 
 /*!
@@ -2484,7 +2548,7 @@ QDeclarativeListProperty<QDeclarativeTransition> QDeclarativeItemPrivate::transi
 
 /*!
   \qmlproperty bool Item::clip
-  This property holds whether clipping is enabled.
+  This property holds whether clipping is enabled. The default clip value is \c false.
 
   If clipping is enabled, an item will clip its own painting, as well
   as the painting of its children, to its bounding rectangle.
@@ -2494,9 +2558,9 @@ QDeclarativeListProperty<QDeclarativeTransition> QDeclarativeItemPrivate::transi
 
 /*!
   \property QDeclarativeItem::clip
-  This property holds whether clipping is enabled.
+  This property holds whether clipping is enabled. The default clip value is \c false.
 
-  if clipping is enabled, an item will clip its own painting, as well
+  If clipping is enabled, an item will clip its own painting, as well
   as the painting of its children, to its bounding rectangle. If you set
   clipping during an item's paint operation, remember to re-set it to 
   prevent clipping the rest of your scene.

@@ -93,8 +93,8 @@ enum LayoutSide {
 
 enum {
     NoConstraint,
-    HorizontalConstraint,
-    VerticalConstraint,
+    HorizontalConstraint,   // Width depends on the height
+    VerticalConstraint,     // Height depends on the width
     UnknownConstraint,      // need to update cache
     UnfeasibleConstraint    // not feasible, it be has some items with Vertical and others with Horizontal constraints
 };
@@ -224,13 +224,16 @@ public:
 
 typedef QMap<QPair<int, int>, QGridLayoutMultiCellData> MultiCellMap;
 
+class QGridLayoutRowInfo;
+
 class QGridLayoutRowData
 {
 public:
     void reset(int count);
-    void distributeMultiCells();
+    void distributeMultiCells(const QGridLayoutRowInfo &rowInfo);
     void calculateGeometries(int start, int end, qreal targetSize, qreal *positions, qreal *sizes,
-                             qreal *descents, const QGridLayoutBox &totalBox);
+                             qreal *descents, const QGridLayoutBox &totalBox,
+                             const QGridLayoutRowInfo &rowInfo);
     QGridLayoutBox totalBox(int start, int end) const;
     void stealBox(int start, int end, int which, qreal *positions, qreal *sizes);
 
@@ -338,6 +341,7 @@ public:
     // returns the number of items inserted, which may be less than (rowCount * columnCount)
     int itemCount() const;
     QGridLayoutItem *itemAt(int index) const;
+    int indexOf(QGraphicsLayoutItem *item) const;
 
     int effectiveFirstRow(Qt::Orientation orientation = Qt::Vertical) const;
     int effectiveLastRow(Qt::Orientation orientation = Qt::Vertical) const;
@@ -410,9 +414,14 @@ private:
     void setItemAt(int row, int column, QGridLayoutItem *item);
     void insertOrRemoveRows(int row, int delta, Qt::Orientation orientation = Qt::Vertical);
     void fillRowData(QGridLayoutRowData *rowData, const QLayoutStyleInfo &styleInfo,
-                     Qt::Orientation orientation = Qt::Vertical) const;
+                                    qreal *colPositions, qreal *colSizes,
+                                    Qt::Orientation orientation = Qt::Vertical) const;
     void ensureEffectiveFirstAndLastRows() const;
-    void ensureColumnAndRowData(const QLayoutStyleInfo &styleInfo) const;
+    void ensureColumnAndRowData(QGridLayoutRowData *rowData, QGridLayoutBox *totalBox,
+                                            const QLayoutStyleInfo &styleInfo,
+                                            qreal *colPositions, qreal *colSizes,
+                                            Qt::Orientation orientation) const;
+
     void ensureGeometries(const QLayoutStyleInfo &styleInfo, const QSizeF &size) const;
 
     // User input

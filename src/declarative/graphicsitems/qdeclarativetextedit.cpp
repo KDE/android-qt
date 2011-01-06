@@ -319,6 +319,7 @@ void QDeclarativeTextEdit::setTextFormat(TextFormat format)
         updateSize();
     }
     d->format = format;
+    d->control->setAcceptRichText(d->format != PlainText);
     emit textFormatChanged(d->format);
 }
 
@@ -1422,7 +1423,7 @@ void QDeclarativeTextEditPrivate::updateDefaultTextOption()
     Only relevant on platforms, which provide virtual keyboards.
 
     \code
-        import Qt 4.7
+        import QtQuick 1.0
         TextEdit {
             id: textEdit
             text: "Hello world!"
@@ -1473,7 +1474,7 @@ void QDeclarativeTextEdit::openSoftwareInputPanel()
     Only relevant on platforms, which provide virtual keyboards.
 
     \code
-        import Qt 4.7
+        import QtQuick 1.0
         TextEdit {
             id: textEdit
             text: "Hello world!"

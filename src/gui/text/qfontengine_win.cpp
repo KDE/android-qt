@@ -63,7 +63,6 @@
 #include <qbitmap.h>
 
 #include <private/qpainter_p.h>
-#include <private/qpdf_p.h>
 #include "qpaintengine.h"
 #include "qvarlengtharray.h"
 #include <private/qpaintengine_raster_p.h>
@@ -1039,9 +1038,7 @@ QFontEngine::Properties QFontEngineWin::properties() const
     p.italicAngle = otm->otmItalicAngle;
     p.postscriptName = QString::fromWCharArray((wchar_t *)((char *)otm + (quintptr)otm->otmpFamilyName)).toLatin1();
     p.postscriptName += QString::fromWCharArray((wchar_t *)((char *)otm + (quintptr)otm->otmpStyleName)).toLatin1();
-#ifndef QT_NO_PRINTER
-    p.postscriptName = QPdf::stripSpecialCharacters(p.postscriptName);
-#endif
+    p.postscriptName = QFontEngine::convertToPostscriptFontFamilyName(p.postscriptName);
     p.boundingBox = QRectF(otm->otmrcFontBox.left, -otm->otmrcFontBox.top,
                            otm->otmrcFontBox.right - otm->otmrcFontBox.left,
                            otm->otmrcFontBox.top - otm->otmrcFontBox.bottom);
@@ -1212,7 +1209,7 @@ QImage QFontEngineWin::alphaMapForGlyph(glyph_t glyph, const QTransform &xform)
 
     QImage indexed(mask->width(), mask->height(), QImage::Format_Indexed8);
 
-    // ### This part is kinda pointless, but we'll crash later if we dont because some
+    // ### This part is kinda pointless, but we'll crash later if we don't because some
     // code paths expects there to be colortables for index8-bit...
     QVector<QRgb> colors(256);
     for (int i=0; i<256; ++i)
@@ -1254,7 +1251,7 @@ QImage QFontEngineWin::alphaMapForGlyph(glyph_t glyph, const QTransform &xform)
 #define SPI_GETFONTSMOOTHINGCONTRAST           0x200C
 #define SPI_SETFONTSMOOTHINGCONTRAST           0x200D
 
-QImage QFontEngineWin::alphaRGBMapForGlyph(glyph_t glyph, int margin, const QTransform &t)
+QImage QFontEngineWin::alphaRGBMapForGlyph(glyph_t glyph, QFixed, int margin, const QTransform &t)
 {
     HFONT font = hfont;
 
@@ -1296,6 +1293,7 @@ QFontEngineMultiWin::QFontEngineMultiWin(QFontEngineWin *first, const QStringLis
     engines[0] = first;
     first->ref.ref();
     fontDef = engines[0]->fontDef;
+    cache_cost = first->cache_cost;
 }
 
 void QFontEngineMultiWin::loadEngine(int at)
@@ -1317,6 +1315,8 @@ void QFontEngineMultiWin::loadEngine(int at)
     engines[at] = new QFontEngineWin(fam, hfont, stockFont, lf);
     engines[at]->ref.ref();
     engines[at]->fontDef = fontDef;
+
+    // TODO: increase cost in QFontCache for the font engine loaded here
 }
 
 QT_END_NAMESPACE

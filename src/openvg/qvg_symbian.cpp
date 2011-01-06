@@ -77,7 +77,8 @@ extern int qt_vg_pixmap_serial;
 
 static CFbsBitmap* createBlitCopy(CFbsBitmap* bitmap)
 {
-    CFbsBitmap *copy = q_check_ptr(new CFbsBitmap);
+    CFbsBitmap *copy = new CFbsBitmap;
+    Q_CHECK_PTR(copy);
     if(!copy)
         return 0;
 
@@ -112,25 +113,8 @@ static VGImage sgImageToVGImage(QEglContext *context, const RSgImage &sgImage)
 
     VGImage vgImage = VG_INVALID_HANDLE;
 
-    TInt err = 0;
-
-    RSgDriver driver;
-    err = driver.Open();
-    if (err != KErrNone) {
+    if (sgImage.IsNull())
         return vgImage;
-    }
-
-    if (sgImage.IsNull()) {
-        driver.Close();
-        return vgImage;
-    }
-
-    TSgImageInfo sgImageInfo;
-    err = sgImage.GetInfo(sgImageInfo);
-    if (err != KErrNone) {
-        driver.Close();
-        return vgImage;
-    }
 
     const EGLint KEglImageAttribs[] = {EGL_IMAGE_PRESERVED_SYMBIAN, EGL_TRUE, EGL_NONE};
     EGLImageKHR eglImage = QEgl::eglCreateImageKHR(QEgl::display(),
@@ -139,22 +123,12 @@ static VGImage sgImageToVGImage(QEglContext *context, const RSgImage &sgImage)
             (EGLClientBuffer)&sgImage,
             (EGLint*)KEglImageAttribs);
 
-    if (!eglImage || eglGetError() != EGL_SUCCESS) {
-        driver.Close();
+    if (!eglImage)
         return vgImage;
-    }
 
     vgImage = QVG::vgCreateEGLImageTargetKHR(eglImage);
-    if (!vgImage || vgGetError() != VG_NO_ERROR) {
-        QEgl::eglDestroyImageKHR(QEgl::display(), eglImage);
-        driver.Close();
-        return vgImage;
-    }
 
-    //setSerialNumber(++qt_vg_pixmap_serial);
-    // release stuff
     QEgl::eglDestroyImageKHR(QEgl::display(), eglImage);
-    driver.Close();
     return vgImage;
 }
 #endif
@@ -191,7 +165,6 @@ void QVGPixmapData::fromNativeType(void* pixmap, NativeType type)
         CFbsBitmap *bitmap = reinterpret_cast<CFbsBitmap*>(pixmap);
 
         bool deleteSourceBitmap = false;
-
 #ifdef Q_SYMBIAN_HAS_EXTENDED_BITMAP_TYPE
 
         // Rasterize extended bitmaps
@@ -212,10 +185,11 @@ void QVGPixmapData::fromNativeType(void* pixmap, NativeType type)
         QImage::Format format = qt_TDisplayMode2Format(displayMode);
 
         TSize size = bitmap->SizeInPixels();
+        int bytesPerLine = bitmap->ScanLineLength(size.iWidth, displayMode);
 
         bitmap->BeginDataAccess();
         uchar *bytes = (uchar*)bitmap->DataAddress();
-        QImage img = QImage(bytes, size.iWidth, size.iHeight, format);
+        QImage img = QImage(bytes, size.iWidth, size.iHeight, bytesPerLine, format);
         img = img.copy();
         bitmap->EndDataAccess();
 
@@ -255,7 +229,7 @@ void* QVGPixmapData::toNativeType(NativeType type)
         sgInfo.iSizeInPixels.SetSize(w, h);
         sgInfo.iUsage = ESgUsageBitOpenVgImage | ESgUsageBitOpenVgSurface;
 
-        RSgImage *sgImage = q_check_ptr(new RSgImage());
+        QScopedPointer<RSgImage> sgImage(new RSgImage());
         err = sgImage->Create(sgInfo, NULL, NULL);
         if (err != KErrNone) {
             driver.Close();
@@ -266,7 +240,7 @@ void* QVGPixmapData::toNativeType(NativeType type)
         EGLImageKHR eglImage = QEgl::eglCreateImageKHR(QEgl::display(),
                 EGL_NO_CONTEXT,
                 EGL_NATIVE_PIXMAP_KHR,
-                (EGLClientBuffer)sgImage,
+                (EGLClientBuffer)sgImage.data(),
                 (EGLint*)KEglImageAttribs);
         if (!eglImage || eglGetError() != EGL_SUCCESS) {
             sgImage->Close();
@@ -288,16 +262,18 @@ void* QVGPixmapData::toNativeType(NativeType type)
 
         if (vgGetError() != VG_NO_ERROR) {
             sgImage->Close();
-            sgImage = 0;
+            sgImage.reset();
         }
+
         // release stuff
         vgDestroyImage(dstVgImage);
         QEgl::eglDestroyImageKHR(QEgl::display(), eglImage);
         driver.Close();
-        return reinterpret_cast<void*>(sgImage);
+        return reinterpret_cast<void*>(sgImage.take());
 #endif
     } else if (type == QPixmapData::FbsBitmap) {
-                CFbsBitmap *bitmap = q_check_ptr(new CFbsBitmap);
+        CFbsBitmap *bitmap = new CFbsBitmap;
+        Q_CHECK_PTR(bitmap);
 
         if (bitmap) {
             if (bitmap->Create(TSize(source.width(), source.height()),

@@ -74,7 +74,7 @@ public:
     \since 4.3
     \internal
     \preliminary
-    \ingroup qws
+    \ingroup qws qpa
 
     \brief The QWindowSurface class provides the drawing area for top-level
     windows.
@@ -118,11 +118,11 @@ public:
 /*!
     Constructs an empty surface for the given top-level \a window.
 */
-QWindowSurface::QWindowSurface(QWidget *window)
+QWindowSurface::QWindowSurface(QWidget *window, bool setDefaultSurface)
     : d_ptr(new QWindowSurfacePrivate(window))
 {
     if (!QApplicationPrivate::runtime_graphics_system) {
-        if(window)
+        if(setDefaultSurface && window)
             window->setWindowSurface(this);
     }
 }
@@ -179,11 +179,20 @@ QRect QWindowSurface::geometry() const
     return d_ptr->geometry;
 }
 #else
+
+/*!
+      Sets the size of the windowsurface to be \a size.
+
+      \sa size()
+*/
 void QWindowSurface::resize(const QSize &size)
 {
     d_ptr->size = size;
 }
 
+/*!
+    Returns the current size of the windowsurface.
+*/
 QSize QWindowSurface::size() const
 {
     return d_ptr->size;

@@ -144,6 +144,12 @@ public:
 
     QByteArray &operator=(const QByteArray &);
     QByteArray &operator=(const char *str);
+#ifdef Q_COMPILER_RVALUE_REFS
+    inline QByteArray &operator=(QByteArray &&other)
+    { qSwap(d, other.d); return *this; }
+#endif
+
+    inline void swap(QByteArray &other) { qSwap(d, other.d); }
 
     inline int size() const;
     bool isEmpty() const;

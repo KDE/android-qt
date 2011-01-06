@@ -331,6 +331,7 @@ public:
     float gamma;
     int quality;
     QString description;
+    QStringList readTexts;
 
     png_struct *png_ptr;
     png_info *info_ptr;
@@ -389,25 +390,20 @@ bool Q_INTERNAL_WIN_NO_THROW QPngHandlerPrivate::readPngHeader()
 
     while (num_text--) {
         QString key, value;
-#if defined(PNG_iTXt_SUPPORTED) && !defined(QT_NO_TEXTCODEC)
-        if (text_ptr->lang) {
-            QTextCodec *codec = QTextCodec::codecForName(text_ptr->lang);
-            if (codec) {
-                key = codec->toUnicode(text_ptr->lang_key);
-                value = codec->toUnicode(QByteArray(text_ptr->text, text_ptr->itxt_length));
-            } else {
-                key = QString::fromLatin1(text_ptr->key);
-                value = QString::fromLatin1(QByteArray(text_ptr->text, int(text_ptr->text_length)));
-            }
+        key = QString::fromLatin1(text_ptr->key);
+#if defined(PNG_iTXt_SUPPORTED)
+        if (text_ptr->itxt_length) {
+            value = QString::fromUtf8(text_ptr->text, int(text_ptr->itxt_length));
         } else
 #endif
         {
-            key = QString::fromLatin1(text_ptr->key);
             value = QString::fromLatin1(QByteArray(text_ptr->text, int(text_ptr->text_length)));
         }
         if (!description.isEmpty())
             description += QLatin1String("\n\n");
         description += key + QLatin1String(": ") + value.simplified();
+        readTexts.append(key);
+        readTexts.append(value);
         text_ptr++;
     }
 #endif
@@ -485,25 +481,8 @@ bool Q_INTERNAL_WIN_NO_THROW QPngHandlerPrivate::readPngImage(QImage *outImage)
     outImage->setDotsPerMeterX(png_get_x_pixels_per_meter(png_ptr,info_ptr));
     outImage->setDotsPerMeterY(png_get_y_pixels_per_meter(png_ptr,info_ptr));
 
-#ifndef QT_NO_IMAGE_TEXT
-    png_textp text_ptr;
-    int num_text=0;
-    png_get_text(png_ptr,info_ptr,&text_ptr,&num_text);
-    while (num_text--) {
-        outImage->setText(text_ptr->key,0,QString::fromAscii(text_ptr->text));
-        text_ptr++;
-    }
-
-    foreach (const QString &pair, description.split(QLatin1String("\n\n"))) {
-        int index = pair.indexOf(QLatin1Char(':'));
-        if (index >= 0 && pair.indexOf(QLatin1Char(' ')) < index) {
-            outImage->setText(QLatin1String("Description"), pair.simplified());
-        } else {
-            QString key = pair.left(index);
-            outImage->setText(key, pair.mid(index + 2).simplified());
-        }
-    }
-#endif
+    for (int i = 0; i < readTexts.size()-1; i+=2)
+        outImage->setText(readTexts.at(i), readTexts.at(i+1));
 
     png_read_end(png_ptr, end_info);
     png_destroy_read_struct(&png_ptr, &info_ptr, &end_info);
@@ -634,29 +613,40 @@ static void set_text(const QImage &image, png_structp png_ptr, png_infop info_pt
         return;
 
     png_textp text_ptr = new png_text[text.size()];
+    qMemSet(text_ptr, 0, text.size() * sizeof(png_text));
 
     QMap<QString, QString>::ConstIterator it = text.constBegin();
     int i = 0;
     while (it != text.constEnd()) {
-        QString t = it.value();
-        if (t.length() < 40)
-            text_ptr[i].compression = PNG_TEXT_COMPRESSION_NONE;
-        else
-            text_ptr[i].compression = PNG_TEXT_COMPRESSION_zTXt;
         text_ptr[i].key = qstrdup(it.key().left(79).toLatin1().constData());
+        bool noCompress = (it.value().length() < 40);
 
-#ifndef PNG_iTXt_SUPPORTED
-        QByteArray value = it.value().toLatin1();
-        text_ptr[i].text = qstrdup(value.constData());
-        text_ptr[i].text_length = value.size();
-#else
-        QByteArray value = it.value().toUtf8();
-        text_ptr[i].text = qstrdup(value.constData());
-        text_ptr[i].text_length = 0;
-        text_ptr[i].itxt_length = value.size();
-        text_ptr[i].lang = const_cast<char*>("UTF-8");
-        text_ptr[i].lang_key = qstrdup(it.key().toUtf8().constData());
+#ifdef PNG_iTXt_SUPPORTED
+        bool needsItxt = false;
+        foreach(const QChar c, it.value()) {
+            uchar ch = c.cell();
+            if (c.row() || (ch < 0x20 && ch != '\n') || (ch > 0x7e && ch < 0xa0)) {
+                needsItxt = true;
+                break;
+            }
+        }
+
+        if (needsItxt) {
+            text_ptr[i].compression = noCompress ? PNG_ITXT_COMPRESSION_NONE : PNG_ITXT_COMPRESSION_zTXt;
+            QByteArray value = it.value().toUtf8();
+            text_ptr[i].text = qstrdup(value.constData());
+            text_ptr[i].itxt_length = value.size();
+            text_ptr[i].lang = const_cast<char*>("UTF-8");
+            text_ptr[i].lang_key = qstrdup(it.key().toUtf8().constData());
+        }
+        else
 #endif
+        {
+            text_ptr[i].compression = noCompress ? PNG_TEXT_COMPRESSION_NONE : PNG_TEXT_COMPRESSION_zTXt;
+            QByteArray value = it.value().toLatin1();
+            text_ptr[i].text = qstrdup(value.constData());
+            text_ptr[i].text_length = value.size();
+        }
         ++i;
         ++it;
     }
@@ -678,33 +668,12 @@ bool QPNGImageWriter::writeImage(const QImage& image, int off_x, int off_y)
     return writeImage(image, -1, QString(), off_x, off_y);
 }
 
-bool Q_INTERNAL_WIN_NO_THROW QPNGImageWriter::writeImage(const QImage& image_in, int quality_in, const QString &description,
+bool Q_INTERNAL_WIN_NO_THROW QPNGImageWriter::writeImage(const QImage& image, int quality_in, const QString &description,
                                  int off_x_in, int off_y_in)
 {
 #ifdef QT_NO_IMAGE_TEXT
     Q_UNUSED(description);
 #endif
-
-    QImage image;
-    switch (image_in.format()) {
-    case QImage::Format_ARGB32_Premultiplied:
-    case QImage::Format_ARGB4444_Premultiplied:
-    case QImage::Format_ARGB8555_Premultiplied:
-    case QImage::Format_ARGB8565_Premultiplied:
-    case QImage::Format_ARGB6666_Premultiplied:
-        image = image_in.convertToFormat(QImage::Format_ARGB32);
-        break;
-    case QImage::Format_RGB16:
-    case QImage::Format_RGB444:
-    case QImage::Format_RGB555:
-    case QImage::Format_RGB666:
-    case QImage::Format_RGB888:
-        image = image_in.convertToFormat(QImage::Format_RGB32);
-        break;
-    default:
-        image = image_in;
-        break;
-    }
 
     QPoint offset = image.offset();
     int off_x = off_x_in + offset.x();
@@ -712,7 +681,6 @@ bool Q_INTERNAL_WIN_NO_THROW QPNGImageWriter::writeImage(const QImage& image_in,
 
     png_structp png_ptr;
     png_infop info_ptr;
-    png_bytep* row_pointers;
 
     png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING,0,0,0);
     if (!png_ptr) {
@@ -743,13 +711,18 @@ bool Q_INTERNAL_WIN_NO_THROW QPNGImageWriter::writeImage(const QImage& image_in,
 
     png_set_write_fn(png_ptr, (void*)this, qpiw_write_fn, qpiw_flush_fn);
 
+
+    int color_type = 0;
+    if (image.colorCount())
+        color_type = PNG_COLOR_TYPE_PALETTE;
+    else if (image.hasAlphaChannel())
+        color_type = PNG_COLOR_TYPE_RGB_ALPHA;
+    else
+        color_type = PNG_COLOR_TYPE_RGB;
+
     png_set_IHDR(png_ptr, info_ptr, image.width(), image.height(),
-        image.depth() == 1 ? 1 : 8 /* per channel */,
-        image.depth() == 32
-            ? image.format() == QImage::Format_RGB32
-                ? PNG_COLOR_TYPE_RGB
-                : PNG_COLOR_TYPE_RGB_ALPHA
-            : PNG_COLOR_TYPE_PALETTE, 0, 0, 0);  // also sets #channels
+                 image.depth() == 1 ? 1 : 8, // per channel
+                 color_type, 0, 0, 0);       // sets #channels
 
     if (gamma != 0.0) {
         png_set_gAMA(png_ptr, info_ptr, 1.0/gamma);
@@ -794,8 +767,9 @@ bool Q_INTERNAL_WIN_NO_THROW QPNGImageWriter::writeImage(const QImage& image_in,
         png_set_swap_alpha(png_ptr);
     }
 
-    // Qt==ARGB==Big(ARGB)==Little(BGRA)
-    if (QSysInfo::ByteOrder == QSysInfo::LittleEndian) {
+    // Qt==ARGB==Big(ARGB)==Little(BGRA). But RGB888 is RGB regardless
+    if (QSysInfo::ByteOrder == QSysInfo::LittleEndian
+        && image.format() != QImage::Format_RGB888) {
         png_set_bgr(png_ptr);
     }
 
@@ -820,7 +794,7 @@ bool Q_INTERNAL_WIN_NO_THROW QPNGImageWriter::writeImage(const QImage& image_in,
     if (image.depth() != 1)
         png_set_packing(png_ptr);
 
-    if (image.format() == QImage::Format_RGB32)
+    if (color_type == PNG_COLOR_TYPE_RGB && image.format() != QImage::Format_RGB888)
         png_set_filler(png_ptr, 0,
             QSysInfo::ByteOrder == QSysInfo::BigEndian ?
                 PNG_FILLER_BEFORE : PNG_FILLER_AFTER);
@@ -841,22 +815,36 @@ bool Q_INTERNAL_WIN_NO_THROW QPNGImageWriter::writeImage(const QImage& image_in,
         png_write_chunk(png_ptr, (png_byte*)"gIFg", data, 4);
     }
 
-    png_uint_32 width;
-    png_uint_32 height;
-    int bit_depth;
-    int color_type;
-    png_get_IHDR(png_ptr, info_ptr, &width, &height, &bit_depth, &color_type,
-        0, 0, 0);
-
-    const uchar *data = (static_cast<const QImage *>(&image))->bits();
-    int bpl = image.bytesPerLine();
-    row_pointers = new png_bytep[height];
-    uint y;
-    for (y=0; y<height; y++) {
-        row_pointers[y] = (png_bytep)(data + y * bpl);
+    int height = image.height();
+    int width = image.width();
+    switch (image.format()) {
+    case QImage::Format_Mono:
+    case QImage::Format_MonoLSB:
+    case QImage::Format_Indexed8:
+    case QImage::Format_RGB32:
+    case QImage::Format_ARGB32:
+    case QImage::Format_RGB888:
+        {
+            png_bytep* row_pointers = new png_bytep[height];
+            for (int y=0; y<height; y++)
+                row_pointers[y] = (png_bytep)image.constScanLine(y);
+            png_write_image(png_ptr, row_pointers);
+            delete [] row_pointers;
+        }
+        break;
+    default:
+        {
+            QImage::Format fmt = image.hasAlphaChannel() ? QImage::Format_ARGB32 : QImage::Format_RGB32;
+            QImage row;
+            png_bytep row_pointers[1];
+            for (int y=0; y<height; y++) {
+                row = image.copy(0, y, width, 1).convertToFormat(fmt);
+                row_pointers[0] = png_bytep(row.constScanLine(0));
+                png_write_rows(png_ptr, row_pointers, 1);
+            }
+        }
+        break;
     }
-    png_write_image(png_ptr, row_pointers);
-    delete [] row_pointers;
 
     png_write_end(png_ptr, info_ptr);
     frames_written++;

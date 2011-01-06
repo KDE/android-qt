@@ -122,6 +122,11 @@ static SystemDriveFunc PtrGetSystemDrive=0;
 extern QString qAppFileName();
 #endif
 
+int QCoreApplicationPrivate::app_compile_version = 0x040000; //we don't know exactly, but it's at least 4.0.0
+#if defined(QT3_SUPPORT)
+bool QCoreApplicationPrivate::useQt3Support = true;
+#endif
+
 #if !defined(Q_OS_WIN)
 #ifdef Q_OS_MAC
 QString QCoreApplicationPrivate::macMenuBarName()
@@ -263,10 +268,14 @@ struct QCoreApplicationData {
 
 Q_GLOBAL_STATIC(QCoreApplicationData, coreappdata)
 
-QCoreApplicationPrivate::QCoreApplicationPrivate(int &aargc, char **aargv)
+QCoreApplicationPrivate::QCoreApplicationPrivate(int &aargc, char **aargv, uint flags)
     : QObjectPrivate(), argc(aargc), argv(aargv), application_type(0), eventFilter(0),
       in_exec(false), aboutToQuitEmitted(false)
 {
+    app_compile_version = flags & 0xffffff;
+#if defined(QT3_SUPPORT)
+    useQt3Support = !(flags & 0x01000000);
+#endif
     static const char *const empty = "";
     if (argc == 0 || argv == 0) {
         argc = 0;
@@ -406,11 +415,10 @@ QString qAppName()
     operations can call processEvents() to keep the application
     responsive.
 
-    Some Qt classes, such as QString, can be used without a
-    QCoreApplication object. However, in general, we recommend that
-    you create a QCoreApplication or a QApplication object in your \c
-    main() function as early as possible. exit() will not return
-    until the event loop exits; e.g., when quit() is called.
+    In general, we recommend that you create a QCoreApplication or
+    a QApplication object in your \c main() function as early as
+    possible. exit() will not return until the event loop exits;
+    e.g., when quit() is called.
 
     Several static convenience functions are also provided. The
     QCoreApplication object is available from instance(). Events can
@@ -511,7 +519,7 @@ void QCoreApplication::flush()
     one valid character string.
 */
 QCoreApplication::QCoreApplication(int &argc, char **argv)
-    : QObject(*new QCoreApplicationPrivate(argc, argv))
+    : QObject(*new QCoreApplicationPrivate(argc, argv, 0x040000))
 {
     init();
     QCoreApplicationPrivate::eventDispatcher->startingUp();
@@ -526,6 +534,25 @@ QCoreApplication::QCoreApplication(int &argc, char **argv)
     d_func()->symbianInit();
 #endif
 }
+
+QCoreApplication::QCoreApplication(int &argc, char **argv, int _internal)
+: QObject(*new QCoreApplicationPrivate(argc, argv, _internal))
+{
+    init();
+    QCoreApplicationPrivate::eventDispatcher->startingUp();
+#if defined(Q_OS_SYMBIAN)
+#ifndef QT_NO_LIBRARY
+    // Refresh factoryloader, as text codecs are requested during lib path
+    // resolving process and won't be therefore properly loaded.
+    // Unknown if this is symbian specific issue.
+    QFactoryLoader::refreshAll();
+#endif
+#ifndef QT_NO_SYSTEMLOCALE
+    d_func()->symbianInit();
+#endif
+#endif //Q_OS_SYMBIAN
+}
+
 
 // ### move to QCoreApplicationPrivate constructor?
 void QCoreApplication::init()
@@ -805,11 +832,6 @@ bool QCoreApplication::notify(QObject *receiver, QEvent *event)
     d->checkReceiverThread(receiver);
 #endif
 
-#ifdef QT3_SUPPORT
-    if (event->type() == QEvent::ChildRemoved && !receiver->d_func()->pendingChildInsertedEvents.isEmpty())
-        receiver->d_func()->removePendingChildInsertedEvents(static_cast<QChildEvent *>(event)->child());
-#endif // QT3_SUPPORT
-
     return receiver->isWidgetType() ? false : d->notify_helper(receiver, event);
 }
 
@@ -1018,6 +1040,7 @@ int QCoreApplication::exec()
 
     return returnCode;
 }
+
 
 /*!
   Tells the application to exit with a return code.
@@ -1475,7 +1498,7 @@ void QCoreApplication::removePostedEvents(QObject *receiver, int eventType)
             --pe.receiver->d_func()->postedEvents;
 #ifdef QT3_SUPPORT
             if (pe.event->type() == QEvent::ChildInsertedRequest)
-                pe.receiver->d_func()->removePendingChildInsertedEvents(0);
+                pe.receiver->d_func()->pendingChildInsertedEvents.clear();
 #endif
             pe.event->posted = false;
             events.append(pe.event);
@@ -2091,7 +2114,8 @@ QStringList QCoreApplication::arguments()
                 l1arg == "-stylesheet" ||
                 l1arg == "-widgetcount")
                 ;
-            else if (l1arg.startsWith("-style="))
+            else if (l1arg.startsWith("-style=") ||
+                     l1arg.startsWith("-qmljsdebugger="))
                 ;
             else if (l1arg == "-style" ||
                      l1arg == "-session" ||

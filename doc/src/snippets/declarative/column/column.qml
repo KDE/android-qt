@@ -4,7 +4,7 @@
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
-** This file is part of the QtDeclarative module of the Qt Toolkit.
+** This file is part of the documentation of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:BSD$
 ** You may use this file under the terms of the BSD license as follows:
@@ -39,7 +39,7 @@
 ****************************************************************************/
 
 //! [document]
-import Qt 4.7
+import QtQuick 1.0
 
 Item {
     width: 310; height: 170
@@ -47,21 +47,21 @@ Item {
     Column {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.verticalCenter: parent.verticalCenter
-        
+
         spacing: 5
 
         Rectangle { color: "lightblue"; radius: 10.0
                     width: 300; height: 50
-                    Text { anchors.fill: parent
-                           font.pointSize: 32; text: "Books" } }
+                    Text { anchors.centerIn: parent
+                           font.pointSize: 24; text: "Books" } }
         Rectangle { color: "gold"; radius: 10.0
                     width: 300; height: 50
-                    Text { anchors.fill: parent
-                           font.pointSize: 32; text: "Music" } }
+                    Text { anchors.centerIn: parent
+                           font.pointSize: 24; text: "Music" } }
         Rectangle { color: "lightgreen"; radius: 10.0
                     width: 300; height: 50
-                    Text { anchors.fill: parent
-                           font.pointSize: 32; text: "Movies" } }
+                    Text { anchors.centerIn: parent
+                           font.pointSize: 24; text: "Movies" } }
     }
 }
 //! [document]

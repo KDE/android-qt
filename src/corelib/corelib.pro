@@ -19,7 +19,14 @@ include(codecs/codecs.pri)
 include(statemachine/statemachine.pri)
 include(xml/xml.pri)
 
-!nacl:mac|darwin:LIBS_PRIVATE += -framework ApplicationServices
+!qpa:mac|darwin:LIBS_PRIVATE += -framework ApplicationServices
+qpa:mac|darwin {
+  contains(QT_CONFIG, coreservices) {
+    LIBS_PRIVATE += -framework CoreServices
+  } else {
+    LIBS_PRIVATE += -framework CoreFoundation
+  }
+}
 
 mac:lib_bundle:DEFINES += QT_NO_DEBUG_PLUGIN_CHECK
 win32:DEFINES-=QT_NO_CAST_TO_ASCII
@@ -36,26 +43,4 @@ symbian: {
     # Workaroud for problems with paging this dll
     MMP_RULES -= PAGED
     MMP_RULES *= UNPAGED
-
-    # Partial upgrade SIS file
-    vendorinfo = \
-        "; Localised Vendor name" \
-        "%{\"Nokia, Qt\"}" \
-        " " \
-        "; Unique Vendor name" \
-        ":\"Nokia, Qt\"" \
-        " "
-    pu_header = "; Partial upgrade package for testing QtCore changes without reinstalling everything" \
-                "$${LITERAL_HASH}{\"Qt corelib\"}, (0x2001E61C), $${QT_MAJOR_VERSION},$${QT_MINOR_VERSION},$${QT_PATCH_VERSION}, TYPE=PU"
-    partial_upgrade.pkg_prerules = pu_header vendorinfo
-    partial_upgrade.sources = $$QMAKE_LIBDIR_QT/QtCore$${QT_LIBINFIX}.dll
-    partial_upgrade.path = c:/sys/bin
-    DEPLOYMENT = partial_upgrade $$DEPLOYMENT
 }
-
-neon {
-    DEFINES += QT_HAVE_NEON
-    QMAKE_CXXFLAGS *= -mfpu=neon
-}
-
-

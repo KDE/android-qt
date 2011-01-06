@@ -164,9 +164,13 @@ QAuthenticator &QAuthenticator::operator=(const QAuthenticator &other)
 {
     if (d == other.d)
         return *this;
-    detach();
-    d->user = other.d->user;
-    d->password = other.d->password;
+
+    if (d && !d->ref.deref())
+        delete d;
+
+    d = other.d;
+    if (d)
+        d->ref.ref();
     return *this;
 }
 
@@ -210,22 +214,43 @@ void QAuthenticator::setUser(const QString &user)
 
     switch(d->method) {
     case QAuthenticatorPrivate::DigestMd5:
-    case QAuthenticatorPrivate::Ntlm:
-        if((separatorPosn = user.indexOf(QLatin1String("\\"))) != -1)
-        {
+        if((separatorPosn = user.indexOf(QLatin1String("\\"))) != -1) {
             //domain name is present
+	    d->userDomain.clear();
             d->realm = user.left(separatorPosn);
             d->user = user.mid(separatorPosn + 1);
         } else if((separatorPosn = user.indexOf(QLatin1String("@"))) != -1) {
             //domain name is present
+	    d->userDomain.clear();
             d->realm = user.mid(separatorPosn + 1);
             d->user = user.left(separatorPosn);
         } else {
             d->user = user;
             d->realm.clear();
+            d->userDomain.clear();
         }
         break;
-    // For other auth mechanisms, domain name will be part of username
+
+    case QAuthenticatorPrivate::Ntlm:
+        if((separatorPosn = user.indexOf(QLatin1String("\\"))) != -1) {
+            //domain name is present
+            d->realm.clear();
+            d->userDomain = user.left(separatorPosn);
+            d->extractedUser = user.mid(separatorPosn + 1);
+            d->user = user;
+        } else if((separatorPosn = user.indexOf(QLatin1String("@"))) != -1) {
+            //domain name is present
+            d->realm.clear();
+            d->userDomain = user.left(separatorPosn);
+            d->extractedUser = user.left(separatorPosn);
+            d->user = user;
+        } else {
+            d->extractedUser = user;
+            d->user = user;
+	    d->realm.clear();
+            d->userDomain.clear();
+        }
+        break;
     default:
         d->user = user;
         break;
@@ -1177,8 +1202,8 @@ static QByteArray qCreatev2Hash(const QAuthenticatorPrivate *ctx,
         Q_ASSERT(hashKey.size() == 16);
         // Assuming the user and domain is always unicode in challenge
         QByteArray message =
-                qStringAsUcs2Le(ctx->user.toUpper()) +
-                qStringAsUcs2Le(ctx->realm);
+                qStringAsUcs2Le(ctx->extractedUser.toUpper()) +
+                qStringAsUcs2Le(phase3->domainStr);
 
         phase3->v2Hash = qEncodeHmacMd5(hashKey, message);
     }
@@ -1364,9 +1389,6 @@ static QByteArray qNtlmPhase3(QAuthenticatorPrivate *ctx, const QByteArray& phas
 
     bool unicode = ch.flags & NTLMSSP_NEGOTIATE_UNICODE;
 
-    if(ctx->realm.isEmpty())
-        ctx->realm = ch.targetNameStr;
-
     pb.flags = NTLMSSP_NEGOTIATE_NTLM;
     if (unicode)
         pb.flags |= NTLMSSP_NEGOTIATE_UNICODE;
@@ -1377,11 +1399,16 @@ static QByteArray qNtlmPhase3(QAuthenticatorPrivate *ctx, const QByteArray& phas
     int offset = QNtlmPhase3BlockBase::Size;
     Q_ASSERT(QNtlmPhase3BlockBase::Size == sizeof(QNtlmPhase3BlockBase));
     
-    offset = qEncodeNtlmString(pb.domain, offset, ctx->realm, unicode);
-    pb.domainStr = ctx->realm;
+    if(ctx->userDomain.isEmpty()) {
+        offset = qEncodeNtlmString(pb.domain, offset, ch.targetNameStr, unicode);
+        pb.domainStr = ch.targetNameStr;
+    } else {
+        offset = qEncodeNtlmString(pb.domain, offset, ctx->userDomain, unicode);
+        pb.domainStr = ctx->userDomain;
+    }
 
-    offset = qEncodeNtlmString(pb.user, offset, ctx->user, unicode);
-    pb.userStr = ctx->user;
+    offset = qEncodeNtlmString(pb.user, offset, ctx->extractedUser, unicode);
+    pb.userStr = ctx->extractedUser;
 
     offset = qEncodeNtlmString(pb.workstation, offset, ctx->workstation, unicode);
     pb.workstationStr = ctx->workstation;

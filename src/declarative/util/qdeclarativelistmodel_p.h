@@ -63,7 +63,8 @@ class FlatListModel;
 class NestedListModel;
 class QDeclarativeListModelWorkerAgent;
 struct ModelNode;
-class Q_DECLARATIVE_EXPORT QDeclarativeListModel : public QListModelInterface
+class FlatListScriptClass;
+class Q_DECLARATIVE_PRIVATE_EXPORT QDeclarativeListModel : public QListModelInterface
 {
     Q_OBJECT
     Q_PROPERTY(int count READ count NOTIFY countChanged)
@@ -75,7 +76,6 @@ public:
     virtual QList<int> roles() const;
     virtual QString toString(int role) const;
     virtual int count() const;
-    virtual QHash<int,QVariant> data(int index, const QList<int> &roles = (QList<int>())) const;
     virtual QVariant data(int index, int role) const;
 
     Q_INVOKABLE void clear();
@@ -96,16 +96,21 @@ Q_SIGNALS:
 private:
     friend class QDeclarativeListModelParser;
     friend class QDeclarativeListModelWorkerAgent;
+    friend class FlatListModel;
+    friend class FlatListScriptClass;
     friend struct ModelNode;
 
-    QDeclarativeListModel(bool workerCopy, QObject *parent=0);
+    // Constructs a flat list model for a worker agent
+    QDeclarativeListModel(const QDeclarativeListModel *orig, QDeclarativeListModelWorkerAgent *parent);
+
     bool flatten();
-    bool modifyCheck();
+    bool inWorkerThread() const;
+
+    inline bool canMove(int from, int to, int n) const { return !(from+n > count() || to+n > count() || from < 0 || to < 0 || n < 0); }
 
     QDeclarativeListModelWorkerAgent *m_agent;
     NestedListModel *m_nested;
     FlatListModel *m_flat;
-    bool m_isWorkerCopy;
 };
 
 // ### FIXME

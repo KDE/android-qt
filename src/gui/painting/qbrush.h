@@ -92,6 +92,12 @@ public:
 
     ~QBrush();
     QBrush &operator=(const QBrush &brush);
+#ifdef Q_COMPILER_RVALUE_REFS
+    inline QBrush &operator=(QBrush &&other)
+    { qSwap(d, other.d); return *this; }
+#endif
+    inline void swap(QBrush &other) { qSwap(d, other.d); }
+
     operator QVariant() const;
 
     inline Qt::BrushStyle style() const;

@@ -688,10 +688,6 @@ static bool LessThan(QScriptValue lhs, QScriptValue rhs)
             return false;
 
         case Number:
-#if defined Q_CC_MSVC && !defined Q_CC_MSVC_NET
-            if (qIsNaN(lhs.toNumber()) || qIsNaN(rhs.toNumber()))
-                return false;
-#endif
             return lhs.toNumber() < rhs.toNumber();
 
         case Boolean:
@@ -714,13 +710,7 @@ static bool LessThan(QScriptValue lhs, QScriptValue rhs)
     if (lhs.isString() && rhs.isString())
         return lhs.toString() < rhs.toString();
 
-    qsreal n1 = lhs.toNumber();
-    qsreal n2 = rhs.toNumber();
-#if defined Q_CC_MSVC && !defined Q_CC_MSVC_NET
-    if (qIsNaN(n1) || qIsNaN(n2))
-        return false;
-#endif
-    return n1 < n2;
+    return lhs.toNumber() < rhs.toNumber();
 }
 
 static bool Equals(QScriptValue lhs, QScriptValue rhs)
@@ -1726,7 +1716,14 @@ QScriptValue QScriptValue::construct(const QScriptValueList &args)
 
     QVarLengthArray<JSC::JSValue, 8> argsVector(args.size());
     for (int i = 0; i < args.size(); ++i) {
-        if (!args.at(i).isValid())
+        QScriptValue arg = args.at(i);
+        if (QScriptValuePrivate::getEngine(arg) != d->engine && QScriptValuePrivate::getEngine(arg)) {
+            qWarning("QScriptValue::construct() failed: "
+                     "cannot construct function with argument created in "
+                     "a different engine");
+            return QScriptValue();
+        }
+        if (!arg.isValid())
             argsVector[i] = JSC::jsUndefined();
         else
             argsVector[i] = d->engine->scriptValueToJSCValue(args.at(i));
@@ -1736,10 +1733,12 @@ QScriptValue QScriptValue::construct(const QScriptValueList &args)
 
     JSC::JSValue savedException;
     QScriptEnginePrivate::saveException(exec, &savedException);
-    JSC::JSObject *result = JSC::construct(exec, callee, constructType, constructData, jscArgs);
+    JSC::JSValue result;
+    JSC::JSObject *newObject = JSC::construct(exec, callee, constructType, constructData, jscArgs);
     if (exec->hadException()) {
-        result = JSC::asObject(exec->exception());
+        result = exec->exception();
     } else {
+        result = newObject;
         QScriptEnginePrivate::restoreException(exec, savedException);
     }
     return d->engine->scriptValueFromJSCValue(result);
@@ -1774,6 +1773,12 @@ QScriptValue QScriptValue::construct(const QScriptValue &arguments)
 
     JSC::ExecState *exec = d->engine->currentFrame;
 
+    if (QScriptValuePrivate::getEngine(arguments) != d->engine && QScriptValuePrivate::getEngine(arguments)) {
+        qWarning("QScriptValue::construct() failed: "
+                 "cannot construct function with argument created in "
+                 "a different engine");
+        return QScriptValue();
+    }
     JSC::JSValue array = d->engine->scriptValueToJSCValue(arguments);
     // copied from runtime/FunctionPrototype.cpp, functionProtoFuncApply()
     JSC::MarkedArgumentBuffer applyArgs;
@@ -1796,11 +1801,12 @@ QScriptValue QScriptValue::construct(const QScriptValue &arguments)
 
     JSC::JSValue savedException;
     QScriptEnginePrivate::saveException(exec, &savedException);
-    JSC::JSObject *result = JSC::construct(exec, callee, constructType, constructData, applyArgs);
+    JSC::JSValue result;
+    JSC::JSObject *newObject = JSC::construct(exec, callee, constructType, constructData, applyArgs);
     if (exec->hadException()) {
-        if (exec->exception().isObject())
-            result = JSC::asObject(exec->exception());
+        result = exec->exception();
     } else {
+        result = newObject;
         QScriptEnginePrivate::restoreException(exec, savedException);
     }
     return d->engine->scriptValueFromJSCValue(result);
@@ -2033,6 +2039,7 @@ void QScriptValue::setData(const QScriptValue &data)
     Q_D(QScriptValue);
     if (!d || !d->isObject())
         return;
+    QScript::APIShim shim(d->engine);
     JSC::JSValue other = d->engine->scriptValueToJSCValue(data);
     if (d->jscValue.inherits(&QScriptObject::info)) {
         QScriptObject *scriptObject = static_cast<QScriptObject*>(JSC::asObject(d->jscValue));

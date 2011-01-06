@@ -168,6 +168,8 @@ private:
     mutable QGLPixmapGLPaintDevice m_glDevice;
 
     friend class QGLPixmapGLPaintDevice;
+    friend class QMeeGoPixmapData;
+    friend class QMeeGoLivePixmapData;
 };
 
 QT_END_NAMESPACE

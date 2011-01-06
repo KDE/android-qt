@@ -132,9 +132,9 @@ void Generator::generateData(const QAudioFormat &format, qint64 durationUs, int 
 qint64 Generator::readData(char *data, qint64 len)
 {
     qint64 total = 0;
-    while (len - total) {
+    while (len - total > 0) {
         const qint64 chunk = qMin((m_buffer.size() - m_pos), len - total);
-        memcpy(data, m_buffer.constData() + m_pos, chunk);
+        memcpy(data + total, m_buffer.constData() + m_pos, chunk);
         m_pos = (m_pos + chunk) % m_buffer.size();
         total += chunk;
     }
@@ -176,7 +176,7 @@ void AudioTest::initializeWindow()
 
     m_deviceBox = new QComboBox(this);
     foreach (const QAudioDeviceInfo &deviceInfo, QAudioDeviceInfo::availableDevices(QAudio::AudioOutput))
-        m_deviceBox->addItem(deviceInfo.deviceName(), qVariantFromValue(deviceInfo));
+        m_deviceBox->addItem(deviceInfo.deviceName(), QVariant::fromValue(deviceInfo));
     connect(m_deviceBox,SIGNAL(activated(int)),SLOT(deviceChanged(int)));
     layout->addWidget(m_deviceBox);
 

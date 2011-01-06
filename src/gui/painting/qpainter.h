@@ -79,6 +79,7 @@ class QTextItem;
 class QMatrix;
 class QTransform;
 class QStaticText;
+class QGlyphs;
 
 class QPainterPrivateDeleter;
 
@@ -220,6 +221,8 @@ public:
 
     void setClipping(bool enable);
     bool hasClipping() const;
+
+    QRectF clipBoundingRect() const;
 
     void save();
     void restore();
@@ -395,6 +398,8 @@ public:
 
     void setLayoutDirection(Qt::LayoutDirection direction);
     Qt::LayoutDirection layoutDirection() const;
+
+    void drawGlyphs(const QPointF &position, const QGlyphs &glyphs);
 
     void drawStaticText(const QPointF &topLeftPosition, const QStaticText &staticText);
     inline void drawStaticText(const QPoint &topLeftPosition, const QStaticText &staticText);

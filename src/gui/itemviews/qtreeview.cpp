@@ -1493,7 +1493,7 @@ void QTreeView::drawRow(QPainter *painter, const QStyleOptionViewItem &option,
     // when the row contains an index widget which has focus,
     // we want to paint the entire row as active
     bool indexWidgetHasFocus = false;
-    if ((current.row() == index.row()) && !d->editors.isEmpty()) {
+    if ((current.row() == index.row()) && !d->editorIndexHash.isEmpty()) {
         const int r = index.row();
         QWidget *fw = QApplication::focusWidget();
         for (int c = 0; c < header->count(); ++c) {
@@ -1669,14 +1669,7 @@ void QTreeView::drawRow(QPainter *painter, const QStyleOptionViewItem &option,
             opt.state = oldState;
         }
 
-        if (const QWidget *widget = d->editorForIndex(modelIndex).editor) {
-            painter->save();
-            painter->setClipRect(widget->geometry());
-            d->delegateForIndex(modelIndex)->paint(painter, opt, modelIndex);
-            painter->restore();
-        } else {
-            d->delegateForIndex(modelIndex)->paint(painter, opt, modelIndex);
-        }
+        d->delegateForIndex(modelIndex)->paint(painter, opt, modelIndex);
     }
 
     if (currentRowHasFocus) {
@@ -2395,7 +2388,7 @@ void QTreeView::scrollContentsBy(int dx, int dy)
     int viewCount = d->viewport->height() / itemHeight;
     int maxDeltaY = qMin(d->viewItems.count(), viewCount);
     // no need to do a lot of work if we are going to redraw the whole thing anyway
-    if (qAbs(dy) > qAbs(maxDeltaY) && d->editors.isEmpty()) {
+    if (qAbs(dy) > qAbs(maxDeltaY) && d->editorIndexHash.isEmpty()) {
         verticalScrollBar()->update();
         d->viewport->update();
         return;
@@ -2469,10 +2462,8 @@ void QTreeView::rowsInserted(const QModelIndex &parent, int start, int end)
     }
 
     const int parentItem = d->viewIndex(parent);
-    if (((parentItem != -1) && d->viewItems.at(parentItem).expanded && updatesEnabled())
+    if (((parentItem != -1) && d->viewItems.at(parentItem).expanded)
         || (parent == d->root)) {
-        d->doDelayedItemsLayout();
-    } else if ((parentItem != -1) && d->viewItems.at(parentItem).expanded) {
         d->doDelayedItemsLayout();
     } else if (parentItem != -1 && (d->model->rowCount(parent) == end - start + 1)) {
         // the parent just went from 0 children to more. update to re-paint the decoration
@@ -2727,7 +2718,7 @@ int QTreeView::sizeHintForColumn(int column) const
             continue; // we have no good size hint
         QModelIndex index = viewItems.at(i).index;
         index = index.sibling(index.row(), column);
-        QWidget *editor = d->editorForIndex(index).editor;
+        QWidget *editor = d->editorForIndex(index).widget.data();
         if (editor && d->persistent.contains(editor)) {
             w = qMax(w, editor->sizeHint().width());
             int min = editor->minimumSize().width();
@@ -2791,7 +2782,7 @@ int QTreeView::indexRowSizeHint(const QModelIndex &index) const
             continue;
         QModelIndex idx = d->model->index(index.row(), logicalColumn, parent);
         if (idx.isValid()) {
-            QWidget *editor = d->editorForIndex(idx).editor;
+            QWidget *editor = d->editorForIndex(idx).widget.data();
             if (editor && d->persistent.contains(editor)) {
                 height = qMax(height, editor->sizeHint().height());
                 int min = editor->minimumSize().height();
@@ -2870,13 +2861,13 @@ void QTreeViewPrivate::expand(int item, bool emitSignal)
     if (emitSignal && animationsEnabled)
         prepareAnimatedOperation(item, QVariantAnimation::Forward);
 #endif //QT_NO_ANIMATION
-    QAbstractItemView::State oldState = state;
+    stateBeforeAnimation = state;
     q->setState(QAbstractItemView::ExpandingState);
     const QModelIndex index = viewItems.at(item).index;
     storeExpanded(index);
     viewItems[item].expanded = true;
     layout(item);
-    q->setState(oldState);
+    q->setState(stateBeforeAnimation);
 
     if (model->canFetchMore(index))
         model->fetchMore(index);
@@ -2945,7 +2936,7 @@ void QTreeViewPrivate::collapse(int item, bool emitSignal)
         prepareAnimatedOperation(item, QVariantAnimation::Backward);
 #endif //QT_NO_ANIMATION
 
-    QAbstractItemView::State oldState = state;
+    stateBeforeAnimation = state;
     q->setState(QAbstractItemView::CollapsingState);
     expandedIndexes.erase(it);
     viewItems[item].expanded = false;
@@ -2955,7 +2946,7 @@ void QTreeViewPrivate::collapse(int item, bool emitSignal)
         index = viewItems[index].parentItem;
     }
     removeViewItems(item + 1, total); // collapse
-    q->setState(oldState);
+    q->setState(stateBeforeAnimation);
 
     if (emitSignal) {
         emit q->collapsed(modelIndex);
@@ -3040,9 +3031,9 @@ QPixmap QTreeViewPrivate::renderTreeToPixmapForAnimation(const QRect &rect) cons
 
     //and now let's render the editors the editors
     QStyleOptionViewItemV4 option = viewOptionsV4();
-    for (QList<QEditorInfo>::const_iterator it = editors.constBegin(); it != editors.constEnd(); ++it) {
-        QWidget *editor = it->editor;
-        QModelIndex index = it->index;
+    for (QEditorIndexHash::const_iterator it = editorIndexHash.constBegin(); it != editorIndexHash.constEnd(); ++it) {
+        QWidget *editor = it.key();
+        const QModelIndex &index = it.value();
         option.rect = q->visualRect(index);
         if (option.rect.isValid()) {
 
@@ -3066,7 +3057,7 @@ QPixmap QTreeViewPrivate::renderTreeToPixmapForAnimation(const QRect &rect) cons
 void QTreeViewPrivate::_q_endAnimatedOperation()
 {
     Q_Q(QTreeView);
-    q->setState(QAbstractItemView::NoState);
+    q->setState(stateBeforeAnimation);
     q->updateGeometries();
     viewport->update();
 }
@@ -3434,6 +3425,10 @@ void QTreeViewPrivate::updateScrollBars()
     QSize viewportSize = viewport->size();
     if (!viewportSize.isValid())
         viewportSize = QSize(0, 0);
+
+    if (viewItems.isEmpty()) {
+        q->doItemsLayout();
+    }
 
     int itemsInViewport = 0;
     if (uniformRowHeights) {

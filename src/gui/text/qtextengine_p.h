@@ -128,7 +128,7 @@ struct Q_AUTOTEST_EXPORT QScriptAnalysis
         TabOrObject = Tab,
         Object = 7
     };
-    unsigned short script    : 8;
+    unsigned short script    : 7;
     unsigned short bidiLevel : 6;  // Unicode Bidi algorithm embedding level (0-61)
     unsigned short flags     : 3;
     inline bool operator == (const QScriptAnalysis &other) const {
@@ -385,7 +385,7 @@ struct Q_AUTOTEST_EXPORT QScriptLine
     QFixed textWidth;
     QFixed textAdvance;
     int from;
-    signed int length : 29;
+    signed int length : 28;
     mutable uint justified : 1;
     mutable uint gridfitted : 1;
     uint hasTrailingSpaces : 1;
@@ -435,7 +435,7 @@ public:
         uint hasBidi : 1;
         uint layoutState : 2;
         uint memory_on_stack : 1;
-        bool haveCharAttributes;
+        uint haveCharAttributes : 1;
         QString string;
         bool reallocate(int totalGlyphs);
     };
@@ -555,6 +555,23 @@ public:
     QFixed calculateTabWidth(int index, QFixed x) const;
 
     mutable QScriptLineArray lines;
+
+    struct FontEngineCache {
+        FontEngineCache();
+        mutable QFontEngine *prevFontEngine;
+        mutable QFontEngine *prevScaledFontEngine;
+        mutable int prevScript;
+        mutable int prevPosition;
+        mutable int prevLength;
+        inline void reset() {
+            prevFontEngine = 0;
+            prevScaledFontEngine = 0;
+            prevScript = -1;
+            prevPosition = -1;
+            prevLength = -1;
+        }
+    };
+    mutable FontEngineCache feCache;
 
     QString text;
     QFont fnt;

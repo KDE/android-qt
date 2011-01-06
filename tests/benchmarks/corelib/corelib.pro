@@ -4,4 +4,13 @@ SUBDIRS = \
         kernel \
         thread \
         tools \
-	codecs
+        codecs \
+        plugin
+
+TRUSTED_BENCHMARKS += \
+    kernel/qmetaobject \
+    kernel/qmetatype \
+    kernel/qobject \
+    thread/qthreadstorage
+
+include(../trusted-benchmarks.pri)

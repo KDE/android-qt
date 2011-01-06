@@ -44,6 +44,8 @@
 
 #include <QtCore/qobject.h>
 
+#include <private/qdeclarativeglobal_p.h>
+
 QT_BEGIN_HEADER
 
 QT_BEGIN_NAMESPACE
@@ -51,17 +53,20 @@ QT_BEGIN_NAMESPACE
 QT_MODULE(Declarative)
 
 class QDeclarativeDebugServicePrivate;
-class Q_DECLARATIVE_EXPORT QDeclarativeDebugService : public QObject
+class Q_DECLARATIVE_PRIVATE_EXPORT QDeclarativeDebugService : public QObject
 {
     Q_OBJECT
     Q_DECLARE_PRIVATE(QDeclarativeDebugService)
     Q_DISABLE_COPY(QDeclarativeDebugService)
+
 public:
-    QDeclarativeDebugService(const QString &, QObject *parent = 0);
+    explicit QDeclarativeDebugService(const QString &, QObject *parent = 0);
+    ~QDeclarativeDebugService();
 
     QString name() const;
 
-    bool isEnabled() const;
+    enum Status { NotConnected, Unavailable, Enabled };
+    Status status() const;
 
     void sendMessage(const QByteArray &);
 
@@ -74,7 +79,7 @@ public:
     static bool hasDebuggingClient();
 
 protected:
-    virtual void enabledChanged(bool);
+    virtual void statusChanged(Status);
     virtual void messageReceived(const QByteArray &);
 
 private:

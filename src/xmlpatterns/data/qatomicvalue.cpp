@@ -65,7 +65,7 @@ QT_BEGIN_NAMESPACE
 
 /**
  * @file
- * @short Contains the implementation for AtomicValue. The defintion is in qitem_p.h.
+ * @short Contains the implementation for AtomicValue. The definition is in qitem_p.h.
  */
 
 using namespace QPatternist;
@@ -121,7 +121,7 @@ QVariant AtomicValue::toQt(const AtomicValue *const value)
             || BuiltinTypes::xsHexBinary->xdtTypeMatches(t))
         return QVariant(value->as<Base64Binary>()->asByteArray());
     else if(BuiltinTypes::xsQName->xdtTypeMatches(t))
-        return qVariantFromValue(value->as<QNameValue>()->qName());
+        return QVariant::fromValue(value->as<QNameValue>()->qName());
     else
     {
         /* A type we don't support in Qt. Includes xs:time currently. */

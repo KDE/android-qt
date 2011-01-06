@@ -48,6 +48,9 @@
 #include "qwindowsstyle.h"
 #include "qmotifstyle.h"
 #include "qcdestyle.h"
+#ifndef QT_NO_STYLE_ANDROID
+#include "qandroidstyle.h"
+#endif
 #ifndef QT_NO_STYLE_PLASTIQUE
 #include "qplastiquestyle.h"
 #endif
@@ -167,6 +170,11 @@ QStyle *QStyleFactory::create(const QString& key)
         ret = new QPlastiqueStyle;
     else
 #endif
+#ifndef QT_NO_STYLE_ANDROID
+    if (style == QLatin1String("android"))
+        ret = new QAndroidStyle;
+    else
+#endif
 #ifndef QT_NO_STYLE_CLEANLOOKS
     if (style == QLatin1String("cleanlooks"))
         ret = new QCleanlooksStyle;
@@ -248,6 +256,10 @@ QStringList QStyleFactory::keys()
 #ifndef QT_NO_STYLE_PLASTIQUE
     if (!list.contains(QLatin1String("Plastique")))
         list << QLatin1String("Plastique");
+#endif
+#ifndef QT_NO_STYLE_ANDROID
+    if (!list.contains(QLatin1String("Android")))
+        list << QLatin1String("Android");
 #endif
 #ifndef QT_NO_STYLE_GTK
     if (!list.contains(QLatin1String("GTK+")))

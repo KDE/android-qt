@@ -57,6 +57,8 @@
 
 #include <private/qfont_p.h>
 #include <private/qfontengine_p.h>
+#include <private/qfontengine_coretext_p.h>
+#include <private/qfontengine_mac_p.h>
 #include <private/qnumeric_p.h>
 #include <private/qpainter_p.h>
 #include <private/qpainterpath_p.h>
@@ -131,8 +133,9 @@ QMacCGContext::QMacCGContext(QPainter *p)
 
             CGContextTranslateCTM(context, native.dx(), native.dy());
         }
+    } else {
+        CGContextRetain(context);
     }
-    CGContextRetain(context);
 }
 
 

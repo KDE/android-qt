@@ -125,6 +125,7 @@ public:
 
     void registerWidget(QWidget *w);
     void unregisterWidget(QWidget *w);
+    void unregisterWidgetSubtree(QWidget *w);
 
     inline QWidgetBackingStore* data()
     {
@@ -228,6 +229,7 @@ struct QTLWExtra {
 #endif
 #elif defined(Q_OS_SYMBIAN)
     uint inExpose : 1; // Prevents drawing recursion
+    uint nativeWindowTransparencyEnabled : 1; // Tracks native window transparency
 #elif defined(Q_WS_QPA)
     QPlatformWindow *platformWindow;
     QPlatformWindowFormat platformWindowFormat;
@@ -548,6 +550,7 @@ public:
 
     bool setMinimumSize_helper(int &minw, int &minh);
     bool setMaximumSize_helper(int &maxw, int &maxh);
+    virtual bool hasHeightForWidth() const;
     void setConstraints_sys();
     bool pointInsideRectAndMask(const QPoint &) const;
     QWidget *childAt_helper(const QPoint &, bool) const;
@@ -754,6 +757,9 @@ public:
     uint isMoved : 1;
     uint isGLWidget : 1;
     uint usesDoubleBufferedGLContext : 1;
+#ifndef QT_NO_IM
+    uint inheritsInputMethodHints : 1;
+#endif
 
     // *************************** Platform specific ************************************
 #if defined(Q_WS_X11) // <----------------------------------------------------------- X11
@@ -845,6 +851,13 @@ public:
     bool originalDrawMethod;
     // Do we need to change the methods?
     bool changeMethods;
+    bool hasOwnContext;
+    CGContextRef cgContext;
+    QRegion ut_rg;
+    QPoint ut_pt;
+    bool isInUnifiedToolbar;
+    QWindowSurface *unifiedSurface;
+    QPoint toolbar_offset;
 #endif
     void determineWindowClass();
     void transferChildren();

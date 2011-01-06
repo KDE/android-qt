@@ -298,7 +298,7 @@ class Q_GUI_EXPORT QApplicationPrivate : public QCoreApplicationPrivate
 {
     Q_DECLARE_PUBLIC(QApplication)
 public:
-    QApplicationPrivate(int &argc, char **argv, QApplication::Type type);
+    QApplicationPrivate(int &argc, char **argv, QApplication::Type type, int flags);
     ~QApplicationPrivate();
 
 #if defined(Q_WS_X11)
@@ -464,6 +464,9 @@ public:
     static bool animate_toolbox;
     static bool widgetCount; // Coupled with -widgetcount switch
     static bool load_testability; // Coupled with -testability switch
+    static QString qmljs_debug_arguments; // a string containing arguments for js/qml debugging.
+    static QString qmljsDebugArgumentsString(); // access string from other libraries
+
 #ifdef Q_WS_MAC
     static bool native_modal_dialog_active;
 #endif
@@ -531,8 +534,6 @@ public:
 
     static QString styleOverride;
 
-    static int app_compile_version;
-
 #ifdef QT_KEYPAD_NAVIGATION
     static QWidget *oldEditFocus;
     static Qt::NavigationMode navigationMode;
@@ -570,11 +571,11 @@ public:
 #ifndef QT_NO_GESTURES
     QGestureManager *gestureManager;
     QWidget *gestureWidget;
+#endif
 #if defined(Q_WS_X11) || defined(Q_WS_WIN)
     QPixmap *move_cursor;
     QPixmap *copy_cursor;
     QPixmap *link_cursor;
-#endif
 #endif
 #if defined(Q_WS_WIN)
     QPixmap *ignore_cursor;

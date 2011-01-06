@@ -55,6 +55,7 @@
 
 #include "QtCore/qobject.h"
 #include "QtCore/qpointer.h"
+#include "QtCore/qsharedpointer.h"
 #include "QtCore/qcoreevent.h"
 #include "QtCore/qlist.h"
 #include "QtCore/qvector.h"
@@ -89,6 +90,7 @@ class Q_CORE_EXPORT QAbstractDeclarativeData
 public:
     static void (*destroyed)(QAbstractDeclarativeData *, QObject *);
     static void (*parentChanged)(QAbstractDeclarativeData *, QObject *, QObject *);
+    static void (*objectNameChanged)(QAbstractDeclarativeData *, QObject *);
 };
 
 class Q_CORE_EXPORT QObjectPrivate : public QObjectData
@@ -153,7 +155,6 @@ public:
 
 #ifdef QT3_SUPPORT
     void sendPendingChildInsertedEvents();
-    void removePendingChildInsertedEvents(QObject *child);
 #endif
 
     static inline Sender *setCurrentSender(QObject *receiver,
@@ -161,8 +162,10 @@ public:
     static inline void resetCurrentSender(QObject *receiver,
                                    Sender *currentSender,
                                    Sender *previousSender);
+#ifdef QT_JAMBI_BUILD
     static int *setDeleteWatch(QObjectPrivate *d, int *newWatch);
     static void resetDeleteWatch(QObjectPrivate *d, int *oldWatch, int deleteWatch);
+#endif
     static void clearGuards(QObject *);
 
     static QObjectPrivate *get(QObject *o) {
@@ -184,7 +187,7 @@ public:
     mutable quint32 connectedSignals[2];
 
 #ifdef QT3_SUPPORT
-    QList<QObject *> pendingChildInsertedEvents;
+    QVector< QWeakPointer<QObject> > pendingChildInsertedEvents;
 #else
     // preserve binary compatibility with code compiled without Qt 3 support
     // keeping the binary layout stable helps the Qt Creator debugger
@@ -200,7 +203,9 @@ public:
     // these objects are all used to indicate that a QObject was deleted
     // plus QPointer, which keeps a separate list
     QAtomicPointer<QtSharedPointer::ExternalRefCountData> sharedRefcount;
+#ifdef QT_JAMBI_BUILD
     int *deleteWatch;
+#endif
 };
 
 

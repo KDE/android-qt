@@ -1,4 +1,4 @@
-import Qt 4.7
+import QtQuick 1.0
 
 Rectangle {
     width: 300; height: 400; color: "black"
@@ -38,7 +38,7 @@ Rectangle {
 
     Component {
         id: appHighlight
-        Rectangle { width: 100; height: 100; color: "white"; z: 3000 }
+        Rectangle { width: 100; height: 100; color: "white"; z: 0 }
     }
 
     GridView {

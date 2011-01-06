@@ -51,6 +51,7 @@
 
 #include "../../shared/util.h"
 #include <private/qgraphicseffect_p.h>
+#include "../platformquirks.h"
 
 //TESTED_CLASS=
 //TESTED_FILES=
@@ -66,6 +67,7 @@ private slots:
     void source();
     void boundingRectFor();
     void boundingRect();
+    void boundingRect2();
     void draw();
     void opacity();
     void grayscale();
@@ -76,6 +78,7 @@ private slots:
     void dropShadowClipping();
     void childrenVisibilityShouldInvalidateCache();
     void prepareGeometryChangeInvalidateCache();
+    void itemHasNoContents();
 };
 
 void tst_QGraphicsEffect::initTestCase()
@@ -261,6 +264,57 @@ void tst_QGraphicsEffect::boundingRect()
     QVERIFY(!ptr);
 
     delete item;
+}
+
+void tst_QGraphicsEffect::boundingRect2()
+{
+    CustomEffect *effect = new CustomEffect;
+    QGraphicsRectItem *root = new QGraphicsRectItem;
+    root->setGraphicsEffect(effect);
+
+    QGraphicsRectItem *child = new QGraphicsRectItem;
+    QRectF childRect(0, 0, 100, 100);
+    child->setFlag(QGraphicsItem::ItemClipsChildrenToShape);
+    child->setRect(childRect);
+    child->setParentItem(root);
+
+    QGraphicsRectItem *grandChild = new QGraphicsRectItem;
+    QRectF grandChildRect(0, 0, 200, 200);
+    grandChild->setRect(grandChildRect);
+    grandChild->setParentItem(child);
+
+    // Make sure the effect's bounding rect is clipped to the child's bounding rect.
+    QCOMPARE(effect->boundingRect(), effect->boundingRectFor(childRect));
+
+    // Disable ItemClipsChildrenToShape; effect's bounding rect is no longer clipped.
+    child->setFlag(QGraphicsItem::ItemClipsChildrenToShape, false);
+    QCOMPARE(effect->boundingRect(), effect->boundingRectFor(childRect | grandChildRect));
+
+    // Add root item to a scene, do the same tests as above. Results should be the same.
+    QGraphicsScene scene;
+    scene.addItem(root);
+
+    child->setFlag(QGraphicsItem::ItemClipsChildrenToShape);
+    QCOMPARE(effect->boundingRect(), effect->boundingRectFor(childRect));
+
+    child->setFlag(QGraphicsItem::ItemClipsChildrenToShape, false);
+    QCOMPARE(effect->boundingRect(), effect->boundingRectFor(childRect | grandChildRect));
+
+    // Now add the scene to a view, results should be the same.
+    QGraphicsView view(&scene);
+
+    child->setFlag(QGraphicsItem::ItemClipsChildrenToShape);
+    QCOMPARE(effect->boundingRect(), effect->boundingRectFor(childRect));
+
+    child->setFlag(QGraphicsItem::ItemClipsChildrenToShape, false);
+    QCOMPARE(effect->boundingRect(), effect->boundingRectFor(childRect | grandChildRect));
+
+    CustomEffect *childEffect = new CustomEffect;
+    child->setGraphicsEffect(childEffect);
+    QCOMPARE(effect->boundingRect(), effect->boundingRectFor(childEffect->boundingRectFor(childRect | grandChildRect)));
+
+    child->setGraphicsEffect(0);
+    QCOMPARE(effect->boundingRect(), effect->boundingRectFor(childRect | grandChildRect));
 }
 
 void tst_QGraphicsEffect::draw()
@@ -657,7 +711,10 @@ void tst_QGraphicsEffect::prepareGeometryChangeInvalidateCache()
     scene.addItem(item);
 
     QGraphicsView view(&scene);
-    view.show();
+    if(PlatformQuirks::isAutoMaximizing())
+        view.showFullScreen();
+    else
+        view.show();
     QTest::qWaitForWindowShown(&view);
     QTRY_COMPARE(item->nbPaint, 1);
 
@@ -673,6 +730,34 @@ void tst_QGraphicsEffect::prepareGeometryChangeInvalidateCache()
     item->setPos(item->pos() + QPointF(10, 10));
     QTest::qWait(50);
     QCOMPARE(item->nbPaint, 0);
+}
+
+void tst_QGraphicsEffect::itemHasNoContents()
+{
+    QGraphicsRectItem *parent = new QGraphicsRectItem;
+    parent->setFlag(QGraphicsItem::ItemHasNoContents);
+
+    MyGraphicsItem *child = new MyGraphicsItem;
+    child->setParentItem(parent);
+    child->resize(200, 200);
+
+    QGraphicsScene scene;
+    scene.addItem(parent);
+
+    QGraphicsView view(&scene);
+    view.show();
+    QTest::qWaitForWindowShown(&view);
+    QTRY_COMPARE(child->nbPaint, 1);
+
+    CustomEffect *effect = new CustomEffect;
+    parent->setGraphicsEffect(effect);
+    QTRY_COMPARE(effect->numRepaints, 1);
+
+    for (int i = 0; i < 3; ++i) {
+        effect->reset();
+        effect->update();
+        QTRY_COMPARE(effect->numRepaints, 1);
+    }
 }
 
 QTEST_MAIN(tst_QGraphicsEffect)

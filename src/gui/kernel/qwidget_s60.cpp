@@ -57,7 +57,7 @@
 #include <eikbtgpc.h>
 #endif
 
-// This is necessary in order to be able to perform delayed invokation on slots
+// This is necessary in order to be able to perform delayed invocation on slots
 // which take arguments of type WId.  One example is
 // QWidgetPrivate::_q_delayedDestroy, which is used to delay destruction of
 // CCoeControl objects until after the CONE event handler has finished running.
@@ -69,6 +69,7 @@ extern bool qt_nograb();
 
 QWidget *QWidgetPrivate::mouseGrabber = 0;
 QWidget *QWidgetPrivate::keyboardGrabber = 0;
+CEikButtonGroupContainer *QS60Data::cba = 0;
 
 static bool isEqual(const QList<QAction*>& a, const QList<QAction*>& b)
 {
@@ -360,7 +361,9 @@ void QWidgetPrivate::create_sys(WId window, bool /* initializeWindow */, bool de
         if (!q->testAttribute(Qt::WA_Moved) && !q->testAttribute(Qt::WA_DontShowOnScreen))
             data.crect.moveTopLeft(QPoint(clientRect.iTl.iX, clientRect.iTl.iY));
 
-        QScopedPointer<QSymbianControl> control( q_check_ptr(new QSymbianControl(q)) );
+        QScopedPointer<QSymbianControl> control( new QSymbianControl(q) );
+        Q_CHECK_PTR(control);
+
         QT_TRAP_THROWING(control->ConstructL(true, desktop));
         control->SetMopParent(static_cast<CEikAppUi*>(S60->appUi()));
 
@@ -405,7 +408,9 @@ void QWidgetPrivate::create_sys(WId window, bool /* initializeWindow */, bool de
 
     } else if (q->testAttribute(Qt::WA_NativeWindow) || paintOnScreen()) { // create native child widget
 
-        QScopedPointer<QSymbianControl> control( q_check_ptr(new QSymbianControl(q)) );
+        QScopedPointer<QSymbianControl> control( new QSymbianControl(q) );
+        Q_CHECK_PTR(control);
+
         QT_TRAP_THROWING(control->ConstructL(!parentWidget));
 
         // Symbian windows are always created in an inactive state
@@ -494,9 +499,27 @@ void QWidgetPrivate::show_sys()
                 // Create the status pane and CBA here
                 CEikAppUi *ui = static_cast<CEikAppUi *>(S60->appUi());
                 MEikAppUiFactory *factory = CEikonEnv::Static()->AppUiFactory();
-                TRAP_IGNORE(factory->ReadAppInfoResourceL(0, ui));
-                if (S60->buttonGroupContainer())
-                    S60->buttonGroupContainer()->SetCommandSetL(R_AVKON_SOFTKEYS_EMPTY_WITH_IDS);
+
+                QT_TRAP_THROWING(
+                    factory->CreateResourceIndependentFurnitureL(ui);
+
+                    TRect boundingRect = static_cast<CEikAppUi*>(S60->appUi())->ClientRect();
+
+                    CEikButtonGroupContainer *cba = CEikButtonGroupContainer::NewL(CEikButtonGroupContainer::ECba,
+                        CEikButtonGroupContainer::EHorizontal,ui,R_AVKON_SOFTKEYS_EMPTY_WITH_IDS);
+
+                    CEikButtonGroupContainer *oldCba = CEikonEnv::Static()->AppUiFactory()->SwapButtonGroup(cba);
+                    Q_ASSERT(!oldCba);
+                    S60->setButtonGroupContainer(cba);
+
+                    CEikMenuBar *menuBar = new(ELeave) CEikMenuBar;
+                    menuBar->ConstructL(ui, 0, R_AVKON_MENUPANE_EMPTY);
+                    menuBar->SetMenuType(CEikMenuBar::EMenuOptions);
+                    S60->appUi()->AddToStackL(menuBar,ECoeStackPriorityMenu,ECoeStackFlagRefusesFocus);
+
+                    CEikMenuBar *oldMenu = CEikonEnv::Static()->AppUiFactory()->SwapMenuBar(menuBar);
+                    Q_ASSERT(!oldMenu);
+                )
 
                 if (S60->statusPane()) {
                     // Use QDesktopWidget as the status pane observer to proxy for the AppUi.
@@ -518,14 +541,14 @@ void QWidgetPrivate::show_sys()
             if (q->windowState() & Qt::WindowMaximized) {
                 TRect r = static_cast<CEikAppUi*>(S60->appUi())->ClientRect();
                 id->SetExtent(r.iTl, r.Size());
-            } else if (!q->testAttribute(Qt::WA_Moved)) {
+            } else if (!q->testAttribute(Qt::WA_Moved) && q->windowType() != Qt::Dialog) {
                 id->SetPosition(static_cast<CEikAppUi*>(S60->appUi())->ClientRect().iTl);
             }
         }
 
         id->MakeVisible(true);
 
-        if(q->isWindow())
+        if(q->isWindow()&&!q->testAttribute(Qt::WA_ShowWithoutActivating))
             id->setFocusSafely(true);
     }
 
@@ -558,7 +581,7 @@ void QWidgetPrivate::hide_sys()
     QSymbianControl *id = static_cast<QSymbianControl *>(q->internalWinId());
 
     if (id) {
-        //Incorrect optimisation - for popup windows, Qt's focus is moved before
+        //Incorrect optimization - for popup windows, Qt's focus is moved before
         //hide_sys is called, resulting in the popup window keeping its elevated
         //position in the CONE control stack.
         //This can result in keyboard focus being in an invisible widget in some
@@ -690,7 +713,8 @@ void QWidgetPrivate::setParent_sys(QWidget *parent, Qt::WindowFlags f)
     // old_winid may not have received a 'not visible' visibility
     // changed event before being destroyed; make sure that it is
     // removed from the backing store's list of visible windows.
-    S60->controlVisibilityChanged(old_winid, false);
+    if (old_winid)
+        S60->controlVisibilityChanged(old_winid, false);
 
     setWinId(0);
 
@@ -747,17 +771,24 @@ void QWidgetPrivate::s60UpdateIsOpaque()
     if (!q->testAttribute(Qt::WA_WState_Created) || !q->testAttribute(Qt::WA_TranslucentBackground))
         return;
 
+    createTLExtra();
+
     RWindow *const window = static_cast<RWindow *>(q->effectiveWinId()->DrawableWindow());
 
 #ifdef Q_SYMBIAN_SEMITRANSPARENT_BG_SURFACE
     window->SetSurfaceTransparency(!isOpaque);
+    extra->topextra->nativeWindowTransparencyEnabled = !isOpaque;
 #else
     if (!isOpaque) {
         const TDisplayMode displayMode = static_cast<TDisplayMode>(window->SetRequiredDisplayMode(EColor16MA));
-        if (window->SetTransparencyAlphaChannel() == KErrNone)
+        if (window->SetTransparencyAlphaChannel() == KErrNone) {
             window->SetBackgroundColor(TRgb(255, 255, 255, 0));
-    } else
+            extra->topextra->nativeWindowTransparencyEnabled = 1;
+        }
+    } else if (extra->topextra->nativeWindowTransparencyEnabled) {
         window->SetTransparentRegion(TRegionFix<1>());
+        extra->topextra->nativeWindowTransparencyEnabled = 0;
+    }
 #endif
 }
 
@@ -916,6 +947,7 @@ void QWidgetPrivate::registerDropSite(bool /* on */)
 void QWidgetPrivate::createTLSysExtra()
 {
     extra->topextra->inExpose = 0;
+    extra->topextra->nativeWindowTransparencyEnabled = 0;
 }
 
 void QWidgetPrivate::deleteTLSysExtra()
@@ -1233,7 +1265,8 @@ void QWidget::destroy(bool destroyWindow, bool destroySubWindows)
         // At this point the backing store should already be destroyed
         // so we flush the command buffer to ensure that the freeing of
         // those resources and deleting the window can happen "atomically"
-        S60->wsSession().Flush();
+        if (qApp)
+            S60->wsSession().Flush();
     }
 }
 

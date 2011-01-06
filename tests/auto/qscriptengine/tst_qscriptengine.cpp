@@ -95,16 +95,33 @@ private slots:
     void pushPopContext();
     void getSetDefaultPrototype();
     void newFunction();
+    void newFunctionWithArg();
+    void newFunctionWithProto();
     void newObject();
     void newArray();
+    void newArray_HooliganTask218092();
+    void newArray_HooliganTask233836();
     void newVariant();
+    void newVariant_defaultPrototype();
+    void newVariant_promoteObject();
+    void newVariant_replaceValue();
+    void newVariant_valueOfToString();
+    void newVariant_promoteNonObject();
+    void newVariant_promoteNonQScriptObject();
     void newRegExp();
     void newDate();
     void newQObject();
+    void newQObject_ownership();
+    void newQObject_promoteObject();
+    void newQObject_sameQObject();
+    void newQObject_defaultPrototype();
+    void newQObject_promoteNonObject();
+    void newQObject_promoteNonQScriptObject();
     void newQMetaObject();
     void newActivationObject();
     void getSetGlobalObject();
     void globalObjectProperties();
+    void createGlobalObjectProperty();
     void globalObjectGetterSetterProperty();
     void customGlobalObjectWithPrototype();
     void globalObjectWithCustomPrototype();
@@ -120,6 +137,7 @@ private slots:
     void uncaughtException();
     void errorMessage_QT679();
     void valueConversion();
+    void qScriptValueFromValue_noEngine();
     void importExtension();
     void infiniteRecursion();
     void castWithPrototypeChain();
@@ -129,11 +147,13 @@ private slots:
     void gcWithNestedDataStructure();
     void processEventsWhileRunning();
     void throwErrorFromProcessEvents();
+    void disableProcessEventsInterval();
     void stacktrace();
     void numberParsing_data();
     void numberParsing();
     void automaticSemicolonInsertion();
     void abortEvaluation();
+    void abortEvaluation_QTBUG9433();
     void isEvaluating();
     void printFunctionWithCustomHandler();
     void printThrowsException();
@@ -143,7 +163,10 @@ private slots:
     void forInStatement();
     void functionExpression();
     void stringObjects();
-    void getterSetterThisObject();
+    void getterSetterThisObject_global();
+    void getterSetterThisObject_plain();
+    void getterSetterThisObject_prototypeChain();
+    void getterSetterThisObject_activation();
     void continueInSwitch();
     void readOnlyPrototypeProperty();
     void toObject();
@@ -157,17 +180,32 @@ private slots:
     void incDecNonObjectProperty();
     void installTranslatorFunctions_data();
     void installTranslatorFunctions();
+    void translateScript_data();
     void translateScript();
+    void translateScript_crossScript();
+    void translateScript_callQsTrFromNative();
+    void translateScript_trNoOp();
+    void translateScript_callQsTrFromCpp();
     void translateWithInvalidArgs_data();
     void translateWithInvalidArgs();
     void translationContext_data();
     void translationContext();
     void translateScriptIdBased();
+    void translateScriptUnicode_data();
+    void translateScriptUnicode();
+    void translateScriptUnicodeIdBased_data();
+    void translateScriptUnicodeIdBased();
     void functionScopes();
     void nativeFunctionScopes();
     void evaluateProgram();
+    void evaluateProgram_customScope();
+    void evaluateProgram_closure();
+    void evaluateProgram_executeLater();
+    void evaluateProgram_multipleEngines();
+    void evaluateProgram_empty();
     void collectGarbageAfterConnect();
     void promoteThisObjectToQObjectInConstructor();
+    void scriptValueFromQMetaObject();
 
     void qRegExpInport_data();
     void qRegExpInport();
@@ -287,8 +325,11 @@ void tst_QScriptEngine::newFunction()
         QCOMPARE(fun.call().isNull(), true);
         QCOMPARE(fun.construct().isObject(), true);
     }
+}
 
-    // the overload that takes a void*
+void tst_QScriptEngine::newFunctionWithArg()
+{
+    QScriptEngine eng;
     {
         QScriptValue fun = eng.newFunction(myFunctionWithVoidArg, (void*)this);
         QVERIFY(fun.isFunction());
@@ -309,8 +350,11 @@ void tst_QScriptEngine::newFunction()
         QCOMPARE(fun.call().isNull(), true);
         QCOMPARE(fun.construct().isObject(), true);
     }
+}
 
-    // the overload that takes a prototype
+void tst_QScriptEngine::newFunctionWithProto()
+{
+    QScriptEngine eng;
     {
         QScriptValue proto = eng.newObject();
         QScriptValue fun = eng.newFunction(myFunction, proto);
@@ -360,8 +404,11 @@ void tst_QScriptEngine::newArray()
     QCOMPARE(array.prototype().isValid(), true);
     QCOMPARE(array.prototype().isArray(), true);
     QCOMPARE(array.prototype().strictlyEquals(eng.evaluate("Array.prototype")), true);
+}
 
-    // task 218092
+void tst_QScriptEngine::newArray_HooliganTask218092()
+{
+    QScriptEngine eng;
     {
         QScriptValue ret = eng.evaluate("[].splice(0, 0, 'a')");
         QVERIFY(ret.isArray());
@@ -387,8 +434,11 @@ void tst_QScriptEngine::newArray()
         QVERIFY(ret.isArray());
         QCOMPARE(ret.property("length").toInt32(), 2);
     }
+}
 
-    // task 233836
+void tst_QScriptEngine::newArray_HooliganTask233836()
+{
+    QScriptEngine eng;
     {
         QScriptValue ret = eng.evaluate("a = new Array(4294967295); a.push('foo')");
         QVERIFY(ret.isNumber());
@@ -422,7 +472,12 @@ void tst_QScriptEngine::newVariant()
         QCOMPARE(opaque.prototype().isVariant(), true);
         QVERIFY(opaque.property("valueOf").call(opaque).isUndefined());
     }
+}
+
+void tst_QScriptEngine::newVariant_defaultPrototype()
+{
     // default prototype should be set automatically
+    QScriptEngine eng;
     {
         QScriptValue proto = eng.newObject();
         eng.setDefaultPrototype(qMetaTypeId<QString>(), proto);
@@ -435,7 +490,12 @@ void tst_QScriptEngine::newVariant()
         QVERIFY(ret2.isVariant());
         QVERIFY(!ret2.prototype().strictlyEquals(proto));
     }
+}
+
+void tst_QScriptEngine::newVariant_promoteObject()
+{
     // "promote" plain object to variant
+    QScriptEngine eng;
     {
         QScriptValue object = eng.newObject();
         object.setProperty("foo", eng.newObject());
@@ -452,17 +512,28 @@ void tst_QScriptEngine::newVariant()
         QCOMPARE(ret.toVariant(), QVariant(123));
         QVERIFY(ret.prototype().strictlyEquals(originalProto));
     }
+}
+
+void tst_QScriptEngine::newVariant_replaceValue()
+{
     // replace value of existing object
+    QScriptEngine eng;
     {
         QScriptValue object = eng.newVariant(QVariant(123));
-        QScriptValue ret = eng.newVariant(object, QVariant(456));
-        QVERIFY(ret.isValid());
-        QVERIFY(ret.strictlyEquals(object));
-        QVERIFY(ret.isVariant());
-        QCOMPARE(ret.toVariant(), QVariant(456));
+        for (int x = 0; x < 2; ++x) {
+            QScriptValue ret = eng.newVariant(object, QVariant(456));
+            QVERIFY(ret.isValid());
+            QVERIFY(ret.strictlyEquals(object));
+            QVERIFY(ret.isVariant());
+            QCOMPARE(ret.toVariant(), QVariant(456));
+        }
     }
+}
 
+void tst_QScriptEngine::newVariant_valueOfToString()
+{
     // valueOf() and toString()
+    QScriptEngine eng;
     {
         QScriptValue object = eng.newVariant(QVariant(123));
         QScriptValue value = object.property("valueOf").call(object);
@@ -493,6 +564,27 @@ void tst_QScriptEngine::newVariant()
         QVERIFY(value.isObject());
         QVERIFY(value.strictlyEquals(object));
         QCOMPARE(object.toString(), QString::fromLatin1("QVariant(QPoint)"));
+    }
+}
+
+void tst_QScriptEngine::newVariant_promoteNonObject()
+{
+    QScriptEngine eng;
+    {
+        QVariant var(456);
+        QScriptValue ret = eng.newVariant(123, var);
+        QVERIFY(ret.isVariant());
+        QCOMPARE(ret.toVariant(), var);
+    }
+}
+
+void tst_QScriptEngine::newVariant_promoteNonQScriptObject()
+{
+    QScriptEngine eng;
+    {
+        QTest::ignoreMessage(QtWarningMsg, "QScriptEngine::newVariant(): changing class of non-QScriptObject not supported");
+        QScriptValue ret = eng.newVariant(eng.newArray(), 123);
+        QVERIFY(!ret.isValid());
     }
 }
 
@@ -644,8 +736,11 @@ void tst_QScriptEngine::newQObject()
         QCOMPARE(qobject.prototype().isQObject(), true);
         QCOMPARE(qobject.scriptClass(), (QScriptClass*)0);
     }
+}
 
-    // test ownership
+void tst_QScriptEngine::newQObject_ownership()
+{
+    QScriptEngine eng;
     {
         QPointer<QObject> ptr = new QObject();
         QVERIFY(ptr != 0);
@@ -700,7 +795,11 @@ void tst_QScriptEngine::newQObject()
         QVERIFY(child != 0);
         delete parent;
     }
+}
 
+void tst_QScriptEngine::newQObject_promoteObject()
+{
+    QScriptEngine eng;
     // "promote" plain object to QObject
     {
         QScriptValue obj = eng.newObject();
@@ -732,14 +831,20 @@ void tst_QScriptEngine::newQObject()
         QScriptValue object = eng.newVariant(123);
         QScriptValue originalProto = object.prototype();
         QObject otherQObject;
-        QScriptValue ret = eng.newQObject(object, &otherQObject);
-        QVERIFY(ret.isValid());
-        QVERIFY(ret.isQObject());
-        QVERIFY(ret.strictlyEquals(object));
-        QCOMPARE(ret.toQObject(), (QObject *)&otherQObject);
-        QVERIFY(ret.prototype().strictlyEquals(originalProto));
+        for (int x = 0; x < 2; ++x) {
+            QScriptValue ret = eng.newQObject(object, &otherQObject);
+            QVERIFY(ret.isValid());
+            QVERIFY(ret.isQObject());
+            QVERIFY(ret.strictlyEquals(object));
+            QCOMPARE(ret.toQObject(), (QObject *)&otherQObject);
+            QVERIFY(ret.prototype().strictlyEquals(originalProto));
+        }
     }
+}
 
+void tst_QScriptEngine::newQObject_sameQObject()
+{
+    QScriptEngine eng;
     // calling newQObject() several times with same object
     for (int x = 0; x < 2; ++x) {
         QObject qobj;
@@ -770,7 +875,11 @@ void tst_QScriptEngine::newQObject()
                                            QScriptEngine::ExcludeSuperClassMethods | opt);
         QCOMPARE(obj8.strictlyEquals(obj7), preferExisting);
     }
+}
 
+void tst_QScriptEngine::newQObject_defaultPrototype()
+{
+    QScriptEngine eng;
     // newQObject() should set the default prototype, if one has been registered
     {
         QScriptValue oldQObjectProto = eng.defaultPrototype(qMetaTypeId<QObject*>());
@@ -791,6 +900,26 @@ void tst_QScriptEngine::newQObject()
 
         eng.setDefaultPrototype(qMetaTypeId<QObject*>(), oldQObjectProto);
         eng.setDefaultPrototype(typeId, QScriptValue());
+    }
+}
+
+void tst_QScriptEngine::newQObject_promoteNonObject()
+{
+    QScriptEngine eng;
+    {
+        QScriptValue ret = eng.newQObject(123, this);
+        QVERIFY(ret.isQObject());
+        QCOMPARE(ret.toQObject(), this);
+    }
+}
+
+void tst_QScriptEngine::newQObject_promoteNonQScriptObject()
+{
+    QScriptEngine eng;
+    {
+        QTest::ignoreMessage(QtWarningMsg, "QScriptEngine::newQObject(): changing class of non-QScriptObject not supported");
+        QScriptValue ret = eng.newQObject(eng.newArray(), this);
+        QVERIFY(!ret.isValid());
     }
 }
 
@@ -980,6 +1109,11 @@ void tst_QScriptEngine::getSetGlobalObject()
     QCOMPARE(glob.prototype().isObject(), true);
     QCOMPARE(glob.prototype().strictlyEquals(eng.evaluate("Object.prototype")), true);
 
+    eng.setGlobalObject(glob);
+    QVERIFY(eng.globalObject().equals(glob));
+    eng.setGlobalObject(123);
+    QVERIFY(eng.globalObject().equals(glob));
+
     QScriptValue obj = eng.newObject();
     eng.setGlobalObject(obj);
     QVERIFY(eng.globalObject().strictlyEquals(obj));
@@ -1028,6 +1162,28 @@ void tst_QScriptEngine::getSetGlobalObject()
     {
         QScriptValue ret = eng.evaluate("(function() { return this; })()");
         QVERIFY(ret.strictlyEquals(obj));
+    }
+
+    // Delete property.
+    {
+        QScriptValue ret = eng.evaluate("delete foo");
+        QVERIFY(ret.isBool());
+        QVERIFY(ret.toBool());
+        QVERIFY(!obj.property("foo").isValid());
+    }
+
+    // Getter/setter property.
+    QVERIFY(eng.evaluate("this.__defineGetter__('oof', function() { return this.bar; })").isUndefined());
+    QVERIFY(eng.evaluate("this.__defineSetter__('oof', function(v) { this.bar = v; })").isUndefined());
+    QVERIFY(eng.evaluate("this.__lookupGetter__('oof')").isFunction());
+    QVERIFY(eng.evaluate("this.__lookupSetter__('oof')").isFunction());
+    eng.evaluate("oof = 123");
+    QVERIFY(eng.evaluate("oof").equals(obj.property("bar")));
+
+    // Enumeration.
+    {
+        QScriptValue ret = eng.evaluate("a = []; for (var p in this) a.push(p); a");
+        QCOMPARE(ret.toString(), QString::fromLatin1("bar,baz,oof,p,a"));
     }
 }
 
@@ -1175,7 +1331,12 @@ void tst_QScriptEngine::globalObjectProperties()
         }
     }
     QVERIFY(remainingNames.isEmpty());
+}
 
+void tst_QScriptEngine::createGlobalObjectProperty()
+{
+    QScriptEngine eng;
+    QScriptValue global = eng.globalObject();
     // create property with no attributes
     {
         QString name = QString::fromLatin1("foo");
@@ -1914,7 +2075,6 @@ void tst_QScriptEngine::valueConversion()
         QString snum = qScriptValueToValue<QString>(num);
         QCOMPARE(snum, QLatin1String("123"));
     }
-#ifndef QT_NO_MEMBER_TEMPLATES
     {
         QScriptValue num = eng.toScriptValue(123);
         QCOMPARE(num.isNumber(), true);
@@ -1926,7 +2086,6 @@ void tst_QScriptEngine::valueConversion()
         QString snum = eng.fromScriptValue<QString>(num);
         QCOMPARE(snum, QLatin1String("123"));
     }
-#endif
     {
         QScriptValue num(&eng, 123);
         QCOMPARE(qScriptValueToValue<char>(num), char(123));
@@ -2096,6 +2255,38 @@ void tst_QScriptEngine::valueConversion()
         QVERIFY(!val.isVariant());
         QVERIFY(val.isUndefined());
     }
+    // Checking nested QVariants
+    {
+        QVariant tmp1;
+        QVariant tmp2(QMetaType::QVariant, &tmp1);
+        QVERIFY(QMetaType::Type(tmp2.type()) == QMetaType::QVariant);
+
+        QScriptValue val1 = qScriptValueFromValue(&eng, tmp1);
+        QScriptValue val2 = qScriptValueFromValue(&eng, tmp2);
+        QVERIFY(val1.isValid());
+        QVERIFY(val2.isValid());
+        QVERIFY(val1.isUndefined());
+        QVERIFY(!val2.isUndefined());
+        QVERIFY(!val1.isVariant());
+        QVERIFY(val2.isVariant());
+    }
+    {
+        QVariant tmp1(123);
+        QVariant tmp2(QMetaType::QVariant, &tmp1);
+        QVariant tmp3(QMetaType::QVariant, &tmp2);
+        QVERIFY(QMetaType::Type(tmp1.type()) == QMetaType::Int);
+        QVERIFY(QMetaType::Type(tmp2.type()) == QMetaType::QVariant);
+        QVERIFY(QMetaType::Type(tmp3.type()) == QMetaType::QVariant);
+
+        QScriptValue val1 = qScriptValueFromValue(&eng, tmp2);
+        QScriptValue val2 = qScriptValueFromValue(&eng, tmp3);
+        QVERIFY(val1.isValid());
+        QVERIFY(val2.isValid());
+        QVERIFY(val1.isVariant());
+        QVERIFY(val2.isVariant());
+        QVERIFY(val1.toVariant().toInt() == 123);
+        QVERIFY(qScriptValueFromValue(&eng, val2.toVariant()).toVariant().toInt() == 123);
+    }
     {
         QScriptValue val = qScriptValueFromValue(&eng, QVariant(true));
         QVERIFY(!val.isVariant());
@@ -2225,6 +2416,14 @@ void tst_QScriptEngine::valueConversion()
         QEXPECT_FAIL("", "QTBUG-6136: JSC-based back-end doesn't preserve QRegExp::minimal (always false)", Continue);
         QCOMPARE(val.toRegExp().isMinimal(), in.isMinimal());
     }
+
+    QCOMPARE(qscriptvalue_cast<QVariant>(QScriptValue(123)), QVariant(123));
+}
+
+void tst_QScriptEngine::qScriptValueFromValue_noEngine()
+{
+    QVERIFY(!qScriptValueFromValue(0, 123).isValid());
+    QVERIFY(!qScriptValueFromValue(0, QVariant(123)).isValid());
 }
 
 static QScriptValue __import__(QScriptContext *ctx, QScriptEngine *eng)
@@ -2663,6 +2862,19 @@ void tst_QScriptEngine::throwErrorFromProcessEvents()
     QCOMPARE(ret.toString(), QString::fromLatin1("Error: Killed"));
 }
 
+void tst_QScriptEngine::disableProcessEventsInterval()
+{
+    QScriptEngine eng;
+    eng.setProcessEventsInterval(100);
+    QCOMPARE(eng.processEventsInterval(), 100);
+    eng.setProcessEventsInterval(0);
+    QCOMPARE(eng.processEventsInterval(), 0);
+    eng.setProcessEventsInterval(-1);
+    QCOMPARE(eng.processEventsInterval(), -1);
+    eng.setProcessEventsInterval(-100);
+    QCOMPARE(eng.processEventsInterval(), -100);
+}
+
 void tst_QScriptEngine::stacktrace()
 {
     QString script = QString::fromLatin1(
@@ -3007,7 +3219,8 @@ public:
     enum AbortionResult {
         None = 0,
         String = 1,
-        Error = 2
+        Error = 2,
+        Number = 3
     };
 
     EventReceiver3(QScriptEngine *eng) {
@@ -3027,6 +3240,8 @@ public:
             case Error:
                 engine->abortEvaluation(engine->currentContext()->throwError("AbortedWithError"));
                 break;
+            case Number:
+                engine->abortEvaluation(QScriptValue(1234));
             }
         }
         return QObject::event(e);
@@ -3059,7 +3274,7 @@ void tst_QScriptEngine::abortEvaluation()
     EventReceiver3 receiver(&eng);
 
     eng.setProcessEventsInterval(100);
-    for (int x = 0; x < 3; ++x) {
+    for (int x = 0; x < 4; ++x) {
         QCoreApplication::postEvent(&receiver, new QEvent(QEvent::Type(QEvent::User+1)));
         receiver.resultType = EventReceiver3::AbortionResult(x);
         QScriptValue ret = eng.evaluate(QString::fromLatin1("while (1) { }"));
@@ -3067,6 +3282,11 @@ void tst_QScriptEngine::abortEvaluation()
         case EventReceiver3::None:
             QVERIFY(!eng.hasUncaughtException());
             QVERIFY(!ret.isValid());
+            break;
+        case EventReceiver3::Number:
+            QVERIFY(!eng.hasUncaughtException());
+            QVERIFY(ret.isNumber());
+            QCOMPARE(ret.toInt32(), 1234);
             break;
         case EventReceiver3::String:
             QVERIFY(!eng.hasUncaughtException());
@@ -3082,7 +3302,7 @@ void tst_QScriptEngine::abortEvaluation()
     }
 
     // scripts cannot intercept the abortion with try/catch
-    for (int y = 0; y < 3; ++y) {
+    for (int y = 0; y < 4; ++y) {
         QCoreApplication::postEvent(&receiver, new QEvent(QEvent::Type(QEvent::User+1)));
         receiver.resultType = EventReceiver3::AbortionResult(y);
         QScriptValue ret = eng.evaluate(QString::fromLatin1(
@@ -3097,6 +3317,11 @@ void tst_QScriptEngine::abortEvaluation()
         case EventReceiver3::None:
             QVERIFY(!eng.hasUncaughtException());
             QVERIFY(!ret.isValid());
+            break;
+        case EventReceiver3::Number:
+            QVERIFY(!eng.hasUncaughtException());
+            QVERIFY(ret.isNumber());
+            QCOMPARE(ret.toInt32(), 1234);
             break;
         case EventReceiver3::String:
             QVERIFY(!eng.hasUncaughtException());
@@ -3116,6 +3341,46 @@ void tst_QScriptEngine::abortEvaluation()
         QScriptValue ret = eng.evaluate("myFunctionAbortingEvaluation()");
         QVERIFY(!ret.isValid());
     }
+}
+
+class ThreadedEngine : public QThread {
+    Q_OBJECT;
+
+private:
+    QScriptEngine* m_engine;
+protected:
+    void run() {
+        m_engine = new QScriptEngine();
+        m_engine->setGlobalObject(m_engine->newQObject(this));
+        m_engine->evaluate("while(1) { sleep(); }");
+        delete m_engine;
+    }
+
+public slots:
+    void sleep()
+    {
+        QTest::qSleep(25);
+        m_engine->abortEvaluation();
+    }
+};
+
+void tst_QScriptEngine::abortEvaluation_QTBUG9433()
+{
+    ThreadedEngine engine;
+    engine.start();
+    QVERIFY(engine.isRunning());
+    QTest::qSleep(50);
+    for (uint i = 0; i < 50; ++i) { // up to ~2500 ms
+        if (engine.isFinished())
+            return;
+        QTest::qSleep(50);
+    }
+    if (!engine.isFinished()) {
+        engine.terminate();
+        engine.wait(7000);
+        QFAIL("abortEvaluation doesn't work");
+    }
+
 }
 
 static QScriptValue myFunctionReturningIsEvaluating(QScriptContext *, QScriptEngine *eng)
@@ -3646,9 +3911,8 @@ void tst_QScriptEngine::stringObjects()
     }
 }
 
-void tst_QScriptEngine::getterSetterThisObject()
+void tst_QScriptEngine::getterSetterThisObject_global()
 {
-    // Global Object
     {
         QScriptEngine eng;
         // read
@@ -3706,8 +3970,10 @@ void tst_QScriptEngine::getterSetterThisObject()
             QCOMPARE(ret.toString(), QString::fromLatin1("foo"));
         }
     }
+}
 
-    // other object
+void tst_QScriptEngine::getterSetterThisObject_plain()
+{
     {
         QScriptEngine eng;
         eng.evaluate("o = {}");
@@ -3724,8 +3990,10 @@ void tst_QScriptEngine::getterSetterThisObject()
         QVERIFY(eng.evaluate("with (o) x = 'foo'").equals("foo"));
         QVERIFY(eng.evaluate("with (o) with (q) x = 'foo'").equals("foo"));
     }
+}
 
-    // getter+setter in prototype chain
+void tst_QScriptEngine::getterSetterThisObject_prototypeChain()
+{
     {
         QScriptEngine eng;
         eng.evaluate("o = {}; p = {}; o.__proto__ = p");
@@ -3743,8 +4011,10 @@ void tst_QScriptEngine::getterSetterThisObject()
         QVERIFY(eng.evaluate("with (o) x = 'foo'").equals("foo"));
         QVERIFY(eng.evaluate("with (o) with (q) x = 'foo'").equals("foo"));
     }
+}
 
-    // getter+setter in activation
+void tst_QScriptEngine::getterSetterThisObject_activation()
+{
     {
         QScriptEngine eng;
         QScriptContext *ctx = eng.pushContext();
@@ -4438,6 +4708,17 @@ void tst_QScriptEngine::installTranslatorFunctions()
         QVERIFY(ret.isString());
         QCOMPARE(ret.toString(), QString::fromLatin1("foobar"));
     }
+    {
+        QScriptValue ret = eng.evaluate("'foo%0'.arg(123)");
+        QVERIFY(ret.isString());
+        QCOMPARE(ret.toString(), QString::fromLatin1("foo123"));
+    }
+    {
+        // Maybe this should throw an error?
+        QScriptValue ret = eng.evaluate("'foo%0'.arg()");
+        QVERIFY(ret.isString());
+        QCOMPARE(ret.toString(), QString());
+    }
 
     {
         QScriptValue ret = eng.evaluate("qsTrId('foo')");
@@ -4449,75 +4730,137 @@ void tst_QScriptEngine::installTranslatorFunctions()
         QVERIFY(ret.isString());
         QCOMPARE(ret.toString(), QString::fromLatin1("foo"));
     }
+    QVERIFY(eng.evaluate("QT_TRID_NOOP()").isUndefined());
 }
 
-static QScriptValue callQsTr(QScriptContext *ctx, QScriptEngine *eng)
+class TranslationScope
 {
-    return eng->globalObject().property("qsTr").call(ctx->thisObject(), ctx->argumentsObject());
-}
+public:
+    TranslationScope(const QString &fileName)
+    {
+        translator.load(fileName);
+        QCoreApplication::instance()->installTranslator(&translator);
+    }
+    ~TranslationScope()
+    {
+        QCoreApplication::instance()->removeTranslator(&translator);
+    }
 
-void tst_QScriptEngine::translateScript()
-{
-    QScriptEngine engine;
-
+private:
     QTranslator translator;
-    translator.load(":/translations/translatable_la");
-    QCoreApplication::instance()->installTranslator(&translator);
-    engine.installTranslatorFunctions();
+};
+
+void tst_QScriptEngine::translateScript_data()
+{
+    QTest::addColumn<QString>("expression");
+    QTest::addColumn<QString>("fileName");
+    QTest::addColumn<QString>("expectedTranslation");
 
     QString fileName = QString::fromLatin1("translatable.js");
     // Top-level
-    QCOMPARE(engine.evaluate("qsTr('One')", fileName).toString(), QString::fromLatin1("En"));
-    QCOMPARE(engine.evaluate("qsTr('Hello')", fileName).toString(), QString::fromLatin1("Hallo"));
+    QTest::newRow("qsTr('One')@translatable.js")
+            << QString::fromLatin1("qsTr('One')") << fileName << QString::fromLatin1("En");
+    QTest::newRow("qsTr('Hello')@translatable.js")
+            << QString::fromLatin1("qsTr('Hello')") << fileName << QString::fromLatin1("Hallo");
     // From function
-    QCOMPARE(engine.evaluate("(function() { return qsTr('One'); })()", fileName).toString(), QString::fromLatin1("En"));
-    QCOMPARE(engine.evaluate("(function() { return qsTr('Hello'); })()", fileName).toString(), QString::fromLatin1("Hallo"));
+    QTest::newRow("(function() { return qsTr('One'); })()@translatable.js")
+            << QString::fromLatin1("(function() { return qsTr('One'); })()") << fileName << QString::fromLatin1("En");
+    QTest::newRow("(function() { return qsTr('Hello'); })()@translatable.js")
+            << QString::fromLatin1("(function() { return qsTr('Hello'); })()") << fileName << QString::fromLatin1("Hallo");
     // From eval
-    QCOMPARE(engine.evaluate("eval('qsTr(\\'One\\')')", fileName).toString(), QString::fromLatin1("En"));
-    QCOMPARE(engine.evaluate("eval('qsTr(\\'Hello\\')')", fileName).toString(), QString::fromLatin1("Hallo"));
+    QTest::newRow("eval('qsTr(\\'One\\')')@translatable.js")
+            << QString::fromLatin1("eval('qsTr(\\'One\\')')") << fileName << QString::fromLatin1("En");
+    QTest::newRow("eval('qsTr(\\'Hello\\')')@translatable.js")
+            << QString::fromLatin1("eval('qsTr(\\'Hello\\')')") << fileName << QString::fromLatin1("Hallo");
+    // Plural
+    QTest::newRow("qsTr('%n message(s) saved', '', 1)@translatable.js")
+            << QString::fromLatin1("qsTr('%n message(s) saved', '', 1)") << fileName << QString::fromLatin1("1 melding lagret");
+    QTest::newRow("qsTr('%n message(s) saved', '', 3).arg@translatable.js")
+            << QString::fromLatin1("qsTr('%n message(s) saved', '', 3)") << fileName << QString::fromLatin1("3 meldinger lagret");
 
-    QCOMPARE(engine.evaluate("qsTranslate('FooContext', 'Two')", fileName).toString(), QString::fromLatin1("To"));
-    QCOMPARE(engine.evaluate("qsTranslate('FooContext', 'Goodbye')", fileName).toString(), QString::fromLatin1("Farvel"));
+    // Top-level
+    QTest::newRow("qsTranslate('FooContext', 'Two')@translatable.js")
+            << QString::fromLatin1("qsTranslate('FooContext', 'Two')") << fileName << QString::fromLatin1("To");
+    QTest::newRow("qsTranslate('FooContext', 'Goodbye')@translatable.js")
+            << QString::fromLatin1("qsTranslate('FooContext', 'Goodbye')") << fileName << QString::fromLatin1("Farvel");
     // From eval
-    QCOMPARE(engine.evaluate("eval('qsTranslate(\\'FooContext\\', \\'Two\\')')", fileName).toString(), QString::fromLatin1("To"));
-    QCOMPARE(engine.evaluate("eval('qsTranslate(\\'FooContext\\', \\'Goodbye\\')')", fileName).toString(), QString::fromLatin1("Farvel"));
+    QTest::newRow("eval('qsTranslate(\\'FooContext\\', \\'Two\\')')@translatable.js")
+            << QString::fromLatin1("eval('qsTranslate(\\'FooContext\\', \\'Two\\')')") << fileName << QString::fromLatin1("To");
+    QTest::newRow("eval('qsTranslate(\\'FooContext\\', \\'Goodbye\\')')@translatable.js")
+            << QString::fromLatin1("eval('qsTranslate(\\'FooContext\\', \\'Goodbye\\')')") << fileName << QString::fromLatin1("Farvel");
 
-    QCOMPARE(engine.evaluate("qsTranslate('FooContext', 'Goodbye', '', 'UnicodeUTF8')", fileName).toString(), QString::fromLatin1("Farvel"));
+    QTest::newRow("qsTranslate('FooContext', 'Goodbye', '', 'UnicodeUTF8')@translatable.js")
+            << QString::fromLatin1("qsTranslate('FooContext', 'Goodbye', '', 'UnicodeUTF8')") << fileName << QString::fromLatin1("Farvel");
+    QTest::newRow("qsTranslate('FooContext', 'Goodbye', '', 'CodecForTr')@translatable.js")
+            << QString::fromLatin1("qsTranslate('FooContext', 'Goodbye', '', 'CodecForTr')") << fileName << QString::fromLatin1("Farvel");
 
-    QCOMPARE(engine.evaluate("qsTr('One', 'not the same one')", fileName).toString(), QString::fromLatin1("Enda en"));
+    QTest::newRow("qsTranslate('FooContext', 'Goodbye', '', 'UnicodeUTF8', 42)@translatable.js")
+            << QString::fromLatin1("qsTranslate('FooContext', 'Goodbye', '', 'UnicodeUTF8', 42)") << fileName << QString::fromLatin1("Goodbye");
 
-    QVERIFY(engine.evaluate("QT_TR_NOOP()").isUndefined());
-    QCOMPARE(engine.evaluate("QT_TR_NOOP('One')").toString(), QString::fromLatin1("One"));
+    QTest::newRow("qsTr('One', 'not the same one')@translatable.js")
+            << QString::fromLatin1("qsTr('One', 'not the same one')") << fileName << QString::fromLatin1("Enda en");
 
-    QVERIFY(engine.evaluate("QT_TRANSLATE_NOOP()").isUndefined());
-    QVERIFY(engine.evaluate("QT_TRANSLATE_NOOP('FooContext')").isUndefined());
-    QCOMPARE(engine.evaluate("QT_TRANSLATE_NOOP('FooContext', 'Two')").toString(), QString::fromLatin1("Two"));
+    QTest::newRow("qsTr('One', 'not the same one', 42)@translatable.js")
+            << QString::fromLatin1("qsTr('One', 'not the same one', 42)") << fileName << QString::fromLatin1("One");
+
+    // Plural
+    QTest::newRow("qsTranslate('FooContext', '%n fooish bar(s) found', '', 'UnicodeUTF8', 1)@translatable.js")
+            << QString::fromLatin1("qsTranslate('FooContext', '%n fooish bar(s) found', '', 'UnicodeUTF8', 1)") << fileName << QString::fromLatin1("1 fooaktig bar funnet");
+    QTest::newRow("qsTranslate('FooContext', '%n fooish bar(s) found', '', 'UnicodeUTF8', 2)@translatable.js")
+            << QString::fromLatin1("qsTranslate('FooContext', '%n fooish bar(s) found', '', 'UnicodeUTF8', 2)") << fileName << QString::fromLatin1("2 fooaktige barer funnet");
 
     // Don't exist in translation
-    QCOMPARE(engine.evaluate("qsTr('Three')", fileName).toString(), QString::fromLatin1("Three"));
-    QCOMPARE(engine.evaluate("qsTranslate('FooContext', 'So long')", fileName).toString(), QString::fromLatin1("So long"));
-    QCOMPARE(engine.evaluate("qsTranslate('BarContext', 'Goodbye')", fileName).toString(), QString::fromLatin1("Goodbye"));
-
-    // From C++
-    // There is no context, but it shouldn't crash
-    QCOMPARE(engine.globalObject().property("qsTr").call(
-                 QScriptValue(), QScriptValueList() << "One").toString(), QString::fromLatin1("One"));
+    QTest::newRow("qsTr('Three')@translatable.js")
+            << QString::fromLatin1("qsTr('Three')") << fileName << QString::fromLatin1("Three");
+    QTest::newRow("qsTranslate('FooContext', 'So long')@translatable.js")
+            << QString::fromLatin1("qsTranslate('FooContext', 'So long')") << fileName << QString::fromLatin1("So long");
+    QTest::newRow("qsTranslate('BarContext', 'Goodbye')@translatable.js")
+            << QString::fromLatin1("qsTranslate('BarContext', 'Goodbye')") << fileName << QString::fromLatin1("Goodbye");
 
     // Translate strings from the second script (translatable2.js)
 
     QString fileName2 = QString::fromLatin1("translatable2.js");
-
-    QCOMPARE(engine.evaluate("qsTr('Three')", fileName2).toString(), QString::fromLatin1("Tre"));
-    QCOMPARE(engine.evaluate("qsTr('Happy birthday!')", fileName2).toString(), QString::fromLatin1("Gratulerer med dagen!"));
+    QTest::newRow("qsTr('Three')@translatable2.js")
+            << QString::fromLatin1("qsTr('Three')") << fileName2 << QString::fromLatin1("Tre");
+    QTest::newRow("qsTr('Happy birthday!')@translatable2.js")
+            << QString::fromLatin1("qsTr('Happy birthday!')") << fileName2 << QString::fromLatin1("Gratulerer med dagen!");
 
     // Not translated because translation is only in translatable.js
-    QCOMPARE(engine.evaluate("qsTr('One')", fileName2).toString(), QString::fromLatin1("One"));
-    QCOMPARE(engine.evaluate("(function() { return qsTr('One'); })()", fileName2).toString(), QString::fromLatin1("One"));
+    QTest::newRow("qsTr('One')@translatable2.js")
+            << QString::fromLatin1("qsTr('One')") << fileName2 << QString::fromLatin1("One");
+    QTest::newRow("(function() { return qsTr('One'); })()@translatable2.js")
+            << QString::fromLatin1("(function() { return qsTr('One'); })()") << fileName2 << QString::fromLatin1("One");
 
     // For qsTranslate() the filename shouldn't matter
-    QCOMPARE(engine.evaluate("qsTranslate('FooContext', 'Two')", fileName2).toString(), QString::fromLatin1("To"));
-    QCOMPARE(engine.evaluate("qsTranslate('BarContext', 'Congratulations!')", fileName).toString(), QString::fromLatin1("Gratulerer!"));
+    QTest::newRow("qsTranslate('FooContext', 'Two')@translatable2.js")
+            << QString::fromLatin1("qsTranslate('FooContext', 'Two')") << fileName2 << QString::fromLatin1("To");
+    QTest::newRow("qsTranslate('BarContext', 'Congratulations!')@translatable.js")
+            << QString::fromLatin1("qsTranslate('BarContext', 'Congratulations!')") << fileName << QString::fromLatin1("Gratulerer!");
+}
 
+void tst_QScriptEngine::translateScript()
+{
+    QFETCH(QString, expression);
+    QFETCH(QString, fileName);
+    QFETCH(QString, expectedTranslation);
+
+    QScriptEngine engine;
+
+    TranslationScope tranScope(":/translations/translatable_la");
+    engine.installTranslatorFunctions();
+
+    QCOMPARE(engine.evaluate(expression, fileName).toString(), expectedTranslation);
+    QVERIFY(!engine.hasUncaughtException());
+}
+
+void tst_QScriptEngine::translateScript_crossScript()
+{
+    QScriptEngine engine;
+    TranslationScope tranScope(":/translations/translatable_la");
+    engine.installTranslatorFunctions();
+
+    QString fileName = QString::fromLatin1("translatable.js");
+    QString fileName2 = QString::fromLatin1("translatable2.js");
     // qsTr() should use the innermost filename as context
     engine.evaluate("function foo(s) { return bar(s); }", fileName);
     engine.evaluate("function bar(s) { return qsTr(s); }", fileName2);
@@ -4530,15 +4873,52 @@ void tst_QScriptEngine::translateScript()
     QCOMPARE(engine.evaluate("bar('Three')", fileName2).toString(), QString::fromLatin1("Three"));
     QCOMPARE(engine.evaluate("bar('One')", fileName).toString(), QString::fromLatin1("En"));
     QCOMPARE(engine.evaluate("bar('One')", fileName2).toString(), QString::fromLatin1("En"));
+}
 
+static QScriptValue callQsTr(QScriptContext *ctx, QScriptEngine *eng)
+{
+    return eng->globalObject().property("qsTr").call(ctx->thisObject(), ctx->argumentsObject());
+}
+
+void tst_QScriptEngine::translateScript_callQsTrFromNative()
+{
+    QScriptEngine engine;
+    TranslationScope tranScope(":/translations/translatable_la");
+    engine.installTranslatorFunctions();
+
+    QString fileName = QString::fromLatin1("translatable.js");
+    QString fileName2 = QString::fromLatin1("translatable2.js");
     // Calling qsTr() from a native function
     engine.globalObject().setProperty("qsTrProxy", engine.newFunction(callQsTr));
     QCOMPARE(engine.evaluate("qsTrProxy('One')", fileName).toString(), QString::fromLatin1("En"));
     QCOMPARE(engine.evaluate("qsTrProxy('One')", fileName2).toString(), QString::fromLatin1("One"));
     QCOMPARE(engine.evaluate("qsTrProxy('Three')", fileName).toString(), QString::fromLatin1("Three"));
     QCOMPARE(engine.evaluate("qsTrProxy('Three')", fileName2).toString(), QString::fromLatin1("Tre"));
+}
 
-    QCoreApplication::instance()->removeTranslator(&translator);
+void tst_QScriptEngine::translateScript_trNoOp()
+{
+    QScriptEngine engine;
+    TranslationScope tranScope(":/translations/translatable_la");
+    engine.installTranslatorFunctions();
+
+    QVERIFY(engine.evaluate("QT_TR_NOOP()").isUndefined());
+    QCOMPARE(engine.evaluate("QT_TR_NOOP('One')").toString(), QString::fromLatin1("One"));
+
+    QVERIFY(engine.evaluate("QT_TRANSLATE_NOOP()").isUndefined());
+    QVERIFY(engine.evaluate("QT_TRANSLATE_NOOP('FooContext')").isUndefined());
+    QCOMPARE(engine.evaluate("QT_TRANSLATE_NOOP('FooContext', 'Two')").toString(), QString::fromLatin1("Two"));
+}
+
+void tst_QScriptEngine::translateScript_callQsTrFromCpp()
+{
+    QScriptEngine engine;
+    TranslationScope tranScope(":/translations/translatable_la");
+    engine.installTranslatorFunctions();
+
+    // There is no context, but it shouldn't crash
+    QCOMPARE(engine.globalObject().property("qsTr").call(
+             QScriptValue(), QScriptValueList() << "One").toString(), QString::fromLatin1("One"));
 }
 
 void tst_QScriptEngine::translateWithInvalidArgs_data()
@@ -4554,6 +4934,7 @@ void tst_QScriptEngine::translateWithInvalidArgs_data()
 
     QTest::newRow("qsTranslate()")  << "qsTranslate()" << "Error: qsTranslate() requires at least two arguments";
     QTest::newRow("qsTranslate('foo')")  << "qsTranslate('foo')" << "Error: qsTranslate() requires at least two arguments";
+    QTest::newRow("qsTranslate(123, 'foo')")  << "qsTranslate(123, 'foo')" << "Error: qsTranslate(): first argument (context) must be a string";
     QTest::newRow("qsTranslate('foo', 123)")  << "qsTranslate('foo', 123)" << "Error: qsTranslate(): second argument (text) must be a string";
     QTest::newRow("qsTranslate('foo', 'bar', 123)")  << "qsTranslate('foo', 'bar', 123)" << "Error: qsTranslate(): third argument (comment) must be a string";
     QTest::newRow("qsTranslate('foo', 'bar', 'baz', 123)")  << "qsTranslate('foo', 'bar', 'baz', 123)" << "Error: qsTranslate(): fourth argument (encoding) must be a string";
@@ -4607,9 +4988,7 @@ void tst_QScriptEngine::translationContext_data()
 
 void tst_QScriptEngine::translationContext()
 {
-    QTranslator translator;
-    translator.load(":/translations/translatable_la");
-    QCoreApplication::instance()->installTranslator(&translator);
+    TranslationScope tranScope(":/translations/translatable_la");
 
     QScriptEngine engine;
     engine.installTranslatorFunctions();
@@ -4620,17 +4999,13 @@ void tst_QScriptEngine::translationContext()
     QScriptValue ret = engine.evaluate(QString::fromLatin1("qsTr('%0')").arg(text), path);
     QVERIFY(ret.isString());
     QCOMPARE(ret.toString(), expectedTranslation);
-
-    QCoreApplication::instance()->removeTranslator(&translator);
 }
 
 void tst_QScriptEngine::translateScriptIdBased()
 {
     QScriptEngine engine;
 
-    QTranslator translator;
-    translator.load(":/translations/idtranslatable_la");
-    QCoreApplication::instance()->installTranslator(&translator);
+    TranslationScope tranScope(":/translations/idtranslatable_la");
     engine.installTranslatorFunctions();
 
     QString fileName = QString::fromLatin1("idtranslatable.js");
@@ -4669,6 +5044,85 @@ void tst_QScriptEngine::translateScriptIdBased()
              QString::fromLatin1("10 fooish bar(s) found"));
     QCOMPARE(engine.evaluate("qsTrId('qtn_foo_bar', 10)").toString(),
              QString::fromLatin1("qtn_foo_bar")); // Doesn't have plural
+}
+
+// How to add a new test row:
+// - Find a nice list of Unicode characters to choose from
+// - Write source string/context/comment in .js using Unicode escape sequences (\uABCD)
+// - Update corresponding .ts file (e.g. lupdate foo.js -ts foo.ts -codecfortr UTF-8)
+// - Enter translation in Linguist
+// - Update corresponding .qm file (e.g. lrelease foo.ts)
+// - Evaluate script that performs translation; make sure the correct result is returned
+//   (e.g. by setting the resulting string as the text of a QLabel and visually verifying
+//   that it looks the same as what you entered in Linguist :-) )
+// - Generate the expectedTranslation column data using toUtf8().toHex()
+void tst_QScriptEngine::translateScriptUnicode_data()
+{
+    QTest::addColumn<QString>("expression");
+    QTest::addColumn<QString>("fileName");
+    QTest::addColumn<QString>("expectedTranslation");
+
+    QString fileName = QString::fromLatin1("translatable-unicode.js");
+    QTest::newRow("qsTr('H\\u2082O')@translatable-unicode.js")
+            << QString::fromLatin1("qsTr('H\\u2082O')") << fileName << QString::fromUtf8("\xcd\xbb\xcd\xbc\xcd\xbd");
+    QTest::newRow("qsTranslate('\\u010C\\u0101\\u011F\\u0115', 'CO\\u2082')@translatable-unicode.js")
+            << QString::fromLatin1("qsTranslate('\\u010C\\u0101\\u011F\\u0115', 'CO\\u2082')") << fileName << QString::fromUtf8("\xd7\x91\xd7\x9a\xd7\xa2");
+    QTest::newRow("qsTr('\\u0391\\u0392\\u0393')@translatable-unicode.js")
+            << QString::fromLatin1("qsTr('\\u0391\\u0392\\u0393')") << fileName << QString::fromUtf8("\xd3\x9c\xd2\xb4\xd1\xbc");
+    QTest::newRow("qsTranslate('\\u010C\\u0101\\u011F\\u0115', '\\u0414\\u0415\\u0416')@translatable-unicode.js")
+            << QString::fromLatin1("qsTranslate('\\u010C\\u0101\\u011F\\u0115', '\\u0414\\u0415\\u0416')") << fileName << QString::fromUtf8("\xd8\xae\xd8\xb3\xd8\xb3");
+    QTest::newRow("qsTr('H\\u2082O', 'not the same H\\u2082O')@translatable-unicode.js")
+            << QString::fromLatin1("qsTr('H\\u2082O', 'not the same H\\u2082O')") << fileName << QString::fromUtf8("\xd4\xb6\xd5\x8a\xd5\x92");
+    QTest::newRow("qsTr('H\\u2082O')")
+            << QString::fromLatin1("qsTr('H\\u2082O')") << QString() << QString::fromUtf8("\x48\xe2\x82\x82\x4f");
+    QTest::newRow("qsTranslate('\\u010C\\u0101\\u011F\\u0115', 'CO\\u2082')")
+            << QString::fromLatin1("qsTranslate('\\u010C\\u0101\\u011F\\u0115', 'CO\\u2082')") << QString() << QString::fromUtf8("\xd7\x91\xd7\x9a\xd7\xa2");
+}
+
+void tst_QScriptEngine::translateScriptUnicode()
+{
+    QFETCH(QString, expression);
+    QFETCH(QString, fileName);
+    QFETCH(QString, expectedTranslation);
+
+    QScriptEngine engine;
+
+    TranslationScope tranScope(":/translations/translatable-unicode");
+    engine.installTranslatorFunctions();
+
+    QCOMPARE(engine.evaluate(expression, fileName).toString(), expectedTranslation);
+    QVERIFY(!engine.hasUncaughtException());
+}
+
+void tst_QScriptEngine::translateScriptUnicodeIdBased_data()
+{
+    QTest::addColumn<QString>("expression");
+    QTest::addColumn<QString>("expectedTranslation");
+
+    QTest::newRow("qsTrId('\\u01F8\\u01D2\\u0199\\u01D0\\u01E1'')")
+            << QString::fromLatin1("qsTrId('\\u01F8\\u01D2\\u0199\\u01D0\\u01E1')") << QString::fromUtf8("\xc6\xa7\xc6\xb0\xc6\x88\xc8\xbc\xc8\x9d\xc8\xbf\xc8\x99");
+    QTest::newRow("qsTrId('\\u0191\\u01CE\\u0211\\u0229\\u019C\\u018E\\u019A\\u01D0')")
+            << QString::fromLatin1("qsTrId('\\u0191\\u01CE\\u0211\\u0229\\u019C\\u018E\\u019A\\u01D0')") << QString::fromUtf8("\xc7\xa0\xc8\xa1\xc8\x8b\xc8\x85\xc8\x95");
+    QTest::newRow("qsTrId('\\u0181\\u01A1\\u0213\\u018F\\u018C', 10)")
+            << QString::fromLatin1("qsTrId('\\u0181\\u01A1\\u0213\\u018F\\u018C', 10)") << QString::fromUtf8("\x31\x30\x20\xc6\x92\xc6\xa1\xc7\x92\x28\xc8\x99\x29");
+    QTest::newRow("qsTrId('\\u0181\\u01A1\\u0213\\u018F\\u018C')")
+            << QString::fromLatin1("qsTrId('\\u0181\\u01A1\\u0213\\u018F\\u018C')") << QString::fromUtf8("\xc6\x91\xc6\xb0\xc7\xb9");
+    QTest::newRow("qsTrId('\\u01CD\\u0180\\u01A8\\u0190\\u019E\\u01AB')")
+            << QString::fromLatin1("qsTrId('\\u01CD\\u0180\\u01A8\\u0190\\u019E\\u01AB')") << QString::fromUtf8("\xc7\x8d\xc6\x80\xc6\xa8\xc6\x90\xc6\x9e\xc6\xab");
+}
+
+void tst_QScriptEngine::translateScriptUnicodeIdBased()
+{
+    QFETCH(QString, expression);
+    QFETCH(QString, expectedTranslation);
+
+    QScriptEngine engine;
+
+    TranslationScope tranScope(":/translations/idtranslatable-unicode");
+    engine.installTranslatorFunctions();
+
+    QCOMPARE(engine.evaluate(expression).toString(), expectedTranslation);
+    QVERIFY(!engine.hasUncaughtException());
 }
 
 void tst_QScriptEngine::functionScopes()
@@ -4848,8 +5302,11 @@ void tst_QScriptEngine::evaluateProgram()
         QVERIFY(differentProgram != program);
         QVERIFY(!eng.evaluate(differentProgram).equals(expected));
     }
+}
 
-    // Program that accesses variable in the scope
+void tst_QScriptEngine::evaluateProgram_customScope()
+{
+    QScriptEngine eng;
     {
         QScriptProgram program("a");
         QVERIFY(!program.isNull());
@@ -4886,8 +5343,11 @@ void tst_QScriptEngine::evaluateProgram()
 
         ctx->popScope();
     }
+}
 
-    // Program that creates closure
+void tst_QScriptEngine::evaluateProgram_closure()
+{
+    QScriptEngine eng;
     {
         QScriptProgram program("(function() { var count = 0; return function() { return count++; }; })");
         QVERIFY(!program.isNull());
@@ -4907,7 +5367,11 @@ void tst_QScriptEngine::evaluateProgram()
             QVERIFY(ret.isNumber());
         }
     }
+}
 
+void tst_QScriptEngine::evaluateProgram_executeLater()
+{
+    QScriptEngine eng;
     // Program created in a function call, then executed later
     {
         QScriptValue fun = eng.newFunction(createProgram);
@@ -4928,8 +5392,11 @@ void tst_QScriptEngine::evaluateProgram()
             QCOMPARE(ret.toInt32(), 123);
         }
     }
+}
 
-    // Same program run in different engines
+void tst_QScriptEngine::evaluateProgram_multipleEngines()
+{
+    QScriptEngine eng;
     {
         QString code("1 + 2");
         QScriptProgram program(code);
@@ -4943,8 +5410,11 @@ void tst_QScriptEngine::evaluateProgram()
             }
         }
     }
+}
 
-    // No program
+void tst_QScriptEngine::evaluateProgram_empty()
+{
+    QScriptEngine eng;
     {
         QScriptProgram program;
         QVERIFY(program.isNull());
@@ -5017,6 +5487,10 @@ void tst_QScriptEngine::qRegExpInport_data()
     QTest::newRow("aaa")  << QRegExp("a{2,5}") << "aAaAaaaaaAa";
     QTest::newRow("aaa minimal")  << minimal(QRegExp("a{2,5}")) << "aAaAaaaaaAa";
     QTest::newRow("minimal")  << minimal(QRegExp(".*\\} [*8]")) << "}?} ?} *";
+    QTest::newRow(".? minimal")  << minimal(QRegExp(".?")) << ".?";
+    QTest::newRow(".+ minimal")  << minimal(QRegExp(".+")) << ".+";
+    QTest::newRow("[.?] minimal")  << minimal(QRegExp("[.?]")) << ".?";
+    QTest::newRow("[.+] minimal")  << minimal(QRegExp("[.+]")) << ".+";
 }
 
 void tst_QScriptEngine::qRegExpInport()
@@ -5359,6 +5833,32 @@ void tst_QScriptEngine::newGrowingStaticScopeObject()
     }
 
     eng.popContext();
+}
+
+QT_BEGIN_NAMESPACE
+Q_SCRIPT_DECLARE_QMETAOBJECT(QStandardItemModel, QObject*)
+QT_END_NAMESPACE
+
+void tst_QScriptEngine::scriptValueFromQMetaObject()
+{
+    QScriptEngine eng;
+    {
+        QScriptValue meta = eng.scriptValueFromQMetaObject<QScriptEngine>();
+        QVERIFY(meta.isQMetaObject());
+        QCOMPARE(meta.toQMetaObject(), &QScriptEngine::staticMetaObject);
+        // Because of missing Q_SCRIPT_DECLARE_QMETAOBJECT() for QScriptEngine.
+        QVERIFY(!meta.construct().isValid());
+    }
+    {
+        QScriptValue meta = eng.scriptValueFromQMetaObject<QStandardItemModel>();
+        QVERIFY(meta.isQMetaObject());
+        QCOMPARE(meta.toQMetaObject(), &QStandardItemModel::staticMetaObject);
+        QScriptValue obj = meta.construct(QScriptValueList() << eng.newQObject(&eng));
+        QVERIFY(obj.isQObject());
+        QStandardItemModel *model = qobject_cast<QStandardItemModel*>(obj.toQObject());
+        QVERIFY(model != 0);
+        QCOMPARE(model->parent(), (QObject*)&eng);
+    }
 }
 
 QTEST_MAIN(tst_QScriptEngine)

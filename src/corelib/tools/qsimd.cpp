@@ -140,7 +140,7 @@ static inline uint detectProcessorFeatures()
 #if defined(QT_HAVE_IWMMXT)
     // runtime detection only available when running as a previlegied process
     features = IWMMXT;
-#elif defined(QT_HAVE_NEON)
+#elif defined(QT_ALWAYS_HAVE_NEON)
     features = NEON;
 #endif
 
@@ -291,7 +291,7 @@ static inline uint detectProcessorFeatures()
     uint feature_result = 0;
 
 #if defined(Q_CC_GNU)
-    long tmp;
+    quint64 tmp;
     asm ("xchg %%rbx, %1\n"
          "cpuid\n"
          "xchg %%rbx, %1\n"

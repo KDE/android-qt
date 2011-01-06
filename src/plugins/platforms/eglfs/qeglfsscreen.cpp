@@ -1,16 +1,17 @@
 /****************************************************************************
 **
-** Copyright (C) 2009 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
+** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
-** This file is part of the QtOpenVG module of the Qt Toolkit.
+** This file is part of the plugins of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
 ** No Commercial Usage
 ** This file contains pre-release code and may not be distributed.
 ** You may use this file in accordance with the terms and conditions
-** contained in the either Technology Preview License Agreement or the
-** Beta Release License Agreement.
+** contained in the Technology Preview License Agreement accompanying
+** this package.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
@@ -20,24 +21,24 @@
 ** ensure the GNU Lesser General Public License version 2.1 requirements
 ** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
 **
-** In addition, as a special exception, Nokia gives you certain
-** additional rights. These rights are described in the Nokia Qt LGPL
-** Exception version 1.0, included in the file LGPL_EXCEPTION.txt in this
-** package.
+** In addition, as a special exception, Nokia gives you certain additional
+** rights.  These rights are described in the Nokia Qt LGPL Exception
+** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3.0 as published by the Free Software
-** Foundation and appearing in the file LICENSE.GPL included in the
-** packaging of this file.  Please review the following information to
-** ensure the GNU General Public License version 3.0 requirements will be
-** met: http://www.gnu.org/copyleft/gpl.html.
+** If you have questions regarding the use of this file, please contact
+** Nokia at qt-info@nokia.com.
 **
-** If you are unsure which license is appropriate for your use, please
-** contact the sales department at http://www.qtsoftware.com/contact.
+**
+**
+**
+**
+**
+**
+**
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
+
 #include "qeglfsscreen.h"
 
 #include "../eglconvenience/qeglconvenience.h"
@@ -49,6 +50,8 @@
 #endif //Q_OPENKODE
 
 QT_BEGIN_NAMESPACE
+
+// #define QEGL_EXTRA_DEBUG
 
 #ifdef QEGL_EXTRA_DEBUG
 struct AttrInfo { EGLint attr; const char *name; };
@@ -84,7 +87,10 @@ static struct AttrInfo attrs[] = {
 #endif //QEGL_EXTRA_DEBUG
 
 QEglFSScreen::QEglFSScreen(EGLNativeDisplayType display)
-    : m_depth(16), m_format(QImage::Format_RGB16), m_platformContext(0)
+    : m_depth(32)
+    , m_format(QImage::Format_Invalid)
+    , m_platformContext(0)
+    , m_surface(0)
 {
 #ifdef QEGL_EXTRA_DEBUG
     qWarning("QEglScreen %p\n", this);
@@ -113,12 +119,48 @@ QEglFSScreen::QEglFSScreen(EGLNativeDisplayType display)
 
     qWarning("Initialized display %d %d\n", major, minor);
 
-    QPlatformWindowFormat platformFormat;
-    platformFormat.setDepth(16);
+    int swapInterval = 1;
+    QByteArray swapIntervalString = qgetenv("QT_QPA_EGLFS_SWAPINTERVAL");
+    if (!swapIntervalString.isEmpty()) {
+        bool ok;
+        swapInterval = swapIntervalString.toInt(&ok);
+        if (!ok)
+            swapInterval = 1;
+    }
+    eglSwapInterval(m_dpy, swapInterval);
+}
+
+void QEglFSScreen::createAndSetPlatformContext() const {
+    const_cast<QEglFSScreen *>(this)->createAndSetPlatformContext();
+}
+
+void QEglFSScreen::createAndSetPlatformContext()
+{
+    QPlatformWindowFormat platformFormat = QPlatformWindowFormat::defaultFormat();
+
     platformFormat.setWindowApi(QPlatformWindowFormat::OpenGL);
-    platformFormat.setRedBufferSize(8);
-    platformFormat.setGreenBufferSize(8);
-    platformFormat.setBlueBufferSize(8);
+
+    QByteArray depthString = qgetenv("QT_QPA_EGLFS_DEPTH");
+    if (depthString.toInt() == 16) {
+        platformFormat.setDepth(16);
+        platformFormat.setRedBufferSize(5);
+        platformFormat.setGreenBufferSize(6);
+        platformFormat.setBlueBufferSize(5);
+        m_depth = 16;
+        m_format = QImage::Format_RGB16;
+    } else {
+        platformFormat.setDepth(32);
+        platformFormat.setRedBufferSize(8);
+        platformFormat.setGreenBufferSize(8);
+        platformFormat.setBlueBufferSize(8);
+        m_depth = 32;
+        m_format = QImage::Format_RGB32;
+    }
+    if (!qgetenv("QT_QPA_EGLFS_MULTISAMPLE").isEmpty()) {
+        platformFormat.setSampleBuffers(true);
+    }
+
+
     EGLConfig config = q_configFromQPlatformWindowFormat(m_dpy, platformFormat);
 
     EGLNativeWindowType eglWindow = 0;
@@ -160,15 +202,44 @@ QEglFSScreen::QEglFSScreen(EGLNativeDisplayType display)
     attribList[temp++] = 2; // GLES version 2
     attribList[temp++] = EGL_NONE;
 
-    m_platformContext = new QEGLPlatformContext(m_dpy,config,attribList,m_surface,EGL_OPENGL_ES_API);
+    QEGLPlatformContext *platformContext = new QEGLPlatformContext(m_dpy,config,attribList,m_surface,EGL_OPENGL_ES_API);
+    platformContext->makeDefaultSharedContext();
+    m_platformContext = platformContext;
 
-//    qWarning("Created platformcontext");
-    EGLint w,h;
-
+    EGLint w,h;                    // screen size detection
     eglQuerySurface(m_dpy, m_surface, EGL_WIDTH, &w);
     eglQuerySurface(m_dpy, m_surface, EGL_HEIGHT, &h);
 
     m_geometry = QRect(0,0,w,h);
+
+}
+
+QRect QEglFSScreen::geometry() const
+{
+    if (m_geometry.isNull()) {
+        createAndSetPlatformContext();
+    }
+    return m_geometry;
+}
+
+int QEglFSScreen::depth() const
+{
+    return m_depth;
+}
+
+QImage::Format QEglFSScreen::format() const
+{
+    if (m_format == QImage::Format_Invalid)
+        createAndSetPlatformContext();
+    return m_format;
+}
+QPlatformGLContext *QEglFSScreen::platformContext() const
+{
+    if (!m_platformContext) {
+        QEglFSScreen *that = const_cast<QEglFSScreen *>(this);
+        that->createAndSetPlatformContext();
+    }
+    return m_platformContext;
 }
 
 QT_END_NAMESPACE

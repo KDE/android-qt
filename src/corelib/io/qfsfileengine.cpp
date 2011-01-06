@@ -152,7 +152,7 @@ QString QFSFileEnginePrivate::canonicalized(const QString &path)
     // ... but Linux with uClibc does not have it
 #if !defined(__UCLIBC__)
     char *ret = 0;
-#if defined(Q_OS_MAC)
+#if defined(Q_OS_MAC) && !defined(QT_NO_CORESERVICES)
     // Mac OS X 10.5.x doesn't support the realpath(X,0) extension we use here.
     if (QSysInfo::MacintoshVersion >= QSysInfo::MV_10_6) {
         ret = realpath(path.toLocal8Bit().constData(), (char*)0);
@@ -189,9 +189,15 @@ QString QFSFileEnginePrivate::canonicalized(const QString &path)
     known.insert(path);
     do {
 #ifdef Q_OS_WIN
-        // UNC, skip past the first two elements
-        if (separatorPos == 0 && tmpPath.startsWith(QLatin1String("//")))
-            separatorPos = tmpPath.indexOf(slash, 2);
+        if (separatorPos == 0) {
+            if (tmpPath.size() >= 2 && tmpPath.at(0) == slash && tmpPath.at(1) == slash) {
+                // UNC, skip past the first two elements
+                separatorPos = tmpPath.indexOf(slash, 2);
+            } else if (tmpPath.size() >= 3 && tmpPath.at(1) == QLatin1Char(':') && tmpPath.at(2) == slash) {
+                // volume root, skip since it can not be a symlink
+                separatorPos = 2;
+            }
+        }
         if (separatorPos != -1)
 #endif
         separatorPos = tmpPath.indexOf(slash, separatorPos + 1);
@@ -208,6 +214,8 @@ QString QFSFileEnginePrivate::canonicalized(const QString &path)
             fi.setFile(prefix);
             if (fi.isSymLink()) {
                 QString target = fi.symLinkTarget();
+                if(QFileInfo(target).isRelative())
+                    target = fi.absolutePath() + slash + target;
                 if (separatorPos != -1) {
                     if (fi.isDir() && !target.endsWith(slash))
                         target.append(slash);

@@ -74,6 +74,8 @@ private slots:
     void bypassShaping();
     void elidedMultiLength();
     void elidedMultiLengthF();
+    void inFontUcs4();
+    void lineWidth();
 };
 
 tst_QFontMetrics::tst_QFontMetrics()
@@ -264,6 +266,44 @@ void tst_QFontMetrics::elidedMultiLength()
 void tst_QFontMetrics::elidedMultiLengthF()
 {
     elidedMultiLength_helper<QFontMetricsF>();
+}
+
+void tst_QFontMetrics::inFontUcs4()
+{
+    int id = QFontDatabase::addApplicationFont(":/fonts/ucs4font.ttf");
+    QVERIFY(id >= 0);
+
+    QFont font("QtTestUcs4");
+    {
+        QFontMetrics fm(font);
+
+        QVERIFY(fm.inFontUcs4(0x1D7FF));
+    }
+
+    {
+        QFontMetricsF fm(font);
+
+        QVERIFY(fm.inFontUcs4(0x1D7FF));
+    }
+
+    QFontDatabase::removeApplicationFont(id);
+}
+
+void tst_QFontMetrics::lineWidth()
+{
+    // QTBUG-13009, QTBUG-13011
+    QFont smallFont;
+    smallFont.setPointSize(8);
+    smallFont.setWeight(QFont::Light);
+    const QFontMetrics smallFontMetrics(smallFont);
+
+    QFont bigFont;
+    bigFont.setPointSize(40);
+    bigFont.setWeight(QFont::Black);
+    const QFontMetrics bigFontMetrics(bigFont);
+
+    QVERIFY(smallFontMetrics.lineWidth() >= 1);
+    QVERIFY(smallFontMetrics.lineWidth() < bigFontMetrics.lineWidth());
 }
 
 QTEST_MAIN(tst_QFontMetrics)

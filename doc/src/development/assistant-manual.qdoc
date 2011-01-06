@@ -7,11 +7,11 @@
 ** This file is part of the documentation of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:FDL$
-** Commercial Usage
-** Licensees holding valid Qt Commercial licenses may use this file in
-** accordance with the Qt Commercial License Agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in a
-** written agreement between you and Nokia.
+** No Commercial Usage
+** This file contains pre-release code and may not be distributed.
+** You may use this file in accordance with the terms and conditions
+** contained in the Technology Preview License Agreement accompanying
+** this package.
 **
 ** GNU Free Documentation License
 ** Alternatively, this file may be used under the terms of the GNU Free
@@ -640,7 +640,12 @@
             QDesktopServices::DataLocation. The first form is useful for 
             collections that are used in a "mobile" way, e.g. carried around 
             on a USB stick.
-            
+        \row
+            \o \c{<enableFullTextSearchFallback>}
+            \o This tag describes the ability to fallback and use the full text
+            search if a keyword can't be found in the index. This functionality
+            can be used while remote controlling \QA. To make it available for
+            remote control set the tag value to \c{true}.
     \endtable
 
     In addition to those \QA specific tags, the tags for generating and registering

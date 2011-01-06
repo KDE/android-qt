@@ -1,3 +1,44 @@
+/****************************************************************************
+**
+** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
+** All rights reserved.
+** Contact: Nokia Corporation (qt-info@nokia.com)
+**
+** This file is part of the plugins of the Qt Toolkit.
+**
+** $QT_BEGIN_LICENSE:LGPL$
+** No Commercial Usage
+** This file contains pre-release code and may not be distributed.
+** You may use this file in accordance with the terms and conditions
+** contained in the Technology Preview License Agreement accompanying
+** this package.
+**
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Nokia gives you certain additional
+** rights.  These rights are described in the Nokia Qt LGPL Exception
+** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+**
+** If you have questions regarding the use of this file, please contact
+** Nokia at qt-info@nokia.com.
+**
+**
+**
+**
+**
+**
+**
+**
+** $QT_END_LICENSE$
+**
+****************************************************************************/
+
 #include "qeglconvenience.h"
 
 QT_BEGIN_NAMESPACE
@@ -39,7 +80,7 @@ QVector<EGLint> q_createConfigAttributesFromFormat(const QPlatformWindowFormat &
     // put in the list before 32-bit configs. So, to make sure 16-bit is preffered over 32-bit,
     // we must set the red/green/blue sizes to zero. This has an unfortunate consequence that
     // if the application sets the red/green/blue size to 5/6/5 on the QPlatformWindowFormat,
-    // they will probably get a 32-bit config, even when there's an RGB565 config avaliable.
+    // they will probably get a 32-bit config, even when there's an RGB565 config available.
 
     // Now normalize the values so -1 becomes 0
     redSize   = redSize   > 0 ? redSize   : 0;
@@ -111,7 +152,7 @@ bool q_reduceConfigAttributes(QVector<EGLint> *configAttributes)
     // those with smaller (but faster) lower color depths. One
     // way around this is to set EGL_BUFFER_SIZE to 16, which
     // trumps the others. Of course, there may not be a 16-bit
-    // config avaliable, so it's the first restraint we remove.
+    // config available, so it's the first restraint we remove.
     i = configAttributes->indexOf(EGL_BUFFER_SIZE);
     if (i >= 0) {
         if (configAttributes->at(i+1) == 16) {

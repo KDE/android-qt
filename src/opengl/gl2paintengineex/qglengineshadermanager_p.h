@@ -72,7 +72,7 @@
     The position shaders for brushes look scary. This is because many of the
     calculations which logically belong in the fragment shader have been moved
     into the vertex shader to improve performance. This is why the position
-    calculation is in a seperate shader. Not only does it calculate the
+    calculation is in a separate shader. Not only does it calculate the
     position, but it also calculates some data to be passed to the fragment
     shader as a varying. It is optimal to move as much of the calculation as
     possible into the vertex shader as this is executed less often.
@@ -259,9 +259,9 @@ static const GLuint QT_PMV_MATRIX_3_ATTR = 5;
 
 class QGLEngineShaderProg;
 
-class QGLEngineSharedShaders : public QObject
+class QGLEngineSharedShaders
 {
-    Q_OBJECT
+    Q_GADGET
 public:
 
     enum SnippetName {
@@ -364,14 +364,12 @@ public:
     // full.
     void cleanupCustomStage(QGLCustomShaderStage* stage);
 
-signals:
-    void shaderProgNeedsChanging();
-
 private:
     QGLSharedResourceGuard ctxGuard;
     QGLShaderProgram *blitShaderProg;
     QGLShaderProgram *simpleShaderProg;
     QList<QGLEngineShaderProg*> cachedPrograms;
+    QList<QGLShader *> shaders;
 
     static const char* qShaderSnippets[TotalSnippetCount];
 };
@@ -457,7 +455,7 @@ public:
         AttributeOpacity
     };
 
-    // There are optimisations we can do, depending on the brush transform:
+    // There are optimizations we can do, depending on the brush transform:
     //    1) May not have to apply perspective-correction
     //    2) Can use lower precision for matrix
     void optimiseForBrushTransform(QTransform::TransformationType transformType);
@@ -491,9 +489,6 @@ public:
     QGLShaderProgram* blitProgram(); // Used to blit a texture into the framebuffer
 
     QGLEngineSharedShaders* sharedShaders;
-
-private slots:
-    void shaderProgNeedsChangingSlot() { shaderProgNeedsChanging = true; }
 
 private:
     QGLContext*     ctx;

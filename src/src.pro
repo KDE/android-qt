@@ -6,7 +6,6 @@ win32:SRC_SUBDIRS += src_winmain
 symbian:SRC_SUBDIRS += src_s60main
 SRC_SUBDIRS += src_corelib src_xml src_network src_sql src_testlib
 nacl: SRC_SUBDIRS -= src_network src_testlib
-win32:SRC_SUBDIRS += src_activeqt
 !symbian:contains(QT_CONFIG, dbus):SRC_SUBDIRS += src_dbus
 !contains(QT_CONFIG, no-gui): SRC_SUBDIRS += src_gui
 !wince*:!symbian:!vxworks:contains(QT_CONFIG, qt3support): SRC_SUBDIRS += src_qt3support
@@ -30,7 +29,7 @@ contains(QT_CONFIG, webkit)  {
 SRC_SUBDIRS += src_plugins
 contains(QT_CONFIG, declarative): SRC_SUBDIRS += src_imports
 contains(QT_CONFIG, declarative):contains(QT_CONFIG, webkit): SRC_SUBDIRS += src_webkit_declarative
-CONFIG(android): SRC_SUBDIRS += src_android
+CONFIG(android): SRC_SUBDIRS += src_qtandroidbridge src_android
 
 # s60installs need to be at the end, because projects.pro does an ordered build,
 # and s60installs depends on all the others.
@@ -88,6 +87,8 @@ src_declarative.subdir = $$QT_SOURCE_TREE/src/declarative
 src_declarative.target = sub-declarative
 src_webkit_declarative.subdir = $$QT_SOURCE_TREE/src/3rdparty/webkit/WebKit/qt/declarative
 src_webkit_declarative.target = sub-webkitdeclarative
+src_qtandroidbridge.subdir = $$QT_SOURCE_TREE/src/android/qtandroidbridge
+src_qtandroidbridge.target = sub-qtandroidbridge
 src_android.subdir = $$QT_SOURCE_TREE/src/android/cpp
 src_android.target = sub-android
 #CONFIG += ordered
@@ -114,17 +115,21 @@ src_android.target = sub-android
    contains(QT_CONFIG, opengl):src_multimedia.depends += src_opengl
    src_tools_activeqt.depends = src_tools_idc src_gui
    src_declarative.depends = src_gui src_script src_network
-   src_plugins.depends = src_gui src_sql src_svg src_multimedia
+   src_plugins.depends = src_gui src_sql src_svg
+   contains(QT_CONFIG, multimedia):src_plugins.depends += src_multimedia
    src_s60installs.depends = $$TOOLS_SUBDIRS $$SRC_SUBDIRS
    src_s60installs.depends -= src_s60installs
    src_imports.depends = src_gui src_declarative
-   src_android.depends = src_corelib
+   src_android.depends = src_corelib src_qtandroidbridge
 
    contains(QT_CONFIG, webkit)  {
       src_webkit.depends = src_gui src_sql src_network
       contains(QT_CONFIG, xmlpatterns): src_webkit.depends += src_xmlpatterns
       src_imports.depends += src_webkit
-      exists($$QT_SOURCE_TREE/src/3rdparty/webkit/JavaScriptCore/JavaScriptCore.pro): src_webkit.depends += src_javascriptcore
+      exists($$QT_SOURCE_TREE/src/3rdparty/webkit/JavaScriptCore/JavaScriptCore.pro) {
+         src_webkit.depends += src_javascriptcore
+         src_javascriptcore.depends = src_corelib
+      }
    }
    contains(QT_CONFIG, qt3support): src_plugins.depends += src_qt3support
    contains(QT_CONFIG, dbus):{

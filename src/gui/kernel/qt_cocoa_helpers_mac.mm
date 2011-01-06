@@ -79,6 +79,7 @@
 #include <qdesktopwidget.h>
 #include <qevent.h>
 #include <qpixmapcache.h>
+#include <qvarlengtharray.h>
 #include <private/qevent_p.h>
 #include <private/qt_cocoa_helpers_mac_p.h>
 #include <private/qt_mac_p.h>
@@ -193,6 +194,7 @@ void macWindowToolbarShow(const QWidget *widget, bool show )
         }
     }
 #else
+    qt_widget_private(const_cast<QWidget *>(widget))->updateFrameStrut();
     ShowHideWindowToolbar(wnd, show, false);
 #endif
 }
@@ -469,7 +471,6 @@ void qt_dispatchTabletProximityEvent(const ::TabletProximityRec &proxRec)
     qt_sendSpontaneousEvent(qApp, &qtabletProximity);
 }
 
-#ifdef QT_MAC_USE_COCOA
 // Use this method to keep all the information in the TextSegment. As long as it is ordered
 // we are in OK shape, and we can influence that ourselves.
 struct KeyPair
@@ -493,69 +494,107 @@ bool operator<(QChar qchar, const KeyPair &entry)
     return qchar < entry.cocoaKey;
 }
 
+bool operator<(const Qt::Key &key, const KeyPair &entry)
+{
+    return key < entry.qtKey;
+}
+
+bool operator<(const KeyPair &entry, const Qt::Key &key)
+{
+    return entry.qtKey < key;
+}
+
+static bool qtKey2CocoaKeySortLessThan(const KeyPair &entry1, const KeyPair &entry2)
+{
+    return entry1.qtKey < entry2.qtKey;
+}
+
+static const int NumEntries = 59;
+static const KeyPair entries[NumEntries] = {
+    { NSEnterCharacter, Qt::Key_Enter },
+    { NSBackspaceCharacter, Qt::Key_Backspace },
+    { NSTabCharacter, Qt::Key_Tab },
+    { NSNewlineCharacter, Qt::Key_Return },
+    { NSCarriageReturnCharacter, Qt::Key_Return },
+    { NSBackTabCharacter, Qt::Key_Backtab },
+    { NSDeleteCharacter, Qt::Key_Delete },
+    { kEscapeCharCode, Qt::Key_Escape },
+    { NSUpArrowFunctionKey, Qt::Key_Up },
+    { NSDownArrowFunctionKey, Qt::Key_Down },
+    { NSLeftArrowFunctionKey, Qt::Key_Left },
+    { NSRightArrowFunctionKey, Qt::Key_Right },
+    { NSF1FunctionKey, Qt::Key_F1 },
+    { NSF2FunctionKey, Qt::Key_F2 },
+    { NSF3FunctionKey, Qt::Key_F3 },
+    { NSF4FunctionKey, Qt::Key_F4 },
+    { NSF5FunctionKey, Qt::Key_F5 },
+    { NSF6FunctionKey, Qt::Key_F6 },
+    { NSF7FunctionKey, Qt::Key_F7 },
+    { NSF8FunctionKey, Qt::Key_F8 },
+    { NSF9FunctionKey, Qt::Key_F8 },
+    { NSF10FunctionKey, Qt::Key_F10 },
+    { NSF11FunctionKey, Qt::Key_F11 },
+    { NSF12FunctionKey, Qt::Key_F12 },
+    { NSF13FunctionKey, Qt::Key_F13 },
+    { NSF14FunctionKey, Qt::Key_F14 },
+    { NSF15FunctionKey, Qt::Key_F15 },
+    { NSF16FunctionKey, Qt::Key_F16 },
+    { NSF17FunctionKey, Qt::Key_F17 },
+    { NSF18FunctionKey, Qt::Key_F18 },
+    { NSF19FunctionKey, Qt::Key_F19 },
+    { NSF20FunctionKey, Qt::Key_F20 },
+    { NSF21FunctionKey, Qt::Key_F21 },
+    { NSF22FunctionKey, Qt::Key_F22 },
+    { NSF23FunctionKey, Qt::Key_F23 },
+    { NSF24FunctionKey, Qt::Key_F24 },
+    { NSF25FunctionKey, Qt::Key_F25 },
+    { NSF26FunctionKey, Qt::Key_F26 },
+    { NSF27FunctionKey, Qt::Key_F27 },
+    { NSF28FunctionKey, Qt::Key_F28 },
+    { NSF29FunctionKey, Qt::Key_F29 },
+    { NSF30FunctionKey, Qt::Key_F30 },
+    { NSF31FunctionKey, Qt::Key_F31 },
+    { NSF32FunctionKey, Qt::Key_F32 },
+    { NSF33FunctionKey, Qt::Key_F33 },
+    { NSF34FunctionKey, Qt::Key_F34 },
+    { NSF35FunctionKey, Qt::Key_F35 },
+    { NSInsertFunctionKey, Qt::Key_Insert },
+    { NSDeleteFunctionKey, Qt::Key_Delete },
+    { NSHomeFunctionKey, Qt::Key_Home },
+    { NSEndFunctionKey, Qt::Key_End },
+    { NSPageUpFunctionKey, Qt::Key_PageUp },
+    { NSPageDownFunctionKey, Qt::Key_PageDown },
+    { NSPrintScreenFunctionKey, Qt::Key_Print },
+    { NSScrollLockFunctionKey, Qt::Key_ScrollLock },
+    { NSPauseFunctionKey, Qt::Key_Pause },
+    { NSSysReqFunctionKey, Qt::Key_SysReq },
+    { NSMenuFunctionKey, Qt::Key_Menu },
+    { NSHelpFunctionKey, Qt::Key_Help },
+};
+static const KeyPair * const end = entries + NumEntries;
+
+QChar qtKey2CocoaKey(Qt::Key key)
+{
+    // The first time this function is called, create a reverse
+    // looup table sorted on Qt Key rather than Cocoa key:
+    static QVector<KeyPair> rev_entries(NumEntries);
+    static bool mustInit = true;
+    if (mustInit){
+        mustInit = false;
+        for (int i=0; i<NumEntries; ++i)
+            rev_entries[i] = entries[i];
+        qSort(rev_entries.begin(), rev_entries.end(), qtKey2CocoaKeySortLessThan);
+    }
+    const QVector<KeyPair>::iterator i
+            = qBinaryFind(rev_entries.begin(), rev_entries.end(), key);
+    if (i == rev_entries.end())
+        return QChar();
+    return i->cocoaKey;
+}
+
+#ifdef QT_MAC_USE_COCOA
 static Qt::Key cocoaKey2QtKey(QChar keyCode)
 {
-    static const int NumEntries = 57;
-    static const KeyPair entries[NumEntries] = {
-        { NSEnterCharacter, Qt::Key_Enter },
-        { NSTabCharacter, Qt::Key_Tab },
-        { NSCarriageReturnCharacter, Qt::Key_Return },
-        { NSBackTabCharacter, Qt::Key_Backtab },
-        { kEscapeCharCode, Qt::Key_Escape },
-        { NSDeleteCharacter, Qt::Key_Backspace },
-        { NSUpArrowFunctionKey, Qt::Key_Up },
-        { NSDownArrowFunctionKey, Qt::Key_Down },
-        { NSLeftArrowFunctionKey, Qt::Key_Left },
-        { NSRightArrowFunctionKey, Qt::Key_Right },
-        { NSF1FunctionKey, Qt::Key_F1 },
-        { NSF2FunctionKey, Qt::Key_F2 },
-        { NSF3FunctionKey, Qt::Key_F3 },
-        { NSF4FunctionKey, Qt::Key_F4 },
-        { NSF5FunctionKey, Qt::Key_F5 },
-        { NSF6FunctionKey, Qt::Key_F6 },
-        { NSF7FunctionKey, Qt::Key_F7 },
-        { NSF8FunctionKey, Qt::Key_F8 },
-        { NSF9FunctionKey, Qt::Key_F8 },
-        { NSF10FunctionKey, Qt::Key_F10 },
-        { NSF11FunctionKey, Qt::Key_F11 },
-        { NSF12FunctionKey, Qt::Key_F12 },
-        { NSF13FunctionKey, Qt::Key_F13 },
-        { NSF14FunctionKey, Qt::Key_F14 },
-        { NSF15FunctionKey, Qt::Key_F15 },
-        { NSF16FunctionKey, Qt::Key_F16 },
-        { NSF17FunctionKey, Qt::Key_F17 },
-        { NSF18FunctionKey, Qt::Key_F18 },
-        { NSF19FunctionKey, Qt::Key_F19 },
-        { NSF20FunctionKey, Qt::Key_F20 },
-        { NSF21FunctionKey, Qt::Key_F21 },
-        { NSF22FunctionKey, Qt::Key_F22 },
-        { NSF23FunctionKey, Qt::Key_F23 },
-        { NSF24FunctionKey, Qt::Key_F24 },
-        { NSF25FunctionKey, Qt::Key_F25 },
-        { NSF26FunctionKey, Qt::Key_F26 },
-        { NSF27FunctionKey, Qt::Key_F27 },
-        { NSF28FunctionKey, Qt::Key_F28 },
-        { NSF29FunctionKey, Qt::Key_F29 },
-        { NSF30FunctionKey, Qt::Key_F30 },
-        { NSF31FunctionKey, Qt::Key_F31 },
-        { NSF32FunctionKey, Qt::Key_F32 },
-        { NSF33FunctionKey, Qt::Key_F33 },
-        { NSF34FunctionKey, Qt::Key_F34 },
-        { NSF35FunctionKey, Qt::Key_F35 },
-        { NSInsertFunctionKey, Qt::Key_Insert },
-        { NSDeleteFunctionKey, Qt::Key_Delete },
-        { NSHomeFunctionKey, Qt::Key_Home },
-        { NSEndFunctionKey, Qt::Key_End },
-        { NSPageUpFunctionKey, Qt::Key_PageUp },
-        { NSPageDownFunctionKey, Qt::Key_PageDown },
-        { NSPrintScreenFunctionKey, Qt::Key_Print },
-        { NSScrollLockFunctionKey, Qt::Key_ScrollLock },
-        { NSPauseFunctionKey, Qt::Key_Pause },
-        { NSSysReqFunctionKey, Qt::Key_SysReq },
-        { NSMenuFunctionKey, Qt::Key_Menu },
-        { NSHelpFunctionKey, Qt::Key_Help },
-    };
-    static const KeyPair * const end = entries + NumEntries;
     const KeyPair *i = qBinaryFind(entries, end, keyCode);
     if (i == end)
         return Qt::Key(keyCode.unicode());
@@ -576,6 +615,27 @@ Qt::KeyboardModifiers qt_cocoaModifiers2QtModifiers(ulong modifierFlags)
     if (modifierFlags & NSNumericPadKeyMask)
         qtMods |= Qt::KeypadModifier;
     return qtMods;
+}
+
+NSString *qt_mac_removePrivateUnicode(NSString* string)
+{
+    int len = [string length];
+    if (len) {
+        QVarLengthArray <unichar, 10> characters(len);
+        bool changed = false;
+        for (int i = 0; i<len; i++) {
+            characters[i] = [string characterAtIndex:i];
+            // check if they belong to key codes in private unicode range
+            // currently we need to handle only the NSDeleteFunctionKey
+            if (characters[i] == NSDeleteFunctionKey) {
+                characters[i] = NSDeleteCharacter;
+                changed = true;
+            }
+        }
+        if (changed)
+            return [NSString stringWithCharacters:characters.data() length:len];
+    }
+    return string;
 }
 
 Qt::KeyboardModifiers qt_cocoaDragOperation2QtModifiers(uint dragOperations)
@@ -1204,7 +1264,7 @@ void qt_mac_replaceDrawRect(void * /*OSWindowRef */window, QWidgetPrivate *widge
         // We have the original method here. Proceed and swap the methods.
         method_exchangeImplementations(m1, m0);
         widget->originalDrawMethod = false;
-        [window display];
+        [theWindow display];
     }
 }
 
@@ -1227,7 +1287,7 @@ void qt_mac_replaceDrawRectOriginal(void * /*OSWindowRef */window, QWidgetPrivat
     }
     method_exchangeImplementations(m1, m0);
     widget->originalDrawMethod = true;
-    [window display];
+    [theWindow display];
 }
 #endif // QT_MAC_USE_COCOA
 
@@ -1297,7 +1357,7 @@ CGContextRef qt_mac_graphicsContextFor(QWidget *widget)
     CGrafPtr port = GetWindowPort(qt_mac_window_for(widget));
     QDBeginCGContext(port, &context);
 #else
-    CGContextRef context = reinterpret_cast<CGContextRef>([[qt_mac_window_for(widget) graphicsContext] graphicsPort]);
+    CGContextRef context = (CGContextRef)[[NSGraphicsContext graphicsContextWithWindow:qt_mac_window_for(widget)] graphicsPort];
 #endif
     return context;
 }
@@ -1327,11 +1387,11 @@ QString qt_mac_get_pasteboardString(OSPasteboardRef paste)
     QMacCocoaAutoReleasePool pool;
     NSPasteboard *pb = nil;
     CFStringRef pbname;
-    if (PasteboardCopyName (paste, &pbname)) {
-        pb = [NSPasteboard generalPasteboard];
+    if (PasteboardCopyName(paste, &pbname) == noErr) {
+        pb = [NSPasteboard pasteboardWithName:const_cast<NSString *>(reinterpret_cast<const NSString *>(pbname))];
+        CFRelease(pbname);
     } else {
-        pb = [NSPasteboard pasteboardWithName:reinterpret_cast<const NSString *>(pbname)];
-        CFRelease (pbname);
+        pb = [NSPasteboard generalPasteboard];
     }
     if (pb) {
         NSString *text = [pb stringForType:NSStringPboardType];
@@ -1426,39 +1486,17 @@ void qt_cocoaChangeOverrideCursor(const QCursor &cursor)
     [static_cast<NSCursor *>(qt_mac_nsCursorForQCursor(cursor)) set];
 }
 
-//  WARNING: If Qt did not create NSApplication (e.g. in case it is
-//  used as a plugin), and at the same time, there is no window on
-//  screen (or the window that the event is sendt to becomes hidden etc
-//  before the event gets delivered), the message will not be performed.
-bool qt_cocoaPostMessage(id target, SEL selector)
+void qt_cocoaPostMessage(id target, SEL selector, int argCount, id arg1, id arg2)
 {
-    if (!target)
-        return false;
-
-    NSInteger windowNumber = 0;
-    if (![NSApp isMemberOfClass:[QNSApplication class]]) {
-        // INVARIANT: Cocoa is not using our NSApplication subclass. That means
-        // we don't control the main event handler either. So target the event
-        // for one of the windows on screen:
-        NSWindow *nswin = [NSApp mainWindow];
-        if (!nswin) {
-            nswin = [NSApp keyWindow];
-            if (!nswin)
-                return false;
-        }
-        windowNumber = [nswin windowNumber];
-    }
-
-    // WARNING: data1 and data2 is truncated to from 64-bit to 32-bit on OS 10.5! 
+    // WARNING: data1 and data2 is truncated to from 64-bit to 32-bit on OS 10.5!
     // That is why we need to split the address in two parts:
-    QCocoaPostMessageArgs *args = new QCocoaPostMessageArgs(target, selector);
+    QCocoaPostMessageArgs *args = new QCocoaPostMessageArgs(target, selector, argCount, arg1, arg2);
     quint32 lower = quintptr(args);
     quint32 upper = quintptr(args) >> 32;
     NSEvent *e = [NSEvent otherEventWithType:NSApplicationDefined
-        location:NSZeroPoint modifierFlags:0 timestamp:0 windowNumber:windowNumber
+        location:NSZeroPoint modifierFlags:0 timestamp:0 windowNumber:0
         context:nil subtype:QtCocoaEventSubTypePostMessage data1:lower data2:upper];
     [NSApp postEvent:e atStart:NO];
-    return true;
 }
 #endif
 
@@ -1497,7 +1535,7 @@ void macDrawRectOnTop(void * /*OSWindowRef */window)
     NSRect contentRect = [contentView frame];
     // Draw a line on top of the already drawn line.
     // We need to check if we are active or not to use the proper color.
-    if([window isKeyWindow] || [window isMainWindow]) {
+    if([theWindow isKeyWindow] || [theWindow isMainWindow]) {
         [[NSColor colorWithCalibratedRed:1.0 green:1.0 blue:1.0 alpha:1.0] set];
     } else {
         [[NSColor colorWithCalibratedRed:1.0 green:1.0 blue:1.0 alpha:1.0] set];
@@ -1517,7 +1555,7 @@ void macSyncDrawingOnFirstInvocation(void * /*OSWindowRef */window)
 {
     OSWindowRef theWindow = static_cast<OSWindowRef>(window);
     NSApplication *application = [NSApplication sharedApplication];
-    NSToolbar *toolbar = [window toolbar];
+    NSToolbar *toolbar = [theWindow toolbar];
     if([application isActive]) {
         // Launched from finder
         [toolbar setShowsBaselineSeparator:NO];
@@ -1543,6 +1581,13 @@ void qt_cocoaStackChildWindowOnTopOfOtherChildren(QWidget *childWidget)
             d->setSubWindowStacking(true);
         }
     }
+}
+
+void qt_mac_display(QWidget *widget)
+{
+    NSView *theNSView = qt_mac_nativeview_for(widget);
+    [theNSView display];
+    return;
 }
 
 #endif // QT_MAC_USE_COCOA

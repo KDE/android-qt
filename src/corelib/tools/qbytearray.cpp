@@ -46,7 +46,6 @@
 #include "qlist.h"
 #include "qlocale.h"
 #include "qlocale_p.h"
-#include "qunicodetables_p.h"
 #include "qscopedpointer.h"
 #include <qdatastream.h>
 
@@ -542,12 +541,19 @@ QByteArray qUncompress(const uchar* data, int nbytes)
 
     forever {
         ulong alloc = len;
-        d.reset(q_check_ptr(static_cast<QByteArray::Data *>(qRealloc(d.take(), sizeof(QByteArray::Data) + alloc))));
-        if (!d) {
+        if (len  >= (1 << 31) - sizeof(QByteArray::Data)) {
+            //QByteArray does not support that huge size anyway.
+            qWarning("qUncompress: Input data is corrupted");
+            return QByteArray();
+        }
+        QByteArray::Data *p = static_cast<QByteArray::Data *>(qRealloc(d.data(), sizeof(QByteArray::Data) + alloc));
+        if (!p) {
             // we are not allowed to crash here when compiling with QT_NO_EXCEPTIONS
             qWarning("qUncompress: could not allocate enough memory to uncompress data");
             return QByteArray();
         }
+        d.take(); // realloc was successful
+        d.reset(p);
 
         int res = ::uncompress((uchar*)d->array, &len,
                                (uchar*)data+4, nbytes-4);
@@ -555,12 +561,19 @@ QByteArray qUncompress(const uchar* data, int nbytes)
         switch (res) {
         case Z_OK:
             if (len != alloc) {
-                d.reset(q_check_ptr(static_cast<QByteArray::Data *>(qRealloc(d.take(), sizeof(QByteArray::Data) + len))));
-                if (!d) {
+                if (len  >= (1 << 31) - sizeof(QByteArray::Data)) {
+                    //QByteArray does not support that huge size anyway.
+                    qWarning("qUncompress: Input data is corrupted");
+                    return QByteArray();
+                }
+                QByteArray::Data *p = static_cast<QByteArray::Data *>(qRealloc(d.data(), sizeof(QByteArray::Data) + len));
+                if (!p) {
                     // we are not allowed to crash here when compiling with QT_NO_EXCEPTIONS
                     qWarning("qUncompress: could not allocate enough memory to uncompress data");
                     return QByteArray();
                 }
+                d.take(); // realloc was successful
+                d.reset(p);
             }
             d->ref = 1;
             d->alloc = d->size = len;
@@ -900,6 +913,13 @@ QByteArray &QByteArray::operator=(const char *str)
     d = x;
     return *this;
 }
+
+/*! \fn void QByteArray::swap(QByteArray &other)
+    \since 4.8
+
+    Swaps byte array \a other with this byte array. This operation is very
+    fast and never fails.
+*/
 
 /*! \fn int QByteArray::size() const
 
@@ -1813,7 +1833,7 @@ QByteArray &QByteArray::replace(int pos, int len, const QByteArray &after)
         return *this;
     } else {
         QByteArray copy(after);
-        // ### optimise me
+        // ### optimize me
         remove(pos, len);
         return insert(pos, copy);
     }
@@ -1854,7 +1874,7 @@ QByteArray &QByteArray::replace(int pos, int len, const char *after, int alen)
     }
 }
 
-// ### optimise all other replace method, by offering
+// ### optimize all other replace method, by offering
 // QByteArray::replace(const char *before, int blen, const char *after, int alen)
 
 /*!

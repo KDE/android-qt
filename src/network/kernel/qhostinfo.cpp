@@ -56,9 +56,7 @@
 
 QT_BEGIN_NAMESPACE
 
-#ifndef QT_NO_THREAD
 Q_GLOBAL_STATIC(QHostInfoLookupManager, theHostInfoLookupManager)
-#endif
 
 //#define QHOSTINFO_DEBUG
 
@@ -87,10 +85,8 @@ Q_GLOBAL_STATIC(QHostInfoLookupManager, theHostInfoLookupManager)
     \snippet doc/src/snippets/code/src_network_kernel_qhostinfo.cpp 0
 
 
-    The slot is invoked when the results are ready. (If you use
-    Qt for Embedded Linux and disabled multithreading support by defining
-    \c QT_NO_THREAD, lookupHost() will block until the lookup has
-    finished.) The results are stored in a QHostInfo object. Call
+    The slot is invoked when the results are ready. The results are
+    stored in a QHostInfo object. Call
     addresses() to get the list of IP addresses for the host, and
     hostName() to get the host name that was looked up.
 
@@ -176,14 +172,6 @@ int QHostInfo::lookupHost(const QString &name, QObject *receiver,
         return id;
     }
 
-#ifdef QT_NO_THREAD
-    QHostInfo hostInfo = QHostInfoAgent::fromName(name);
-    hostInfo.setLookupId(id);
-    QScopedPointer<QHostInfoResult> result(new QHostInfoResult);
-    QObject::connect(result.data(), SIGNAL(resultsReady(QHostInfo)),
-                     receiver, member, Qt::QueuedConnection);
-    result.data()->emitResultsReady(hostInfo);
-#else
     QHostInfoLookupManager *manager = theHostInfoLookupManager();
     if (manager) {
         // the application is still alive
@@ -204,8 +192,6 @@ int QHostInfo::lookupHost(const QString &name, QObject *receiver,
         QObject::connect(&runnable->resultEmitter, SIGNAL(resultsReady(QHostInfo)), receiver, member, Qt::QueuedConnection);
         manager->scheduleLookup(runnable);
     }
-#endif
-
     return id;
 }
 
@@ -216,12 +202,7 @@ int QHostInfo::lookupHost(const QString &name, QObject *receiver,
 */
 void QHostInfo::abortHostLookup(int id)
 {
-#ifndef QT_NO_THREAD
     theHostInfoLookupManager()->abortLookup(id);
-#else
-    // we cannot abort if it was non threaded.. the result signal has already been posted
-    Q_UNUSED(id);
-#endif
 }
 
 /*!
@@ -243,7 +224,10 @@ QHostInfo QHostInfo::fromName(const QString &name)
     qDebug("QHostInfo::fromName(\"%s\")",name.toLatin1().constData());
 #endif
 
-    return QHostInfoAgent::fromName(name);
+    QHostInfo hostInfo = QHostInfoAgent::fromName(name);
+    QHostInfoLookupManager *manager = theHostInfoLookupManager();
+    manager->cache.put(name, hostInfo);
+    return hostInfo;
 }
 
 /*!
@@ -422,7 +406,6 @@ void QHostInfo::setErrorString(const QString &str)
     \sa hostName()
 */
 
-#ifndef QT_NO_THREAD
 QHostInfoRunnable::QHostInfoRunnable(QString hn, int i) : toBeLookedUp(hn), id(i)
 {
     setAutoDelete(true);
@@ -468,14 +451,17 @@ void QHostInfoRunnable::run()
     resultEmitter.emitResultsReady(hostInfo);
 
     // now also iterate through the postponed ones
-    QMutableListIterator<QHostInfoRunnable*> iterator(manager->postponedLookups);
-    while (iterator.hasNext()) {
-        QHostInfoRunnable* postponed = iterator.next();
-        if (toBeLookedUp == postponed->toBeLookedUp) {
-            // we can now emit
-            iterator.remove();
-            hostInfo.setLookupId(postponed->id);
-            postponed->resultEmitter.emitResultsReady(hostInfo);
+    {
+        QMutexLocker locker(&manager->mutex);
+        QMutableListIterator<QHostInfoRunnable*> iterator(manager->postponedLookups);
+        while (iterator.hasNext()) {
+            QHostInfoRunnable* postponed = iterator.next();
+            if (toBeLookedUp == postponed->toBeLookedUp) {
+                // we can now emit
+                iterator.remove();
+                hostInfo.setLookupId(postponed->id);
+                postponed->resultEmitter.emitResultsReady(hostInfo);
+            }
         }
     }
 
@@ -746,7 +732,5 @@ void QHostInfoCache::clear()
     QMutexLocker locker(&this->mutex);
     cache.clear();
 }
-
-#endif // QT_NO_THREAD
 
 QT_END_NAMESPACE

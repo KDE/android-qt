@@ -2269,6 +2269,7 @@ void tst_QAccessibility::scrollBarTest()
     delete scrollBarInterface;
     delete scrollBar;
 
+
     // Test that the rects are ok.
     {
         QScrollBar *scrollBar  = new QScrollBar(Qt::Horizontal);
@@ -2289,7 +2290,6 @@ void tst_QAccessibility::scrollBarTest()
 
         const QRect scrollBarRect = scrollBarInterface->rect(0);
         QVERIFY(scrollBarRect.isValid());
-
         // Verify that the sub-control rects are valid and inside the scrollBar rect.
         for (int i = LineUp; i <= LineDown; ++i) {
             const QRect testRect = scrollBarInterface->rect(i);
@@ -3469,14 +3469,15 @@ void tst_QAccessibility::tableWidgetTest()
 {
 #ifdef QTEST_ACCESSIBILITY
     {
-    QTableWidget *w = new QTableWidget(8,4);
+    QWidget *topLevel = new QWidget;
+    QTableWidget *w = new QTableWidget(8,4,topLevel);
     for (int r = 0; r < 8; ++r) {
         for (int c = 0; c < 4; ++c) {
             w->setItem(r, c, new QTableWidgetItem(tr("%1,%2").arg(c).arg(r)));
         }
     }
     w->resize(100, 100);
-    w->show();
+    topLevel->show();
 #if defined(Q_WS_X11)
     qt_x11_wait_for_window_manager(w);
     QTest::qWait(100);
@@ -3503,6 +3504,7 @@ void tst_QAccessibility::tableWidgetTest()
     delete view;
     delete client;
     delete w;
+    delete topLevel;
     }
     QTestAccessibility::clearEvents();
 #else
@@ -4073,7 +4075,8 @@ void tst_QAccessibility::accelerators()
     window->show();
 
     QAccessibleInterface *accLineEdit = QAccessible::queryAccessibleInterface(le);
-    QCOMPARE(accLineEdit->text(QAccessible::Accelerator, 0), QKeySequence(Qt::ALT).toString() + QLatin1String("L"));
+    QCOMPARE(accLineEdit->text(QAccessible::Accelerator, 0), QKeySequence(Qt::ALT).toString(QKeySequence::NativeText) + QLatin1String("L"));
+    QCOMPARE(accLineEdit->text(QAccessible::Accelerator, 0), QKeySequence(Qt::ALT).toString(QKeySequence::NativeText) + QLatin1String("L"));
     label->setText(tr("Q &"));
     QCOMPARE(accLineEdit->text(QAccessible::Accelerator, 0), QString());
     label->setText(tr("Q &&"));
@@ -4081,11 +4084,11 @@ void tst_QAccessibility::accelerators()
     label->setText(tr("Q && A"));
     QCOMPARE(accLineEdit->text(QAccessible::Accelerator, 0), QString());
     label->setText(tr("Q &&&A"));
-    QCOMPARE(accLineEdit->text(QAccessible::Accelerator, 0), QKeySequence(Qt::ALT).toString() + QLatin1String("A"));
+    QCOMPARE(accLineEdit->text(QAccessible::Accelerator, 0), QKeySequence(Qt::ALT).toString(QKeySequence::NativeText) + QLatin1String("A"));
     label->setText(tr("Q &&A"));
     QCOMPARE(accLineEdit->text(QAccessible::Accelerator, 0), QString());
     label->setText(tr("Q &A&B"));
-    QCOMPARE(accLineEdit->text(QAccessible::Accelerator, 0), QKeySequence(Qt::ALT).toString() + QLatin1String("A"));
+    QCOMPARE(accLineEdit->text(QAccessible::Accelerator, 0), QKeySequence(Qt::ALT).toString(QKeySequence::NativeText) + QLatin1String("A"));
 
 #if defined(Q_WS_X11)
     qt_x11_wait_for_window_manager(window);

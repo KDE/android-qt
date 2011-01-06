@@ -43,4 +43,9 @@ embedded|qpa: equals(TARGET, QtGui) {
     INSTALLS += fonts
     fonts.path = $$[QT_INSTALL_LIBS]/fonts
     fonts.files = $$QT_SOURCE_TREE/lib/fonts/*
+    CONFIG(android) {
+        INSTALLS += android
+        android.path = $$[QT_INSTALL_PREFIX]/src/android/java
+        android.files = $$QT_SOURCE_TREE/src/android/java/*
+    }
 }

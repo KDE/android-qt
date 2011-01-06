@@ -85,6 +85,45 @@ NmakeMakefileGenerator::writeMakefile(QTextStream &t)
     return false;
 }
 
+QString NmakeMakefileGenerator::getPdbTarget()
+{
+    return QString(project->first("TARGET") + project->first("TARGET_VERSION_EXT") + ".pdb");
+}
+
+QString NmakeMakefileGenerator::defaultInstall(const QString &t)
+{
+    if((t != "target" && t != "dlltarget") ||
+       (t == "dlltarget" && (project->first("TEMPLATE") != "lib" || !project->isActiveConfig("shared"))) ||
+        project->first("TEMPLATE") == "subdirs")
+       return QString();
+
+    QString ret = Win32MakefileGenerator::defaultInstall(t);
+
+    const QString root = "$(INSTALL_ROOT)";
+    QStringList &uninst = project->values(t + ".uninstall");
+    QString targetdir = Option::fixPathToTargetOS(project->first(t + ".path"), false);
+    targetdir = fileFixify(targetdir, FileFixifyAbsolute);
+    if(targetdir.right(1) != Option::dir_sep)
+        targetdir += Option::dir_sep;
+
+    if(t == "target" && project->first("TEMPLATE") == "lib") {
+        if(project->isActiveConfig("shared") && project->isActiveConfig("debug")) {
+            QString pdb_target = getPdbTarget();
+            pdb_target.remove('"');
+            QString src_targ = (project->isEmpty("DESTDIR") ? QString("$(DESTDIR)") : project->first("DESTDIR")) + pdb_target;
+            QString dst_targ = filePrefixRoot(root, fileFixify(targetdir + pdb_target, FileFixifyAbsolute));
+            if(!ret.isEmpty())
+                ret += "\n\t";
+            ret += QString("-$(INSTALL_FILE)") + " \"" + src_targ + "\" \"" + dst_targ + "\"";
+            if(!uninst.isEmpty())
+                uninst.append("\n\t");
+            uninst.append("-$(DEL_FILE) \"" + dst_targ + "\"");
+        }
+    }
+
+    return ret;
+}
+
 QStringList &NmakeMakefileGenerator::findDependencies(const QString &file)
 {
     QStringList &aList = MakefileGenerator::findDependencies(file);
@@ -129,10 +168,12 @@ QString NmakeMakefileGenerator::var(const QString &value)
             p.replace("-c", precompRule);
             // Cannot use -Gm with -FI & -Yu, as this gives an
             // internal compiler error, on the newer compilers
+            // ### work-around for a VS 2003 bug. Move to some prf file or remove completely.
             p.remove("-Gm");
             return p;
         } else if (value == "QMAKE_CXXFLAGS") {
             // Remove internal compiler error option
+            // ### work-around for a VS 2003 bug. Move to some prf file or remove completely.
             return MakefileGenerator::var(value).remove("-Gm");
         }
     }
@@ -213,7 +254,7 @@ void NmakeMakefileGenerator::init()
         project->values("QMAKE_CLEAN").append(project->first("DESTDIR") + project->first("TARGET") + version + ".exp");
     }
     if(project->isActiveConfig("debug")) {
-        project->values("QMAKE_CLEAN").append(project->first("DESTDIR") + project->first("TARGET") + version + ".pdb");
+        project->values("QMAKE_DISTCLEAN").append(project->first("DESTDIR") + project->first("TARGET") + version + ".pdb");
         project->values("QMAKE_CLEAN").append(project->first("DESTDIR") + project->first("TARGET") + version + ".ilk");
         project->values("QMAKE_CLEAN").append("vc*.pdb");
         project->values("QMAKE_CLEAN").append("vc*.idb");
@@ -310,10 +351,7 @@ void NmakeMakefileGenerator::writeBuildRulesPart(QTextStream &t)
         t << "\n\tsigntool sign /F " << signature << " $(DESTDIR_TARGET)";
     }
     if(!project->isEmpty("QMAKE_POST_LINK")) {
-        if (useSignature)
-            t << " && " << var("QMAKE_POST_LINK");
-        else
-            t << "\n\t" << var("QMAKE_POST_LINK");
+        t << "\n\t" << var("QMAKE_POST_LINK");
     }
     t << endl;
 }

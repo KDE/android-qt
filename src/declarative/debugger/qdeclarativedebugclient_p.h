@@ -44,6 +44,8 @@
 
 #include <QtNetwork/qtcpsocket.h>
 
+#include <private/qdeclarativeglobal_p.h>
+
 QT_BEGIN_HEADER
 
 QT_BEGIN_NAMESPACE
@@ -51,12 +53,13 @@ QT_BEGIN_NAMESPACE
 QT_MODULE(Declarative)
 
 class QDeclarativeDebugConnectionPrivate;
-class Q_DECLARATIVE_EXPORT QDeclarativeDebugConnection : public QTcpSocket
+class Q_DECLARATIVE_PRIVATE_EXPORT QDeclarativeDebugConnection : public QTcpSocket
 {
     Q_OBJECT
     Q_DISABLE_COPY(QDeclarativeDebugConnection)
 public:
     QDeclarativeDebugConnection(QObject * = 0);
+    ~QDeclarativeDebugConnection();
 
     bool isConnected() const;
 private:
@@ -66,25 +69,26 @@ private:
 };
 
 class QDeclarativeDebugClientPrivate;
-class Q_DECLARATIVE_EXPORT QDeclarativeDebugClient : public QObject
+class Q_DECLARATIVE_PRIVATE_EXPORT QDeclarativeDebugClient : public QObject
 {
     Q_OBJECT
     Q_DECLARE_PRIVATE(QDeclarativeDebugClient)
     Q_DISABLE_COPY(QDeclarativeDebugClient)
 
 public:
+    enum Status { NotConnected, Unavailable, Enabled };
+
     QDeclarativeDebugClient(const QString &, QDeclarativeDebugConnection *parent);
+    ~QDeclarativeDebugClient();
 
     QString name() const;
 
-    bool isEnabled() const;
-    void setEnabled(bool);
-
-    bool isConnected() const;
+    Status status() const;
 
     void sendMessage(const QByteArray &);
 
 protected:
+    virtual void statusChanged(Status);
     virtual void messageReceived(const QByteArray &);
 
 private:

@@ -83,6 +83,12 @@ public:
     ~QPixmap();
 
     QPixmap &operator=(const QPixmap &);
+#ifdef Q_COMPILER_RVALUE_REFS
+    inline QPixmap &operator=(QPixmap &&other)
+    { qSwap(data, other.data); return *this; }
+#endif
+    inline void swap(QPixmap &other) { qSwap(data, other.data); }
+
     operator QVariant() const;
 
     bool isNull() const; // ### Qt 5: make inline

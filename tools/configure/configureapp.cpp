@@ -279,6 +279,7 @@ Configure::Configure(int& argc, char** argv)
     dictionary[ "DIRECTSHOW" ]      = "no";
     dictionary[ "WEBKIT" ]          = "auto";
     dictionary[ "DECLARATIVE" ]     = "auto";
+    dictionary[ "DECLARATIVE_DEBUG" ]= "yes";
     dictionary[ "PLUGIN_MANIFESTS" ] = "yes";
 
     QString version;
@@ -589,8 +590,6 @@ void Configure::parseCmdLine()
         // Image formats --------------------------------------------
         else if (configCmdLine.at(i) == "-no-gif")
             dictionary[ "GIF" ] = "no";
-        else if (configCmdLine.at(i) == "-qt-gif")
-            dictionary[ "GIF" ] = "plugin";
 
         else if (configCmdLine.at(i) == "-no-libtiff") {
             dictionary[ "TIFF"] = "no";
@@ -957,10 +956,16 @@ void Configure::parseCmdLine()
             dictionary[ "WEBKIT" ] = "no";
         } else if (configCmdLine.at(i) == "-webkit") {
             dictionary[ "WEBKIT" ] = "yes";
+        } else if (configCmdLine.at(i) == "-webkit-debug") {
+            dictionary[ "WEBKIT" ] = "debug";
         } else if (configCmdLine.at(i) == "-no-declarative") {
             dictionary[ "DECLARATIVE" ] = "no";
         } else if (configCmdLine.at(i) == "-declarative") {
             dictionary[ "DECLARATIVE" ] = "yes";
+        } else if (configCmdLine.at(i) == "-no-declarative-debug") {
+            dictionary[ "DECLARATIVE_DEBUG" ] = "no";
+        } else if (configCmdLine.at(i) == "-declarative-debug") {
+            dictionary[ "DECLARATIVE_DEBUG" ] = "yes";
         } else if (configCmdLine.at(i) == "-no-plugin-manifests") {
             dictionary[ "PLUGIN_MANIFESTS" ] = "no";
         } else if (configCmdLine.at(i) == "-plugin-manifests") {
@@ -1635,7 +1640,7 @@ bool Configure::displayHelp()
                     "[-no-qmake] [-qmake] [-dont-process] [-process]\n"
                     "[-no-style-<style>] [-qt-style-<style>] [-redo]\n"
                     "[-saveconfig <config>] [-loadconfig <config>]\n"
-                    "[-qt-zlib] [-system-zlib] [-no-gif] [-qt-gif] [-no-libpng]\n"
+                    "[-qt-zlib] [-system-zlib] [-no-gif] [-no-libpng]\n"
                     "[-qt-libpng] [-system-libpng] [-no-libtiff] [-qt-libtiff]\n"
                     "[-system-libtiff] [-no-libjpeg] [-qt-libjpeg] [-system-libjpeg]\n"
                     "[-no-libmng] [-qt-libmng] [-system-libmng] [-no-qt3support] [-mmx]\n"
@@ -1646,7 +1651,7 @@ bool Configure::displayHelp()
                     "[-phonon] [-no-phonon-backend] [-phonon-backend]\n"
                     "[-no-multimedia] [-multimedia] [-no-audio-backend] [-audio-backend]\n"
                     "[-no-script] [-script] [-no-scripttools] [-scripttools]\n"
-                    "[-no-webkit] [-webkit] [-graphicssystem raster|opengl|openvg]\n\n", 0, 7);
+                    "[-no-webkit] [-webkit] [-webkit-debug] [-graphicssystem raster|opengl|openvg]\n\n", 0, 7);
 
         desc("Installation options:\n\n");
 
@@ -1763,7 +1768,6 @@ bool Configure::displayHelp()
         desc("ZLIB", "system",  "-system-zlib",         "Use zlib from the operating system.\nSee http://www.gzip.org/zlib\n");
 
         desc("GIF", "no",       "-no-gif",              "Do not compile GIF reading support.");
-        desc("GIF", "auto",     "-qt-gif",              "Compile GIF reading support.\nSee also src/gui/image/qgifhandler_p.h\n");
 
         desc("LIBPNG", "no",    "-no-libpng",           "Do not compile PNG support.");
         desc("LIBPNG", "qt",    "-qt-libpng",           "Use the libpng bundled with Qt.");
@@ -1830,12 +1834,15 @@ bool Configure::displayHelp()
         desc("AUDIO_BACKEND", "yes","-audio-backend",   "Compile in the platform audio backend into QtMultimedia");
         desc("WEBKIT", "no",    "-no-webkit",           "Do not compile in the WebKit module");
         desc("WEBKIT", "yes",   "-webkit",              "Compile in the WebKit module (WebKit is built if a decent C++ compiler is used.)");
+        desc("WEBKIT", "debug", "-webkit-debug",        "Compile in the WebKit module with debug symbols.");
         desc("SCRIPT", "no",    "-no-script",           "Do not build the QtScript module.");
         desc("SCRIPT", "yes",   "-script",              "Build the QtScript module.");
         desc("SCRIPTTOOLS", "no", "-no-scripttools",    "Do not build the QtScriptTools module.");
         desc("SCRIPTTOOLS", "yes", "-scripttools",      "Build the QtScriptTools module.");
         desc("DECLARATIVE", "no",    "-no-declarative", "Do not build the declarative module");
         desc("DECLARATIVE", "yes",   "-declarative",    "Build the declarative module");
+        desc("DECLARATIVE_DEBUG", "no",    "-no-declarative-debug", "Do not build the declarative debugging support");
+        desc("DECLARATIVE_DEBUG", "yes",   "-declarative-debug",    "Build the declarative debugging support");
 
         desc(                   "-arch <arch>",         "Specify an architecture.\n"
                                                         "Available values for <arch>:");
@@ -1926,6 +1933,22 @@ QString Configure::findFileInPaths(const QString &fileName, const QString &paths
     return QString();
 }
 
+static QString mingwPaths(const QString &mingwPath, const QString &pathName)
+{
+    QString ret;
+    QDir mingwDir = QFileInfo(mingwPath).dir();
+    const QFileInfoList subdirs = mingwDir.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot);
+    for (int i = 0 ;i < subdirs.length(); ++i) {
+        const QFileInfo &fi = subdirs.at(i);
+        const QString name = fi.fileName();
+        if (name == pathName)
+            ret += fi.absoluteFilePath() + ';';
+        else if (name.contains("mingw"))
+            ret += fi.absoluteFilePath() + QDir::separator() + pathName + ';';
+    }
+    return ret;
+}
+
 bool Configure::findFile(const QString &fileName)
 {
     const QString file = fileName.toLower();
@@ -1936,18 +1959,22 @@ bool Configure::findFile(const QString &fileName)
     QString paths;
     if (file.endsWith(".h")) {
         if (!mingwPath.isNull()) {
-            if (!findFileInPaths(file, mingwPath + QLatin1String("/../include")).isNull())
+            if (!findFileInPaths(file, mingwPaths(mingwPath, "include")).isNull())
                 return true;
             //now let's try the additional compiler path
-            QDir mingwLibDir = mingwPath + QLatin1String("/../lib/gcc/mingw32");
-            foreach(const QFileInfo &version, mingwLibDir.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot)) {
-                if (!findFileInPaths(file, version.absoluteFilePath() + QLatin1String("/include")).isNull())
-                    return true;
+
+            const QFileInfoList mingwConfigs = QDir(mingwPath + QLatin1String("/../lib/gcc")).entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot);
+            for (int i = 0; i < mingwConfigs.length(); ++i) {
+                const QDir mingwLibDir = mingwConfigs.at(i).absoluteFilePath();
+                foreach(const QFileInfo &version, mingwLibDir.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot)) {
+                    if (!findFileInPaths(file, version.absoluteFilePath() + QLatin1String("/include")).isNull())
+                        return true;
+                }
             }
         }
         paths = QString::fromLocal8Bit(getenv("INCLUDE"));
     } else if (file.endsWith(".lib") ||  file.endsWith(".a")) {
-        if (!mingwPath.isNull() && !findFileInPaths(file, mingwPath + QLatin1String("/../lib")).isNull())
+        if (!mingwPath.isNull() && !findFileInPaths(file, mingwPaths(mingwPath, "lib")).isNull())
             return true;
         paths = QString::fromLocal8Bit(getenv("LIB"));
     } else {
@@ -2100,13 +2127,8 @@ bool Configure::checkAvailability(const QString &part)
     else if (part == "INCREDIBUILD_XGE")
         available = findFile("BuildConsole.exe") && findFile("xgConsole.exe");
     else if (part == "XMLPATTERNS")
-    {
-        /* MSVC 6.0 and MSVC 2002/7.0 has too poor C++ support for QtXmlPatterns. */
-        return dictionary.value("QMAKESPEC") != "win32-msvc"
-               && dictionary.value("QMAKESPEC") != "win32-msvc.net" // Leave for now, since we can't be sure if they are using 2002 or 2003 with this spec
-               && dictionary.value("QMAKESPEC") != "win32-msvc2002"
-               && dictionary.value("EXCEPTIONS") == "yes";
-    } else if (part == "PHONON") {
+        available = dictionary.value("EXCEPTIONS") == "yes";
+    else if (part == "PHONON") {
         if (dictionary.contains("XQMAKESPEC") && dictionary["XQMAKESPEC"].startsWith("symbian")) {
             available = true;
         } else {
@@ -2273,6 +2295,8 @@ void Configure::autoDetection()
         dictionary["WEBKIT"] = checkAvailability("WEBKIT") ? "yes" : "no";
     if (dictionary["DECLARATIVE"] == "auto")
         dictionary["DECLARATIVE"] = dictionary["SCRIPT"] == "yes" ? "yes" : "no";
+    if (dictionary["DECLARATIVE_DEBUG"] == "auto")
+        dictionary["DECLARATIVE_DEBUG"] = dictionary["DECLARATIVE"] == "yes" ? "yes" : "no";
     if (dictionary["AUDIO_BACKEND"] == "auto")
         dictionary["AUDIO_BACKEND"] = checkAvailability("AUDIO_BACKEND") ? "yes" : "no";
     if (dictionary["WMSDK"] == "auto")
@@ -2409,7 +2433,7 @@ void Configure::generateBuildKey()
                        + buildSymbianKey + "\"\n"
                        "#else\n"
                        // Debug builds
-                       "# if (!QT_NO_DEBUG)\n"
+                       "# if !defined(QT_NO_DEBUG)\n"
                        "#  if (defined(WIN64) || defined(_WIN64) || defined(__WIN64__))\n"
                        + build64Key.arg("debug") + "\"\n"
                        "#  else\n"
@@ -2683,10 +2707,12 @@ void Configure::generateOutputVars()
 
     QString dst = buildPath + "/mkspecs/modules/qt_webkit_version.pri";
     QFile::remove(dst);
-    if (dictionary["WEBKIT"] == "yes") {
+    if (dictionary["WEBKIT"] != "no") {
         // This include takes care of adding "webkit" to QT_CONFIG.
         QString src = sourcePath + "/src/3rdparty/webkit/WebKit/qt/qt_webkit_version.pri";
         QFile::copy(src, dst);
+        if (dictionary["WEBKIT"] == "debug")
+            qtConfig += "webkit-debug";
     }
 
     if (dictionary["DECLARATIVE"] == "yes") {
@@ -3056,10 +3082,7 @@ void Configure::generateConfigfiles()
         tmpStream << "/* Machine byte-order */" << endl;
         tmpStream << "#define Q_BIG_ENDIAN 4321" << endl;
         tmpStream << "#define Q_LITTLE_ENDIAN 1234" << endl;
-        if (QSysInfo::ByteOrder == QSysInfo::BigEndian)
-            tmpStream << "#define Q_BYTE_ORDER Q_BIG_ENDIAN" << endl;
-        else
-            tmpStream << "#define Q_BYTE_ORDER Q_LITTLE_ENDIAN" << endl;
+        tmpStream << "#define Q_BYTE_ORDER Q_LITTLE_ENDIAN" << endl;
 
         tmpStream << endl << "// Compile time features" << endl;
         tmpStream << "#define QT_ARCH_" << dictionary["ARCHITECTURE"].toUpper() << endl;
@@ -3101,6 +3124,7 @@ void Configure::generateConfigfiles()
         if (dictionary["IPV6"] == "no")              qconfigList += "QT_NO_IPV6";
         if (dictionary["WEBKIT"] == "no")            qconfigList += "QT_NO_WEBKIT";
         if (dictionary["DECLARATIVE"] == "no")       qconfigList += "QT_NO_DECLARATIVE";
+        if (dictionary["DECLARATIVE_DEBUG"] == "no") qconfigList += "QDECLARATIVE_NO_DEBUG_PROTOCOL";
         if (dictionary["PHONON"] == "no")            qconfigList += "QT_NO_PHONON";
         if (dictionary["MULTIMEDIA"] == "no")        qconfigList += "QT_NO_MULTIMEDIA";
         if (dictionary["XMLPATTERNS"] == "no")       qconfigList += "QT_NO_XMLPATTERNS";
@@ -3212,7 +3236,8 @@ void Configure::generateConfigfiles()
     }
 
     // Copy configured mkspec to default directory, but remove the old one first, if there is any
-    QString defSpec = buildPath + "/mkspecs/default";
+    QString mkspecsPath = buildPath + "/mkspecs";
+    QString defSpec = mkspecsPath + "/default";
     QFileInfo defSpecInfo(defSpec);
     if (defSpecInfo.exists()) {
         if (!Environment::rmdir(defSpec)) {
@@ -3222,21 +3247,22 @@ void Configure::generateConfigfiles()
         }
     }
 
-    QString spec = dictionary.contains("XQMAKESPEC") ? dictionary["XQMAKESPEC"] : dictionary["QMAKESPEC"];
-    QString pltSpec = sourcePath + "/mkspecs/" + spec;
-    if (!Environment::cpdir(pltSpec, defSpec)) {
-        cout << "Couldn't update default mkspec! Does " << qPrintable(pltSpec) << " exist?" << endl;
+    QDir mkspecsDir(mkspecsPath);
+    if (!mkspecsDir.mkdir("default")) {
+        cout << "Couldn't create default mkspec dir!" << endl;
         dictionary["DONE"] = "error";
         return;
     }
 
+    QString spec = dictionary.contains("XQMAKESPEC") ? dictionary["XQMAKESPEC"] : dictionary["QMAKESPEC"];
+    QString pltSpec = sourcePath + "/mkspecs/" + spec;
     outName = defSpec + "/qmake.conf";
-    ::SetFileAttributes((wchar_t*)outName.utf16(), FILE_ATTRIBUTE_NORMAL);
     QFile qmakeConfFile(outName);
-    if (qmakeConfFile.open(QFile::Append | QFile::WriteOnly | QFile::Text)) {
+    if (qmakeConfFile.open(QFile::WriteOnly | QFile::Text)) {
         QTextStream qmakeConfStream;
         qmakeConfStream.setDevice(&qmakeConfFile);
-        qmakeConfStream << endl << "QMAKESPEC_ORIGINAL=" << pltSpec << endl;
+        qmakeConfStream << "QMAKESPEC_ORIGINAL=" << pltSpec << endl << endl;
+        qmakeConfStream << "include(" << pltSpec << "/qmake.conf)" << endl;
         qmakeConfStream.flush();
         qmakeConfFile.close();
     }
@@ -3316,7 +3342,7 @@ void Configure::generateConfigfiles()
     if (tmpFile3.open()) {
         tmpStream.setDevice(&tmpFile3);
         tmpStream << "/* Evaluation license key */" << endl
-                  << "static const char qt_eval_key_data              [512 + 12] = \"qt_qevalkey=" << licenseInfo["LICENSEKEYEXT"] << "\";" << endl;
+                  << "static const volatile char qt_eval_key_data              [512 + 12] = \"qt_qevalkey=" << licenseInfo["LICENSEKEYEXT"] << "\";" << endl;
 
         tmpStream.flush();
         tmpFile3.flush();
@@ -3396,8 +3422,14 @@ void Configure::displayConfig()
     cout << "QtXmlPatterns support......." << dictionary[ "XMLPATTERNS" ] << endl;
     cout << "Phonon support.............." << dictionary[ "PHONON" ] << endl;
     cout << "QtMultimedia support........" << dictionary[ "MULTIMEDIA" ] << endl;
-    cout << "WebKit support.............." << dictionary[ "WEBKIT" ] << endl;
+    {
+        QString webkit = dictionary[ "WEBKIT" ];
+        if (webkit == "debug")
+            webkit = "yes (debug)";
+        cout << "WebKit support.............." << webkit;
+    }
     cout << "Declarative support........." << dictionary[ "DECLARATIVE" ] << endl;
+    cout << "Declarative debugging......." << dictionary[ "DECLARATIVE_DEBUG" ] << endl;
     cout << "QtScript support............" << dictionary[ "SCRIPT" ] << endl;
     cout << "QtScriptTools support......." << dictionary[ "SCRIPTTOOLS" ] << endl;
     cout << "Graphics System............." << dictionary[ "GRAPHICS_SYSTEM" ] << endl;

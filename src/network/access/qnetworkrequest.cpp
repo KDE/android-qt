@@ -194,15 +194,11 @@ QT_BEGIN_NAMESPACE
     \value CookieLoadControlAttribute
         Requests only, type: QVariant::Int (default: QNetworkRequest::Automatic)
         Indicates whether to send 'Cookie' headers in the request.
-
         This attribute is set to false by QtWebKit when creating a cross-origin
         XMLHttpRequest where withCredentials has not been set explicitly to true by the
         Javascript that created the request.
-
         See \l{http://www.w3.org/TR/XMLHttpRequest2/#credentials-flag}{here} for more information.
-
         (This value was introduced in 4.7.)
-
 
     \value CookieSaveControlAttribute
         Requests only, type: QVariant::Int (default: QNetworkRequest::Automatic)
@@ -211,9 +207,7 @@ QT_BEGIN_NAMESPACE
         This attribute is set to false by QtWebKit when creating a cross-origin
         XMLHttpRequest where withCredentials has not been set explicitly to true by the
         Javascript that created the request.
-
         See \l{http://www.w3.org/TR/XMLHttpRequest2/#credentials-flag} {here} for more information.
-
         (This value was introduced in 4.7.)
 
     \value AuthenticationReuseAttribute
@@ -225,16 +219,12 @@ QT_BEGIN_NAMESPACE
         This attribute is set to QNetworkRequest::Manual by QtWebKit when creating a cross-origin
         XMLHttpRequest where withCredentials has not been set explicitly to true by the
         Javascript that created the request.
-
         See \l{http://www.w3.org/TR/XMLHttpRequest2/#credentials-flag} {here} for more information.
-
         (This value was introduced in 4.7.)
 
     \omitvalue MaximumDownloadBufferSizeAttribute
-        (This value was introduced in 4.7.)
 
     \omitvalue DownloadBufferAttribute
-        (This value was introduced in 4.7.)
 
     \value User
         Special type. Additional information can be passed in
@@ -766,7 +756,7 @@ static QVariant parseCookieHeader(const QByteArray &raw)
         result += parsed;
     }
 
-    return qVariantFromValue(result);
+    return QVariant::fromValue(result);
 }
 
 static QVariant parseHeaderValue(QNetworkRequest::KnownHeaders header, const QByteArray &value)
@@ -799,7 +789,7 @@ static QVariant parseHeaderValue(QNetworkRequest::KnownHeaders header, const QBy
         return parseCookieHeader(value);
 
     case QNetworkRequest::SetCookieHeader:
-        return qVariantFromValue(QNetworkCookie::parseCookies(value));
+        return QVariant::fromValue(QNetworkCookie::parseCookies(value));
 
     default:
         Q_ASSERT(0);
@@ -909,10 +899,16 @@ void QNetworkHeadersPrivate::parseAndSetHeader(const QByteArray &key, const QByt
     // is it a known header?
     QNetworkRequest::KnownHeaders parsedKey = parseHeaderName(key);
     if (parsedKey != QNetworkRequest::KnownHeaders(-1)) {
-        if (value.isNull())
+        if (value.isNull()) {
             cookedHeaders.remove(parsedKey);
-        else
+        } else if (parsedKey == QNetworkRequest::ContentLengthHeader
+                 && cookedHeaders.contains(QNetworkRequest::ContentLengthHeader)) {
+            // Only set the cooked header "Content-Length" once.
+            // See bug QTBUG-15311
+        } else {
             cookedHeaders.insert(parsedKey, parseHeaderValue(parsedKey, value));
+        }
+
     }
 }
 

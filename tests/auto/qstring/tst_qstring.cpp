@@ -57,6 +57,10 @@ Q_DECLARE_METATYPE(qlonglong)
 //TESTED_CLASS=
 //TESTED_FILES=
 
+#define CREATE_REF(string)                                              \
+    const QString padded = QString::fromLatin1(" %1 ").arg(string);     \
+    QStringRef ref = padded.midRef(1, padded.size() - 2);
+
 class tst_QString : public QObject
 {
     Q_OBJECT
@@ -76,6 +80,7 @@ private slots:
     void check_QTextStream();
     void check_QDataStream();
     void fromRawData();
+    void setRawData();
     void endsWith();
     void startsWith();
     void setNum();
@@ -109,6 +114,7 @@ private slots:
     void remove_string();
     void remove_regexp_data();
     void remove_regexp();
+    void swap();
     void prepend();
     void prepend_bytearray_data();
     void prepend_bytearray();
@@ -135,6 +141,7 @@ private slots:
     void leftRef();
     void stringRef();
     void contains();
+    void count();
     void lastIndexOf_data();
     void lastIndexOf();
     void indexOf_data();
@@ -169,6 +176,12 @@ private slots:
     void fromLatin1Roundtrip();
     void toLatin1Roundtrip_data();
     void toLatin1Roundtrip();
+    void stringRef_toLatin1Roundtrip_data();
+    void stringRef_toLatin1Roundtrip();
+    void stringRef_utf8_data();
+    void stringRef_utf8();
+    void stringRef_local8Bit_data();
+    void stringRef_local8Bit();
     void fromLatin1();
     void fromAscii();
     void arg();
@@ -1065,12 +1078,14 @@ void tst_QString::indexOf()
     QFETCH( int, startpos );
     QFETCH( bool, bcs );
     QFETCH( int, resultpos );
+    CREATE_REF(needle);
 
     Qt::CaseSensitivity cs = bcs ? Qt::CaseSensitive : Qt::CaseInsensitive;
 
     bool needleIsLatin = (QString::fromLatin1(needle.toLatin1()) == needle);
 
     QCOMPARE( haystack.indexOf(needle, startpos, cs), resultpos );
+    QCOMPARE( haystack.indexOf(ref, startpos, cs), resultpos );
     if (needleIsLatin) {
         QCOMPARE( haystack.indexOf(needle.toLatin1(), startpos, cs), resultpos );
         QCOMPARE( haystack.indexOf(needle.toLatin1().data(), startpos, cs), resultpos );
@@ -1098,12 +1113,14 @@ void tst_QString::indexOf()
 
     if (cs == Qt::CaseSensitive) {
         QCOMPARE( haystack.indexOf(needle, startpos), resultpos );
+        QCOMPARE( haystack.indexOf(ref, startpos), resultpos );
         if (needleIsLatin) {
             QCOMPARE( haystack.indexOf(needle.toLatin1(), startpos), resultpos );
             QCOMPARE( haystack.indexOf(needle.toLatin1().data(), startpos), resultpos );
         }
         if (startpos == 0) {
             QCOMPARE( haystack.indexOf(needle), resultpos );
+            QCOMPARE( haystack.indexOf(ref), resultpos );
             if (needleIsLatin) {
                 QCOMPARE( haystack.indexOf(needle.toLatin1()), resultpos );
                 QCOMPARE( haystack.indexOf(needle.toLatin1().data()), resultpos );
@@ -1112,6 +1129,7 @@ void tst_QString::indexOf()
     }
     if (needle.size() == 1) {
         QCOMPARE(haystack.indexOf(needle.at(0), startpos, cs), resultpos);
+        QCOMPARE(haystack.indexOf(ref.at(0), startpos, cs), resultpos);
     }
 
 }
@@ -1172,14 +1190,17 @@ void tst_QString::indexOf2()
     QFETCH( QString, haystack );
     QFETCH( QString, needle );
     QFETCH( int, resultpos );
+    CREATE_REF(needle);
 
     QByteArray chaystack = haystack.toLatin1();
     QByteArray cneedle = needle.toLatin1();
     int got;
 
     QCOMPARE( haystack.indexOf(needle, 0, Qt::CaseSensitive), resultpos );
+    QCOMPARE( haystack.indexOf(ref, 0, Qt::CaseSensitive), resultpos );
     QCOMPARE( QStringMatcher(needle, Qt::CaseSensitive).indexIn(haystack, 0), resultpos );
     QCOMPARE( haystack.indexOf(needle, 0, Qt::CaseInsensitive), resultpos );
+    QCOMPARE( haystack.indexOf(ref, 0, Qt::CaseInsensitive), resultpos );
     QCOMPARE( QStringMatcher(needle, Qt::CaseInsensitive).indexIn(haystack, 0), resultpos );
     if ( needle.length() > 0 ) {
 	got = haystack.lastIndexOf( needle, -1, Qt::CaseSensitive );
@@ -1246,10 +1267,12 @@ void tst_QString::lastIndexOf()
     QFETCH(int, from);
     QFETCH(int, expected);
     QFETCH(bool, caseSensitive);
+    CREATE_REF(needle);
 
     Qt::CaseSensitivity cs = (caseSensitive ? Qt::CaseSensitive : Qt::CaseInsensitive);
 
     QCOMPARE(haystack.lastIndexOf(needle, from, cs), expected);
+    QCOMPARE(haystack.lastIndexOf(ref, from, cs), expected);
     QCOMPARE(haystack.lastIndexOf(needle.toLatin1(), from, cs), expected);
     QCOMPARE(haystack.lastIndexOf(needle.toLatin1().data(), from, cs), expected);
 
@@ -1279,20 +1302,23 @@ void tst_QString::lastIndexOf()
 
     if (cs == Qt::CaseSensitive) {
         QCOMPARE(haystack.lastIndexOf(needle, from), expected);
+        QCOMPARE(haystack.lastIndexOf(ref, from), expected);
         QCOMPARE(haystack.lastIndexOf(needle.toLatin1(), from), expected);
         QCOMPARE(haystack.lastIndexOf(needle.toLatin1().data(), from), expected);
         if (from == -1) {
             QCOMPARE(haystack.lastIndexOf(needle), expected);
+            QCOMPARE(haystack.lastIndexOf(ref), expected);
             QCOMPARE(haystack.lastIndexOf(needle.toLatin1()), expected);
             QCOMPARE(haystack.lastIndexOf(needle.toLatin1().data()), expected);
         }
     }
     if (needle.size() == 1) {
         QCOMPARE(haystack.lastIndexOf(needle.at(0), from), expected);
+        QCOMPARE(haystack.lastIndexOf(ref.at(0), from), expected);
     }
 }
 
-void tst_QString::contains()
+void tst_QString::count()
 {
     QString a;
     a="ABCDEFGHIEfGEFG"; // 15 chars
@@ -1307,7 +1333,41 @@ void tst_QString::contains()
     QCOMPARE(a.count( "", Qt::CaseInsensitive), 16);
     QCOMPARE(a.count(QRegExp("[FG][HI]")),1);
     QCOMPARE(a.count(QRegExp("[G][HE]")),2);
+
+    CREATE_REF(QLatin1String("FG"));
+    QCOMPARE(a.count(ref),2);
+    QCOMPARE(a.count(ref,Qt::CaseInsensitive),3);
+    QCOMPARE(a.count( QStringRef(), Qt::CaseInsensitive), 16);
+    QStringRef emptyRef(&a, 0, 0);
+    QCOMPARE(a.count( emptyRef, Qt::CaseInsensitive), 16);
+
 }
+
+void tst_QString::contains()
+{
+    QString a;
+    a="ABCDEFGHIEfGEFG"; // 15 chars
+    QVERIFY(a.contains('A'));
+    QVERIFY(!a.contains('Z'));
+    QVERIFY(a.contains('E'));
+    QVERIFY(a.contains('F'));
+    QVERIFY(a.contains('F',Qt::CaseInsensitive));
+    QVERIFY(a.contains("FG"));
+    QVERIFY(a.contains("FG",Qt::CaseInsensitive));
+    QVERIFY(a.contains( QString(), Qt::CaseInsensitive));
+    QVERIFY(a.contains( "", Qt::CaseInsensitive));
+    QVERIFY(a.contains(QRegExp("[FG][HI]")));
+    QVERIFY(a.contains(QRegExp("[G][HE]")));
+
+    CREATE_REF(QLatin1String("FG"));
+    QVERIFY(a.contains(ref));
+    QVERIFY(a.contains(ref, Qt::CaseInsensitive));
+    QVERIFY(a.contains( QStringRef(), Qt::CaseInsensitive));
+    QStringRef emptyRef(&a, 0, 0);
+    QVERIFY(a.contains(emptyRef, Qt::CaseInsensitive));
+
+}
+
 
 void tst_QString::left()
 {
@@ -1791,6 +1851,16 @@ void tst_QString::operator_pluseq_bytearray()
 
 	QTEST( str, "res" );
     }
+}
+
+void tst_QString::swap()
+{
+    QString s1, s2;
+    s1 = "s1";
+    s2 = "s2";
+    s1.swap(s2);
+    QCOMPARE(s1,QLatin1String("s2"));
+    QCOMPARE(s2,QLatin1String("s1"));
 }
 
 void tst_QString::prepend()
@@ -2829,6 +2899,14 @@ void tst_QString::startsWith()
     QVERIFY( !a.startsWith(QChar(), Qt::CaseSensitive) );
     QVERIFY( !a.startsWith(QLatin1Char(0), Qt::CaseSensitive) );
 
+#define TEST_REF_STARTS_WITH(string, yes) { CREATE_REF(string); QCOMPARE(a.startsWith(ref), yes); }
+
+    TEST_REF_STARTS_WITH("A", true);
+    TEST_REF_STARTS_WITH("AB", true);
+    TEST_REF_STARTS_WITH("C", false);
+    TEST_REF_STARTS_WITH("ABCDEF", false);
+#undef TEST_REF_STARTS_WITH
+
     a = "";
     QVERIFY( a.startsWith("") );
     QVERIFY( a.startsWith(QString::null) );
@@ -2854,6 +2932,7 @@ void tst_QString::startsWith()
     QVERIFY( !a.startsWith(QLatin1Char(0)) );
     QVERIFY( !a.startsWith(QLatin1Char('x')) );
     QVERIFY( !a.startsWith(QChar()) );
+
 }
 
 void tst_QString::endsWith()
@@ -2920,6 +2999,17 @@ void tst_QString::endsWith()
     QVERIFY( !a.endsWith('b', Qt::CaseSensitive) );
     QVERIFY( !a.endsWith(QChar(), Qt::CaseSensitive) );
     QVERIFY( !a.endsWith(QLatin1Char(0), Qt::CaseSensitive) );
+
+
+#define TEST_REF_ENDS_WITH(string, yes) { CREATE_REF(string); QCOMPARE(a.endsWith(ref), yes); }
+    TEST_REF_ENDS_WITH(QLatin1String("B"), true);
+    TEST_REF_ENDS_WITH(QLatin1String("AB"), true);
+    TEST_REF_ENDS_WITH(QLatin1String("C"), false);
+    TEST_REF_ENDS_WITH(QLatin1String("ABCDEF"), false);
+    TEST_REF_ENDS_WITH(QLatin1String(""), true);
+    TEST_REF_ENDS_WITH(QLatin1String(0), true);
+
+#undef TEST_REF_STARTS_WITH
 
     a = "";
     QVERIFY( a.endsWith("") );
@@ -2999,7 +3089,9 @@ void tst_QString::fromRawData()
 {
     const QChar ptr[] = { 0x1234, 0x0000 };
     QString cstr = QString::fromRawData(ptr, 1);
+    QVERIFY(cstr.isDetached());
     QVERIFY(cstr.constData() == ptr);
+    QVERIFY(cstr == QString(ptr, 1));
     cstr.squeeze();
     QVERIFY(cstr.constData() == ptr);
     cstr.detach();
@@ -3008,6 +3100,41 @@ void tst_QString::fromRawData()
     QVERIFY(cstr.constData() != ptr);
     QVERIFY(cstr.constData()[0] == QChar(0x1234));
     QVERIFY(cstr.constData()[1] == QChar(0x0000));
+}
+
+void tst_QString::setRawData()
+{
+    const QChar ptr[] = { 0x1234, 0x0000 };
+    const QChar ptr2[] = { 0x4321, 0x0000 };
+    QString cstr;
+
+    // This just tests the fromRawData() fallback
+    QVERIFY(!cstr.isDetached());
+    cstr.setRawData(ptr, 1);
+    QVERIFY(cstr.isDetached());
+    QVERIFY(cstr.constData() == ptr);
+    QVERIFY(cstr == QString(ptr, 1));
+
+    // This actually tests the recycling of the shared data object
+    QString::DataPtr csd = cstr.data_ptr();
+    cstr.setRawData(ptr2, 1);
+    QVERIFY(cstr.isDetached());
+    QVERIFY(cstr.constData() == ptr2);
+    QVERIFY(cstr == QString(ptr2, 1));
+    QVERIFY(cstr.data_ptr() == csd);
+
+    // This tests the discarding of the shared data object
+    cstr = "foo";
+    QVERIFY(cstr.isDetached());
+    QVERIFY(cstr.constData() != ptr2);
+
+    // Another test of the fallback
+    csd = cstr.data_ptr();
+    cstr.setRawData(ptr2, 1);
+    QVERIFY(cstr.isDetached());
+    QVERIFY(cstr.constData() == ptr2);
+    QVERIFY(cstr == QString(ptr2, 1));
+    QVERIFY(cstr.data_ptr() != csd);
 }
 
 void tst_QString::fromStdString()
@@ -3054,6 +3181,20 @@ void tst_QString::utf8()
     QFETCH( QString, res );
 
     QCOMPARE( utf8, QByteArray(res.toUtf8()) );
+}
+
+void tst_QString::stringRef_utf8_data()
+{
+    utf8_data();
+}
+
+void tst_QString::stringRef_utf8()
+{
+    QFETCH( QByteArray, utf8 );
+    QFETCH( QString, res );
+
+    QStringRef ref(&res, 0, res.length());
+    QCOMPARE( utf8, QByteArray(ref.toUtf8()) );
 }
 
 // copied to tst_QTextCodec::utf8Codec_data()
@@ -3235,6 +3376,20 @@ void tst_QString::local8Bit()
     QCOMPARE(local8Bit.toLocal8Bit(), QByteArray(result));
 }
 
+void tst_QString::stringRef_local8Bit_data()
+{
+    local8Bit_data();
+}
+
+void tst_QString::stringRef_local8Bit()
+{
+    QFETCH(QString, local8Bit);
+    QFETCH(QByteArray, result);
+
+    QStringRef ref(&local8Bit, 0, local8Bit.length());
+    QCOMPARE(ref.toLocal8Bit(), QByteArray(result));
+}
+
 void tst_QString::fromLatin1Roundtrip_data()
 {
     QTest::addColumn<QByteArray>("latin1");
@@ -3336,6 +3491,38 @@ void tst_QString::toLatin1Roundtrip()
     // and back:
     QCOMPARE(QString::fromLatin1(latin1, latin1.length()).length(), unicodedst.length());
     QCOMPARE(QString::fromLatin1(latin1, latin1.length()), unicodedst);
+}
+
+void tst_QString::stringRef_toLatin1Roundtrip_data()
+{
+    toLatin1Roundtrip_data();
+}
+
+void tst_QString::stringRef_toLatin1Roundtrip()
+{
+    QFETCH(QByteArray, latin1);
+    QFETCH(QString, unicodesrc);
+    QFETCH(QString, unicodedst);
+
+    // QtTest safety check:
+    Q_ASSERT(latin1.isNull() == unicodesrc.isNull());
+    Q_ASSERT(latin1.isEmpty() == unicodesrc.isEmpty());
+    Q_ASSERT(latin1.length() == unicodesrc.length());
+    Q_ASSERT(latin1.isNull() == unicodedst.isNull());
+    Q_ASSERT(latin1.isEmpty() == unicodedst.isEmpty());
+    Q_ASSERT(latin1.length() == unicodedst.length());
+
+    if (!latin1.isEmpty())
+        while (latin1.length() < 128) {
+            latin1 += latin1;
+            unicodesrc += unicodesrc;
+            unicodedst += unicodedst;
+        }
+
+    // toLatin1
+    QStringRef src(&unicodesrc, 0, unicodesrc.length());
+    QCOMPARE(src.toLatin1().length(), latin1.length());
+    QCOMPARE(src.toLatin1(), latin1);
 }
 
 void tst_QString::fromLatin1()
@@ -4395,8 +4582,10 @@ void tst_QString::nanAndInf()
     CHECK_NAN("nan  ", true, true)
     CHECK_NAN("\t NAN", true, true)
     CHECK_NAN("\t NAN  ", true, true)
+#ifndef QT_QLOCALE_USES_FCVT //In case we use glibc this tests will fail
     CHECK_NAN("-nan", false, false)
     CHECK_NAN("+NAN", false, false)
+#endif
     CHECK_NAN("NaN", true, true)
     CHECK_NAN("nAn", true, true)
     CHECK_NAN("NANe-10", false, false)

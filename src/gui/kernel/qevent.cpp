@@ -1970,7 +1970,7 @@ void QInputMethodEvent::setCommitString(const QString &commitString, int replace
   is usually given by a wheel on 4D mouse. If the device does not support a
   Z-axis, pass zero here.
 
-  The \a tangentialPressure paramater contins the tangential pressure of an air
+  The \a tangentialPressure parameter contins the tangential pressure of an air
   brush. If the device does not support tangential pressure, pass 0 here.
 
   \a rotation contains the device's rotation in degrees. 4D mice support
@@ -4392,7 +4392,7 @@ void QGestureEvent::accept(QGesture *gesture)
     of calling \l{QGestureEvent::setAccepted()}{setAccepted(gesture, false)}.
 
     Clearing the accept flag indicates that the event receiver does not
-    want the gesture. Unwanted gestures may be propgated to the parent widget.
+    want the gesture. Unwanted gestures may be propagated to the parent widget.
 
     \sa QGestureEvent::accept()
 */

@@ -156,7 +156,18 @@ void qMetaTypeLoadHelper(QDataStream &stream, T *t)
 }
 #endif // QT_NO_DATASTREAM
 
-template <typename T> struct QMetaTypeId2;
+template <typename T>
+struct QMetaTypeId
+{
+    enum { Defined = 0 };
+};
+
+template <typename T>
+struct QMetaTypeId2
+{
+    enum { Defined = QMetaTypeId<T>::Defined };
+    static inline int qt_metatype_id() { return QMetaTypeId<T>::qt_metatype_id(); }
+};
 
 namespace QtPrivate {
     template <typename T, bool Defined = QMetaTypeId2<T>::Defined>
@@ -208,19 +219,6 @@ void qRegisterMetaTypeStreamOperators(const char *typeName
                                        reinterpret_cast<QMetaType::LoadOperator>(lptr));
 }
 #endif // QT_NO_DATASTREAM
-
-template <typename T>
-struct QMetaTypeId
-{
-    enum { Defined = 0 };
-};
-
-template <typename T>
-struct QMetaTypeId2
-{
-    enum { Defined = QMetaTypeId<T>::Defined };
-    static inline int qt_metatype_id() { return QMetaTypeId<T>::qt_metatype_id(); }
-};
 
 template <typename T>
 inline int qMetaTypeId(
@@ -355,6 +353,7 @@ Q_DECLARE_BUILTIN_METATYPE(QChar, QChar)
 Q_DECLARE_BUILTIN_METATYPE(long, Long)
 Q_DECLARE_BUILTIN_METATYPE(short, Short)
 Q_DECLARE_BUILTIN_METATYPE(char, Char)
+Q_DECLARE_BUILTIN_METATYPE(signed char, Char)
 Q_DECLARE_BUILTIN_METATYPE(ulong, ULong)
 Q_DECLARE_BUILTIN_METATYPE(ushort, UShort)
 Q_DECLARE_BUILTIN_METATYPE(uchar, UChar)

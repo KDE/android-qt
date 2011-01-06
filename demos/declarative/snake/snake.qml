@@ -39,7 +39,7 @@
 **
 ****************************************************************************/
 
-import Qt 4.7
+import QtQuick 1.0
 import "content" as Content
 import "content/snake.js" as Logic
 
@@ -47,6 +47,7 @@ Rectangle {
     id: screen;
     SystemPalette { id: activePalette }
     color: activePalette.window
+    property bool activeGame: false
 
     property int gridSize : 34
     property int margin: 4
@@ -75,6 +76,7 @@ Rectangle {
     Timer {
         id: heartbeat;
         interval: heartbeatInterval;
+        running: activeGame && runtime.isActiveWindow
         repeat: true
         onTriggered: { Logic.move() }
     }
@@ -86,7 +88,7 @@ Rectangle {
         onTriggered: { Logic.moveSkull() }
     }
     Timer {
-	id: startNewGameTimer;
+        id: startNewGameTimer;
         interval: 700;
         onTriggered: { Logic.startNewGame(); }
     }
@@ -94,11 +96,20 @@ Rectangle {
     Timer {
         id: startHeartbeatTimer;
         interval: 1000 ;
-        onTriggered: { state = "running"; heartbeat.running = true; }
+        onTriggered: { state = "running"; activeGame = true; }
     }
 
+    Image{
+        id: pauseDialog
+        z: 1
+        source: "content/pics/pause.png"
+        anchors.centerIn: parent;
+        //opacity is deliberately not animated
+        opacity: activeGame && !runtime.isActiveWindow
+    }
 
     Image {
+
         Image {
             id: title
             source: "content/pics/snake.jpg"
@@ -107,14 +118,28 @@ Rectangle {
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.verticalCenter: parent.verticalCenter
 
-            Text {
-                color: "white"
-                font.pointSize: 24
-                horizontalAlignment: Text.AlignHCenter
-                text: "Last Score:\t" + lastScore + "\nHighscore:\t" + highScores.topScore;
-                anchors.horizontalCenter: parent.horizontalCenter
-                anchors.bottom: parent.bottom
-                anchors.bottomMargin: gridSize
+            Column {
+                spacing: 140
+                anchors.verticalCenter: parent.verticalCenter;
+                anchors.left:  parent.left;
+                anchors.right:  parent.right;
+
+                Text {
+                    color: "white"
+                    font.pointSize: 48
+                    font.italic: true;
+                    font.bold: true;
+                    text: "Snake"
+                    anchors.horizontalCenter: parent.horizontalCenter;
+                }
+
+                Text {
+                    color: "white"
+                    font.pointSize: 24
+                    anchors.horizontalCenter: parent.horizontalCenter;
+                    //horizontalAlignment: Text.AlignHCenter
+                    text: "Last Score:\t" + lastScore + "\nHighscore:\t" + highScores.topScore;
+                }
             }
         }
 
@@ -144,7 +169,7 @@ Rectangle {
             MouseArea {
                 anchors.fill: parent
                 onPressed: {
-                    if (!head || !heartbeat.running) {
+                    if (screen.state == "") {
                         Logic.startNewGame();
                         return;
                     }
@@ -235,10 +260,12 @@ Rectangle {
             from: "*"
             to: "starting"
             NumberAnimation { target: progressIndicator; property: "width"; duration: 1000 }
-            NumberAnimation { target: title; property: "opacity"; duration: 500 }
+            NumberAnimation { property: "opacity"; duration: 200 }
         },
         Transition {
-            NumberAnimation { target: title; property: "opacity"; duration: 500 }
+            to: "starting"
+            NumberAnimation { target: progressIndicator; property: "width"; duration: 1000 }
+            NumberAnimation { property: "opacity"; duration: 200 }
         }
     ]
 
