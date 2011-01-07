@@ -61,7 +61,7 @@ rm $J_PRO/src/org/$PROJECT_NAME/QtMain.java
 mkdir -p $J_PRO/src/org/$PROJECT_NAME/qt
 cp $LIGHTHOUSE_ROOT/examples/android/QtAnimatedtiles/src/org/animatedtiles/qt/QtMain.java $J_PRO/src/org/$PROJECT_NAME/qt/QtMain.java
 cp $LIGHTHOUSE_ROOT/examples/android/QtAnimatedtiles/AndroidManifest.xml $J_PRO/AndroidManifest.xml
-cp -r $LIGHTHOUSE_ROOT/src/android/java/com $PROJECT_NAME-java/src
+cp -r $LIGHTHOUSE_ROOT/src/android/java/src/com $PROJECT_NAME-java/src
 sed -i "s/animatedtiles/$PROJECT_NAME/g" $J_PRO/src/org/$PROJECT_NAME/qt/QtMain.java
 sed -i "s/animatedtiles/$PROJECT_NAME/g" $J_PRO/AndroidManifest.xml
 
