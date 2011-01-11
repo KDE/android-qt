@@ -5,7 +5,7 @@ export ANDROID_NDK_ROOT=/usr/local/android-ndk-r5
 export ANDROID_NDK_HOST=linux-x86
 export ANDROID_NDK_TOOLCHAIN_PREFIX=arm-linux-androideabi
 export ANDROID_NDK_TOOLCHAIN_VERSION=4.4.3
-export ANDROID_NDK_PLATFORM=android-5 # 4 - android 1.6
+export ANDROID_NDK_PLATFORM=android-4 # 4 - android 1.6
                                       # 5 - android 2.0 & 2.1
                                       # 8 - android 2.2
                                       # 9 - android 2.3
@@ -24,4 +24,4 @@ git checkout lib
             -nomake demos -nomake examples -confirm-license -pch -exceptions \
             -no-webkit -no-script -reduce-relocations -reduce-exports
 
-make -j3
+make -j3 && make install
