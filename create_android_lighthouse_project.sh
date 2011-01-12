@@ -201,10 +201,12 @@ J_PRO=\$PROJECT_NAME-java
 cd \$Q_PRO
 #QMAKE
 \$ANDROID_LIGHTHOUSE/bin/qmake
-if [ \$? -ne 0 ] ; then echo "QMake failed"; exit \$?; fi
+rv=\$?
+if [ \$rv -ne 0 ] ; then echo "QMake failed"; exit \$rv; fi
 #MAKE
 make
-if [ \$? -ne 0 ] ; then echo "Make failed"; exit \$?; fi
+rv=\$?
+if [ \$rv -ne 0 ] ; then echo "Make failed"; exit \$rv; fi
 
 cd ..
 mkdir -p \$J_PRO/libs/armeabi
