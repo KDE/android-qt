@@ -1,6 +1,6 @@
 package org.animatedtiles.qt;
 
-import com.nokia.qt.QtActivity;
+import com.nokia.qt.android.QtActivity;
 
 public class QtMain extends QtActivity
 {
