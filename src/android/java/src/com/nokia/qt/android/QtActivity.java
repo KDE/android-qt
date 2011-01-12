@@ -205,8 +205,9 @@ public class QtActivity extends Activity
             String pn=getPackageName();
             ApplicationInfo ai=getPackageManager().getApplicationInfo(pn, PackageManager.GET_META_DATA);
             String packagePath=ai.dataDir+"/";
-            int resourceId = ai.metaData.getInt("qt_libs_resource_id");
-            Log.i(QtApplication.QtTAG, packagePath +","+resourceId+","+getResources().getStringArray(resourceId).length+"++++++");
+            // FIXME: throws a NullReference exception.
+            // int resourceId = ai.metaData.getInt("qt_libs_resource_id");
+            // Log.i(QtApplication.QtTAG, packagePath +","+resourceId+","+getResources().getStringArray(resourceId).length+"++++++");
             if (ai.sharedLibraryFiles != null)
                 for (int i=0;i<ai.sharedLibraryFiles.length;i++)
                         Log.i(QtApplication.QtTAG, ai.sharedLibraryFiles[i]);
