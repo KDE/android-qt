@@ -207,6 +207,7 @@ public class QtApplication extends Application
 						+ libraries.get(i) + ".so'", e);
 			}
 		}
+		System.load("/data/local/plugins/contacts/libqtcontacts_android.so");
 	}
 
     public static void loadApplication(String lib)

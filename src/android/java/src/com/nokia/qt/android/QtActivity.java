@@ -7,12 +7,14 @@ import java.util.Iterator;
 import java.util.List;
 
 import android.app.Activity;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.provider.ContactsContract;
 import android.text.method.MetaKeyKeyListener;
 import android.util.Log;
 import android.view.KeyCharacterMap;
@@ -25,12 +27,13 @@ public class QtActivity extends Activity
 {
 
 	public enum QtLibrary {
-        QtCore, QtNetwork, QtXml, QtXmlPatterns, QtScript, QtSql, QtGui, QtOpenGL, QtSvg, QtScriptTools, QtDeclarative, QtMultimedia, QtWebKit, QtAndroid_mw, QtAndroid_sw, QtAndroidBridge
+        QtCore, QtNetwork, QtXml, QtXmlPatterns, QtScript, QtSql, QtGui, QtOpenGL, QtSvg, QtScriptTools, QtDeclarative, QtMultimedia, QtWebKit, QtAndroid_mw, QtAndroid_sw, QtAndroidBridge,
+        QtContacts
     }
     private boolean singleWindow=true;
     private Object jniProxyObject = null;
     private boolean quitApp = true;
-    private String appName = "calculator";
+    private String appName = "samplephonebook";
     private List<String> libraries = new ArrayList<String>();
     private boolean softwareKeyboardIsVisible=false;
     private long metaState;
@@ -73,6 +76,7 @@ public class QtActivity extends Activity
         else
         	addQtLibrary(QtLibrary.QtAndroid_mw);
 //        addQtLibrary(QtLibrary.QtAndroidBridge);
+          addQtLibrary(QtLibrary.QtContacts);
     }
 
     public void setApplication(String app)
@@ -221,6 +225,8 @@ public class QtActivity extends Activity
 	            QtApplication.setView(view);
             }
             QtApplication.setActivity(this);
+            QtAndroidContacts.setContactsActivity(this);
+			
             if (null == getLastNonConfigurationInstance())
             {
                 QtApplication.loadLibraries(libraries);
