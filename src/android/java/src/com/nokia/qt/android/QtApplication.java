@@ -43,9 +43,11 @@ public class QtApplication extends Application
 	{
 		m_lostActions.clear();
 	}
-    static private int getAction(int index, MotionEvent event)
-    {
-    	int action=event.getAction();
+
+	//@!ANDROID-4
+	static private int getAction(int index, MotionEvent event)
+	{
+		int action=event.getAction();
 		if (action == MotionEvent.ACTION_MOVE)
 		{
 			int hsz=event.getHistorySize();
@@ -60,7 +62,7 @@ public class QtApplication extends Application
 			return 1;
 		}
 
-    	switch(index)
+		switch(index)
 		{
 		case 0:
 			if (action == MotionEvent.ACTION_DOWN || 
@@ -88,10 +90,12 @@ public class QtApplication extends Application
 			break;
 		}
 		return 2;
-    }
+	}
+	//@!ANDROID-4
 
 	static public void sendTouchEvent(MotionEvent event, int id)
 	{
+		//@!ANDROID-4
 		touchBegin(id);
 		for (int i=0;i<event.getPointerCount();i++)
 			touchAdd(id,event.getPointerId(i), getAction(i, event), i==0,
@@ -109,6 +113,7 @@ public class QtApplication extends Application
 			default:
 				touchEnd(id,1);
 		}
+		//@!ANDROID-4
 
 		switch (event.getAction())
 		{
