@@ -127,12 +127,6 @@ cat > $Q_PRO/$PROJECT_NAME.pro <<EOF
 QT       += core gui
 
 TARGET = $PROJECT_NAME
-TEMPLATE = app
-
-android-g++ {
-    TEMPLATE = lib
-    CONFIG += dll
-}
 
 SOURCES += main.cpp \\
         mainwindow.cpp
