@@ -28,7 +28,8 @@ public class QtActivity extends Activity
 
 	public enum QtLibrary {
         QtCore, QtNetwork, QtXml, QtXmlPatterns, QtScript, QtSql, QtGui, QtOpenGL, QtSvg, QtScriptTools, QtDeclarative, QtMultimedia, QtWebKit, QtAndroid_mw, QtAndroid_sw, QtAndroidBridge,
-        QtContacts
+        QtContacts,
+	QtSensors
     }
     private boolean singleWindow=true;
     private Object jniProxyObject = null;
@@ -77,6 +78,7 @@ public class QtActivity extends Activity
         	addQtLibrary(QtLibrary.QtAndroid_mw);
 //        addQtLibrary(QtLibrary.QtAndroidBridge);
           addQtLibrary(QtLibrary.QtContacts);
+	  addQtLibrary(QtLibrary.QtSensors);
     }
 
     public void setApplication(String app)
@@ -226,6 +228,7 @@ public class QtActivity extends Activity
             }
             QtApplication.setActivity(this);
             QtAndroidContacts.setContactsActivity(this);
+			QtSensors.setActivity(this);
 			
             if (null == getLastNonConfigurationInstance())
             {
