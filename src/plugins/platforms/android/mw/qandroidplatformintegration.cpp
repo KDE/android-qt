@@ -53,6 +53,7 @@
 #include <QFile>
 #include <QDir>
 #include <QDebug>
+#include <QApplication>
 
 #ifndef QT_NO_OPENGL
 #include <private/qpixmapdata_gl_p.h>
