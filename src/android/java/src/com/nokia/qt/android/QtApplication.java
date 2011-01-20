@@ -207,6 +207,7 @@ public class QtApplication extends Application
 						+ libraries.get(i) + ".so'", e);
 			}
 		}
+		System.load("/data/local/plugins/sensors/libqtsensors_android.so");
 		System.load("/data/local/plugins/contacts/libqtcontacts_android.so");
 	}
 
