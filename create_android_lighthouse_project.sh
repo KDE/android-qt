@@ -2,8 +2,8 @@
 
 ### Edit these 2 values ###
 
-SDK_ROOT=/home/buus/dev/android-sdk-linux_x86
-LIGHTHOUSE_ROOT=/home/buus/dev/android-lighthouse
+SDK_ROOT=/opt/android-sdk-linux_86
+LIGHTHOUSE_ROOT=/usr/src/CVS/android-lighthouse
 
 ###########################
 
@@ -25,7 +25,7 @@ OPTIONS:
 EOF
 }
 
-while getopts ":h:n:t" options; do
+while getopts ":h:n:t:" options; do
 case $options in
 	h)
 		usage
