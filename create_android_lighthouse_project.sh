@@ -2,8 +2,8 @@
 
 ### Edit these 2 values ###
 
-SDK_ROOT=/home/buus/dev/android-sdk-linux_x86
-LIGHTHOUSE_ROOT=/home/buus/dev/android-lighthouse
+SDK_ROOT=/opt/android-sdk-linux_86
+LIGHTHOUSE_ROOT=/usr/src/CVS/android-lighthouse
 
 ###########################
 
@@ -25,7 +25,7 @@ OPTIONS:
 EOF
 }
 
-while getopts ":h:n:t" options; do
+while getopts ":h:n:t:" options; do
 case $options in
 	h)
 		usage
@@ -127,12 +127,6 @@ cat > $Q_PRO/$PROJECT_NAME.pro <<EOF
 QT       += core gui
 
 TARGET = $PROJECT_NAME
-TEMPLATE = app
-
-android-g++ {
-    TEMPLATE = lib
-    CONFIG += dll
-}
 
 SOURCES += main.cpp \\
         mainwindow.cpp
@@ -201,10 +195,12 @@ J_PRO=\$PROJECT_NAME-java
 cd \$Q_PRO
 #QMAKE
 \$ANDROID_LIGHTHOUSE/bin/qmake
-if [ \$? -ne 0 ] ; then echo "QMake failed"; exit \$?; fi
+rv=\$?
+if [ \$rv -ne 0 ] ; then echo "QMake failed"; exit \$rv; fi
 #MAKE
 make
-if [ \$? -ne 0 ] ; then echo "Make failed"; exit \$?; fi
+rv=\$?
+if [ \$rv -ne 0 ] ; then echo "Make failed"; exit \$rv; fi
 
 cd ..
 mkdir -p \$J_PRO/libs/armeabi
