@@ -179,10 +179,9 @@ for(QTLIB, $$list($$lower($$unique(QT)))) {
    else:isEqual(QTLIB, android) {
         contains(TEMPLATE, ".*app") {
             CONFIG(android) {
-                #QMAKE_LIBS = $$QMAKE_LIBDIR_QT/qtmain_android.o $$QMAKE_LIBS
-                !contains(TARGET, ".so"): TARGET = lib$$TARGET".so"
+                !contains(TARGET, ".so"): TARGET = lib$${TARGET}.so
                 SOURCES += $$[QT_INSTALL_PREFIX]/src/android/cpp/qtmain_android.cpp
-                QMAKE_LFLAGS += -Wl,--no-undefined -Wl,-z,noexecstack -shared
+                QMAKE_LFLAGS += -Wl,--no-undefined -Wl,-z,noexecstack -shared -Wl,-soname,$$TARGET
              } else {
                 QMAKE_LFLAGS += $$ANDROID_PLATFORM_PATH/lib/crtbegin_dynamic.o
                 QMAKE_LIBS = $$ANDROID_PLATFORM_PATH/lib/crtend_android.o $$QMAKE_LIBS
