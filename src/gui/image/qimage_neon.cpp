@@ -44,6 +44,9 @@
 #include <private/qsimd_p.h>
 
 #ifdef QT_HAVE_NEON
+#ifdef Q_OS_ANDROID
+#include <arm_neon.h>
+#endif
 
 QT_BEGIN_NAMESPACE
 
