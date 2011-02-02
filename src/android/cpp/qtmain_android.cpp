@@ -10,7 +10,7 @@
 
 static JavaVM *m_javaVM = NULL;
 static JNIEnv *m_env = NULL;
-
+static jobject objptr;
 static QSemaphore m_quitAppSemaphore;
 static const char *QtApplicationClassPathName = "com/nokia/qt/android/QtApplication";
 
@@ -20,16 +20,14 @@ static void * startMainMethod(void * /*data*/)
 {
     qDebug()<<"startMainMethod";
     char ** params;
-    params=(char**)malloc(sizeof(char*)*2);
+    params=(char**)malloc(sizeof(char*)*3);
     params[0]=(char*)malloc(20);
     strcpy(params[0],"QtApp");
     params[1]=(char*)malloc(20);
     strcpy(params[1],"-platform");
     params[2]=(char*)malloc(20);
     strcpy(params[2],"android");
-    
-    int ret = main(3, params);
-    
+    int ret = main(3, params);    
     qDebug()<<"MainMethod finished, it's time to cleanup";
     
     free(params[2]);
@@ -44,10 +42,11 @@ static void * startMainMethod(void * /*data*/)
         qCritical()<<"AttachCurrentThread failed";
         return false;
     }
-
-    jclass applicationClass = env->FindClass(QtApplicationClassPathName);
-    jmethodID quitApp = env->GetStaticMethodID(applicationClass, "quitApp", "()V");
-    env->CallStaticVoidMethod(applicationClass, quitApp);
+    jclass applicationClass = env->GetObjectClass(objptr);
+    if (applicationClass){
+        jmethodID quitApp = env->GetStaticMethodID(applicationClass, "quitApp", "()V");
+	env->CallStaticVoidMethod(applicationClass, quitApp);
+    }
     m_javaVM->DetachCurrentThread();
     return NULL;
 }
@@ -76,7 +75,13 @@ static int registerNativeMethods(JNIEnv* env, const char* className,
         __android_log_print(ANDROID_LOG_FATAL,"Qt", "Native registration unable to find class '%s'", className);
         return JNI_FALSE;
     }
-    
+    jmethodID constr = env->GetMethodID(clazz, "<init>", "()V");
+    if(!constr) {
+        __android_log_print(ANDROID_LOG_FATAL,"Qt", "Native registration unable to find  constructor for class '%s'", className);
+        return JNI_FALSE;;
+    }
+    jobject obj = env->NewObject(clazz, constr);
+    objptr = env->NewGlobalRef(obj);
     if (env->RegisterNatives(clazz, gMethods, numMethods) < 0)
     {
         __android_log_print(ANDROID_LOG_FATAL,"Qt", "RegisterNatives failed for '%s'", className);
