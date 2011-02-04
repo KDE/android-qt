@@ -44,6 +44,24 @@
 
 QT_BEGIN_HEADER
 
+#if defined(__ARM_ARCH_7__) \
+    || defined(__ARM_ARCH_7A__) \
+    || defined(__ARM_ARCH_7R__) \
+    || defined(__ARM_ARCH_7M__)
+# define QT_ARCH_ARMV7
+#elif defined(__ARM_ARCH_6__) \
+    || defined(__ARM_ARCH_6J__) \
+    || defined(__ARM_ARCH_6T2__) \
+    || defined(__ARM_ARCH_6Z__) \
+    || defined(__ARM_ARCH_6K__) \
+    || defined(__ARM_ARCH_6ZK__) \
+    || defined(__ARM_ARCH_6M__) \
+    || (defined(__TARGET_ARCH_ARM) && (__TARGET_ARCH_ARM-0 >= 6))
+# define QT_ARCH_ARMV6
+#else
+# define QT_ARCH_ARMV5
+#endif
+
 QT_BEGIN_NAMESPACE
 
 #define Q_ATOMIC_INT_REFERENCE_COUNTING_IS_ALWAYS_NATIVE
