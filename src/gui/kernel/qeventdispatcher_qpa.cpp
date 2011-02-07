@@ -133,9 +133,7 @@ public:
 
     ~QEventDispatcherQPAPrivate()
     {
-	if( selectWorker ){
-            delete selectWorker;
-        }
+        delete selectWorker;
         delete eventLoopIntegration;
         delete barrierBeforeBlocking;
         delete barrierReturnValue;
