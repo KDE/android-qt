@@ -123,6 +123,7 @@ public:
            selectReturnMutex(0),
            selectWorkerNeedsSync(true),
            selectWorkerHasResult(false),
+           selectWorker(0),
            m_integrationInitialised(false),
            m_hasIntegration(false),
            m_isEventLoopIntegrationRunning(false)
@@ -132,7 +133,9 @@ public:
 
     ~QEventDispatcherQPAPrivate()
     {
-        delete selectWorker;
+	if( selectWorker ){
+            delete selectWorker;
+        }
         delete eventLoopIntegration;
         delete barrierBeforeBlocking;
         delete barrierReturnValue;
@@ -212,12 +215,14 @@ bool QEventDispatcherQPA::processEvents(QEventLoop::ProcessEventsFlags flags)
             return false;
         }
     }
-
     int nevents = 0;
 
     // handle gui and posted events
     d->interrupt = false;
-    QApplication::sendPostedEvents();
+    if (flags & QEvent::DeferredDelete)
+	QApplication::sendPostedEvents(0, QEvent::DeferredDelete);
+    else
+	QApplication::sendPostedEvents();
 
     while (!d->interrupt) {        // also flushes output buffer ###can be optimized
         QWindowSystemInterfacePrivate::WindowSystemEvent *event;

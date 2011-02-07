@@ -79,7 +79,6 @@ namespace QtAndroid
             qCritical()<<"AttachCurrentThread failed";
             return;
         }
-
         int bpp=2;
         AndroidBitmapInfo  info;
         int ret;
@@ -140,7 +139,9 @@ namespace QtAndroid
 
     void setAndroidPlatformIntegration(QAndroidPlatformIntegration * androidGraphicsSystem)
     {
+	m_surfaceMutex.lock();
         mAndroidGraphicsSystem=androidGraphicsSystem;
+        m_surfaceMutex.unlock();
     }
 
     void showSoftwareKeyboard()
@@ -181,7 +182,6 @@ namespace QtAndroid
         env->CallStaticVoidMethod(m_applicationClass, m_enterFullScreenMethodID);
         m_javaVM->DetachCurrentThread();
     }
-
 }
 
 static void startQtAndroidPlugin(JNIEnv* env, jobject object)
@@ -250,6 +250,9 @@ static void setDisplayMetrics(JNIEnv* /*env*/, jclass /*clazz*/,
 {
     m_desktopWidthPixels=desktopWidthPixels;
     m_desktopHeightPixels=desktopHeightPixels;
+    
+    if (!mAndroidGraphicsSystem && !qApp)
+	return;
     if (!mAndroidGraphicsSystem)
         QAndroidPlatformIntegration::setDefaultDisplayMetrics(desktopWidthPixels,desktopHeightPixels,
                                                      qRound((double)widthPixels   / xdpi * 100 / 2.54 ),
@@ -554,6 +557,9 @@ static void keyUp(JNIEnv */*env*/, jobject /*thiz*/, jint key, jint unicode, jin
     int mappedKey=mapAndroidKey(key);
     if (mappedKey==Qt::Key_Close)
     {
+	if(!mAndroidGraphicsSystem || !qApp)
+    	    return;
+
         qDebug()<<"handleCloseEvent"<<mAndroidGraphicsSystem->getPrimaryScreen()->topWindow()<<qApp->activeWindow();
 #warning FIXME
         // sometimes qApp->activeWindow() is null, it should never be null when you ahve at least one widget visible, report this issue to nokia !!!
@@ -578,10 +584,13 @@ static void unlockSurface(JNIEnv */*env*/, jobject /*thiz*/)
 
 static void updateWindow(JNIEnv */*env*/, jobject /*thiz*/, jint /*windowId*/)
 {
+  if(!mAndroidGraphicsSystem ||  !qApp)
+     return;
     foreach(QWidget * w, qApp->topLevelWidgets())
     {
         w->update();
     }
+  
 }
 
 static JNINativeMethod methods[] = {
