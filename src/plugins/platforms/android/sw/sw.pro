@@ -1,4 +1,4 @@
-TARGET = QtAndroid_sw
+TARGET = DefaultQtAndroidPlatformPlugin
 
 include(../../../qpluginbase.pri)
 
@@ -11,7 +11,7 @@ DESTDIR = $$QMAKE_LIBDIR_QT
 
 CONFIG(android-4) | CONFIG(android-5) {
                     INCLUDEPATH += $$QT_SOURCE_TREE/src/plugins/platforms/android/common/native/include
-                    SOURCES += ../common/native/graphics/jni/bitmap.cpp
+                    SOURCES += $$QT_SOURCE_TREE/src/plugins/platforms/android/common/native/graphics/jni/bitmap.cpp
              CONFIG(android-4) {
                      INCLUDEPATH += $$QT_SOURCE_TREE/src/3rdparty/android/precompiled/android-4/arch-arm/include
                      INCLUDEPATH += $$QT_SOURCE_TREE/src/3rdparty/android/precompiled/android-4/arch-arm/include/core
@@ -32,10 +32,6 @@ SOURCES += main.cpp \
 
 HEADERS += qandroidplatformintegration.h \
            qandroidinputcontext.h
-
-contains(QT_CONFIG, opengl) {
-    QT += opengl
-}
 
 include(../../fb_base/fb_base.pri)
 

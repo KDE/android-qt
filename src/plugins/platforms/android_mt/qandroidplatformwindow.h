@@ -1,1 +1,0 @@
-../android/qandroidplatformwindow.h

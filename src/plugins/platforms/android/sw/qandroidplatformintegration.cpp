@@ -92,7 +92,10 @@ QAndroidPlatformScreen::QAndroidPlatformScreen():QFbScreen()
     mDepth = 16;
     setPhysicalSize(QSize(QAndroidPlatformIntegration::mDefaultPhysicalSizeWidth,
                           QAndroidPlatformIntegration::mDefaultPhysicalSizeHeight));
+    setGeometry(QRect(0,0,QAndroidPlatformIntegration::mDefaultGeometryWidth
+                      ,QAndroidPlatformIntegration::mDefaultGeometryHeight));
     setFormat(mFormat);
+    qDebug()<<"QAndroidPlatformScreen::QAndroidPlatformScreen():QFbScreen()";
 }
 
 QRegion QAndroidPlatformScreen::doRedraw()
@@ -156,8 +159,10 @@ QPlatformWindow *QAndroidPlatformIntegration::createPlatformWindow(QWidget *widg
     QFbWindow *w = new QFbWindow(widget);
     mPrimaryScreen->addWindow(w);
     qDebug()<<"createPlatformWindow"<<widget->isFullScreen();
-    if (!widget->isFullScreen())
-        QtAndroid::enterFullScreen();
+    if (widget->isFullScreen())
+        QtAndroid::setFullScreen(true);
+    else
+        QtAndroid::setFullScreen(false);
     return w;
 }
 

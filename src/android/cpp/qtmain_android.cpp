@@ -12,27 +12,21 @@ static JavaVM *m_javaVM = NULL;
 static JNIEnv *m_env = NULL;
 static jobject objptr;
 static QSemaphore m_quitAppSemaphore;
-static const char *QtApplicationClassPathName = "com/nokia/qt/android/QtApplication";
-
+static QList<QByteArray> m_applicationParams;
+static const char * const QtApplicationClassPathName = "eu/licentia/necessitas/industrius/QtApplication";
 
 extern "C" int main(int, char **); //use the standard main method to start the application
 static void * startMainMethod(void * /*data*/)
 {
-    qDebug()<<"startMainMethod";
-    char ** params;
-    params=(char**)malloc(sizeof(char*)*3);
-    params[0]=(char*)malloc(20);
-    strcpy(params[0],"QtApp");
-    params[1]=(char*)malloc(20);
-    strcpy(params[1],"-platform");
-    params[2]=(char*)malloc(20);
-    strcpy(params[2],"android");
-    int ret = main(3, params);    
+
+    char **  params;
+    params=(char**)malloc(sizeof(char*)*m_applicationParams.length());
+    for (int i=0;i<m_applicationParams.size();i++)
+        params[i]= (char*)m_applicationParams[i].constData();
+
+    int ret = main(m_applicationParams.length(), params);
+
     qDebug()<<"MainMethod finished, it's time to cleanup";
-    
-    free(params[2]);
-    free(params[1]);
-    free(params[0]);
     free(params);
     Q_UNUSED(ret);
     
@@ -45,22 +39,38 @@ static void * startMainMethod(void * /*data*/)
     jclass applicationClass = env->GetObjectClass(objptr);
     if (applicationClass){
         jmethodID quitApp = env->GetStaticMethodID(applicationClass, "quitApp", "()V");
-	env->CallStaticVoidMethod(applicationClass, quitApp);
+        env->CallStaticVoidMethod(applicationClass, quitApp);
     }
     m_javaVM->DetachCurrentThread();
     return NULL;
 }
 
-static jboolean startQtApp(JNIEnv* /*env*/, jobject /*object*/, jobject /*jniProxyObject*/)
+static jboolean startQtApp(JNIEnv* env, jobject /*object*/, jstring paramsString, jstring environmentString)
 {
     qDebug()<<"startQtApp";
+    const char * nativeString = env->GetStringUTFChars(environmentString, 0);
+    QByteArray string=nativeString;
+    env->ReleaseStringUTFChars(environmentString, nativeString);
+    m_applicationParams=string.split('\t');
+    qDebug()<<"environmentString"<<string<<m_applicationParams;
+    foreach (string, m_applicationParams)
+        if (putenv(string.constData()))
+            qWarning()<<"Can't set environment"<<string;
+
+    nativeString = env->GetStringUTFChars(paramsString, 0);
+    string=nativeString;
+    env->ReleaseStringUTFChars(paramsString, nativeString);
+
+    qDebug()<<"paramsString"<<string;
+    m_applicationParams=string.split('\t');
+
     pthread_t appThread;
     return pthread_create(&appThread, NULL, startMainMethod, NULL)==0;
 }
 
 
 static JNINativeMethod methods[] = {
-    {"startQtApp", "(Ljava/lang/Object;)V", (void *)startQtApp}
+    {"startQtApp", "(Ljava/lang/String;Ljava/lang/String;)V", (void *)startQtApp}
 };
 
 /*

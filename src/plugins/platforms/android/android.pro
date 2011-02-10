@@ -1,3 +1,3 @@
 TEMPLATE = subdirs
 
-SUBDIRS += mw sw
+SUBDIRS += sw

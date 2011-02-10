@@ -9,7 +9,6 @@ QAndroidInputContext::QAndroidInputContext(QObject *parent) :
 
 QAndroidInputContext::~QAndroidInputContext()
 {
-    qDebug()<<"~QAndroidInputContext";
 }
 
 

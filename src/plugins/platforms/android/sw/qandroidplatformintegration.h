@@ -74,7 +74,7 @@ public:
     QList<QPlatformScreen *> screens() const { return mScreens; }
 
     QAndroidPlatformScreen * getPrimaryScreen(){return mPrimaryScreen;}
-
+    bool isVirtualDesktop() { return true; }
     virtual void setDesktopSize(int width, int height);
     virtual void setDisplayMetrics(int width, int height);
     QPlatformFontDatabase *fontDatabase() const;

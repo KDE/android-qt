@@ -18,7 +18,6 @@ lib/libQtTest.la
 lib/libQtWebKit.la
 lib/libQtXml.la
 lib/libQtXmlPatterns.la
-demos/shared/libdemo_shared.prl
 lib/libQt3Support.prl
 lib/libQtAssistantClient.prl
 lib/libQtCLucene.prl

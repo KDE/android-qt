@@ -29,7 +29,7 @@ contains(QT_CONFIG, webkit)  {
 SRC_SUBDIRS += src_plugins
 contains(QT_CONFIG, declarative): SRC_SUBDIRS += src_imports
 contains(QT_CONFIG, declarative):contains(QT_CONFIG, webkit): SRC_SUBDIRS += src_webkit_declarative
-CONFIG(android): SRC_SUBDIRS += src_qtandroidbridge src_android
+#CONFIG(android): SRC_SUBDIRS += src_qtandroidbridge src_android
 
 # s60installs need to be at the end, because projects.pro does an ordered build,
 # and s60installs depends on all the others.
@@ -87,10 +87,10 @@ src_declarative.subdir = $$QT_SOURCE_TREE/src/declarative
 src_declarative.target = sub-declarative
 src_webkit_declarative.subdir = $$QT_SOURCE_TREE/src/3rdparty/webkit/WebKit/qt/declarative
 src_webkit_declarative.target = sub-webkitdeclarative
-src_qtandroidbridge.subdir = $$QT_SOURCE_TREE/src/android/qtandroidbridge
-src_qtandroidbridge.target = sub-qtandroidbridge
-src_android.subdir = $$QT_SOURCE_TREE/src/android/cpp
-src_android.target = sub-android
+#src_qtandroidbridge.subdir = $$QT_SOURCE_TREE/src/android/qtandroidbridge
+#src_qtandroidbridge.target = sub-qtandroidbridge
+#src_android.subdir = $$QT_SOURCE_TREE/src/android/cpp
+#src_android.target = sub-android
 #CONFIG += ordered
 !wince*:!ordered:!symbian-abld:!symbian-sbsv2 {
    src_corelib.depends = src_tools_moc src_tools_rcc
@@ -120,7 +120,7 @@ src_android.target = sub-android
    src_s60installs.depends = $$TOOLS_SUBDIRS $$SRC_SUBDIRS
    src_s60installs.depends -= src_s60installs
    src_imports.depends = src_gui src_declarative
-   src_android.depends = src_corelib src_qtandroidbridge
+#   src_android.depends = src_corelib src_qtandroidbridge
 
    contains(QT_CONFIG, webkit)  {
       src_webkit.depends = src_gui src_sql src_network

@@ -35,7 +35,7 @@ static QMutex m_pauseApplicationMutex;
 
 static QAndroidPlatformIntegration * mAndroidGraphicsSystem=0;
 static int m_desktopWidthPixels=0, m_desktopHeightPixels=0;
-static const char *QtApplicationClassPathName = "com/nokia/qt/android/QtApplication";
+static const char * const QtApplicationClassPathName = "eu/licentia/necessitas/industrius/QtApplication";
 
 static volatile bool m_pauseApplication;
 
@@ -44,7 +44,7 @@ static jmethodID m_showSoftwareKeyboardMethodID=0;
 static jmethodID m_hideSoftwareKeyboardMethodID=0;
 // Software keyboard support
 
-static jmethodID m_enterFullScreenMethodID=0;
+static jmethodID m_setFullScreenMethodID=0;
 
 static inline void checkPauseApplication()
 {
@@ -170,7 +170,7 @@ namespace QtAndroid
         m_javaVM->DetachCurrentThread();
     }
 
-    void enterFullScreen()
+    void setFullScreen(bool fullScreen)
     {
         JNIEnv* env;
         if (m_javaVM->AttachCurrentThread(&env, NULL)<0)
@@ -178,13 +178,13 @@ namespace QtAndroid
             qCritical()<<"AttachCurrentThread failed";
             return;
         }
-        qDebug()<<"toggleFullScreen";
-        env->CallStaticVoidMethod(m_applicationClass, m_enterFullScreenMethodID);
+        qDebug()<<"setFullScreen"<<fullScreen;
+        env->CallStaticVoidMethod(m_applicationClass, m_setFullScreenMethodID, fullScreen);
         m_javaVM->DetachCurrentThread();
     }
 }
 
-static void startQtAndroidPlugin(JNIEnv* env, jobject object)
+static void startQtAndroidPlugin(JNIEnv* /*env*/, jobject /*object*/)
 {
     m_surface=0;
     mAndroidGraphicsSystem=0;
@@ -246,13 +246,11 @@ static void destroySurface(JNIEnv *env, jobject /*thiz*/)
 static void setDisplayMetrics(JNIEnv* /*env*/, jclass /*clazz*/,
                               jint widthPixels, jint heightPixels,
                               jint desktopWidthPixels, jint desktopHeightPixels,
-                              jfloat xdpi, jfloat ydpi)
+                              jdouble xdpi, jdouble ydpi)
 {
     m_desktopWidthPixels=desktopWidthPixels;
     m_desktopHeightPixels=desktopHeightPixels;
-    
-    if (!mAndroidGraphicsSystem && !qApp)
-	return;
+
     if (!mAndroidGraphicsSystem)
         QAndroidPlatformIntegration::setDefaultDisplayMetrics(desktopWidthPixels,desktopHeightPixels,
                                                      qRound((double)widthPixels   / xdpi * 100 / 2.54 ),
@@ -262,17 +260,12 @@ static void setDisplayMetrics(JNIEnv* /*env*/, jclass /*clazz*/,
         mAndroidGraphicsSystem->setDisplayMetrics(qRound((double)widthPixels   / xdpi * 100 / 2.54 ),
                                                   qRound((double)heightPixels / ydpi *100  / 2.54 ));
         mAndroidGraphicsSystem->setDesktopSize(desktopWidthPixels,desktopHeightPixels);
-        if (m_surface)
-        {
-            QWindowSystemInterface::handleScreenAvailableGeometryChange(0);
-            QWindowSystemInterface::handleScreenGeometryChange(0);
-        }
     }
 }
 
 static void mouseDown(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/, jint x, jint y)
 {
-    qDebug()<<"mouseDown";
+    qDebug()<<"mouseDown"<<qApp->activeWindow();
     QWindowSystemInterface::handleMouseEvent(0,
                                              QEvent::MouseButtonPress,QPoint(x,y),QPoint(x,y),
                                              Qt::MouseButtons(Qt::LeftButton));
@@ -280,7 +273,7 @@ static void mouseDown(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/, jint x,
 
 static void mouseUp(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/, jint x, jint y)
 {
-    qDebug()<<"mouseUp";
+    qDebug()<<"mouseUp"<<qApp->activeWindow();
     // sometimes this method doesn't wakeup the loop, report this issue to nokia !!!
     QWindowSystemInterface::handleMouseEvent(0,
                                              QEvent::MouseButtonRelease,QPoint(x,y),QPoint(x,y),
@@ -582,15 +575,13 @@ static void unlockSurface(JNIEnv */*env*/, jobject /*thiz*/)
     m_surfaceMutex.unlock();
 }
 
-static void updateWindow(JNIEnv */*env*/, jobject /*thiz*/, jint /*windowId*/)
+static void updateWindow(JNIEnv */*env*/, jobject /*thiz*/)
 {
-  if(!mAndroidGraphicsSystem ||  !qApp)
-     return;
+    if(!mAndroidGraphicsSystem ||  !qApp)
+        return;
+
     foreach(QWidget * w, qApp->topLevelWidgets())
-    {
         w->update();
-    }
-  
 }
 
 static JNINativeMethod methods[] = {
@@ -599,12 +590,12 @@ static JNINativeMethod methods[] = {
     {"resumeQtApp", "()V", (void *)resumeQtApp},
     {"quitQtAndroidPlugin", "()V", (void *)quitQtAndroidPlugin},
     {"terminateQt", "()V", (void *)terminateQt},
-    {"setDisplayMetrics", "(IIIIFF)V", (void *)setDisplayMetrics},
+    {"setDisplayMetrics", "(IIIIDD)V", (void *)setDisplayMetrics},
     {"setSurface", "(Ljava/lang/Object;)V", (void *)setSurface},
     {"destroySurface", "()V", (void *)destroySurface},
     {"lockSurface", "()V", (void *)lockSurface},
     {"unlockSurface", "()V", (void *)unlockSurface},
-    {"updateWindow", "(I)V", (void *)updateWindow},
+    {"updateWindow", "()V", (void *)updateWindow},
     {"touchBegin","(I)V",(void*)touchBegin},
     {"touchAdd","(IIIZIIFF)V",(void*)touchAdd},
     {"touchEnd","(II)V",(void*)touchEnd},
@@ -621,13 +612,13 @@ static JNINativeMethod methods[] = {
 static int registerNativeMethods(JNIEnv* env, const char* className,
     JNINativeMethod* gMethods, int numMethods)
 {
-    m_applicationClass = (jclass) env->NewGlobalRef(env->FindClass(className));
-    if (m_applicationClass == NULL)
+    jclass clazz=env->FindClass(className);
+    if (clazz == NULL)
     {
         __android_log_print(ANDROID_LOG_FATAL,"Qt", "Native registration unable to find class '%s'", className);
         return JNI_FALSE;
     }
-
+    m_applicationClass = (jclass)env->NewGlobalRef(clazz);
     if (env->RegisterNatives(m_applicationClass, gMethods, numMethods) < 0)
     {
         __android_log_print(ANDROID_LOG_FATAL,"Qt", "RegisterNatives failed for '%s'", className);
@@ -636,7 +627,7 @@ static int registerNativeMethods(JNIEnv* env, const char* className,
     m_redrawSurfaceMethodID = env->GetStaticMethodID(m_applicationClass, "redrawSurface", "(IIII)V");
     m_showSoftwareKeyboardMethodID = env->GetStaticMethodID(m_applicationClass, "showSoftwareKeyboard", "()V");
     m_hideSoftwareKeyboardMethodID = env->GetStaticMethodID(m_applicationClass, "hideSoftwareKeyboard", "()V");
-    m_enterFullScreenMethodID = env->GetStaticMethodID(m_applicationClass, "enterFullScreen", "()V");
+    m_setFullScreenMethodID = env->GetStaticMethodID(m_applicationClass, "setFullScreen", "(Z)V");
     return JNI_TRUE;
 }
 

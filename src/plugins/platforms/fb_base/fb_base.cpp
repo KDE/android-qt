@@ -146,14 +146,15 @@ QFbScreen::QFbScreen() : cursor(0), mGeometry(), mDepth(16), mFormat(QImage::For
 
 void QFbScreen::setGeometry(QRect rect)
 {
-    qDebug()<<"QFbScreen::setGeometry";
+    qDebug()<<"QFbScreen::setGeometry"<<rect;
     delete compositePainter;
-    qDebug()<<"QFbScreen::setGeometry 1";
     compositePainter = 0;
     delete mScreenImage;
     mGeometry = rect;
     mScreenImage = new QImage(mGeometry.size(), mFormat);
     invalidateRectCache();
+    QWindowSystemInterface::handleScreenAvailableGeometryChange(0);
+    QWindowSystemInterface::handleScreenGeometryChange(0);
 }
 
 void QFbScreen::setDepth(int depth)
@@ -163,7 +164,7 @@ void QFbScreen::setDepth(int depth)
 
 void QFbScreen::setPhysicalSize(QSize size)
 {
-    qDebug()<<"QFbScreen::setPhysicalSize";
+    qDebug()<<"QFbScreen::setPhysicalSize"<<size;
     mPhysicalSize = size;
 }
 
