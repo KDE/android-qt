@@ -34,9 +34,14 @@ interface IMinistro
     /**
     * Check/download required libs to run the application
     *
-    * param callback - interface used by the service to notify the client when it has the libs
-    * param modules  - Qt modules you want to check
+    * param callback              - interface used by the service to notify the client when it has the libs
+    * param modules               - Qt modules you want to check
+    * param appName               - Application name, used to show more informations to user
+    * param ministroApiLevel      - Ministro api level, used to check ministro service compatibility.
+    *                               Current API Level is 1 !!!
+    * param mecessitasApiLevel    - Necessitas api level, used to download the right platform plugin.
+    *                               Current API Level is 1 !!!
     */
 
-    void checkModules(in IMinistroCallback callback, in String[] modules, in String appName);
+    void checkModules(in IMinistroCallback callback, in String[] modules, in String appName, in int ministroApiLevel, in int necessitasApiLevel);
 }

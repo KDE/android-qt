@@ -39,7 +39,6 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.ActivityInfo;
-import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.graphics.Rect;
@@ -61,6 +60,8 @@ import eu.licentia.necessitas.ministro.IMinistroCallback;
 public class QtActivity extends Activity {
 
     private final static int MINISTRO_INSTALL_REQUEST_CODE = 0xf3ee;
+    private static final int MINISTRO_API_LEVEL=1; // Ministro api level (check IMinistro.aidl file)
+    private static final int NECESSITAS_API_LEVEL=1; // Necessitas api level.
 
     private String m_qtLibs[]=null;
 
@@ -111,18 +112,13 @@ public class QtActivity extends Activity {
                         Log.e(QtApplication.QtTAG,"Can't start debugging"+se.getMessage());
                 }
             }
-            DisplayMetrics metrics = new DisplayMetrics();
-            getWindowManager().getDefaultDisplay().getMetrics(metrics);
-            QtApplication.setApplicationDisplayMetrics(metrics.widthPixels, metrics.heightPixels,
-                            metrics.widthPixels, metrics.heightPixels,
-                            metrics.xdpi, metrics.ydpi);
             // start application
 
-            if (ai.metaData.containsKey("android.app.application_statup_params"))
+            if (ai.metaData.containsKey("android.app.application_startup_params"))
             {
                 if (params.length()>0)
                     params+="\t";
-                params += ai.metaData.getString("android.app.application_statup_params");
+                params += ai.metaData.getString("android.app.application_startup_params");
             }
 
             final String homePath="HOME="+getFilesDir().getAbsolutePath()+"\tTMPDIR="+getFilesDir().getAbsolutePath();
@@ -161,7 +157,7 @@ public class QtActivity extends Activity {
             m_service = IMinistro.Stub.asInterface(service);
             try {
                     if (m_service!=null)
-                            m_service.checkModules(m_ministroCallback, m_qtLibs, (String) QtActivity.this.getTitle());
+                            m_service.checkModules(m_ministroCallback, m_qtLibs, (String) QtActivity.this.getTitle(), MINISTRO_API_LEVEL, NECESSITAS_API_LEVEL);
             } catch (RemoteException e) {
                     e.printStackTrace();
             }
@@ -175,8 +171,18 @@ public class QtActivity extends Activity {
 
     private boolean m_quitApp = true;
     private Process m_debuggerProcess=null; // debugger process
-
-    private void startApp()
+    private void exitApplication()
+    {
+        AlertDialog errorDialog = new AlertDialog.Builder(QtActivity.this).create();
+        errorDialog.setMessage("Can't find Ministro service.\nThe application can't start.");
+        errorDialog.setButton("OK", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int which) {
+                finish();
+            }
+        });
+        errorDialog.show();
+    }
+    private void startApp(final boolean firstStart)
     {
         try
         {
@@ -199,7 +205,18 @@ public class QtActivity extends Activity {
                 int i=0;
                 for (;i<m_qtLibs.length;i++)
                         libs[i]="/data/local/qt/lib/lib"+m_qtLibs[i]+".so";
-                libs[i]="/data/local/qt/lib/libDefaultQtAndroidPlatformPlugin.so";
+                int apiLevel=android.os.Build.VERSION.SDK_INT;
+                if (apiLevel<4) // this should never happen !
+                    apiLevel=4; // Necessitas, we have a problem !
+                else
+                {
+                    if (apiLevel>5 && apiLevel<8)
+                        apiLevel=5; //  android-6, and 7 are compatible with android-5
+                    else
+                        if (apiLevel>8)
+                            apiLevel=8; // android >8 are compatible with android-8
+                }
+                libs[i]="/data/local/qt/plugins/platforms/android/libandroid-"+apiLevel+".so";
                 m_ministroCallback.libs(libs,"QT_IMPORT_PATH=/data/local/qt/imports\tQT_PLUGIN_PATH=/data/local/qt/plugins", "-platform\tandroid", 0,null);
                 return;
             }
@@ -208,29 +225,36 @@ public class QtActivity extends Activity {
                 if (!bindService(new Intent(eu.licentia.necessitas.ministro.IMinistro.class.getCanonicalName()), m_ministroConnection, Context.BIND_AUTO_CREATE))
                     throw new SecurityException("");
             } catch (SecurityException e) {
-                AlertDialog.Builder downloadDialog = new AlertDialog.Builder(this);
-
-                downloadDialog.setMessage("This application requires Ministro, Qt libaries for Android. Would you like to install it?");
-                downloadDialog.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialogInterface, int i) {
-                        try
-                        {
-                            Uri uri = Uri.parse("market://search?q=pname:eu.licentia.necessitas.ministro");
-                            Intent intent = new Intent(Intent.ACTION_VIEW, uri);
-                            startActivityForResult(intent, MINISTRO_INSTALL_REQUEST_CODE);
+                if (firstStart)
+                {
+                    AlertDialog.Builder downloadDialog = new AlertDialog.Builder(this);
+                    downloadDialog.setMessage("This application requires Ministro, Qt libaries for Android. Would you like to install it?");
+                    downloadDialog.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialogInterface, int i) {
+                            try
+                            {
+                                Uri uri = Uri.parse("market://search?q=pname:eu.licentia.necessitas.ministro");
+                                Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+                                startActivityForResult(intent, MINISTRO_INSTALL_REQUEST_CODE);
+                            }
+                            catch (Exception e) {
+                                e.printStackTrace();
+                                exitApplication();
+                            }
                         }
-                        catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                    }
-                });
+                    });
 
-                downloadDialog.setNegativeButton("No", new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialogInterface, int i) {
-                        QtActivity.this.finish();
-                    }
-                });
-                downloadDialog.show();
+                    downloadDialog.setNegativeButton("No", new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialogInterface, int i) {
+                            QtActivity.this.finish();
+                        }
+                    });
+                    downloadDialog.show();
+                }
+                else
+                {
+                    exitApplication();
+                }
             }
         }
         catch (Exception e)
@@ -240,40 +264,32 @@ public class QtActivity extends Activity {
     }
 
     @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data)
+    {
+        if (requestCode == MINISTRO_INSTALL_REQUEST_CODE)
+                startApp(false);
+        super.onActivityResult(requestCode, resultCode, data);
+    }
+
+    @Override
     public void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         m_quitApp = true;
         QtApplication.setMainActivity(this);
+        if (null == getLastNonConfigurationInstance())
+        {
+            DisplayMetrics metrics = new DisplayMetrics();
+            getWindowManager().getDefaultDisplay().getMetrics(metrics);
+            QtApplication.setApplicationDisplayMetrics(metrics.widthPixels, metrics.heightPixels,
+                            metrics.widthPixels, metrics.heightPixels,
+                            metrics.xdpi, metrics.ydpi);
+        }
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         setContentView(m_surface = new QtSurface(this, m_id));
         if (null == getLastNonConfigurationInstance())
-            startApp();
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data)
-    {
-        switch(requestCode)
-        {
-            case MINISTRO_INSTALL_REQUEST_CODE:
-                if (resultCode != Activity.RESULT_OK)
-                {
-                    AlertDialog errorDialog = new AlertDialog.Builder(QtActivity.this).create();
-                    errorDialog.setMessage("Your system doesn't seems to have Android Market.\nThe application can't start.");
-                    errorDialog.setButton("OK", new DialogInterface.OnClickListener() {
-                        public void onClick(DialogInterface dialog, int which) {
-                            finish();
-                        }
-                    });
-                    errorDialog.show();
-                }
-                else
-                    startApp();
-                break;
-        }
-        super.onActivityResult(requestCode, resultCode, data);
+            startApp(true);
     }
 
     @Override
