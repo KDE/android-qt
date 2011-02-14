@@ -814,13 +814,17 @@ QList<QSslCertificate> QSslSocketPrivate::systemCaCertificates()
 #elif defined(Q_OS_UNIX) && !defined(Q_OS_SYMBIAN)
     QSet<QString> certFiles;
     QList<QByteArray> directories;
-    directories << "/etc/ssl/certs/"; // (K)ubuntu, OpenSUSE, Mandriva, MeeGo ...
-    directories << "/usr/lib/ssl/certs/"; // Gentoo, Mandrake
-    directories << "/usr/share/ssl/"; // Centos, Redhat, SuSE
-    directories << "/usr/local/ssl/"; // Normal OpenSSL Tarball
-    directories << "/var/ssl/certs/"; // AIX
-    directories << "/usr/local/ssl/certs/"; // Solaris
-    directories << "/opt/openssl/certs/"; // HP-UX
+# ifdef Q_OS_ANDROID
+        directories << qgetenv("MINISTRO_SSL_CERTS_PATH"); // Set by Ministro
+# else
+        directories << "/etc/ssl/certs/"; // (K)ubuntu, OpenSUSE, Mandriva, MeeGo ...
+        directories << "/usr/lib/ssl/certs/"; // Gentoo, Mandrake
+        directories << "/usr/share/ssl/"; // Centos, Redhat, SuSE
+        directories << "/usr/local/ssl/"; // Normal OpenSSL Tarball
+        directories << "/var/ssl/certs/"; // AIX
+        directories << "/usr/local/ssl/certs/"; // Solaris
+        directories << "/opt/openssl/certs/"; // HP-UX
+# endif
 
     QDir currentDir;
     QStringList nameFilters;

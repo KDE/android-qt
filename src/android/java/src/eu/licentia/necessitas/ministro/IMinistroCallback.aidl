@@ -41,5 +41,5 @@ oneway interface IMinistroCallback {
     * param in - errorMessage, the error message (where available, translated into phone language).
     */
 
-    void libs(in String[] libs,in String evnVars, in String params, in int errorCode, in String errorMessage);
+    void libs(in String[] libs,in String environmentVariables, in String applicationParams, in int errorCode, in String errorMessage);
 }

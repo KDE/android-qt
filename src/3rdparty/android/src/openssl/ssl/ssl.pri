@@ -1,0 +1,37 @@
+SOURCES += $$PWD/s2_meth.c \
+$$PWD/s2_srvr.c \
+$$PWD/s2_clnt.c \
+$$PWD/s2_lib.c \
+$$PWD/s2_enc.c \
+$$PWD/s2_pkt.c \
+$$PWD/s3_meth.c \
+$$PWD/s3_srvr.c \
+$$PWD/s3_clnt.c \
+$$PWD/s3_lib.c \
+$$PWD/s3_enc.c \
+$$PWD/s3_pkt.c \
+$$PWD/s3_both.c \
+$$PWD/s23_meth.c \
+$$PWD/s23_srvr.c \
+$$PWD/s23_clnt.c \
+$$PWD/s23_lib.c \
+$$PWD/s23_pkt.c \
+$$PWD/t1_meth.c \
+$$PWD/t1_srvr.c \
+$$PWD/t1_clnt.c \
+$$PWD/t1_lib.c \
+$$PWD/t1_enc.c \
+$$PWD/t1_reneg.c \
+$$PWD/ssl_lib.c \
+$$PWD/ssl_err2.c \
+$$PWD/ssl_cert.c \
+$$PWD/ssl_sess.c \
+$$PWD/ssl_ciph.c \
+$$PWD/ssl_stat.c \
+$$PWD/ssl_rsa.c \
+$$PWD/ssl_asn1.c \
+$$PWD/ssl_txt.c \
+$$PWD/ssl_algs.c \
+$$PWD/bio_ssl.c \
+$$PWD/ssl_err.c \
+$$PWD/kssl.c
