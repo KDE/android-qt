@@ -12,6 +12,7 @@ TARGET_ARCH=armeabi
 
 CONFIGURE_QT=0
 PATCH_QT=1
+COMPILATION_TYPE=1
 
 QT_INSTALL_DIR=/data/data/eu.licentia.necessitas.ministro/files/qt
 QT_SRC_DIR=`dirname $0`
@@ -34,6 +35,10 @@ OPTIONS:
    -q      Qt build options.
                    0 - don't configure qt (only compile) default
                    1 - configure qt and compile qt
+   -d      Build type. Default "$COMPILATION_TYPE"
+                   1 - Compile and link Qt with debugging turned on.
+                   0 - Compile and link Qt using release compilation flags, it also
+                   contains debugging informations.
    -c      Patch qt.
                    0 - don't patch qt (used to make the installer)
                    1 - patch qt (default)
@@ -42,7 +47,7 @@ EOF
 }
 
 
-while getopts "help:r:h:p:v:a:q:c:i:" arg; do
+while getopts "help:r:h:p:v:a:q:c:i:d:" arg; do
 case $arg in
 	help)
 		help
@@ -71,6 +76,9 @@ case $arg in
 		;;
 	i)
 		QT_INSTALL_DIR=$OPTARG
+		;;
+	d)
+		COMPILATION_TYPE=$OPTARG
 		;;
 	?)
 		help
@@ -110,20 +118,26 @@ then
 		git checkout imports
 	fi
 
-	$QT_SRC_DIR/configure -v -opensource -release -qpa -arch arm \
+	CTYPE=-debug
+	if [ $COMPILATION_TYPE = 0 ]
+	then
+		$CTYPE= -release -reduce-relocations -reduce-exports 
+	fi
+
+	$QT_SRC_DIR/configure -v -opensource $CTYPE -qpa -arch arm \
 		-no-phonon -freetype -fast -xplatform android-g++ \
 		-little-endian -no-qt3support -no-largefile \
 		--prefix=$QT_INSTALL_DIR \
 		-openssl -shared -pch \
 		-nomake demos -nomake examples -confirm-license -exceptions \
-		-webkit -script -reduce-relocations -reduce-exports || exit 1
+		-webkit -script || exit 1
 fi
 
 make -j3 || exit 1
 
 if [ $PATCH_QT = 1 ]
 then
-    $QT_SRC_DIR/bin/qpatch $QT_SRC_DIR/files-to-patch-android $QT_INSTALL_DIR $PWD
+    $QT_SRC_DIR/qpatch $QT_SRC_DIR/files-to-patch-android $QT_INSTALL_DIR $PWD
 fi
 
 #INSTALL_ROOT=$QT_SRC_DIR/qt/$TARGET_ARCH make install
