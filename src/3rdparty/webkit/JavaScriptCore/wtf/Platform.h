@@ -641,6 +641,10 @@
 #define ENABLE_JAVASCRIPT_DEBUGGER 0
 #endif
 
+#ifdef ANDROID
+#define USE_SYSTEM_MALLOC 1
+#endif
+
 #if PLATFORM(WIN)
 #define WTF_USE_WININET 1
 #endif
