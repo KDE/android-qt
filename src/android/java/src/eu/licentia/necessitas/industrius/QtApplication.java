@@ -54,6 +54,9 @@ public class QtApplication extends Application
     // this method loads full path libs
     public static void loadQtLibraries(String[] libraries)
     {
+        if (libraries == null)
+            return;
+
         for (int i = 0; i < libraries.length; i++)
         {
             try
@@ -129,6 +132,9 @@ public class QtApplication extends Application
 
     public static void startApplication(String params, String environment)
     {
+        if (params == null)
+            params = "-platform\tandroid";
+
         synchronized (m_mainActivityMutex)
         {
             startQtAndroidPlugin();
