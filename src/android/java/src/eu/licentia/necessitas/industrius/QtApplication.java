@@ -155,6 +155,12 @@ public class QtApplication extends Application
             int screenHeightPixels, int desktopWidthPixels,
             int desktopHeightPixels, double XDpi, double YDpi)
     {
+        /* Fix buggy dpi report */
+        if (XDpi<120.0)
+            XDpi=120.0;
+        if (YDpi<120.0)
+            YDpi=120.0;
+
         synchronized (m_mainActivityMutex)
         {
             if (m_started)
