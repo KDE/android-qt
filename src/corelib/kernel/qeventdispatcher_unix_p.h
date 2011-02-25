@@ -200,6 +200,7 @@ public:
     QSockNotType::List sn_pending_list;
 
     QAtomicInt wakeUps;
+    QAtomicInt goToSleep;
     bool interrupt;
 };
 

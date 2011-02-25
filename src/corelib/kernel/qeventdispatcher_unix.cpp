@@ -110,7 +110,7 @@ QEventDispatcherUNIXPrivate::QEventDispatcherUNIXPrivate()
     extern Qt::HANDLE qt_application_thread_id;
     mainThread = (QThread::currentThreadId() == qt_application_thread_id);
     bool pipefail = false;
-
+    goToSleep = 1;
     // initialize the common parts of the event loop
 #if defined(Q_OS_NACL)
    // do nothing.
@@ -636,7 +636,11 @@ QEventDispatcherUNIX::~QEventDispatcherUNIX()
 int QEventDispatcherUNIX::select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds,
                                  timeval *timeout)
 {
-    return qt_safe_select(nfds, readfds, writefds, exceptfds, timeout);
+    Q_D(QEventDispatcherUNIX);
+    if (1==d->goToSleep) // don't go to bed is someone just woked you up !
+        return qt_safe_select(nfds, readfds, writefds, exceptfds, timeout);
+    d->goToSleep = 1;
+    return 0;
 }
 
 /*!
@@ -945,6 +949,7 @@ void QEventDispatcherUNIX::wakeUp()
     Q_D(QEventDispatcherUNIX);
     if (d->wakeUps.testAndSetAcquire(0, 1)) {
         char c = 0;
+        d->goToSleep=0;
         qt_safe_write( d->thread_pipe[1], &c, 1 );
     }
 }
