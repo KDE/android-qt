@@ -637,7 +637,7 @@ int QEventDispatcherUNIX::select(int nfds, fd_set *readfds, fd_set *writefds, fd
                                  timeval *timeout)
 {
     Q_D(QEventDispatcherUNIX);
-    if (1==d->goToSleep) // don't go to bed is someone just woked you up !
+    if (1==d->goToSleep) // don't go to bed if someone just woked you up !
         return qt_safe_select(nfds, readfds, writefds, exceptfds, timeout);
     d->goToSleep = 1;
     return 0;
