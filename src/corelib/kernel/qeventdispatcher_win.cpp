@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -492,7 +492,7 @@ LRESULT QT_WIN_CALLBACK qt_internal_proc(HWND hwnd, UINT message, WPARAM wp, LPA
                // we also use a Windows timer to send posted events when the message queue is full
                || (message == WM_TIMER
                    && d->sendPostedEventsWindowsTimerId != 0
-                   && wp == d->sendPostedEventsWindowsTimerId)) {
+                   && wp == (uint)d->sendPostedEventsWindowsTimerId)) {
         int localSerialNumber = d->serialNumber;
         if (localSerialNumber != d->lastSerialNumber) {
             d->lastSerialNumber = localSerialNumber;

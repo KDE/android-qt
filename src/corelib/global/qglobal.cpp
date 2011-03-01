@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -2619,7 +2619,7 @@ bool qputenv(const char *varName, const QByteArray& value)
 #endif
 }
 
-#if (defined(Q_OS_UNIX) || defined(Q_OS_WIN)) && !defined(QT_NO_THREAD)
+#if defined(Q_OS_UNIX) && !defined(Q_OS_SYMBIAN) && !defined(QT_NO_THREAD)
 
 #  if defined(Q_OS_INTEGRITY) && defined(__GHS_VERSION_NUMBER) && (__GHS_VERSION_NUMBER < 500)
 // older versions of INTEGRITY used a long instead of a uint for the seed.
@@ -2650,7 +2650,7 @@ Q_GLOBAL_STATIC(SeedStorage, randTLS)  // Thread Local Storage for seed value
 */
 void qsrand(uint seed)
 {
-#if defined(Q_OS_UNIX) && !defined(QT_NO_THREAD) && !defined(Q_OS_SYMBIAN)
+#if defined(Q_OS_UNIX) && !defined(Q_OS_SYMBIAN) && !defined(QT_NO_THREAD)
     SeedStorage *seedStorage = randTLS();
     if (seedStorage) {
         SeedStorageType *pseed = seedStorage->localData();
@@ -2658,10 +2658,10 @@ void qsrand(uint seed)
             seedStorage->setLocalData(pseed = new SeedStorageType);
         *pseed = seed;
     } else {
-        //golbal static seed storage should always exist,
+        //global static seed storage should always exist,
         //except after being deleted by QGlobalStaticDeleter.
         //But since it still can be called from destructor of another
-        //global static object, fallback to sqrand(seed)
+        //global static object, fallback to srand(seed)
         srand(seed);
     }
 #else
@@ -2689,7 +2689,7 @@ void qsrand(uint seed)
 */
 int qrand()
 {
-#if defined(Q_OS_UNIX) && !defined(QT_NO_THREAD) && !defined(Q_OS_SYMBIAN) && !defined(Q_OS_ANDROID)
+#if defined(Q_OS_UNIX) && !defined(Q_OS_SYMBIAN) && !defined(QT_NO_THREAD) && !defined(Q_OS_ANDROID)
     SeedStorage *seedStorage = randTLS();
     if (seedStorage) {
         SeedStorageType *pseed = seedStorage->localData();
@@ -2699,10 +2699,10 @@ int qrand()
         }
         return rand_r(pseed);
     } else {
-        //golbal static seed storage should always exist,
+        //global static seed storage should always exist,
         //except after being deleted by QGlobalStaticDeleter.
         //But since it still can be called from destructor of another
-        //global static object, fallback to qrand()
+        //global static object, fallback to rand()
         return rand();
     }
 #else

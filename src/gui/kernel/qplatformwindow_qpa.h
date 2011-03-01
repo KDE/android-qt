@@ -60,7 +60,7 @@ class QPlatformGLContext;
 
 class Q_GUI_EXPORT QPlatformWindow
 {
-    Q_DECLARE_PRIVATE(QPlatformWindow);
+    Q_DECLARE_PRIVATE(QPlatformWindow)
 public:
     QPlatformWindow(QWidget *tlw);
     virtual ~QPlatformWindow();
@@ -80,12 +80,13 @@ public:
     virtual void lower();
 
     virtual void setOpacity(qreal level);
+    virtual void requestActivateWindow();
 
     virtual QPlatformGLContext *glContext() const;
 protected:
     QScopedPointer<QPlatformWindowPrivate> d_ptr;
 private:
-    Q_DISABLE_COPY(QPlatformWindow);
+    Q_DISABLE_COPY(QPlatformWindow)
 };
 
 QT_END_NAMESPACE
