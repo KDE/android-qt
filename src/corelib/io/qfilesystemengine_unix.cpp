@@ -196,7 +196,13 @@ QFileSystemEntry QFileSystemEngine::canonicalName(const QFileSystemEntry &entry,
         }
     }
 # else
+#ifdef Q_OS_ANDROID
+    ret = (char*)malloc(PATH_MAX);
+    memset(ret, 0, PATH_MAX);
+    ret = realpath(entry.nativeFilePath().constData(), ret);
+#else
     ret = realpath(entry.nativeFilePath().constData(), (char*)0);
+#endif
 # endif
     if (ret) {
         data.knownFlagsMask |= QFileSystemMetaData::ExistsAttribute;
