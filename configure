@@ -210,6 +210,11 @@ elif [ -f "$relpath"/src/gui/kernel/qapplication_qws.cpp ]; then
 	PLATFORM_QWS=yes
     fi
 fi
+if [ "msys" = "$OSTYPE" ]; then
+    BUILD_ON_MSYS=yes
+else
+    BUILD_ON_MSYS=no
+fi
 
 #-----------------------------------------------------------------------------
 # Qt version detection
@@ -3286,6 +3291,10 @@ else
 fi
 
 QMAKE_CONF_COMPILER=`getQMakeConf "$XQMAKESPEC" | grep "^QMAKE_CXX[^_A-Z0-9]" | sed "s,.* *= *\(.*\)$,\1," | tail -1`
+echo "getQMakeConf returns QMAKE_CONF_COMPILER of $QMAKE_CONF_COMPILER"
+QMAKE_CONF_COMPILER=${QMAKE_CONF_COMPILER//\$\$/\$}
+eval QMAKE_CONF_COMPILER=$QMAKE_CONF_COMPILER
+echo "..which resolves to $QMAKE_CONF_COMPILER"
 TEST_COMPILER="$CXX"
 
 [ -z "$TEST_COMPILER" ] && TEST_COMPILER=$QMAKE_CONF_COMPILER
@@ -4769,7 +4778,11 @@ if true; then ###[ '!' -f "$outpath/bin/qmake" ];
 #           if which qmake >/dev/null 2>&1 && [ -f qmake/qmake.pro ]; then
 #               (cd qmake && qmake) >/dev/null 2>&1 && continue
 #           fi
-            in_mkfile="${mkfile}.unix"
+            if [ "$BUILD_ON_MSYS" = "yes" ]; then
+                in_mkfile="${mkfile}.win32-g++-sh"
+            else
+                in_mkfile="${mkfile}.unix"
+            fi
         fi
         in_mkfile="$relpath/qmake/$in_mkfile"
         mkfile="$outpath/qmake/$mkfile"
@@ -4857,6 +4870,11 @@ if true; then ###[ '!' -f "$outpath/bin/qmake" ];
 		EXTRA_CXXFLAGS="$EXTRA_CXXFLAGS \$(SDK_CFLAGS)"
 		EXTRA_LFLAGS="$EXTRA_LFLAGS \$(SDK_LFLAGS)"
             fi
+        fi
+	# Not sure is needed -DUNICODE for MSYS but it doesn't hurt.
+        if [ "$BUILD_ON_MSYS" = "yes" ]; then
+            EXTRA_CFLAGS="-DUNICODE"
+            EXTRA_CXXFLAGS="-DUNICODE"
         fi
         [ "$CFG_EMBEDDED" != "no" ] && EXTRA_CFLAGS="$EXTRA_CFLAGS -DQWS"
         if [ '!' -z "$D_FLAGS" ]; then

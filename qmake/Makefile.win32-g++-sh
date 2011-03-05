@@ -100,7 +100,7 @@ Makefile: Makefile.win32-g++-sh
 	@echo "Out of date, please rerun configure"
 
 clean::
-	-del $(OBJS) $(QTOBJS) $(ADDCLEAN)
+	-rm $(OBJS) $(QTOBJS) $(ADDCLEAN)
 
 distclean:: clean
 	-del qmake

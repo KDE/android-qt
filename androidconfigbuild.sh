@@ -1,22 +1,45 @@
 #!/bin/sh
 
-#default values
+#configure parses mkspecs/android-g++/qmake.conf to figure out
+#the compiler (and various other bits) using getQMakeConf:
+#QMAKE_CONF_COMPILER=`getQMakeConf "$XQMAKESPEC" | grep "^QMAKE_CXX[^_A-Z0-9]" | sed "s,.* *= *\(.*\)$,\1," | tail -1`
+#this returns:
+#$$NDK_TOOLCHAIN_PATH/bin/$$NDK_TOOLCHAIN_PREFIX-g++
+#Which gets passed through to various shell scripts, as is
+#and they fail to run. To fix, need to also do:
+#QMAKE_CONF_COMPILER=${QMAKE_CONF_COMPILER//\$\$/\$} # replace all $$ with $
+#eval QMAKE_CONF_COMPILER=$QMAKE_CONF_COMPILER       # evaluate the variables
+#However, these variables aren't set at configure time, so set them now (and
+#export them so configure can use them.
 
-NDK_ROOT=/usr/local/android-ndk-r5
-NDK_HOST=linux-x86
-NDK_TOOLCHAIN_PREFIX=arm-linux-androideabi
-NDK_TOOLCHAIN_VERSION=4.4.3
-TARGET_ARCH=armeabi
+#default values
+export ANDROID_PLATFORM=android-10
+export NDK_ROOT=/usr/android-sdk-windows/android-ndk-r5b
+export NDK_HOST=windows
+export NDK_TOOLCHAIN_PREFIX=arm-linux-androideabi
+export NDK_TOOLCHAIN_VERSION=4.4.3
+export NDK_TOOLCHAIN_PATH=$NDK_ROOT/toolchains/$NDK_TOOLCHAIN_PREFIX-$NDK_TOOLCHAIN_VERSION/prebuilt/$NDK_HOST
+export ANDROID_NDK_ROOT=$NDK_ROOT
+export ANDROID_NDK_HOST=windows
+export ANDROID_TARGET_ARCH=armeabi-v7a
+
+TARGET_ARCH=armeabi-v7a
           # armeabi - tune for android arm v5
           # armeabi-v7a - tune for android arm v7
 
-CONFIGURE_QT=0
+CONFIGURE_QT=1
 PATCH_QT=1
 COMPILATION_TYPE=1
 
-QT_INSTALL_DIR=/data/data/eu.licentia.necessitas.ministro/files/qt
+if [ "$OSTYPE" = "mingw" ]; then
+    PLATFORM="-platform win32-g++"
+fi
+
+QT_INSTALL_DIR=/usr/latest-git/android-qt/mingw-android-lighthouse-build-out
 QT_SRC_DIR=`dirname $0`
+pushd .
 QT_SRC_DIR=`(cd "$QT_SRC_DIR"; /bin/pwd)`
+popd
 
 help()
 {
@@ -126,6 +149,7 @@ then
 
 	$QT_SRC_DIR/configure -v -opensource $CTYPE -qpa -arch arm \
 		-no-phonon -freetype -fast -xplatform android-g++ \
+		$PLATFORM -host-little-endian \
 		-little-endian -no-qt3support -no-largefile \
 		--prefix=$QT_INSTALL_DIR \
 		-openssl -shared -pch \
