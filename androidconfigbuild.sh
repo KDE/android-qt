@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 #configure parses mkspecs/android-g++/qmake.conf to figure out
 #the compiler (and various other bits) using getQMakeConf:
@@ -14,26 +14,38 @@
 
 #default values
 export ANDROID_PLATFORM=android-10
-export NDK_ROOT=/usr/android-sdk-windows/android-ndk-r5b
-export NDK_HOST=windows
 export NDK_TOOLCHAIN_PREFIX=arm-linux-androideabi
 export NDK_TOOLCHAIN_VERSION=4.4.3
-export NDK_TOOLCHAIN_PATH=$NDK_ROOT/toolchains/$NDK_TOOLCHAIN_PREFIX-$NDK_TOOLCHAIN_VERSION/prebuilt/$NDK_HOST
-export ANDROID_NDK_ROOT=$NDK_ROOT
-export ANDROID_NDK_HOST=windows
 export ANDROID_TARGET_ARCH=armeabi-v7a
 
 TARGET_ARCH=armeabi-v7a
-          # armeabi - tune for android arm v5
-          # armeabi-v7a - tune for android arm v7
 
 CONFIGURE_QT=1
 PATCH_QT=1
 COMPILATION_TYPE=1
 
-if [ "$OSTYPE" = "mingw" ]; then
+if [ "$OSTYPE" = "msys" ]; then
+	echo msys2
     PLATFORM="-platform win32-g++"
+    set NDK_ROOT=/usr/android-sdk-windows/android-ndk-r5b
+    NDK_ROOT=/usr/android-sdk-windows/android-ndk-r5b
+    set NDK_HOST=windows
+    NDK_HOST=windows
+	set ANDROID_NDK_HOST=$NDK_HOST
+	export ANDROID_NDK_HOST=$NDK_HOST
+	set NDK_TOOLCHAIN_PATH=$NDK_ROOT/toolchains/$NDK_TOOLCHAIN_PREFIX-$NDK_TOOLCHAIN_VERSION/prebuilt/$NDK_HOST
+	NDK_TOOLCHAIN_PATH=$NDK_ROOT/toolchains/$NDK_TOOLCHAIN_PREFIX-$NDK_TOOLCHAIN_VERSION/prebuilt/$NDK_HOST
+	set ANDROID_NDK_ROOT=$NDK_ROOT
+	export ANDROID_NDK_ROOT=$NDK_ROOT
+	export NDK_TOOLCHAIN_PATH=$NDK_ROOT/toolchains/$NDK_TOOLCHAIN_PREFIX-$NDK_TOOLCHAIN_VERSION/prebuilt/$NDK_HOST
+else
+    export NDK_ROOT=/home/ray/android/android-sdk-linux_x86/android-ndk-r5b
+    export NDK_HOST=linux-x86
+	export ANDROID_NDK_HOST=$NDK_HOST
+	export NDK_TOOLCHAIN_PATH=$NDK_ROOT/toolchains/$NDK_TOOLCHAIN_PREFIX-$NDK_TOOLCHAIN_VERSION/prebuilt/$NDK_HOST
+	export ANDROID_NDK_ROOT=$NDK_ROOT
 fi
+
 
 QT_INSTALL_DIR=/usr/latest-git/android-qt/mingw-android-lighthouse-build-out
 QT_SRC_DIR=`dirname $0`

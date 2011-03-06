@@ -654,11 +654,7 @@ Option::fixString(QString string, uchar flags)
     //fix separators
     Q_ASSERT(!((flags & Option::FixPathToLocalSeparators) && (flags & Option::FixPathToTargetSeparators)));
     if(flags & Option::FixPathToLocalSeparators) {
-#if defined(Q_OS_WIN32)
-        string = string.replace('/', '\\');
-#else
-        string = string.replace('\\', '/');
-#endif
+        string = QDir::toNativeSeparators(string);
     } else if(flags & Option::FixPathToTargetSeparators) {
         string = string.replace('/', Option::dir_sep).replace('\\', Option::dir_sep);
     }

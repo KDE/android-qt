@@ -808,7 +808,7 @@ QString QDir::convertSeparators(const QString &pathName)
 QString QDir::toNativeSeparators(const QString &pathName)
 {
     QString n(pathName);
-#if defined(Q_FS_FAT) || defined(Q_OS_OS2EMX) || defined(Q_OS_SYMBIAN)
+#if (defined(Q_FS_FAT) || defined(Q_OS_OS2EMX) || defined(Q_OS_SYMBIAN)) && !defined(__MINGW32__)
     for (int i = 0; i < (int)n.length(); ++i) {
         if (n[i] == QLatin1Char('/'))
             n[i] = QLatin1Char('\\');
@@ -1705,7 +1705,7 @@ QFileInfoList QDir::drives()
 
 /*!
     Returns the native directory separator: "/" under Unix (including
-    Mac OS X) and "\\" under Windows.
+    Mac OS X) and "\\" under Windows (and "/" under msys)
 
     You do not need to use this function to build file paths. If you
     always use "/", Qt will translate your paths to conform to the
@@ -1715,7 +1715,7 @@ QFileInfoList QDir::drives()
 */
 QChar QDir::separator()
 {
-#if defined (Q_FS_FAT) || defined(Q_WS_WIN) || defined(Q_OS_SYMBIAN)
+#if (defined (Q_FS_FAT) || defined(Q_WS_WIN) || defined(Q_OS_SYMBIAN)) && !defined(__MINGW32__)
     return QLatin1Char('\\');
 #elif defined(Q_OS_UNIX)
     return QLatin1Char('/');
