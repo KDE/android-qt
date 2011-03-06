@@ -25,6 +25,7 @@ PATCH_QT=1
 COMPILATION_TYPE=1
 
 if [ "$OSTYPE" = "msys" ]; then
+<<<<<<< HEAD
 	echo msys2
     PLATFORM="-platform win32-g++"
     set NDK_ROOT=/usr/android-sdk-windows/android-ndk-r5b
@@ -44,6 +45,14 @@ else
 	export ANDROID_NDK_HOST=$NDK_HOST
 	export NDK_TOOLCHAIN_PATH=$NDK_ROOT/toolchains/$NDK_TOOLCHAIN_PREFIX-$NDK_TOOLCHAIN_VERSION/prebuilt/$NDK_HOST
 	export ANDROID_NDK_ROOT=$NDK_ROOT
+=======
+	PLATFORM="-platform win32-g++"
+	export NDK_ROOT=/usr/android-sdk-windows/android-ndk-r5b
+	export NDK_HOST=windows
+else
+	export NDK_ROOT=/home/ray/android/android-sdk-linux_x86/android-ndk-r5b
+	export NDK_HOST=linux-x86
+>>>>>>> f3bcb906d3eb07116c2e55f75efc95aeb2f1b32f
 fi
 
 
