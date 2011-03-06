@@ -13,8 +13,8 @@
 #export them so configure can use them.
 
 #default values
-export ANDROID_PLATFORM=android-10
-export NDK_PLATFORM=10
+export ANDROID_PLATFORM=android-9
+export NDK_PLATFORM=9
 export NDK_TOOLCHAIN_PREFIX=arm-linux-androideabi
 export NDK_TOOLCHAIN_VERSION=4.4.3
 export ANDROID_TARGET_ARCH=armeabi-v7a

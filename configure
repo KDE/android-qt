@@ -840,6 +840,7 @@ XPLATFORM=              # This seems to be the QMAKESPEC, like "linux-g++" or "s
 XPLATFORM_MINGW=no      # Whether target platform is MinGW (win32-g++*)
 XPLATFORM_SYMBIAN=no    # Whether target platform is SYMBIAN (*symbian*)
 XPLATFORM_SYMBIAN_SBSV2=no # Whether target platform is SYMBIAN_SBSV2 (symbian-sbsv2)
+XPLATFORM_ANDROID=no    # Whether target platform is Android
 PLATFORM=$QMAKESPEC
 QT_CROSS_COMPILE=no
 OPT_CONFIRM_LICENSE=no
@@ -1605,6 +1606,7 @@ while [ "$#" -gt 0 ]; do
         case `basename "$XPLATFORM"` in win32-g++*) XPLATFORM_MINGW=yes;; esac
         case "$XPLATFORM" in *symbian*) XPLATFORM_SYMBIAN=yes;; esac
         case "$XPLATFORM" in symbian-sbsv2) XPLATFORM_SYMBIAN_SBSV2=yes;; esac
+        case "$XPLATFORM" in *android*) XPLATFORM_ANDROID=yes;; esac
         ;;
     debug-and-release)
         if [ "$VAL" = "yes" ] || [ "$VAL" = "no" ]; then
@@ -2491,6 +2493,18 @@ fi
 
 if [ "$CFG_SILENT" = "yes" ]; then
     QMAKE_CONFIG="$QMAKE_CONFIG silent"
+fi
+
+# Without this hack, OpenGLES2 test fails for Android:
+# (undefined reference to `android::egl_get_image_for_current_context(void*))')
+# See http://blog.vlad1.com/2010/03/19/things-i-learned-today-android-opengl-edition-2/
+# Hack is to add -Wl,–allow-shlib-undefined. Should do this for Android only though, but
+# at the minute I'm not sure if we're QPA,desktop or all of the above, so I've applied
+# it globally to all of the OpenGLES2 compile-tests. Very unlikely that it'd trip up
+# other platforms too.
+
+if [ $XPLATFORM_ANDROID" = "yes" ]; then
+    ANDROID_GLES2_LFLAGS=-Wl,–allow-shlib-undefined
 fi
 
 # if the source tree is different from the build tree,
@@ -5740,7 +5754,7 @@ if [ "$PLATFORM_X11" = "yes" -o "$XPLATFORM_MINGW" = "yes" ]; then
     if [ "$CFG_OPENGL" = "auto" ] || [ "$CFG_OPENGL" = "yes" ]; then
         if "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/x11/opengl "OpenGL" $L_FLAGS $I_FLAGS $l_FLAGS $X11TESTS_FLAGS; then
             CFG_OPENGL=desktop
-        elif "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/opengles2 "OpenGL ES 2.x" $L_FLAGS $I_FLAGS $l_FLAGS; then
+        elif "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/opengles2 "OpenGL ES 2.x" $L_FLAGS $I_FLAGS $l_FLAGS $ANDROID_GLES2_FLAGS; then
             CFG_OPENGL=es2
             if [ "$CFG_EGL" = "no" ]; then
                 CFG_EGL=auto
@@ -5785,7 +5799,7 @@ if [ "$PLATFORM_X11" = "yes" -o "$XPLATFORM_MINGW" = "yes" ]; then
         fi
     elif [ "$CFG_OPENGL" = "es2" ]; then
         #OpenGL ES 2.x
-        "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/opengles2 "OpenGL ES 2.x" $L_FLAGS $I_FLAGS $l_FLAGS
+	"$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/opengles2 "OpenGL ES 2.x" $L_FLAGS $I_FLAGS $l_FLAGS $ANDROID_GLES2_FLAGS
         if [ $? != "0" ]; then
             echo "The OpenGL ES 2.0 functionality test failed!"
             echo " You might need to modify the include and library search paths by editing"
@@ -6119,7 +6133,7 @@ if [ "$PLATFORM_QPA" = "yes" ]; then
     if [ "$CFG_OPENGL" = "auto" ] || [ "$CFG_OPENGL" = "yes" ]; then
         if "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/opengldesktop "OpenGL" $L_FLAGS $I_FLAGS $l_FLAGS $X11TESTS_FLAGS; then
             CFG_OPENGL=desktop
-        elif "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/opengles2 "OpenGL ES 2.x" $L_FLAGS $I_FLAGS $l_FLAGS; then
+        elif "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/opengles2 "OpenGL ES 2.x" $L_FLAGS $I_FLAGS $l_FLAGS $ANDROID_GLES2_LFLAGS; then
             CFG_OPENGL=es2
         elif "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/opengles1 "OpenGL ES 1.x" $L_FLAGS $I_FLAGS $l_FLAGS; then
             CFG_OPENGL=es1
@@ -6145,7 +6159,7 @@ if [ "$PLATFORM_QPA" = "yes" ]; then
         fi
     elif [ "$CFG_OPENGL" = "es2" ]; then
         #OpenGL ES 2.x
-        "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/opengles2 "OpenGL ES 2.x" $L_FLAGS $I_FLAGS $l_FLAGS
+        "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/opengles2 "OpenGL ES 2.x" $L_FLAGS $I_FLAGS $l_FLAGS $ANDROID_GLES2_LFLAGS
         if [ $? != "0" ]; then
             echo "The OpenGL ES 2.0 functionality test failed!"
             echo " You might need to modify the include and library search paths by editing"
@@ -6207,7 +6221,7 @@ if [ "$PLATFORM_QWS" = "yes" ]; then
     fi
     if [ "$CFG_OPENGL" = "yes" ]; then
         CFG_EGL=auto
-        if "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/opengles2 "OpenGL ES 2.x" $L_FLAGS $I_FLAGS $l_FLAGS; then
+        if "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/opengles2 "OpenGL ES 2.x" $L_FLAGS $I_FLAGS $l_FLAGS $ANDROID_GLES2_LFLAGS; then
             CFG_EGL=yes
             CFG_OPENGL=es2
         elif "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/opengles1 "OpenGL ES 1.x" $L_FLAGS $I_FLAGS $l_FLAGS; then
@@ -6236,7 +6250,7 @@ if [ "$PLATFORM_QWS" = "yes" ]; then
     elif [ "$CFG_OPENGL" = "es2" ]; then
         #OpenGL ES 2.x
         CFG_EGL=yes
-        "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/opengles2 "OpenGL ES 2.x" $L_FLAGS $I_FLAGS $l_FLAGS
+        "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/opengles2 "OpenGL ES 2.x" $L_FLAGS $I_FLAGS $l_FLAGS $ANDROID_GLES2_LFLAGS
         if [ $? != "0" ]; then
             echo "The OpenGL ES 2.0 functionality test failed!"
             echo " You might need to modify the include and library search paths by editing"
@@ -6610,7 +6624,7 @@ if [ "$CFG_GETIFADDRS" != "no" ]; then
 fi
 
 # detect OpenSSL
-if [ "$CFG_OPENSSL" != "no" ] && [ "$XPLATFORM_SYMBIAN_SBSV2" = "no" ] && [ ! "$XPLATFORM" in *android* ] ; then
+if [ "$CFG_OPENSSL" != "no" ] && [ "$XPLATFORM_SYMBIAN_SBSV2" = "no" ] && [ "$XPLATFORM_ANDROID" = "no" ] ; then
     if "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/openssl "OpenSSL" $L_FLAGS $I_FLAGS $l_FLAGS $MAC_CONFIG_TEST_COMMANDLINE; then
         if [ "$CFG_OPENSSL" = "auto" ]; then
             CFG_OPENSSL=yes
