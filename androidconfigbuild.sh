@@ -31,8 +31,13 @@ CONFIGURE_QT=1
 PATCH_QT=1
 COMPILATION_TYPE=1
 
-if [ "$OSTYPE" = "mingw" ]; then
-    PLATFORM="-platform win32-g++"
+if [ "$OSTYPE" = "msys" ]; then
+	PLATFORM="-platform win32-g++"
+	export NDK_ROOT=/usr/android-sdk-windows/android-ndk-r5b
+	export NDK_HOST=windows
+else
+	export NDK_ROOT=/home/ray/android/android-sdk-linux_x86/android-ndk-r5b
+	export NDK_HOST=linux-x86
 fi
 
 QT_INSTALL_DIR=/usr/latest-git/android-qt/mingw-android-lighthouse-build-out
