@@ -215,7 +215,6 @@ plugin_commonu.def
 *.sis
 *.sisx
 *.lst
-*.exe
 *.mif
 *.rsc
 *.sym

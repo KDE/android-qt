@@ -21,7 +21,7 @@ export ANDROID_TARGET_ARCH=armeabi-v7a
 
 TARGET_ARCH=armeabi-v7a
 
-CONFIGURE_QT=1
+CONFIGURE_QT=0
 PATCH_QT=1
 COMPILATION_TYPE=1
 
@@ -177,11 +177,23 @@ then
 		-webkit -script || exit 1
 fi
 
-make -j3 || exit 1
+# make -j9 || exit 1
+
+# This should loop until make succeeds, Workaround for Cygwin/MSYS
+# couldn't commit heap memory error
+# make -j9
+# while [ "$?" = "0" ]
+# do
+#    make -j9
+# done
 
 if [ $PATCH_QT = 1 ]
 then
-    $QT_SRC_DIR/qpatch $QT_SRC_DIR/files-to-patch-android $QT_INSTALL_DIR $PWD
+    if [ "$OSTYPE" = "msys" ]; then
+        $QT_SRC_DIR/qpatch$EXEEXT $QT_SRC_DIR/files-to-patch-android-mingw $QT_INSTALL_DIR $PWD
+    else
+        $QT_SRC_DIR/qpatch $QT_SRC_DIR/files-to-patch-android $QT_INSTALL_DIR $PWD
+    fi
 fi
 
 #INSTALL_ROOT=$QT_SRC_DIR/qt/$TARGET_ARCH make install
