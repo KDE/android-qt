@@ -54,7 +54,7 @@ else
 fi
 
 
-QT_INSTALL_DIR=/usr/latest-git/android-qt/mingw-android-lighthouse-build-out
+QT_INSTALL_DIR=C:/Qt/4.8.0-ma
 QT_SRC_DIR=`dirname $0`
 pushd .
 QT_SRC_DIR=`(cd "$QT_SRC_DIR"; /bin/pwd)`
