@@ -2498,13 +2498,13 @@ fi
 # Without this hack, OpenGLES2 test fails for Android:
 # (undefined reference to `android::egl_get_image_for_current_context(void*))')
 # See http://blog.vlad1.com/2010/03/19/things-i-learned-today-android-opengl-edition-2/
-# Hack is to add -Wl,–allow-shlib-undefined. Should do this for Android only though, but
+# Hack is to add -Wl,-allow-shlib-undefined. Should do this for Android only though, but
 # at the minute I'm not sure if we're QPA,desktop or all of the above, so I've applied
 # it globally to all of the OpenGLES2 compile-tests. Very unlikely that it'd trip up
 # other platforms too.
 
-if [ $XPLATFORM_ANDROID" = "yes" ]; then
-    ANDROID_GLES2_LFLAGS=-Wl,–allow-shlib-undefined
+if [ "$XPLATFORM_ANDROID" = "yes" ]; then
+    ANDROID_GLES2_LFLAGS=-Wl,-allow-shlib-undefined
 fi
 
 # if the source tree is different from the build tree,
@@ -5799,7 +5799,7 @@ if [ "$PLATFORM_X11" = "yes" -o "$XPLATFORM_MINGW" = "yes" ]; then
         fi
     elif [ "$CFG_OPENGL" = "es2" ]; then
         #OpenGL ES 2.x
-	"$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/opengles2 "OpenGL ES 2.x" $L_FLAGS $I_FLAGS $l_FLAGS $ANDROID_GLES2_FLAGS
+        "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/opengles2 "OpenGL ES 2.x" $L_FLAGS $I_FLAGS $l_FLAGS $ANDROID_GLES2_FLAGS
         if [ $? != "0" ]; then
             echo "The OpenGL ES 2.0 functionality test failed!"
             echo " You might need to modify the include and library search paths by editing"
@@ -5836,6 +5836,10 @@ if [ "$PLATFORM_X11" = "yes" -o "$XPLATFORM_MINGW" = "yes" ]; then
 	CFG_GRAPHICS_SYSTEM=default
     fi
 fi # X11/MINGW OpenGL
+
+# Command line limits prevent this from building on MSYS.
+# Should shorten .obj/debug_shared to .ods and try again.
+case "$PLATFORM" in win32-g++*) CFG_WEBKIT=no ;; esac
 
 # X11
 if [ "$PLATFORM_X11" = "yes" ]; then
@@ -6624,7 +6628,7 @@ if [ "$CFG_GETIFADDRS" != "no" ]; then
 fi
 
 # detect OpenSSL
-if [ "$CFG_OPENSSL" != "no" ] && [ "$XPLATFORM_SYMBIAN_SBSV2" = "no" ] && [ "$XPLATFORM_ANDROID" = "no" ] ; then
+if [ "$CFG_OPENSSL" != "no" ] && [ "$XPLATFORM_SYMBIAN_SBSV2" = "no" ] && [ "$XPLATFORM_ANDROID" = "no" ]; then
     if "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/openssl "OpenSSL" $L_FLAGS $I_FLAGS $l_FLAGS $MAC_CONFIG_TEST_COMMANDLINE; then
         if [ "$CFG_OPENSSL" = "auto" ]; then
             CFG_OPENSSL=yes
@@ -7493,8 +7497,11 @@ else
 fi
 
 if [ "$CFG_WEBKIT" = "auto" ]; then
+    echo "FUCK"
     CFG_WEBKIT="$canBuildWebKit"
 fi
+
+CFG_WEBKIT=no
 
 if [ "$CFG_WEBKIT" != "no" ]; then
     # This include takes care of adding "webkit" to QT_CONFIG.

@@ -27,6 +27,13 @@ COMPILATION_TYPE=1
 
 if [ "$OSTYPE" = "msys" ]; then
 	PLATFORM="-platform win32-g++"
+	# Building webkit we run into cmd line length limits when linking.
+	# 32k odd characters in it easily.
+	# Paths are along the lines of .obj/debug_shared/JSHTMLSomethingVeryVerbose.o
+	# The only thing we can really do is ".ods/JSHTMLSomethingVeryVerbose.o" and
+	# then hope. But not sure how to achieve that yet...
+	# This doens't do anything. I had to hack configure to make it drop webkit.
+	NOWEBKIT="-no-webkit"
 	set NDK_ROOT=/usr/android-sdk-windows/android-ndk-r5b
 	NDK_ROOT=/usr/android-sdk-windows/android-ndk-r5b
 	set NDK_HOST=windows
@@ -162,6 +169,7 @@ then
 	$QT_SRC_DIR/configure -v -opensource $CTYPE -qpa -arch arm \
 		-no-phonon -freetype -fast -xplatform android-g++ \
 		$PLATFORM -host-little-endian \
+		$NOWEBKIT \
 		-little-endian -no-qt3support -no-largefile \
 		--prefix=$QT_INSTALL_DIR \
 		-openssl -shared -pch \
@@ -177,3 +185,4 @@ then
 fi
 
 #INSTALL_ROOT=$QT_SRC_DIR/qt/$TARGET_ARCH make install
+
