@@ -45,16 +45,18 @@ if [ "$OSTYPE" = "msys" ]; then
 	set ANDROID_NDK_ROOT=$NDK_ROOT
 	export ANDROID_NDK_ROOT=$NDK_ROOT
 	export NDK_TOOLCHAIN_PATH=$NDK_ROOT/toolchains/$NDK_TOOLCHAIN_PREFIX-$NDK_TOOLCHAIN_VERSION/prebuilt/$NDK_HOST
+	QT_INSTALL_DIR=C:/Qt/4.8.0-ma
 else
-	export NDK_ROOT=/home/ray/android/android-sdk-linux_x86/android-ndk-r5b
-	export NDK_HOST=linux-x86
-	export ANDROID_NDK_HOST=$NDK_HOST
-	export NDK_TOOLCHAIN_PATH=$NDK_ROOT/toolchains/$NDK_TOOLCHAIN_PREFIX-$NDK_TOOLCHAIN_VERSION/prebuilt/$NDK_HOST
-	export ANDROID_NDK_ROOT=$NDK_ROOT
+#	export NDK_ROOT=/home/ray/android/android-sdk-linux_x86/android-ndk-r5b
+#	export NDK_HOST=linux-x86
+#	export ANDROID_NDK_HOST=$NDK_HOST
+#	export NDK_TOOLCHAIN_PATH=$NDK_ROOT/toolchains/$NDK_TOOLCHAIN_PREFIX-$NDK_TOOLCHAIN_VERSION/prebuilt/$NDK_HOST
+#	export ANDROID_NDK_ROOT=$NDK_ROOT
+	QT_INSTALL_DIR=/data/data/eu.licentia.necessitas.ministro/files/qt
 fi
 
 
-QT_INSTALL_DIR=C:/Qt/4.8.0-ma
+
 QT_SRC_DIR=`dirname $0`
 pushd .
 QT_SRC_DIR=`(cd "$QT_SRC_DIR"; /bin/pwd)`
