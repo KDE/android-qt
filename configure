@@ -2568,7 +2568,7 @@ if [ "$OPT_SHADOW" = "yes" ]; then
     # symlink the mkspecs directory
     mkdir -p "$outpath/mkspecs"
     rm -rf "$outpath"/mkspecs/*
-    cp -rf $relpath"/mkspecs/* "$outpath/mkspecs"
+    cp -rf "$relpath"/mkspecs/* "$outpath/mkspecs"
     # ln -s "$relpath"/mkspecs/* "$outpath/mkspecs"
     rm -f "$outpath/mkspecs/default"
 
@@ -2589,19 +2589,19 @@ if [ "$OPT_SHADOW" = "yes" ]; then
 
     # symlink the doc directory
     rm -rf "$outpath/doc"
-    ln -s "$relpath/doc" "$outpath/doc"
+    cp -rf "$relpath/doc" "$outpath/doc"
 
     # make sure q3porting.xml can be found
     mkdir -p "$outpath/tools/porting/src"
     rm -f "$outpath/tools/porting/src/q3porting.xml"
-    ln -s "$relpath/tools/porting/src/q3porting.xml" "$outpath/tools/porting/src"
+    cp -rf "$relpath/tools/porting/src/q3porting.xml" "$outpath/tools/porting/src"
 fi
 
 # symlink fonts to be able to run application from build directory
 if [ "$PLATFORM_QWS" = "yes" -o "$PLATFORM_QPA" = "yes" ] && [ ! -d "${outpath}/lib/fonts" ]; then
     if [ "$PLATFORM" = "$XPLATFORM" ]; then
         mkdir -p "${outpath}/lib"
-        ln -s "${relpath}/lib/fonts" "${outpath}/lib/fonts"
+        cp -rf "${relpath}/lib/fonts" "${outpath}/lib/fonts"
     fi
 fi
 
@@ -5840,7 +5840,8 @@ fi # X11/MINGW OpenGL
 
 # Command line limits prevent this from building on MSYS.
 # Should shorten .obj/debug_shared to .ods and try again.
-case "$PLATFORM" in win32-g++*) CFG_WEBKIT=no ;; esac
+# Trying to avoid problem using shorter paths
+# case "$PLATFORM" in win32-g++*) CFG_WEBKIT=no ;; esac
 
 # X11
 if [ "$PLATFORM_X11" = "yes" ]; then
@@ -6986,17 +6987,17 @@ fi
 
 # build up the variables for output
 if [ "$CFG_DEBUG" = "yes" ]; then
-    QMAKE_OUTDIR="${QMAKE_OUTDIR}debug"
-    QMAKE_CONFIG="$QMAKE_CONFIG debug"
+    QMAKE_OUTDIR="${QMAKE_OUTDIR}d"
+    QMAKE_CONFIG="$QMAKE_CONFIG d"
 elif [ "$CFG_DEBUG" = "no" ]; then
-    QMAKE_OUTDIR="${QMAKE_OUTDIR}release"
-    QMAKE_CONFIG="$QMAKE_CONFIG release"
+    QMAKE_OUTDIR="${QMAKE_OUTDIR}r"
+    QMAKE_CONFIG="$QMAKE_CONFIG r"
 fi
 if [ "$CFG_SHARED" = "yes" ]; then
-    QMAKE_OUTDIR="${QMAKE_OUTDIR}-shared"
+    QMAKE_OUTDIR="${QMAKE_OUTDIR}s"
     QMAKE_CONFIG="$QMAKE_CONFIG shared dll"
 elif [ "$CFG_SHARED" = "no" ]; then
-    QMAKE_OUTDIR="${QMAKE_OUTDIR}-static"
+    QMAKE_OUTDIR="${QMAKE_OUTDIR}st"
     QMAKE_CONFIG="$QMAKE_CONFIG static"
 fi
 if [ "$PLATFORM_QWS" = "yes" ]; then
@@ -7022,7 +7023,7 @@ if [ "$XPLATFORM_MINGW" != "yes" ]; then
     # debug and release precompiled headers are kept separate.
     QMakeVar set PRECOMPILED_DIR ".pch/$QMAKE_OUTDIR"
 fi
-QMakeVar set OBJECTS_DIR ".obj/$QMAKE_OUTDIR"
+QMakeVar set OBJECTS_DIR ".o$QMAKE_OUTDIR"
 QMakeVar set MOC_DIR ".moc/$QMAKE_OUTDIR"
 QMakeVar set RCC_DIR ".rcc/$QMAKE_OUTDIR"
 QMakeVar set UI_DIR ".uic/$QMAKE_OUTDIR"

@@ -103,7 +103,7 @@ clean::
 	-rm $(OBJS) $(QTOBJS) $(ADDCLEAN)
 
 distclean:: clean
-	-del qmake
+	-rm qmake.exe
 
 .c.o:
 	$(CXX) $(CFLAGS) $<
