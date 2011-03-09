@@ -179,15 +179,13 @@ then
 		-webkit -script || exit 1
 fi
 
-# make -j9 || exit 1
-
 # This should loop until make succeeds, Workaround for Cygwin/MSYS
 # couldn't commit heap memory error
-# make -j9
-# while [ "$?" = "0" ]
-# do
-#    make -j9
-# done
+make -j9
+while [ "$?" != "0" ]
+do
+   make -j9
+done
 
 if [ $PATCH_QT = 1 ]
 then
@@ -200,3 +198,8 @@ fi
 
 #INSTALL_ROOT=$QT_SRC_DIR/qt/$TARGET_ARCH make install
 
+make install
+while [ "$?" != "0" ]
+do
+	make install
+done
