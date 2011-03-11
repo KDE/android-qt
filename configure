@@ -2570,7 +2570,7 @@ if [ "$OPT_SHADOW" = "yes" ]; then
     rm -rf "$outpath"/mkspecs/*
     cp -rf "$relpath"/mkspecs/* "$outpath/mkspecs"
     # ln -s "$relpath"/mkspecs/* "$outpath/mkspecs"
-    rm -f "$outpath/mkspecs/default"
+    rm -rf "$outpath/mkspecs/default"
 
     ShadowMkspecs()
     {
@@ -4782,7 +4782,7 @@ if true; then ###[ '!' -f "$outpath/bin/qmake" ];
 #Link is not supported for Symbian build system
         cp -a mkspecs/`echo $XQMAKESPEC | sed "s,^${relpath}/mkspecs/,,"` mkspecs/default
     else
-        ln -s `echo $XQMAKESPEC | sed "s,^${relpath}/mkspecs/,,"` mkspecs/default
+        cp -rf mkspecs/`echo $XQMAKESPEC | sed "s,^${relpath}/mkspecs/,,"` mkspecs/default
     fi
     # fix makefiles
     for mkfile in GNUmakefile Makefile; do

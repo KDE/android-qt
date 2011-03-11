@@ -21,7 +21,7 @@ export ANDROID_TARGET_ARCH=armeabi-v7a
 
 TARGET_ARCH=armeabi-v7a
 
-CONFIGURE_QT=0
+CONFIGURE_QT=1
 PATCH_QT=1
 COMPILATION_TYPE=1
 
@@ -184,7 +184,12 @@ fi
 make -j9
 while [ "$?" != "0" ]
 do
-   make -j9
+	if [ -f /usr/break-make ]; then
+		echo "Detected break-make"
+		rm -f break-make
+		exit 1
+	fi
+	make -j9
 done
 
 if [ $PATCH_QT = 1 ]
@@ -201,5 +206,10 @@ fi
 make install
 while [ "$?" != "0" ]
 do
+	if [ -f /usr/break-make ]; then
+		echo "Detected break-make"
+		rm -f break-make
+		exit 1
+	fi
 	make install
 done
