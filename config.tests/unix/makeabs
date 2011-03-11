@@ -12,6 +12,12 @@ fi
 if [ `echo $FILE | cut $CUT_ARG` = "/" ]; then
     true
 else
+    if [ "$OSTYPE" = "msys" ]; then
+        if [ `echo $FILE | cut -c2` = ":" ]; then
+            echo $RES
+            exit 0
+        fi
+    fi
     RES="$PWD/$FILE"
     test -d "$RES" && RES="$RES/"
     RES=`echo "$RES" | sed "s,/\(\./\)*,/,g"`
