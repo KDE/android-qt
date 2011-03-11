@@ -7021,12 +7021,12 @@ fi
 if [ "$XPLATFORM_MINGW" != "yes" ]; then
     # Do not set this here for Windows. Let qmake do it so
     # debug and release precompiled headers are kept separate.
-    QMakeVar set PRECOMPILED_DIR ".pch/$QMAKE_OUTDIR"
+    QMakeVar set PRECOMPILED_DIR ".pch.$QMAKE_OUTDIR"
 fi
-QMakeVar set OBJECTS_DIR ".o$QMAKE_OUTDIR"
-QMakeVar set MOC_DIR ".moc/$QMAKE_OUTDIR"
-QMakeVar set RCC_DIR ".rcc/$QMAKE_OUTDIR"
-QMakeVar set UI_DIR ".uic/$QMAKE_OUTDIR"
+QMakeVar set OBJECTS_DIR ".o.$QMAKE_OUTDIR"
+QMakeVar set MOC_DIR ".moc.$QMAKE_OUTDIR"
+QMakeVar set RCC_DIR ".rcc.$QMAKE_OUTDIR"
+QMakeVar set UI_DIR ".uic.$QMAKE_OUTDIR"
 if [ "$CFG_LARGEFILE" = "yes" ] && [ "$XPLATFORM_MINGW" != "yes" ]; then
     QMAKE_CONFIG="$QMAKE_CONFIG largefile"
 fi

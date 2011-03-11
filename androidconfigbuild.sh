@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 #configure parses mkspecs/android-g++/qmake.conf to figure out
 #the compiler (and various other bits) using getQMakeConf:
@@ -23,7 +23,7 @@ TARGET_ARCH=armeabi-v7a
 
 CONFIGURE_QT=1
 PATCH_QT=1
-COMPILATION_TYPE=1
+COMPILATION_TYPE=0
 
 if [ "$OSTYPE" = "msys" ]; then
 	PLATFORM="-platform win32-g++"
@@ -45,7 +45,7 @@ if [ "$OSTYPE" = "msys" ]; then
 	set ANDROID_NDK_ROOT=$NDK_ROOT
 	export ANDROID_NDK_ROOT=$NDK_ROOT
 	export NDK_TOOLCHAIN_PATH=$NDK_ROOT/toolchains/$NDK_TOOLCHAIN_PREFIX-$NDK_TOOLCHAIN_VERSION/prebuilt/$NDK_HOST
-	QT_INSTALL_DIR=C:/Qt/4.8.0-ma
+	QT_INSTALL_DIR=C:/Qt/Necessitas
 else
 #	export NDK_ROOT=/home/ray/android/android-sdk-linux_x86/android-ndk-r5b
 #	export NDK_HOST=linux-x86
@@ -163,9 +163,11 @@ then
 	fi
 
 	CTYPE=-debug
-	if [ $COMPILATION_TYPE = 0 ]
-	then
-		$CTYPE= -release -reduce-relocations -reduce-exports 
+	if [ $COMPILATION_TYPE = 0 ]; then
+		CTYPE="-release -reduce-relocations -reduce-exports "
+		QT_INSTALL_DIR=${QT_INSTALL_DIR}R
+	else
+		QT_INSTALL_DIR=$(QT_INSTALL_DIR)D
 	fi
 
 	$QT_SRC_DIR/configure -v -opensource $CTYPE -qpa -arch arm \

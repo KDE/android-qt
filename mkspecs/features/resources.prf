@@ -1,6 +1,6 @@
 defined(qtPrepareTool)|load(qt_functions) ### Qt 5: see default_pre.prf
 qtPrepareTool(QMAKE_RCC, rcc)
-
+message("RCC_DIR IS RCC_DIR IS $$RCC_DIR")
 isEmpty(RCC_DIR):RCC_DIR = .
 isEmpty(QMAKE_RESOURCE_PREFIX):QMAKE_RESOURCE_PREFIX = /tmp/
 isEmpty(QMAKE_MOD_RCC):QMAKE_MOD_RCC = qrc
@@ -22,6 +22,7 @@ resource_combine {
 }
 rcc.commands = "$$QMAKE_RCC" $$QMAKE_RESOURCE_FLAGS "${QMAKE_FILE_IN}" -o "${QMAKE_FILE_OUT}"
 rcc.depend_command = "$$QMAKE_RCC" -list $$QMAKE_RESOURCE_FLAGS "${QMAKE_FILE_IN}"
+message("Resources are $$RESOURCES")
 rcc.input = RESOURCES
 rcc.variable_out = SOURCES
 rcc.name = RCC ${QMAKE_FILE_IN}

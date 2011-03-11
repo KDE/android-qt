@@ -613,10 +613,14 @@ bool Option::postProcessProject(QMakeProject *project)
         Option::sysenv_mod = project->first("QMAKE_MOD_SYSTEM_ENV");
     return true;
 }
-
+//#define DEBUG_IT
 QString
 Option::fixString(QString string, uchar flags)
 {
+#ifdef DEBUG_IT
+	QString orig_string = string;
+	qDebug("Option::fixString called with %s\n",qPrintable(string));
+#endif
     //const QString orig_string = string;
     static QHash<FixStringCacheKey, QString> *cache = 0;
     if(!cache) {
@@ -626,7 +630,9 @@ Option::fixString(QString string, uchar flags)
     FixStringCacheKey cacheKey(string, flags);
     if(cache->contains(cacheKey)) {
 	const QString ret = cache->value(cacheKey);
-	//qDebug() << "Fix (cached) " << orig_string << "->" << ret;
+#ifdef DEBUG_IT
+	qDebug() << "FixString (cached) " << orig_string << "->" << ret;
+#endif
         return ret;
     }
 
@@ -664,7 +670,9 @@ Option::fixString(QString string, uchar flags)
         string = string.mid(1, string.length()-2);
 
     //cache
-    //qDebug() << "Fix" << orig_string << "->" << string;
+#ifdef DEBUG_IT
+    qDebug() << "FixString" << orig_string << "->" << string;
+#endif
     cache->insert(cacheKey, string);
     return string;
 }
