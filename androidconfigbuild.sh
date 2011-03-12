@@ -1,65 +1,33 @@
-#!/bin/sh
+#!/bin/bash
 
-#configure parses mkspecs/android-g++/qmake.conf to figure out
-#the compiler (and various other bits) using getQMakeConf:
-#QMAKE_CONF_COMPILER=`getQMakeConf "$XQMAKESPEC" | grep "^QMAKE_CXX[^_A-Z0-9]" | sed "s,.* *= *\(.*\)$,\1," | tail -1`
-#this returns:
-#$$NDK_TOOLCHAIN_PATH/bin/$$NDK_TOOLCHAIN_PREFIX-g++
-#Which gets passed through to various shell scripts, as is
-#and they fail to run. To fix, need to also do:
-#QMAKE_CONF_COMPILER=${QMAKE_CONF_COMPILER//\$\$/\$} # replace all $$ with $
-#eval QMAKE_CONF_COMPILER=$QMAKE_CONF_COMPILER       # evaluate the variables
-#However, these variables aren't set at configure time, so set them now (and
-#export them so configure can use them.
+echo $0 $@
 
-#default values
-export ANDROID_PLATFORM=android-9
-export NDK_PLATFORM=9
-export NDK_TOOLCHAIN_PREFIX=arm-linux-androideabi
-export NDK_TOOLCHAIN_VERSION=4.4.3
-export ANDROID_TARGET_ARCH=armeabi-v7a
+NDK_TOOLCHAIN_PREFIX=arm-linux-androideabi
+NDK_TOOLCHAIN_VERSION=4.4.3
+NDK_PLATFORM=9
+export ANDROID_PLATFORM=$NDK_PLATFORM
 
-TARGET_ARCH=armeabi-v7a
-
+#defaults:
+CLEAN_QT=1
 CONFIGURE_QT=1
-PATCH_QT=1
-COMPILATION_TYPE=0
+SHARED_QT=1
+EXCEPTIONS_QT=0
+DEBUG_QT=0
+RELEASE_QT=1
+MODIFY_DEST_DIR_QT=1
+PATCH_QT=0
 
 if [ "$OSTYPE" = "msys" ]; then
 	PLATFORM="-platform win32-g++"
-	# Building webkit we run into cmd line length limits when linking.
-	# 32k odd characters in it easily.
-	# Paths are along the lines of .obj/debug_shared/JSHTMLSomethingVeryVerbose.o
-	# The only thing we can really do is ".ods/JSHTMLSomethingVeryVerbose.o" and
-	# then hope. But not sure how to achieve that yet...
-	# This doens't do anything. I had to hack configure to make it drop webkit.
-	NOWEBKIT="-no-webkit"
-	set NDK_ROOT=/usr/android-sdk-windows/android-ndk-r5b
-	NDK_ROOT=/usr/android-sdk-windows/android-ndk-r5b
-	set NDK_HOST=windows
-	NDK_HOST=windows
-	set ANDROID_NDK_HOST=$NDK_HOST
-	export ANDROID_NDK_HOST=$NDK_HOST
-	set NDK_TOOLCHAIN_PATH=$NDK_ROOT/toolchains/$NDK_TOOLCHAIN_PREFIX-$NDK_TOOLCHAIN_VERSION/prebuilt/$NDK_HOST
-	NDK_TOOLCHAIN_PATH=$NDK_ROOT/toolchains/$NDK_TOOLCHAIN_PREFIX-$NDK_TOOLCHAIN_VERSION/prebuilt/$NDK_HOST
-	set ANDROID_NDK_ROOT=$NDK_ROOT
-	export ANDROID_NDK_ROOT=$NDK_ROOT
-	export NDK_TOOLCHAIN_PATH=$NDK_ROOT/toolchains/$NDK_TOOLCHAIN_PREFIX-$NDK_TOOLCHAIN_VERSION/prebuilt/$NDK_HOST
-	QT_INSTALL_DIR=C:/Qt/Necessitas
+	DEST_DIR_QT=C:/Necessitas/4.8.0-pre
 else
-#	export NDK_ROOT=/home/ray/android/android-sdk-linux_x86/android-ndk-r5b
-#	export NDK_HOST=linux-x86
-#	export ANDROID_NDK_HOST=$NDK_HOST
-#	export NDK_TOOLCHAIN_PATH=$NDK_ROOT/toolchains/$NDK_TOOLCHAIN_PREFIX-$NDK_TOOLCHAIN_VERSION/prebuilt/$NDK_HOST
-#	export ANDROID_NDK_ROOT=$NDK_ROOT
-	QT_INSTALL_DIR=/data/data/eu.licentia.necessitas.ministro/files/qt
+	PLATFORM="-platform win32-g++"
+	DEST_DIR_QT=/data/data/eu.licentia.necessitas.ministro/files/qt
 fi
 
-
-
-QT_SRC_DIR=`dirname $0`
+SRC_DIR_QT=`dirname $0`
 pushd .
-QT_SRC_DIR=`(cd "$QT_SRC_DIR"; /bin/pwd)`
+SRC_DIR_QT=`(cd "$SRC_DIR_QT"; /bin/pwd)`
 popd
 
 help()
@@ -68,42 +36,64 @@ cat << EOF
 usage: $0 options
 
 OPTIONS:
-   -help   Shows this message
-   -r      NDK root. Default "$NDK_ROOT"
-   -h      NDK host. Default "$NDK_HOST"
-   -p      NDK toolchain prefix. Default "$NDK_TOOLCHAIN_PREFIX"
+   -p      Shows this message
+   -l      Clean Qt.
+   -q      Qt build options.
+                   0 - don't configure qt (only compile) default
+                   1 - configure qt and compile qt
+   -c      Patch qt.
+                   0 - don't patch qt (used to make the installer)
+                   1 - patch qt (default)
+   -n      NDK root. Default "$NDK_ROOT"
+   -o      NDK host. Default "$NDK_HOST"
+   -f      NDK toolchain prefix. Default "$NDK_TOOLCHAIN_PREFIX"
    -v      NDK toolchain version. Default "$NDK_TOOLCHAIN_VERSION"
    -a      Target cpu architecture. Default "$TARGET_ARCH"
                    armeabi     - tune for android arm v5
                    armeabi-v7a - tune for android arm v7
-   -q      Qt build options.
-                   0 - don't configure qt (only compile) default
-                   1 - configure qt and compile qt
-   -d      Build type. Default "$COMPILATION_TYPE"
-                   1 - Compile and link Qt with debugging turned on.
-                   0 - Compile and link Qt using release compilation flags, it also
-                   contains debugging informations.
-   -c      Patch qt.
-                   0 - don't patch qt (used to make the installer)
-                   1 - patch qt (default)
-   -i      Install path. Default "$QT_INSTALL_DIR"
+                   Optional name suffix: v5/v7
+   -h      Shared
+                   0 - Build static version of qt
+                   1 - Build shared version of qt
+   -x      Exceptions options
+                   0 - don't use exceptions (you won't be able to build qtcreator with such a qt though)
+                   1 - use exceptions
+                   Optional name suffix: Xc/Nx
+   -d      Build debug qt
+                   Optional name suffix: D/R/DaR
+   -r      Build release qt
+                   Optional name suffix: R/D/DaR
+   -m      Modify install path according to passed in options (name suffixes applied in above listed order).
+
+   -i      Install path. Default "$DEST_DIR_QT"
 EOF
 }
 
-
-while getopts "help:r:h:p:v:a:q:c:i:d:" arg; do
+INSTSUFFIX=""
+CFGOPTIONS=""
+echo "Doing Getopts"
+while getopts "p:l:q:c:n:o:f:v:a:h:x:d:r:m:i:" arg; do
 case $arg in
-	help)
+	p)
 		help
 		exit 0
 		;;
-	r)
+	l)
+		CLEAN_QT=$OPTARG
+		;;
+	q)
+		CONFIGURE_QT=$OPTARG
+		;;
+	c)
+		CLEAN_QT=$OPTARG
+		;;
+	n)
 		NDK_ROOT=$OPTARG
 		;;
-	h)
+	o)
 		NDK_HOST=$OPTARG
 		;;
-	p)
+	f)
 		NDK_TOOLCHAIN_PREFIX=$OPTARG
 		;;
 	v)
@@ -112,17 +102,37 @@ case $arg in
 	a)
 		TARGET_ARCH=$OPTARG
 		;;
-	q)
-		CONFIGURE_QT=$OPTARG
+	h)
+		SHARED_QT=$OPTARG
+		if [ "$SHARED_QT" -eq "1" ]; then
+			INSTSUFFIX="${INSTSUFFIX}Sh"
+			CFGOPTIONS="${CFGOPTIONS} -shared "
+		else
+			INSTSUFFIX="${INSTSUFFIX}St"
+			CFGOPTIONS="${CFGOPTIONS} -static "
+		fi
 		;;
-	c)
-		PATCH_QT=$OPTARG
-		;;
-	i)
-		QT_INSTALL_DIR=$OPTARG
+	x)
+		EXCEPTIONS_QT=$OPTARG
+		if [ "$EXCEPTIONS_QT" -eq "1" ]; then
+			INSTSUFFIX="${INSTSUFFIX}Xc"
+			CFGOPTIONS="${CFGOPTIONS} -exceptions "
+		else
+			INSTSUFFIX="${INSTSUFFIX}Nx"
+			CFGOPTIONS="${CFGOPTIONS} -no-exceptions "
+		fi
 		;;
 	d)
-		COMPILATION_TYPE=$OPTARG
+		DEBUG_QT=$OPTARG
+		;;
+	r)
+		RELEASE_QT=$OPTARG
+		;;
+	i)
+		DEST_DIR_QT=$OPTARG
+		;;
+	m)
+		MODIFY_DEST_DIR_QT=$OPTARG
 		;;
 	?)
 		help
@@ -131,6 +141,27 @@ case $arg in
 esac
 done
 
+if [ "$DEBUG_QT" -eq "1" -a "$RELEASE_QT" -eq "1" ]; then
+	# This doesn't work, the release and debug builds use the same
+	# temporary folders and end up with a release lib/dll that's really
+	# a debug one.
+	CFGOPTIONS="${CFGOPTIONS} -debug-and-release "
+	INSTSUFFIX="${INSTSUFFIX}DaR"
+else
+	if [ "$DEBUG_QT" -eq "1" ]; then
+		CFGOPTIONS="${CFGOPTIONS} -debug "
+		INSTSUFFIX="${INSTSUFFIX}D"
+	else
+		CFGOPTIONS="${CFGOPTIONS} -release "
+		INSTSUFFIX="${INSTSUFFIX}R"
+	fi
+fi
+
+if [ "$MODIFY_DEST_DIR_QT" -eq "1" ]; then
+	DEST_DIR_QT=${DEST_DIR_QT}-${INSTSUFFIX}
+fi
+
+echo New install of Qt will be to $DEST_DIR_QT
 
 # Please set the following evn vars correctly !!!
 export ANDROID_NDK_ROOT=$NDK_ROOT
@@ -149,9 +180,23 @@ ANDROID_NDK_PLATFORM=android-$NDK_PLATFORM
 ANDROID_TARGET_ARCH=$TARGET_ARCH
 EOF
 
+if [ "$CLEAN_QT" -eq "1" ]; then
+	if [ -f Makefile ]; then
+		make distclean
+	fi
+	if [ -d qmake ]; then
+		pushd .
+		cd qmake
+		if [ -f Makefile ]; then
+			make clean
+		fi
+		popd
+	fi
+fi
+
 if [ $CONFIGURE_QT = 1 ]
 then
-	if [ $QT_SRC_DIR = $PWD ]
+	if [ $SRC_DIR_QT = $PWD ]
 	then
 		make confclean distclean
 		rm -fr include
@@ -162,33 +207,31 @@ then
 		git checkout imports
 	fi
 
-	CTYPE=-debug
-	if [ $COMPILATION_TYPE = 0 ]; then
-		CTYPE="-release -reduce-relocations -reduce-exports "
-		QT_INSTALL_DIR=${QT_INSTALL_DIR}R
-	else
-		QT_INSTALL_DIR=$(QT_INSTALL_DIR)D
-	fi
-
-	$QT_SRC_DIR/configure -v -opensource $CTYPE -qpa -arch arm \
+	$SRC_DIR_QT/configure -v -opensource -qpa -arch arm \
 		-no-phonon -freetype -fast -xplatform android-g++ \
 		$PLATFORM -host-little-endian \
-		$NOWEBKIT \
 		-little-endian -no-qt3support -no-largefile \
-		--prefix=$QT_INSTALL_DIR \
-		-openssl -shared -pch \
-		-nomake demos -nomake examples -confirm-license -exceptions \
-		-webkit -script || exit 1
+		-openssl -pch -reduce-relocations -reduce-exports \
+		-nomake demos -nomake examples -confirm-license \
+		$CFGOPTIONS -prefix $DEST_DIR_QT \
+		-script || exit 1
 fi
 
 # This should loop until make succeeds, Workaround for Cygwin/MSYS
 # couldn't commit heap memory error
 make -j9
+# make mocables wasn't being done on the latest official Git, so just in-case
+# it's the same on android-lighthouse, I force it.
+pushd .; cd /usr/Qt/Git/src/corelib; make mocables; make; popd
+make -j 9
+pushd .; cd /usr/Qt/Git/src/corelib; make mocables; make; popd
+make -j 9
+
 while [ "$?" != "0" ]
 do
 	if [ -f /usr/break-make ]; then
 		echo "Detected break-make"
-		rm -f break-make
+		rm -f /usr/break-make
 		exit 1
 	fi
 	make -j9
@@ -197,9 +240,9 @@ done
 if [ $PATCH_QT = 1 ]
 then
     if [ "$OSTYPE" = "msys" ]; then
-        $QT_SRC_DIR/qpatch$EXEEXT $QT_SRC_DIR/files-to-patch-android-mingw $QT_INSTALL_DIR $PWD
+        $SRC_DIR_QT/qpatch.exe $SRC_DIR_QT/files-to-patch-android-mingw $DEST_DIR_QT $PWD
     else
-        $QT_SRC_DIR/qpatch $QT_SRC_DIR/files-to-patch-android $QT_INSTALL_DIR $PWD
+        $SRC_DIR_QT/qpatch $SRC_DIR_QT/files-to-patch-android $DEST_DIR_QT $PWD
     fi
 fi
 
@@ -210,8 +253,11 @@ while [ "$?" != "0" ]
 do
 	if [ -f /usr/break-make ]; then
 		echo "Detected break-make"
-		rm -f break-make
+		rm -f /usr/break-make
 		exit 1
 	fi
 	make install
 done
+
+$SRC_DIR_QT/copy-private-headers.sh $DEST_DIR_QT/private-headers
+
