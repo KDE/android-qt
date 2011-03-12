@@ -7337,7 +7337,7 @@ case "$XPLATFORM" in
 	# the assembly it generates cannot be compiled
 
 	# Check gcc's version
-	case "$(${QMAKE_CONF_COMPILER} -dumpversion)" in
+	case "${QMAKE_CONF_COMPILER} -dumpversion" in
 	    4*)
 		;;
 	    3.4*)
@@ -7358,7 +7358,7 @@ case "$XPLATFORM" in
 	;;
     *-g++*)
 	# Check gcc's version
-	case "$(${QMAKE_CONF_COMPILER} -dumpversion)" in
+	case "${QMAKE_CONF_COMPILER} -dumpversion" in
 	    4*|3.4*)
 		;;
             3.3*)

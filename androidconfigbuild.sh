@@ -21,7 +21,7 @@ if [ "$OSTYPE" = "msys" ]; then
 	PLATFORM="-platform win32-g++"
 	DEST_DIR_QT=C:/Necessitas/4.8.0-pre
 else
-	PLATFORM="-platform win32-g++"
+        PLATFORM="-platform linux-g++"
 	DEST_DIR_QT=/data/data/eu.licentia.necessitas.ministro/files/qt
 fi
 
