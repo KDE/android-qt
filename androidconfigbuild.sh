@@ -258,5 +258,5 @@ do
 	make install
 done
 
-$SRC_DIR_QT/copy-private-headers.sh $DEST_DIR_QT/private-headers
+$SRC_DIR_QT/copy-private-headers.sh include $DEST_DIR_QT/private-headers
 
