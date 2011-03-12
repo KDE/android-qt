@@ -21,7 +21,6 @@ resource_combine {
 }
 rcc.commands = "$$QMAKE_RCC" $$QMAKE_RESOURCE_FLAGS "${QMAKE_FILE_IN}" -o "${QMAKE_FILE_OUT}"
 rcc.depend_command = "$$QMAKE_RCC" -list $$QMAKE_RESOURCE_FLAGS "${QMAKE_FILE_IN}"
-message("Resources are $$RESOURCES")
 rcc.input = RESOURCES
 rcc.variable_out = SOURCES
 rcc.name = RCC ${QMAKE_FILE_IN}
