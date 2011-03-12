@@ -19,12 +19,13 @@ else
 	NDKHOST="linux-x86"
 	# On Linux, with ~ in the NDK path, g++ fails to find stdint.h (-I~/android/android-sdk... fail?!)
 	# Not what you'd expect! This should fix it.
-        NDKDIR="~/android/android-sdk-linux_x86/android-ndk-r5b"
+	NDKDIR=~/android/android-sdk-linux_x86/android-ndk-r5b
 	pushd . > /dev/null
 	cd $NDKDIR
 	NDKDIR=`pwd`
 	popd > /dev/null
-        DEST_DIR_QT=/data/data/eu.licentia.necessitas.ma.ministro/files/qt
+	echo "NDKDIR is $NDKDIR"
+	DEST_DIR_QT=/data/data/eu.licentia.necessitas.ma.ministro/files/qt
 fi
 
 # Makes {shared}*{debug,release}*{exceptions,noexceptions}, all armv7-a, and no thumb.

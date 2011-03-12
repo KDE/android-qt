@@ -21,7 +21,7 @@ if [ "$OSTYPE" = "msys" ]; then
 	PLATFORM="-platform win32-g++"
 	DEST_DIR_QT=C:/Necessitas/4.8.0-pre
 else
-        PLATFORM="-platform linux-g++"
+	PLATFORM="-platform linux-g++"
 	DEST_DIR_QT=/data/data/eu.licentia.necessitas.ministro/files/qt
 fi
 
@@ -71,7 +71,6 @@ EOF
 
 INSTSUFFIX=""
 CFGOPTIONS=""
-echo "Doing Getopts"
 while getopts "p:l:q:c:n:o:f:v:a:h:x:d:r:m:i:" arg; do
 case $arg in
 	p)
