@@ -6,8 +6,8 @@
 # having my Git repo in a folder called QtNecessitasSrc in the current directory:
 # mkdir QtNecessitasBuild; cd QtNecessitasBuild; ../QtNecessitasSrc/build.sh
 
-if [ "$1" = "-help" ]; then
-	`dirname $0`/androidconfigbuild.sh -help
+if [ "$1" = "-p" ]; then
+	`dirname $0`/androidconfigbuild.sh -p
 	exit 0
 fi
 
