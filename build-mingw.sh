@@ -14,7 +14,7 @@ fi
 if [ "$OSTYPE" = "msys" ]; then
 	NDKHOST="windows"
         NDKDIR="/usr/android-sdk-windows/android-ndk-r5b"
-	DEST_DIR_QT=C:/Necessitas/4.8.0-pre
+	DEST_DIR_QT=C:/Necessitas/4.8.0
 else
 	NDKHOST="linux-x86"
 	# On Linux, with ~ in the NDK path, g++ fails to find stdint.h (-I~/android/android-sdk... fail?!)
@@ -29,12 +29,15 @@ else
 fi
 
 # Makes {shared}*{debug,release}*{exceptions,noexceptions}, all armv7-a, and no thumb.
-`dirname $0`/androidconfigbuild.sh -l 1 -q 1 -n $NDKDIR -o $NDKHOST -f arm-linux-androideabi -v 4.4.3 -a armeabi-v7a \
-         -h 1 -x 1 -d 0 -r 1 -m 1 -i $DEST_DIR_QT
+# `dirname $0`/androidconfigbuild.sh -l 1 -q 1 -n $NDKDIR -o $NDKHOST -f arm-linux-androideabi -v 4.4.3 -a armeabi-v7a \
+#          -h 1 -x 1 -d 0 -r 1 -m 1 -i $DEST_DIR_QT
 #`dirname $0`/androidconfigbuild.sh -l 1 -q 1 -n $NDKDIR -o $NDKHOST -f arm-linux-androideabi -v 4.4.3 -a armeabi-v7a \
 #         -h 1 -x 1 -d 1 -r 0 -m 1 -i $DEST_DIR_QT
-# Without exceptions get: QtXmlPatterns was requested, but it can't be built due to exceptions being disabled.
+#Without exceptions get: QtXmlPatterns was requested, but it can't be built due to exceptions being disabled.
 #`dirname $0`/androidconfigbuild.sh -l 1 -q 1 -n $NDKDIR -o $NDKHOST -f arm-linux-androideabi -v 4.4.3 -a armeabi-v7a \
 #         -h 1 -x 0 -d 0 -r 1 -m 1 -i $DEST_DIR_QT
 #`dirname $0`/androidconfigbuild.sh -l 1 -q 1 -n $NDKDIR -o $NDKHOST -f arm-linux-androideabi -v 4.4.3 -a armeabi-v7a \
 #         -h 1 -x 0 -d 1 -r 0 -m 1 -i $DEST_DIR_QT
+
+`dirname $0`/androidconfigbuild.sh -l 1 -q 1 -n $NDKDIR -o $NDKHOST -f arm-linux-androideabi -v 4.4.3 -a armeabi-v7a \
+         -h 1 -x 1 -d 0 -r 1 -m 0 -i $DEST_DIR_QT
