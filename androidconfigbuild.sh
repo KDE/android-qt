@@ -248,15 +248,17 @@ fi
 #INSTALL_ROOT=$QT_SRC_DIR/qt/$TARGET_ARCH make install
 
 make install
-while [ "$?" != "0" ]
-do
-	if [ -f /usr/break-make ]; then
-		echo "Detected break-make"
-		rm -f /usr/break-make
-		exit 1
-	fi
-	make install
-done
+make install
+make install
+# while [ "$?" != "0" ]
+# do
+#	if [ -f /usr/break-make ]; then
+#		echo "Detected break-make"
+#		rm -f /usr/break-make
+#		exit 1
+#	fi
+#	make install
+#done
 
 $SRC_DIR_QT/copy-private-headers.sh include $DEST_DIR_QT/private-headers
 
