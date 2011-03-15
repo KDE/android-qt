@@ -1107,7 +1107,7 @@ QString QFSFileEngine::rootPath()
 #elif defined(Q_FS_FAT)
     QString ret = QString::fromLatin1(qgetenv("SystemDrive").constData());
     if (ret.isEmpty())
-        ret = QLatin1String("c:");
+        ret = QLatin1String("C:");
     ret.append(QLatin1Char('/'));
 #elif defined(Q_OS_OS2EMX)
     char dir[4];
@@ -1132,7 +1132,7 @@ QString QFSFileEngine::tempPath()
     }
     if (ret.isEmpty()) {
 #if !defined(Q_OS_WINCE)
-        ret = QLatin1String("c:/tmp");
+        ret = QLatin1String("C:/tmp");
 #else
         ret = QLatin1String("/Temp");
 #endif
