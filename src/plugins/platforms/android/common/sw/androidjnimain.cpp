@@ -166,7 +166,7 @@ namespace QtAndroid
 
     void setAndroidPlatformIntegration(QAndroidPlatformIntegration * androidGraphicsSystem)
     {
-	m_surfaceMutex.lock();
+        m_surfaceMutex.lock();
         mAndroidGraphicsSystem=androidGraphicsSystem;
         m_surfaceMutex.unlock();
     }
@@ -292,7 +292,6 @@ static void setDisplayMetrics(JNIEnv* /*env*/, jclass /*clazz*/,
 
 static void mouseDown(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/, jint x, jint y)
 {
-    qDebug()<<"mouseDown"<<qApp->activeWindow();
     QWindowSystemInterface::handleMouseEvent(0,
                                              QEvent::MouseButtonPress,QPoint(x,y),QPoint(x,y),
                                              Qt::MouseButtons(Qt::LeftButton));
@@ -300,8 +299,6 @@ static void mouseDown(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/, jint x,
 
 static void mouseUp(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/, jint x, jint y)
 {
-    qDebug()<<"mouseUp"<<qApp->activeWindow();
-    // sometimes this method doesn't wakeup the loop, report this issue to nokia !!!
     QWindowSystemInterface::handleMouseEvent(0,
                                              QEvent::MouseButtonRelease,QPoint(x,y),QPoint(x,y),
                                              Qt::MouseButtons(Qt::NoButton));
@@ -309,7 +306,6 @@ static void mouseUp(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/, jint x, j
 
 static void mouseMove(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/, jint x, jint y)
 {
-    // sometimes this method doesn't wakeup the loop, report this issue to nokia !!!
     QWindowSystemInterface::handleMouseEvent(0,
                                              QEvent::MouseButtonPress,QPoint(x,y),QPoint(x,y),
                                              Qt::MouseButtons(Qt::LeftButton));
@@ -366,7 +362,6 @@ static void touchEnd(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/, jint act
             eventType=QEvent::TouchEnd;
             break;
     }
-    // sometimes this method doesn't wakeup the loop, report this issue to nokia !!!
     QWindowSystemInterface::handleTouchEvent(0, eventType, QTouchEvent::TouchScreen, m_touchPoints);
 }
 
@@ -577,12 +572,12 @@ static void keyUp(JNIEnv */*env*/, jobject /*thiz*/, jint key, jint unicode, jin
     int mappedKey=mapAndroidKey(key);
     if (mappedKey==Qt::Key_Close)
     {
-	if(!mAndroidGraphicsSystem || !qApp)
-    	    return;
+        if(!mAndroidGraphicsSystem || !qApp)
+            return;
 
         qDebug()<<"handleCloseEvent"<<mAndroidGraphicsSystem->getPrimaryScreen()->topWindow()<<qApp->activeWindow();
 #warning FIXME
-        // sometimes qApp->activeWindow() is null, it should never be null when you ahve at least one widget visible, report this issue to nokia !!!
+        // sometimes qApp->activeWindow() is null, it should never be null when you have at least one widget visible, report this issue to nokia !!!
         // how to reproduce it ?
         // create a dialog, create another dialog form previous dialog, close the last dialog.
         QWindowSystemInterface::handleCloseEvent(qApp->activeWindow()?qApp->activeWindow():mAndroidGraphicsSystem->getPrimaryScreen()->topWindow());

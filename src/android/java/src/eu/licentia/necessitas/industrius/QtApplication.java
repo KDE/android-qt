@@ -156,10 +156,10 @@ public class QtApplication extends Application
             int desktopHeightPixels, double XDpi, double YDpi)
     {
         /* Fix buggy dpi report */
-        if (XDpi<120.0)
-            XDpi=120.0;
-        if (YDpi<120.0)
-            YDpi=120.0;
+        if (XDpi<android.util.DisplayMetrics.DENSITY_LOW)
+            XDpi=android.util.DisplayMetrics.DENSITY_LOW;
+        if (YDpi<android.util.DisplayMetrics.DENSITY_LOW)
+            YDpi=android.util.DisplayMetrics.DENSITY_LOW;
 
         synchronized (m_mainActivityMutex)
         {

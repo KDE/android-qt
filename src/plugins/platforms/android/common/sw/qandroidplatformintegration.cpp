@@ -88,10 +88,11 @@ QRegion QAndroidPlatformScreen::doRedraw()
 {
     QRegion touched;
     touched = QFbScreen::doRedraw();
-
-    QVector<QRect> rects = touched.rects();
-    for (int i = 0; i < rects.size(); i++)
-        QtAndroid::flushImage(mGeometry.topLeft(), *mScreenImage, rects[i]);
+    if (touched.isEmpty())
+        return touched;
+//    QVector<QRect> rects = touched.rects();
+//    for (int i = 0; i < rects.size(); i++)
+    QtAndroid::flushImage(mGeometry.topLeft(), *mScreenImage, touched.boundingRect());
     return touched;
 }
 
