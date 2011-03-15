@@ -13,7 +13,8 @@ fi
 
 if [ "$OSTYPE" = "msys" ]; then
 	NDKHOST="windows"
-        NDKDIR="/usr/android-sdk-windows/android-ndk-r5b"
+	NDKDIR="/usr/android-sdk-windows/android-ndk-r5b"
+#	NDKDIR="C:/Necessitas/android-ndk-r5b"
 	DEST_DIR_QT=C:/Necessitas/4.8.0
 else
 	NDKHOST="linux-x86"

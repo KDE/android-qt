@@ -179,15 +179,26 @@ ANDROID_NDK_PLATFORM=android-$NDK_PLATFORM
 ANDROID_TARGET_ARCH=$TARGET_ARCH
 EOF
 
+# Without this, make will not be able to translate relative paths
+# properly as it can't step beyond where / is mounted.
+if [ "$OSTYPE" = "msys" ]; then
+	MAKEDIR=`pwd -W`
+	MAKEFILE=$MAKEDIR/Makefile
+	MOCABLESMAKEFILE=$MAKEDIR/src/corelib/Makefile
+else
+	MAKEFILE=Makefile
+	MOCABLESMAKEFILE=Makefile
+fi
+
 if [ "$CLEAN_QT" -eq "1" ]; then
 	if [ -f Makefile ]; then
-		make distclean
+		make -f $MAKEFILE distclean
 	fi
 	if [ -d qmake ]; then
 		pushd .
 		cd qmake
 		if [ -f Makefile ]; then
-			make clean
+			make -f $MAKEFILE clean
 		fi
 		popd
 	fi
@@ -197,7 +208,7 @@ if [ $CONFIGURE_QT = 1 ]
 then
 	if [ $SRC_DIR_QT = $PWD ]
 	then
-		make confclean distclean
+		make -f $MAKEFILE confclean distclean
 		rm -fr include
 		rm -fr plugins
 		rm -fr lib
@@ -218,14 +229,14 @@ fi
 
 # This should loop until make succeeds, Workaround for Cygwin/MSYS
 # couldn't commit heap memory error
-make -j9
+make -f $MAKEFILE -j 9
 # make mocables wasn't being done on the latest official Git, so just in-case
 # it's the same on android-lighthouse, I force it.
-pushd .; cd /usr/Qt/Git/src/corelib; make mocables; make; popd
-make -j 9
-pushd .; cd /usr/Qt/Git/src/corelib; make mocables; make; popd
-make -j 9
+pushd .; cd /usr/Qt/Git/src/corelib; make -f $MOCABLESMAKEFILE mocables; make; popd
+make -f $MAKEFILE -j 9
+pushd .; cd /usr/Qt/Git/src/corelib; make -f $MOCABLESMAKEFILE mocables; make; popd
 
+make -f $MAKEFILE -j 9
 while [ "$?" != "0" ]
 do
 	if [ -f /usr/break-make ]; then
@@ -233,7 +244,7 @@ do
 		rm -f /usr/break-make
 		exit 1
 	fi
-	make -j9
+	make -f $MAKEFILE -j 9
 done
 
 if [ $PATCH_QT = 1 ]
@@ -247,7 +258,7 @@ fi
 
 #INSTALL_ROOT=$QT_SRC_DIR/qt/$TARGET_ARCH make install
 
-make install
+make -f $MAKEFILE install
 while [ "$?" != "0" ]
 do
 	if [ -f /usr/break-make ]; then
@@ -255,7 +266,7 @@ do
 		rm -f /usr/break-make
 		exit 1
 	fi
-	make install
+	make -f $MAKEFILE install
 done
 
 $SRC_DIR_QT/copy-private-headers.sh include $DEST_DIR_QT/private-headers

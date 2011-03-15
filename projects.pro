@@ -148,13 +148,20 @@ translations.path=$$[QT_INSTALL_TRANSLATIONS]
 translations.files = $$QT_SOURCE_TREE/translations/*.qm
 INSTALLS += translations
 
-#qmake
+#qmake - this presents a problem for us. Android isn't win32,
+# and qmake doesn't seem to have amy separation of the host
+# and target...
 qmake.path=$$[QT_INSTALL_BINS]
-win32 {
-   qmake.files=$$QT_BUILD_TREE/bin/qmake.exe
-} else {
-   qmake.files=$$QT_BUILD_TREE/bin/qmake
-}
+#win32 {
+#   qmake.files=$$QT_BUILD_TREE/bin/qmake.exe
+#} else {
+#   qmake.files=$$QT_BUILD_TREE/bin/qmake
+#}
+
+# Untested... may fail always.
+qmake.files  = $$QT_BUILD_TREE/bin/qmake
+qmake.files += $$QT_BUILD_TREE/bin/qmake.exe
+
 INSTALLS += qmake
 
 #mkspecs
