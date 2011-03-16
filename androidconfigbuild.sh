@@ -84,7 +84,7 @@ case $arg in
 		CONFIGURE_QT=$OPTARG
 		;;
 	c)
-		CLEAN_QT=$OPTARG
+		PATCH_QT=$OPTARG
 		;;
 	n)
 		NDK_ROOT=$OPTARG
