@@ -28,6 +28,7 @@
 #include <android/log.h>
 #include <pthread.h>
 #include <QSemaphore>
+#include <QDir>
 #include <QDebug>
 #include <qglobal.h>
 
@@ -90,6 +91,9 @@ static jboolean startQtApp(JNIEnv* env, jobject /*object*/, jstring paramsString
 
     qDebug()<<"paramsString"<<string;
     m_applicationParams=string.split('\t');
+
+    // Go home
+    QDir::setCurrent(QDir::homePath());
 
     pthread_t appThread;
     return pthread_create(&appThread, NULL, startMainMethod, NULL)==0;
