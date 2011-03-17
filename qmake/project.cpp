@@ -285,6 +285,7 @@ static QStringList split_arg_list(QString params)
 
 static QStringList split_value_list(const QString &vals)
 {
+	qDebug() << "split_value_list" << vals;
     QString build;
     QStringList ret;
     QStack<char> quote;
@@ -2891,6 +2892,7 @@ QMakeProject::doVariableReplaceExpand(const QString &str, QMap<QString, QStringL
                 QStringList replacement;
                 if(var_type == ENVIRON) {
                     replacement = split_value_list(QString::fromLocal8Bit(qgetenv(var.toLatin1().constData())));
+					qDebug() << "replacement " << replacement;
                 } else if(var_type == PROPERTY) {
                     if(prop)
                         replacement = split_value_list(prop->value(var));

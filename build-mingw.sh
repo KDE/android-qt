@@ -6,8 +6,10 @@
 # having my Git repo in a folder called QtNecessitasSrc in the current directory:
 # mkdir QtNecessitasBuild; cd QtNecessitasBuild; ../QtNecessitasSrc/build.sh
 
-CLEAN_QT=1
+CLEAN_QT=0
 CONFIGURE_QT=1
+BUILD_QT=0
+INSTALL_QT=0
 SHARED_QT=1
 RTTI_QT=0
 EXECPTIONS_QT=1
@@ -23,12 +25,15 @@ usage: $0 options
 OPTIONS:
    -p      Shows this message
    -c      Clean qt
-   -q      Qt build options
-                   0 - don't configure qt (only compile) default
-                   1 - configure qt and compile qt
+   -q      Configure qt
+                   0 - don't configure qt
+                   1 - configure qt
+   -b      Build qt
+                   0 - don't build
+                   1 - build
    -h      Shared
-                   0 - Build static version of qt
-                   1 - Build shared version of qt
+                   0 - static version of qt
+                   1 - shared version of qt
                    Optional name suffix: Sh/St
    -x      Exceptions options
                    0 - don't use exceptions (you won't be able to build qtcreator with such a qt though)
@@ -47,7 +52,7 @@ EOF
 
 INSTSUFFIX=""
 CFGOPTIONS=""
-while getopts "p:c:q:h:x:r:d:m:o:i:s:" arg; do
+while getopts "p:c:q:b:h:x:r:d:m:o:i:s:" arg; do
 echo $arg $OPTARG
 case $arg in
 	p)
@@ -62,6 +67,14 @@ case $arg in
 		CONFIGURE_QT=$OPTARG
 		echo "CONFIGURE $CONFIGURE_QT"
 		;;
+	b)
+		BUILD_QT=$OPTARG
+		echo "BUILD $BUILD_QT"
+		;;
+	k)
+		INSTALL_QT=$OPTARG
+		echo "INSTALL $INSTALL_QT"
+		;;
 	h)
 		SHARED_QT=$OPTARG
 		echo "SHARED $SHARED_QT"
@@ -74,16 +87,6 @@ case $arg in
 		fi
 		echo "SHARED $SHARED_QT"
 		;;
-#	t)
-#		RTTI_QT=$OPTARG
-#		if [ "$RTTI_QT" -eq "1" ]; then
-#			INSTSUFFIX="${INSTSUFFIX}Rt"
-#			CFGOPTIONS="${CFGOPTIONS} -rtti "
-#		else
-#			INSTSUFFIX="${INSTSUFFIX}Nrt"
-#			CFGOPTIONS="${CFGOPTIONS} -no-rtti "
-#		fi
-#		;;
 	x)
 		EXCEPTIONS_QT=$OPTARG
 		if [ "$EXCEPTIONS_QT" -eq "1" ]; then
@@ -125,15 +128,9 @@ case $arg in
 esac
 done
 
-
-if [ "$1" = "-p" ]; then
-	`dirname $0`/androidconfigbuild.sh -p
-	exit 0
-fi
-
 if [ "$OSTYPE" = "msys" ]; then
-	NDKHOST="windows"
-	NDKDIR="/usr/android-sdk-windows/android-ndk-r5b"
+        NDKHOST="windows"
+        NDKDIR="C:/usr/android-sdk-windows/android-ndk-r5b"
 #	NDKDIR="C:/Necessitas/android-ndk-r5b"
 	DEST_DIR_QT=C:/Necessitas/4.8.0
 else
@@ -160,6 +157,9 @@ fi
 #`dirname $0`/androidconfigbuild.sh -l 1 -q 1 -n $NDKDIR -o $NDKHOST -f arm-linux-androideabi -v 4.4.3 -a armeabi-v7a \
 #         -h 1 -x 0 -d 1 -r 0 -m 1 -i $DEST_DIR_QT
 
+if [ "$BUILD_QT"="1" ]; then
+	INSTALL_QT=1
+fi
 
-`dirname $0`/androidconfigbuild.sh -l $CLEAN_QT -q $CONFIGURE_QT -c 1 -n $NDKDIR -o $NDKHOST -f arm-linux-androideabi -v 4.4.3 -a armeabi-v7a \
+`dirname $0`/androidconfigbuild.sh -l $CLEAN_QT -q $CONFIGURE_QT -b $BUILD_QT -k $INSTALL_QT -c $INSTALL_QT -n $NDKDIR -o $NDKHOST -f arm-linux-androideabi -v 4.4.3 -a armeabi-v7a \
          -h 1 -x 1 -d $DEBUG_QT -r $RELEASE_QT -m 0 -i $DEST_DIR_QT

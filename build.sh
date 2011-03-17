@@ -1,5 +1,8 @@
 #!/bin/bash
 
+
+# Redundant!
+
 # Warning :: this will take ages.
 
 # Execute this from a folder where you want to build Qt for Android
@@ -42,13 +45,10 @@ fi
 # RTTI is probably not needed.
 # Exceptions are needed for QtCreator (botan).
 
-`dirname $0`/build-mingw.sh 
-
 if [ "$BUILDRELEASE" == "1" -a "$BUILDDEBUG" == "1" ]; then
 	echo "Error, debug and release build in the same place == bad"
 	exit 1
 fi
-
 
 # There's a bug somewhere here, both debug and release get built?
 if [ "$BUILDRELEASE" == "1" ]; then

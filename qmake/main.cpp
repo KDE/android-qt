@@ -88,6 +88,19 @@ int runQMake(int argc, char **argv)
     // there is a terminal attached. Buffering can make output from stderr and stdout
     // appear out of sync, so force stdout to be unbuffered as well.
     // This is particularly important for things like QtCreator and scripted builds.
+	int i;
+	for( i = 0; i < argc; ++i )
+	{
+		printf("argv[%d]=%s\n",i,argv[i]);
+                // Fudge this path to make things go wrong.
+/*                if( !strcmp(argv[i],"QMAKE_ABSOLUTE_SOURCE_PATH=C:/usr/latest-git/android-qt/mingw-android-lighthouse") )
+                {
+                    memmove(argv[i]+strlen("QMAKE_ABSOLUTE_SOURCE_PATH="),
+                            argv[i]+strlen("QMAKE_ABSOLUTE_SOURCE_PATH=C:"),
+                            strlen("/usr/latest-git/android-qt/mingw-android-lighthouse")+1);
+                       printf("fugded argv[%d]=%s\n",i,argv[i]);
+                } */
+	}
     setvbuf(stdout, (char *)NULL, _IONBF, 0);
 
     // parse command line

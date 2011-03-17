@@ -10,6 +10,8 @@ export ANDROID_PLATFORM=$NDK_PLATFORM
 #defaults:
 CLEAN_QT=1
 CONFIGURE_QT=1
+BUILD_QT=1
+INSTALL_QT=1
 SHARED_QT=1
 EXCEPTIONS_QT=0
 DEBUG_QT=0
@@ -37,11 +39,17 @@ usage: $0 options
 
 OPTIONS:
    -p      Shows this message
-   -l      Clean Qt.
-   -q      Qt build options.
+   -l      Clean qt
+   -q      Qt build options
                    0 - don't configure qt (only compile) default
                    1 - configure qt and compile qt
-   -c      Patch qt.
+   -b      Build qt
+                   0 - don't build
+                   1 - build
+   -s      Install qt
+                   0 - don't install
+                   1 - install
+   -c      Patch qt
                    0 - don't patch qt (used to make the installer)
                    1 - patch qt (default)
    -n      NDK root. Default "$NDK_ROOT"
@@ -71,7 +79,7 @@ EOF
 
 INSTSUFFIX=""
 CFGOPTIONS=""
-while getopts "p:l:q:c:n:o:f:v:a:h:x:d:r:m:i:" arg; do
+while getopts "p:l:q:b:k:c:n:o:f:v:a:h:x:d:r:m:i:" arg; do
 case $arg in
 	p)
 		help
@@ -82,6 +90,12 @@ case $arg in
 		;;
 	q)
 		CONFIGURE_QT=$OPTARG
+		;;
+	b)
+		BUILD_QT=$OPTARG
+		;;
+	k)
+		INSTALL_QT=$OPTARG
 		;;
 	c)
 		PATCH_QT=$OPTARG
@@ -229,44 +243,45 @@ fi
 
 # This should loop until make succeeds, Workaround for Cygwin/MSYS
 # couldn't commit heap memory error
-make -f $MAKEFILE -j 9
-# make mocables wasn't being done on the latest official Git, so just in-case
-# it's the same on android-lighthouse, I force it.
-pushd .; cd /usr/Qt/Git/src/corelib; make -f $MOCABLESMAKEFILE mocables; make; popd
-make -f $MAKEFILE -j 9
-pushd .; cd /usr/Qt/Git/src/corelib; make -f $MOCABLESMAKEFILE mocables; make; popd
-
-make -f $MAKEFILE -j 9
-while [ "$?" != "0" ]
-do
-	if [ -f /usr/break-make ]; then
-		echo "Detected break-make"
-		rm -f /usr/break-make
-		exit 1
-	fi
+if [ "$BUILD_QT" = "1" ]; then
 	make -f $MAKEFILE -j 9
-done
+	# make mocables wasn't being done on the latest official Git, so just in-case
+	# it's the same on android-lighthouse, I force it.
+	pushd .; cd /usr/Qt/Git/src/corelib; make -f $MOCABLESMAKEFILE mocables; make; popd
+	make -f $MAKEFILE -j 9
+	pushd .; cd /usr/Qt/Git/src/corelib; make -f $MOCABLESMAKEFILE mocables; make; popd
+	make -f $MAKEFILE -j 9
+	while [ "$?" != "0" ]
+	do
+		if [ -f /usr/break-make ]; then
+			echo "Detected break-make"
+			rm -f /usr/break-make
+			exit 1
+		fi
+		make -f $MAKEFILE -j 9
+	done
 
-if [ $PATCH_QT = 1 ]
-then
-    if [ "$OSTYPE" = "msys" ]; then
-        $SRC_DIR_QT/qpatch.exe $SRC_DIR_QT/files-to-patch-android-mingw $DEST_DIR_QT $PWD
-    else
-        $SRC_DIR_QT/qpatch $SRC_DIR_QT/files-to-patch-android $DEST_DIR_QT $PWD
-    fi
+	if [ $PATCH_QT = 1 ]
+	then
+	    if [ "$OSTYPE" = "msys" ]; then
+	        $SRC_DIR_QT/qpatch.exe $SRC_DIR_QT/files-to-patch-android-mingw $DEST_DIR_QT $PWD
+	    else
+	        $SRC_DIR_QT/qpatch $SRC_DIR_QT/files-to-patch-android $DEST_DIR_QT $PWD
+	    fi
+	fi
 fi
 
 #INSTALL_ROOT=$QT_SRC_DIR/qt/$TARGET_ARCH make install
-
-make -f $MAKEFILE install
-while [ "$?" != "0" ]
-do
-	if [ -f /usr/break-make ]; then
-		echo "Detected break-make"
-		rm -f /usr/break-make
-		exit 1
-	fi
+if [ "$INSTALL_QT" = "1" ] ; then
 	make -f $MAKEFILE install
-done
-
-$SRC_DIR_QT/copy-private-headers.sh include $DEST_DIR_QT/private-headers
+	while [ "$?" != "0" ]
+	do
+		if [ -f /usr/break-make ]; then
+			echo "Detected break-make"
+			rm -f /usr/break-make
+			exit 1
+		fi
+		make -f $MAKEFILE install
+	done
+	$SRC_DIR_QT/copy-private-headers.sh include $DEST_DIR_QT/private-headers
+fi

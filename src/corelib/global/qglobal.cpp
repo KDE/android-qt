@@ -2584,6 +2584,15 @@ QByteArray qgetenv(const char *varName)
     Q_ASSERT(buffer.endsWith('\0'));
     buffer.chop(1);
     return buffer;
+#elif defined(__MINGW32__)
+	QByteArray temp = QByteArray(::getenv(varName));
+	temp.replace("\\","/");
+	qDebug("varname %s = %s\n",varName,temp.constData());
+	if( !strcmp(varName,"ANDROID_NDK_ROOT") )
+	{
+		qDebug("Break me");
+	}
+        return temp;
 #else
     return QByteArray(::getenv(varName));
 #endif

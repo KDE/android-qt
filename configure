@@ -172,6 +172,14 @@ UNAME_MACHINE=`(uname -m) 2>/dev/null` || UNAME_MACHINE=unknown
 UNAME_RELEASE=`(uname -r) 2>/dev/null` || UNAME_RELEASE=unknown
 UNAME_SYSTEM=`(uname -s) 2>/dev/null`  || UNAME_SYSTEM=unknown
 UNAME_VERSION=`(uname -v) 2>/dev/null` || UNAME_VERSION=unknown
+XPLATFORM_ANDROID=no    # early detection of Android, needed for linuxfb and linuxtp.
+for ARG in $@
+do
+    if [ "$ARG" == "android-g++" ]; then
+        XPLATFORM_ANDROID=yes
+    fi
+done
+echo "XPLATFORM_ANDROID=$XPLATFORM_ANDROID"
 
 # detect the "echo without newline" style. usage: echo $ECHO_N "<string>$ECHO_C"
 if echo '\c' | grep '\c' >/dev/null; then
@@ -662,7 +670,8 @@ cp "$QMAKE_VARS_FILE" "$outpath/config.tests/.qmake.cache"
 QMakeVar add styles "cde mac motif plastique cleanlooks windows"
 QMakeVar add decorations "default windows styled"
 QMakeVar add mouse-drivers "pc"
-if [ "$UNAME_SYSTEM" = "Linux" ] ; then
+
+if [ "$UNAME_SYSTEM" = "Linux" -o "$XPLATFORM_ANDROID" = "yes" ] ; then
     QMakeVar add gfx-drivers "linuxfb"
     QMakeVar add mouse-drivers "linuxtp"
 fi
@@ -840,7 +849,6 @@ XPLATFORM=              # This seems to be the QMAKESPEC, like "linux-g++" or "s
 XPLATFORM_MINGW=no      # Whether target platform is MinGW (win32-g++*)
 XPLATFORM_SYMBIAN=no    # Whether target platform is SYMBIAN (*symbian*)
 XPLATFORM_SYMBIAN_SBSV2=no # Whether target platform is SYMBIAN_SBSV2 (symbian-sbsv2)
-XPLATFORM_ANDROID=no    # Whether target platform is Android
 PLATFORM=$QMAKESPEC
 QT_CROSS_COMPILE=no
 OPT_CONFIRM_LICENSE=no
@@ -3307,7 +3315,12 @@ fi
 
 QMAKE_CONF_COMPILER=`getQMakeConf "$XQMAKESPEC" | grep "^QMAKE_CXX[^_A-Z0-9]" | sed "s,.* *= *\(.*\)$,\1," | tail -1`
 echo "getQMakeConf returns QMAKE_CONF_COMPILER of $QMAKE_CONF_COMPILER"
+# Repeat what mkspecs for android does. This is horrible, but I can't see a way around it given what getQMakeConf does.
+NDK_TOOLCHAIN_PATH=$ANDROID_NDK_ROOT/toolchains/$ANDROID_NDK_TOOLCHAIN_PREFIX-$ANDROID_NDK_TOOLCHAIN_VERSION/prebuilt/$ANDROID_NDK_HOST
+NDK_TOOLCHAIN_PREFIX=arm-linux-androideabi
 QMAKE_CONF_COMPILER=${QMAKE_CONF_COMPILER//\$\$/\$}
+echo "NDK_TOOLCHAIN_PATH=$NDK_TOOLCHAIN_PATH"
+echo "NDK_TOOLCHAIN_PREFIX=$NDK_TOOLCHAIN_PREFIX"
 eval QMAKE_CONF_COMPILER=$QMAKE_CONF_COMPILER
 echo "..which resolves to $QMAKE_CONF_COMPILER"
 TEST_COMPILER="$CXX"
@@ -8929,6 +8942,7 @@ EOF
             cat >>"${OUTDIR}/Makefile" <<EOF
 QMAKE = "$QMAKE"
 all clean install qmake first Makefile: FORCE
+	echo "Calling \$(QMAKE) \$QMAKE_ARGS -o $OUTDIR $a"
 	\$(QMAKE) $QMAKE_ARGS -o "$OUTDIR" "$a"
 	cd "$OUTDIR"
 	\$(MAKE) \$@
