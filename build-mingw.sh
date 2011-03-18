@@ -157,8 +157,8 @@ fi
 #`dirname $0`/androidconfigbuild.sh -l 1 -q 1 -n $NDKDIR -o $NDKHOST -f arm-linux-androideabi -v 4.4.3 -a armeabi-v7a \
 #         -h 1 -x 0 -d 1 -r 0 -m 1 -i $DEST_DIR_QT
 
-if [ "$BUILD_QT"="1" ]; then
-	INSTALL_QT=1
+if [ "$BUILD_QT"="0" ]; then
+	INSTALL_QT=0
 fi
 
 `dirname $0`/androidconfigbuild.sh -l $CLEAN_QT -q $CONFIGURE_QT -b $BUILD_QT -k $INSTALL_QT -c $INSTALL_QT -n $NDKDIR -o $NDKHOST -f arm-linux-androideabi -v 4.4.3 -a armeabi-v7a \

@@ -285,7 +285,6 @@ static QStringList split_arg_list(QString params)
 
 static QStringList split_value_list(const QString &vals)
 {
-	qDebug() << "split_value_list" << vals;
     QString build;
     QStringList ret;
     QStack<char> quote;

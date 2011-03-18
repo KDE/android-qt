@@ -52,6 +52,21 @@ relpath=`(cd "$relpath"; /bin/pwd)`
 # the current directory is the "build tree" or "object tree"
 outpath=`/bin/pwd`
 
+
+
+# Fix the paths. pwd -W returns C:/whatever
+if [ "msys" = "$OSTYPE" ]; then
+    pushd . > /dev/null
+    cd $relpath
+    relpath=`pwd -W`
+    cd $outpath
+    outpath=`pwd -W`
+    popd > /dev/null
+fi
+
+echo $relpath
+echo $outpath
+
 #license file location
 LICENSE_FILE="$QT_LICENSE_FILE"
 [ -z "$LICENSE_FILE" ] && LICENSE_FILE="$HOME/.qt-license"
