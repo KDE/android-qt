@@ -52,8 +52,8 @@ fi
 
 # There's a bug somewhere here, both debug and release get built?
 if [ "$BUILDRELEASE" == "1" ]; then
-	`dirname $0`/build-mingw.sh -c $CLEAN -q $CONFIGURE -h 1 -x 1 -r 1 -d 0 -m 1 -o C:/Qt/4.7.2-official -s /usr/Qt/Git -i C:/Necessitas/4.8.0
+	`dirname $0`/build-mingw.sh -c $CLEAN -q $CONFIGURE -h 1 -x 1 -r 1 -d 0 -m 1 -o C:/Qt/4.7.2-official -s /usr/Qt/Git -i C:/Necessitas/4.8.0-ShXcR
 fi
 if [ "$BUILDDEBUG" == "1" ]; then
-	`dirname $0`/build-mingw.sh -c $CLEAN -q $CONFIGURE -h 1 -x 1 -r 0 -d 1 -m 1 -o C:/Qt/4.7.2-official -s /usr/Qt/Git -i C:/Necessitas/4.8.0
+	`dirname $0`/build-mingw.sh -c $CLEAN -q $CONFIGURE -h 1 -x 1 -r 0 -d 1 -m 1 -o C:/Qt/4.7.2-official -s /usr/Qt/Git -i C:/Necessitas/4.8.0-ShXcD
 fi
