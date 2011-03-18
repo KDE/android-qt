@@ -22,10 +22,10 @@ resource_combine {
 rcc.commands = "$$QMAKE_RCC" $$QMAKE_RESOURCE_FLAGS "${QMAKE_FILE_IN}" -o "${QMAKE_FILE_OUT}"
 rcc.depend_command = "$$QMAKE_RCC" -list $$QMAKE_RESOURCE_FLAGS "${QMAKE_FILE_IN}"
 rcc.input = RESOURCES
-rcc.variable_out = GENERATED_FILES
+rcc.variable_out = SOURCES
 rcc.name = RCC ${QMAKE_FILE_IN}
 silent:rcc.commands = @echo rcc "${QMAKE_FILE_IN}" && $$rcc.commands
 QMAKE_EXTRA_COMPILERS += rcc
 # Without this, oly SRC/RCC_DIR is in the includes, with this, DEST/RCC_DIR ends up there too.
 # Instead of adding both, should figure out why SRC/RCC_DIR is being used instead of DEST/RCC_DIR.
-INCLUDEPATH += $$OUT_PWD/$$RCC_DIR
+# INCLUDEPATH += $$OUT_PWD/$$RCC_DIR
