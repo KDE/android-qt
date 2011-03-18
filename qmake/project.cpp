@@ -2891,7 +2891,6 @@ QMakeProject::doVariableReplaceExpand(const QString &str, QMap<QString, QStringL
                 QStringList replacement;
                 if(var_type == ENVIRON) {
                     replacement = split_value_list(QString::fromLocal8Bit(qgetenv(var.toLatin1().constData())));
-					qDebug() << "replacement " << replacement;
                 } else if(var_type == PROPERTY) {
                     if(prop)
                         replacement = split_value_list(prop->value(var));

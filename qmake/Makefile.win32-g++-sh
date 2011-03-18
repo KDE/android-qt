@@ -19,7 +19,7 @@ endif
 # specific stuff for mingw g++ make
 #
 CXX	    =	g++
-CFLAGS	    =	-c -o$@ -O0 -ggdb \
+CFLAGS  =	-c -o$@ -O \
 		-I. -Igenerators -Igenerators/unix \
 		-Igenerators/win32 -Igenerators/mac \
 		-Igenerators/symbian \
@@ -34,7 +34,7 @@ CFLAGS	    =	-c -o$@ -O0 -ggdb \
 		-DQT_BUILD_QMAKE -DQT_NO_THREAD -DQT_NO_QOBJECT -DQT_NO_GEOM_VARIANT -DQT_NO_DATASTREAM \
 		-DQT_BOOTSTRAPPED -DQLIBRARYINFO_EPOCROOT
 CXXFLAGS    =   $(CFLAGS)
-LFLAGS	    = -static-libgcc -static-libstdc++
+LFLAGS	    = -static-libgcc -static-libstdc++ -s
 LIBS	    = -lole32 -luuid
 LINKQMAKE   =	g++ $(LFLAGS) -o qmake.exe $(OBJS) $(QTOBJS) $(LIBS)
 ADDCLEAN    =

@@ -158,7 +158,7 @@ qmake.path=$$[QT_INSTALL_BINS]
 #   qmake.files=$$QT_BUILD_TREE/bin/qmake
 #}
 
-# Untested... may fail always.
+#This seems to be ok though...
 qmake.files  = $$QT_BUILD_TREE/bin/qmake
 qmake.files += $$QT_BUILD_TREE/bin/qmake.exe
 
@@ -169,10 +169,6 @@ mkspecs.path=$$[QT_INSTALL_DATA]/mkspecs
 mkspecs.files=$$QT_BUILD_TREE/mkspecs/qconfig.pri $$files($$QT_SOURCE_TREE/mkspecs/*)
 mkspecs.files -= $$QT_SOURCE_TREE/mkspecs/modules
 unix { 
-#   DEFAULT_QMAKESPEC = $$QMAKESPEC
-#   DEFAULT_QMAKESPEC ~= s,^.*mkspecs/,,g
-#   mkspecs.commands += $(DEL_FILE) $(INSTALL_ROOT)$$mkspecs.path/default; $(SYMLINK) $$DEFAULT_QMAKESPEC $(INSTALL_ROOT)$$mkspecs.path/default
-#   mkspecs.files -= $$QT_SOURCE_TREE/mkspecs/default
    DEFAULT_QMAKESPEC = $$QMAKESPEC
    mkspecs.commands += $(DEL_DIR) $(INSTALL_ROOT)$$mkspecs.path/default; $(MKDIR) $(INSTALL_ROOT)$$mkspecs.path/default; $(COPY_FILE) $$DEFAULT_QMAKESPEC/* $(INSTALL_ROOT)$$mkspecs.path/default/
    mkspecs.files -= $$QT_SOURCE_TREE/mkspecs/default

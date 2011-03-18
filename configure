@@ -52,8 +52,6 @@ relpath=`(cd "$relpath"; /bin/pwd)`
 # the current directory is the "build tree" or "object tree"
 outpath=`/bin/pwd`
 
-
-
 # Fix the paths. pwd -W returns C:/whatever
 if [ "msys" = "$OSTYPE" ]; then
     pushd . > /dev/null
@@ -187,7 +185,8 @@ UNAME_MACHINE=`(uname -m) 2>/dev/null` || UNAME_MACHINE=unknown
 UNAME_RELEASE=`(uname -r) 2>/dev/null` || UNAME_RELEASE=unknown
 UNAME_SYSTEM=`(uname -s) 2>/dev/null`  || UNAME_SYSTEM=unknown
 UNAME_VERSION=`(uname -v) 2>/dev/null` || UNAME_VERSION=unknown
-XPLATFORM_ANDROID=no    # early detection of Android, needed for linuxfb and linuxtp.
+# early detection of Android, needed for linuxfb and linuxtp.
+XPLATFORM_ANDROID=no
 for ARG in $@
 do
     if [ "$ARG" == "android-g++" ]; then
@@ -685,7 +684,6 @@ cp "$QMAKE_VARS_FILE" "$outpath/config.tests/.qmake.cache"
 QMakeVar add styles "cde mac motif plastique cleanlooks windows"
 QMakeVar add decorations "default windows styled"
 QMakeVar add mouse-drivers "pc"
-
 if [ "$UNAME_SYSTEM" = "Linux" -o "$XPLATFORM_ANDROID" = "yes" ] ; then
     QMakeVar add gfx-drivers "linuxfb"
     QMakeVar add mouse-drivers "linuxtp"
@@ -5866,11 +5864,6 @@ if [ "$PLATFORM_X11" = "yes" -o "$XPLATFORM_MINGW" = "yes" ]; then
     fi
 fi # X11/MINGW OpenGL
 
-# Command line limits prevent this from building on MSYS.
-# Should shorten .obj/debug_shared to .ods and try again.
-# Trying to avoid problem using shorter paths
-# case "$PLATFORM" in win32-g++*) CFG_WEBKIT=no ;; esac
-
 # X11
 if [ "$PLATFORM_X11" = "yes" ]; then
     # auto-detect Xcursor support
@@ -7527,11 +7520,11 @@ else
 fi
 
 if [ "$CFG_WEBKIT" = "auto" ]; then
-    echo "FUCK"
     CFG_WEBKIT="$canBuildWebKit"
 fi
 
-CFG_WEBKIT=no
+CFG_WEBKIT=yes
+# CFG_WEBKIT=no
 
 if [ "$CFG_WEBKIT" != "no" ]; then
     # This include takes care of adding "webkit" to QT_CONFIG.
@@ -8957,7 +8950,6 @@ EOF
             cat >>"${OUTDIR}/Makefile" <<EOF
 QMAKE = "$QMAKE"
 all clean install qmake first Makefile: FORCE
-	echo "Calling \$(QMAKE) \$QMAKE_ARGS -o $OUTDIR $a"
 	\$(QMAKE) $QMAKE_ARGS -o "$OUTDIR" "$a"
 	cd "$OUTDIR"
 	\$(MAKE) \$@

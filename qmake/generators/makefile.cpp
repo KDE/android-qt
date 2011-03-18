@@ -187,18 +187,12 @@ MakefileGenerator::verifyCompilers()
             ++i;
     }
 }
-//#define DEBUG_IT
+
 void
 MakefileGenerator::initOutPaths()
 {
-#ifdef DEBUG_IT
-	printf("EXTRA_COMPILER check (1)\n");
-#endif
     if(init_opath_already)
         return;
-#ifdef DEBUG_IT
-	printf("EXTRA_COMPILER check (2)\n");
-#endif
     verifyCompilers();
     init_opath_already = true;
     QMap<QString, QStringList> &v = project->variables();
@@ -227,9 +221,6 @@ MakefileGenerator::initOutPaths()
         if(asp.isEmpty() || asp == Option::output_dir) //if they're the same, why bother?
             v["QMAKE_ABSOLUTE_SOURCE_PATH"].clear();
     }
-#ifdef DEBUG_IT
-	printf("EXTRA_COMPILER check (3)\n");
-#endif
 
     QString currentDir = qmake_getpwd(); //just to go back to
 
@@ -269,9 +260,6 @@ MakefileGenerator::initOutPaths()
     }
 
     //out paths from the extra compilers
-#ifdef DEBUG_IT
-	printf("EXTRA_COMPILER check\n");
-#endif
     const QStringList &quc = project->values("QMAKE_EXTRA_COMPILERS");
     for(QStringList::ConstIterator it = quc.begin(); it != quc.end(); ++it) {
         QString tmp_out = project->values((*it) + ".output").first();
@@ -284,9 +272,6 @@ MakefileGenerator::initOutPaths()
                 (*input) = fileFixify((*input), Option::output_dir, Option::output_dir);
                 QString path = unescapeFilePath(replaceExtraCompilerVariables(tmp_out, (*input), QString()));
                 path = Option::fixPathToTargetOS(path);
-#ifdef DEBUG_IT
-				printf( "EXTRA_COMPILER, path is %s\n",qPrintable(path));
-#endif
                 int slash = path.lastIndexOf(Option::dir_sep);
                 if(slash != -1) {
                     path = path.left(slash);
@@ -757,12 +742,7 @@ MakefileGenerator::init()
         }
         QList<QMakeLocalFileName> deplist;
         for(QStringList::Iterator it = incDirs.begin(); it != incDirs.end(); ++it)
-		{
-#ifdef DEBUG_IT
-			debug_msg(1, "deplist: %s",(*it).toLatin1().constData());
-#endif
             deplist.append(QMakeLocalFileName(unescapeFilePath((*it))));
-		}
         QMakeSourceFileInfo::setDependencyPaths(deplist);
         debug_msg(1, "Dependency Directories: %s", incDirs.join(" :: ").toLatin1().constData());
         //cache info

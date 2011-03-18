@@ -615,20 +615,10 @@ bool Option::postProcessProject(QMakeProject *project)
         Option::sysenv_mod = project->first("QMAKE_MOD_SYSTEM_ENV");
     return true;
 }
-//#define DEBUG_IT
+
 QString
 Option::fixString(QString string, uchar flags)
 {
-#ifdef DEBUG_IT
-    QString orig_string = string;
-    int index = string.indexOf("qprintdialog");
-    bool debugIt = false;
-    if( index != -1 || string.startsWith(QString("/usr/latest-git/")) )
-    {
-        debugIt = true;
-        qDebug() << "Option::fixString called with BAD " << string;
-    }
-#endif
     //const QString orig_string = string;
     static QHash<FixStringCacheKey, QString> *cache = 0;
     if(!cache) {
@@ -638,10 +628,7 @@ Option::fixString(QString string, uchar flags)
     FixStringCacheKey cacheKey(string, flags);
     if(cache->contains(cacheKey)) {
 	const QString ret = cache->value(cacheKey);
-#ifdef DEBUG_IT
-        if( debugIt )
-	qDebug() << "FixString (cached) " << orig_string << "->" << ret;
-#endif
+	//qDebug() << "Fix (cached) " << orig_string << "->" << ret;
         return ret;
     }
 
@@ -679,10 +666,7 @@ Option::fixString(QString string, uchar flags)
         string = string.mid(1, string.length()-2);
 
     //cache
-#ifdef DEBUG_IT
-    if( debugIt )
-    qDebug() << "FixString" << orig_string << "->" << string;
-#endif
+    //qDebug() << "Fix" << orig_string << "->" << string;
     cache->insert(cacheKey, string);
     return string;
 }

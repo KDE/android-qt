@@ -21,7 +21,7 @@ PATCH_QT=0
 
 if [ "$OSTYPE" = "msys" ]; then
 	PLATFORM="-platform win32-g++"
-	DEST_DIR_QT=C:/Necessitas/4.8.0-pre
+	DEST_DIR_QT=C:/Necessitas/Android/4.8.0
 else
 	PLATFORM="-platform linux-g++"
 	DEST_DIR_QT=/data/data/eu.licentia.necessitas.ministro/files/qt
@@ -172,9 +172,12 @@ fi
 
 if [ "$MODIFY_DEST_DIR_QT" -eq "1" ]; then
 	DEST_DIR_QT=${DEST_DIR_QT}-${INSTSUFFIX}
+else
+	echo "Please sepcify -m 1 to $0 to prevent configuration pollution. Exiting."
+	exit 1
 fi
 
-echo New install of Qt will be to $DEST_DIR_QT
+echo "New install of Qt will be to $DEST_DIR_QT"
 
 # Please set the following evn vars correctly !!!
 export ANDROID_NDK_ROOT=$NDK_ROOT
@@ -244,12 +247,6 @@ fi
 # This should loop until make succeeds, Workaround for Cygwin/MSYS
 # couldn't commit heap memory error
 if [ "$BUILD_QT" = "1" ]; then
-	make -f $MAKEFILE -j 9
-	# make mocables wasn't being done on the latest official Git, so just in-case
-	# it's the same on android-lighthouse, I force it.
-	pushd .; cd /usr/Qt/Git/src/corelib; make -f $MOCABLESMAKEFILE mocables; make; popd
-	make -f $MAKEFILE -j 9
-	pushd .; cd /usr/Qt/Git/src/corelib; make -f $MOCABLESMAKEFILE mocables; make; popd
 	make -f $MAKEFILE -j 9
 	while [ "$?" != "0" ]
 	do

@@ -132,7 +132,6 @@ if [ "$OSTYPE" = "msys" ]; then
         NDKHOST="windows"
         NDKDIR="C:/usr/android-sdk-windows/android-ndk-r5b"
 #	NDKDIR="C:/Necessitas/android-ndk-r5b"
-	DEST_DIR_QT=C:/Necessitas/4.8.0
 else
 	NDKHOST="linux-x86"
 	# On Linux, with ~ in the NDK path, g++ fails to find stdint.h (-I~/android/android-sdk... fail?!)
@@ -143,7 +142,6 @@ else
 	NDKDIR=`pwd`
 	popd > /dev/null
 	echo "NDKDIR is $NDKDIR"
-	DEST_DIR_QT=/data/data/eu.licentia.necessitas.ma.ministro/files/qt
 fi
 
 # Makes {shared}*{debug,release}*{exceptions,noexceptions}, all armv7-a, and no thumb.
