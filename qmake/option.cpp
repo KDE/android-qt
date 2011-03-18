@@ -620,8 +620,14 @@ QString
 Option::fixString(QString string, uchar flags)
 {
 #ifdef DEBUG_IT
-	QString orig_string = string;
-	qDebug("Option::fixString called with %s\n",qPrintable(string));
+    QString orig_string = string;
+    int index = string.indexOf("qprintdialog");
+    bool debugIt = false;
+    if( index != -1 || string.startsWith(QString("/usr/latest-git/")) )
+    {
+        debugIt = true;
+        qDebug() << "Option::fixString called with BAD " << string;
+    }
 #endif
     //const QString orig_string = string;
     static QHash<FixStringCacheKey, QString> *cache = 0;
@@ -633,6 +639,7 @@ Option::fixString(QString string, uchar flags)
     if(cache->contains(cacheKey)) {
 	const QString ret = cache->value(cacheKey);
 #ifdef DEBUG_IT
+        if( debugIt )
 	qDebug() << "FixString (cached) " << orig_string << "->" << ret;
 #endif
         return ret;
@@ -673,6 +680,7 @@ Option::fixString(QString string, uchar flags)
 
     //cache
 #ifdef DEBUG_IT
+    if( debugIt )
     qDebug() << "FixString" << orig_string << "->" << string;
 #endif
     cache->insert(cacheKey, string);
