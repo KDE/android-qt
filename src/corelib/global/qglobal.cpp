@@ -2584,6 +2584,8 @@ QByteArray qgetenv(const char *varName)
     Q_ASSERT(buffer.endsWith('\0'));
     buffer.chop(1);
     return buffer;
+#elif defined(__MINGW32__)
+    return QByteArray(::getenv(varName)).replace("\\","/");
 #else
     return QByteArray(::getenv(varName));
 #endif

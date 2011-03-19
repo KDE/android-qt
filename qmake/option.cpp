@@ -125,9 +125,9 @@ static Option::QMAKE_MODE default_mode(QString progname)
     int s = progname.lastIndexOf(QDir::separator());
     if(s != -1)
         progname = progname.right(progname.length() - (s + 1));
-    if(progname == "qmakegen")
+    if( (progname == "qmakegen") || (progname == "qmakegen.exe") )
         return Option::QMAKE_GENERATE_PROJECT;
-    else if(progname == "qt-config")
+    else if( (progname == "qt-config") || (progname == "qt-config.exe") )
         return Option::QMAKE_QUERY_PROPERTY;
     return Option::QMAKE_GENERATE_MAKEFILE;
 }
@@ -531,6 +531,8 @@ Option::init(int argc, char **argv)
             }
 #endif
         }
+        if(!Option::mkfile::qmakespec.isNull())
+            Option::mkfile::qmakespec = QDir::fromNativeSeparators(Option::mkfile::qmakespec);
     } else if (Option::qmake_mode == Option::QMAKE_GENERATE_PROJECT) {
 #if defined(Q_OS_MAC)
         Option::host_mode = Option::HOST_MACX_MODE;
@@ -649,16 +651,12 @@ Option::fixString(QString string, uchar flags)
     }
 
     if(string.length() > 2 && string[0].isLetter() && string[1] == QLatin1Char(':'))
-        string[0] = string[0].toLower();
+        string[0] = string[0].toUpper();
 
     //fix separators
     Q_ASSERT(!((flags & Option::FixPathToLocalSeparators) && (flags & Option::FixPathToTargetSeparators)));
     if(flags & Option::FixPathToLocalSeparators) {
-#if defined(Q_OS_WIN32)
-        string = string.replace('/', '\\');
-#else
-        string = string.replace('\\', '/');
-#endif
+        string = QDir::toNativeSeparators(string);
     } else if(flags & Option::FixPathToTargetSeparators) {
         string = string.replace('/', Option::dir_sep).replace('\\', Option::dir_sep);
     }

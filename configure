@@ -52,6 +52,16 @@ relpath=`(cd "$relpath"; /bin/pwd)`
 # the current directory is the "build tree" or "object tree"
 outpath=`/bin/pwd`
 
+# Fix the paths. pwd -W returns C:/whatever
+if [ "msys" = "$OSTYPE" ]; then
+    pushd . > /dev/null
+    cd $relpath
+    relpath=`pwd -W`
+    cd $outpath
+    outpath=`pwd -W`
+    popd > /dev/null
+fi
+
 #license file location
 LICENSE_FILE="$QT_LICENSE_FILE"
 [ -z "$LICENSE_FILE" ] && LICENSE_FILE="$HOME/.qt-license"
@@ -172,6 +182,15 @@ UNAME_MACHINE=`(uname -m) 2>/dev/null` || UNAME_MACHINE=unknown
 UNAME_RELEASE=`(uname -r) 2>/dev/null` || UNAME_RELEASE=unknown
 UNAME_SYSTEM=`(uname -s) 2>/dev/null`  || UNAME_SYSTEM=unknown
 UNAME_VERSION=`(uname -v) 2>/dev/null` || UNAME_VERSION=unknown
+# early detection of Android, needed for linuxfb and linuxtp.
+XPLATFORM_ANDROID=no
+for ARG in $@
+do
+    if [ "$ARG" == "android-g++" ]; then
+        XPLATFORM_ANDROID=yes
+    fi
+done
+echo "XPLATFORM_ANDROID=$XPLATFORM_ANDROID"
 
 # detect the "echo without newline" style. usage: echo $ECHO_N "<string>$ECHO_C"
 if echo '\c' | grep '\c' >/dev/null; then
@@ -209,6 +228,11 @@ elif [ -f "$relpath"/src/gui/kernel/qapplication_qws.cpp ]; then
         # This must be the embedded package, since the Qt/Mac source files are not present
 	PLATFORM_QWS=yes
     fi
+fi
+if [ "msys" = "$OSTYPE" ]; then
+    BUILD_ON_MSYS=yes
+else
+    BUILD_ON_MSYS=no
 fi
 
 #-----------------------------------------------------------------------------
@@ -657,7 +681,7 @@ cp "$QMAKE_VARS_FILE" "$outpath/config.tests/.qmake.cache"
 QMakeVar add styles "cde mac motif plastique cleanlooks windows"
 QMakeVar add decorations "default windows styled"
 QMakeVar add mouse-drivers "pc"
-if [ "$UNAME_SYSTEM" = "Linux" ] ; then
+if [ "$UNAME_SYSTEM" = "Linux" -o "$XPLATFORM_ANDROID" = "yes" ] ; then
     QMakeVar add gfx-drivers "linuxfb"
     QMakeVar add mouse-drivers "linuxtp"
 fi
@@ -1614,6 +1638,7 @@ while [ "$#" -gt 0 ]; do
         case `basename "$XPLATFORM"` in win32-g++*) XPLATFORM_MINGW=yes;; esac
         case "$XPLATFORM" in *symbian*) XPLATFORM_SYMBIAN=yes;; esac
         case "$XPLATFORM" in symbian-sbsv2) XPLATFORM_SYMBIAN_SBSV2=yes;; esac
+        case "$XPLATFORM" in *android*) XPLATFORM_ANDROID=yes;; esac
         ;;
     debug-and-release)
         if [ "$VAL" = "yes" ] || [ "$VAL" = "no" ]; then
@@ -2513,6 +2538,18 @@ if [ "$CFG_SILENT" = "yes" ]; then
     QMAKE_CONFIG="$QMAKE_CONFIG silent"
 fi
 
+# Without this hack, OpenGLES2 test fails for Android:
+# (undefined reference to `android::egl_get_image_for_current_context(void*))')
+# See http://blog.vlad1.com/2010/03/19/things-i-learned-today-android-opengl-edition-2/
+# Hack is to add -Wl,-allow-shlib-undefined. Should do this for Android only though, but
+# at the minute I'm not sure if we're QPA,desktop or all of the above, so I've applied
+# it globally to all of the OpenGLES2 compile-tests. Very unlikely that it'd trip up
+# other platforms too.
+
+if [ "$XPLATFORM_ANDROID" = "yes" ]; then
+    ANDROID_GLES2_LFLAGS=-Wl,-allow-shlib-undefined
+fi
+
 # if the source tree is different from the build tree,
 # symlink or copy part of the sources
 if [ "$OPT_SHADOW" = "yes" ]; then
@@ -2574,8 +2611,9 @@ if [ "$OPT_SHADOW" = "yes" ]; then
     # symlink the mkspecs directory
     mkdir -p "$outpath/mkspecs"
     rm -rf "$outpath"/mkspecs/*
-    ln -s "$relpath"/mkspecs/* "$outpath/mkspecs"
-    rm -f "$outpath/mkspecs/default"
+    cp -rf "$relpath"/mkspecs/* "$outpath/mkspecs"
+    # ln -s "$relpath"/mkspecs/* "$outpath/mkspecs"
+    rm -rf "$outpath/mkspecs/default"
 
     ShadowMkspecs()
     {
@@ -2594,19 +2632,19 @@ if [ "$OPT_SHADOW" = "yes" ]; then
 
     # symlink the doc directory
     rm -rf "$outpath/doc"
-    ln -s "$relpath/doc" "$outpath/doc"
+    cp -rf "$relpath/doc" "$outpath/doc"
 
     # make sure q3porting.xml can be found
     mkdir -p "$outpath/tools/porting/src"
     rm -f "$outpath/tools/porting/src/q3porting.xml"
-    ln -s "$relpath/tools/porting/src/q3porting.xml" "$outpath/tools/porting/src"
+    cp -rf "$relpath/tools/porting/src/q3porting.xml" "$outpath/tools/porting/src"
 fi
 
 # symlink fonts to be able to run application from build directory
 if [ "$PLATFORM_QWS" = "yes" -o "$PLATFORM_QPA" = "yes" ] && [ ! -d "${outpath}/lib/fonts" ]; then
     if [ "$PLATFORM" = "$XPLATFORM" ]; then
         mkdir -p "${outpath}/lib"
-        ln -s "${relpath}/lib/fonts" "${outpath}/lib/fonts"
+        cp -rf "${relpath}/lib/fonts" "${outpath}/lib/fonts"
     fi
 fi
 
@@ -3311,6 +3349,15 @@ else
 fi
 
 QMAKE_CONF_COMPILER=`getQMakeConf "$XQMAKESPEC" | grep "^QMAKE_CXX[^_A-Z0-9]" | sed "s,.* *= *\(.*\)$,\1," | tail -1`
+echo "getQMakeConf returns QMAKE_CONF_COMPILER of $QMAKE_CONF_COMPILER"
+# Repeat what mkspecs for android does. This is horrible, but I can't see a way around it given what getQMakeConf does.
+NDK_TOOLCHAIN_PATH=$ANDROID_NDK_ROOT/toolchains/$ANDROID_NDK_TOOLCHAIN_PREFIX-$ANDROID_NDK_TOOLCHAIN_VERSION/prebuilt/$ANDROID_NDK_HOST
+NDK_TOOLCHAIN_PREFIX=arm-linux-androideabi
+QMAKE_CONF_COMPILER=${QMAKE_CONF_COMPILER//\$\$/\$}
+echo "NDK_TOOLCHAIN_PATH=$NDK_TOOLCHAIN_PATH"
+echo "NDK_TOOLCHAIN_PREFIX=$NDK_TOOLCHAIN_PREFIX"
+eval QMAKE_CONF_COMPILER=$QMAKE_CONF_COMPILER
+echo "..which resolves to $QMAKE_CONF_COMPILER"
 TEST_COMPILER="$CXX"
 
 [ -z "$TEST_COMPILER" ] && TEST_COMPILER=$QMAKE_CONF_COMPILER
@@ -4783,7 +4830,7 @@ if true; then ###[ '!' -f "$outpath/bin/qmake" ];
 #Link is not supported for Symbian build system
         cp -a mkspecs/`echo $XQMAKESPEC | sed "s,^${relpath}/mkspecs/,,"` mkspecs/default
     else
-        ln -s `echo $XQMAKESPEC | sed "s,^${relpath}/mkspecs/,,"` mkspecs/default
+        cp -rf mkspecs/`echo $XQMAKESPEC | sed "s,^${relpath}/mkspecs/,,"` mkspecs/default
     fi
     # fix makefiles
     for mkfile in GNUmakefile Makefile; do
@@ -4794,7 +4841,11 @@ if true; then ###[ '!' -f "$outpath/bin/qmake" ];
 #           if which qmake >/dev/null 2>&1 && [ -f qmake/qmake.pro ]; then
 #               (cd qmake && qmake) >/dev/null 2>&1 && continue
 #           fi
-            in_mkfile="${mkfile}.unix"
+            if [ "$BUILD_ON_MSYS" = "yes" ]; then
+                in_mkfile="${mkfile}.win32-g++-sh"
+            else
+                in_mkfile="${mkfile}.unix"
+            fi
         fi
         in_mkfile="$relpath/qmake/$in_mkfile"
         mkfile="$outpath/qmake/$mkfile"
@@ -4882,6 +4933,11 @@ if true; then ###[ '!' -f "$outpath/bin/qmake" ];
 		EXTRA_CXXFLAGS="$EXTRA_CXXFLAGS \$(SDK_CFLAGS)"
 		EXTRA_LFLAGS="$EXTRA_LFLAGS \$(SDK_LFLAGS)"
             fi
+        fi
+	# Not sure is needed -DUNICODE for MSYS but it doesn't hurt.
+        if [ "$BUILD_ON_MSYS" = "yes" ]; then
+            EXTRA_CFLAGS="-DUNICODE"
+            EXTRA_CXXFLAGS="-DUNICODE"
         fi
         [ "$CFG_EMBEDDED" != "no" ] && EXTRA_CFLAGS="$EXTRA_CFLAGS -DQWS"
         if [ '!' -z "$D_FLAGS" ]; then
@@ -5750,7 +5806,7 @@ if [ "$PLATFORM_X11" = "yes" -o "$XPLATFORM_MINGW" = "yes" ]; then
     if [ "$CFG_OPENGL" = "auto" ] || [ "$CFG_OPENGL" = "yes" ]; then
         if "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/x11/opengl "OpenGL" $L_FLAGS $I_FLAGS $l_FLAGS $X11TESTS_FLAGS; then
             CFG_OPENGL=desktop
-        elif "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/opengles2 "OpenGL ES 2.x" $L_FLAGS $I_FLAGS $l_FLAGS; then
+        elif "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/opengles2 "OpenGL ES 2.x" $L_FLAGS $I_FLAGS $l_FLAGS $ANDROID_GLES2_FLAGS; then
             CFG_OPENGL=es2
             if [ "$CFG_EGL" = "no" ]; then
                 CFG_EGL=auto
@@ -5795,7 +5851,7 @@ if [ "$PLATFORM_X11" = "yes" -o "$XPLATFORM_MINGW" = "yes" ]; then
         fi
     elif [ "$CFG_OPENGL" = "es2" ]; then
         #OpenGL ES 2.x
-        "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/opengles2 "OpenGL ES 2.x" $L_FLAGS $I_FLAGS $l_FLAGS
+        "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/opengles2 "OpenGL ES 2.x" $L_FLAGS $I_FLAGS $l_FLAGS $ANDROID_GLES2_FLAGS
         if [ $? != "0" ]; then
             echo "The OpenGL ES 2.0 functionality test failed!"
             echo " You might need to modify the include and library search paths by editing"
@@ -6129,7 +6185,7 @@ if [ "$PLATFORM_QPA" = "yes" ]; then
     if [ "$CFG_OPENGL" = "auto" ] || [ "$CFG_OPENGL" = "yes" ]; then
         if "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/opengldesktop "OpenGL" $L_FLAGS $I_FLAGS $l_FLAGS $X11TESTS_FLAGS; then
             CFG_OPENGL=desktop
-        elif "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/opengles2 "OpenGL ES 2.x" $L_FLAGS $I_FLAGS $l_FLAGS; then
+        elif "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/opengles2 "OpenGL ES 2.x" $L_FLAGS $I_FLAGS $l_FLAGS $ANDROID_GLES2_LFLAGS; then
             CFG_OPENGL=es2
         elif "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/opengles1 "OpenGL ES 1.x" $L_FLAGS $I_FLAGS $l_FLAGS; then
             CFG_OPENGL=es1
@@ -6155,7 +6211,7 @@ if [ "$PLATFORM_QPA" = "yes" ]; then
         fi
     elif [ "$CFG_OPENGL" = "es2" ]; then
         #OpenGL ES 2.x
-        "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/opengles2 "OpenGL ES 2.x" $L_FLAGS $I_FLAGS $l_FLAGS
+        "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/opengles2 "OpenGL ES 2.x" $L_FLAGS $I_FLAGS $l_FLAGS $ANDROID_GLES2_LFLAGS
         if [ $? != "0" ]; then
             echo "The OpenGL ES 2.0 functionality test failed!"
             echo " You might need to modify the include and library search paths by editing"
@@ -6222,7 +6278,7 @@ if [ "$PLATFORM_QWS" = "yes" ]; then
     fi
     if [ "$CFG_OPENGL" = "yes" ]; then
         CFG_EGL=auto
-        if "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/opengles2 "OpenGL ES 2.x" $L_FLAGS $I_FLAGS $l_FLAGS; then
+        if "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/opengles2 "OpenGL ES 2.x" $L_FLAGS $I_FLAGS $l_FLAGS $ANDROID_GLES2_LFLAGS; then
             CFG_EGL=yes
             CFG_OPENGL=es2
         elif "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/opengles1 "OpenGL ES 1.x" $L_FLAGS $I_FLAGS $l_FLAGS; then
@@ -6251,7 +6307,7 @@ if [ "$PLATFORM_QWS" = "yes" ]; then
     elif [ "$CFG_OPENGL" = "es2" ]; then
         #OpenGL ES 2.x
         CFG_EGL=yes
-        "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/opengles2 "OpenGL ES 2.x" $L_FLAGS $I_FLAGS $l_FLAGS
+        "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/opengles2 "OpenGL ES 2.x" $L_FLAGS $I_FLAGS $l_FLAGS $ANDROID_GLES2_LFLAGS
         if [ $? != "0" ]; then
             echo "The OpenGL ES 2.0 functionality test failed!"
             echo " You might need to modify the include and library search paths by editing"
@@ -6625,7 +6681,7 @@ if [ "$CFG_GETIFADDRS" != "no" ]; then
 fi
 
 # detect OpenSSL
-if [ "$CFG_OPENSSL" != "no" ] && [ "$XPLATFORM_SYMBIAN_SBSV2" = "no" ] && [ ! "$XPLATFORM" in *android* ] ; then
+if [ "$CFG_OPENSSL" != "no" ] && [ "$XPLATFORM_SYMBIAN_SBSV2" = "no" ] && [ "$XPLATFORM_ANDROID" = "no" ]; then
     if "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/openssl "OpenSSL" $L_FLAGS $I_FLAGS $l_FLAGS $MAC_CONFIG_TEST_COMMANDLINE; then
         if [ "$CFG_OPENSSL" = "auto" ]; then
             CFG_OPENSSL=yes
@@ -7335,7 +7391,7 @@ case "$XPLATFORM" in
 	# the assembly it generates cannot be compiled
 
 	# Check gcc's version
-	case "$(${QMAKE_CONF_COMPILER} -dumpversion)" in
+	case "${QMAKE_CONF_COMPILER} -dumpversion" in
 	    4*)
 		;;
 	    3.4*)
@@ -7356,7 +7412,7 @@ case "$XPLATFORM" in
 	;;
     *-g++*)
 	# Check gcc's version
-	case "$(${QMAKE_CONF_COMPILER} -dumpversion)" in
+	case "${QMAKE_CONF_COMPILER} -dumpversion" in
 	    4*|3.4*)
 		;;
             3.3*)
@@ -7499,6 +7555,9 @@ fi
 if [ "$CFG_WEBKIT" = "auto" ]; then
     CFG_WEBKIT="$canBuildWebKit"
 fi
+
+CFG_WEBKIT=yes
+
 
 if [ "$CFG_WEBKIT" != "no" ]; then
     # This include takes care of adding "webkit" to QT_CONFIG.
