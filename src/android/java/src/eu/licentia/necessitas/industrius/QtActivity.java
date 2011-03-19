@@ -41,6 +41,7 @@ import android.content.ServiceConnection;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
+import android.content.res.Configuration;
 import android.graphics.Rect;
 import android.net.Uri;
 import android.os.Bundle;
@@ -424,5 +425,9 @@ public class QtActivity extends Activity {
         m_metaState = MetaKeyKeyListener.handleKeyUp(m_metaState, keyCode, event);
         QtApplication.keyUp(keyCode, event.getUnicodeChar(), event.getMetaState());
         return true;
+    }
+
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
     }
 }
