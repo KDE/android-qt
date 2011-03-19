@@ -160,4 +160,4 @@ if [ "$BUILD_QT"="0" ]; then
 fi
 
 `dirname $0`/androidconfigbuild.sh -l $CLEAN_QT -q $CONFIGURE_QT -b $BUILD_QT -k $INSTALL_QT -c $INSTALL_QT -n $NDKDIR -o $NDKHOST -f arm-linux-androideabi -v 4.4.3 -a armeabi-v7a \
-         -h 1 -x 1 -d $DEBUG_QT -r $RELEASE_QT -m 0 -i $DEST_DIR_QT
+         -h 1 -x 1 -d $DEBUG_QT -r $RELEASE_QT -m $MODIFY_DEST_DIR_QT -i $DEST_DIR_QT
