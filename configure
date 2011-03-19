@@ -62,9 +62,6 @@ if [ "msys" = "$OSTYPE" ]; then
     popd > /dev/null
 fi
 
-echo $relpath
-echo $outpath
-
 #license file location
 LICENSE_FILE="$QT_LICENSE_FILE"
 [ -z "$LICENSE_FILE" ] && LICENSE_FILE="$HOME/.qt-license"
@@ -7524,7 +7521,7 @@ if [ "$CFG_WEBKIT" = "auto" ]; then
 fi
 
 CFG_WEBKIT=yes
-# CFG_WEBKIT=no
+
 
 if [ "$CFG_WEBKIT" != "no" ]; then
     # This include takes care of adding "webkit" to QT_CONFIG.
