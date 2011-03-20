@@ -4816,7 +4816,6 @@ EOF
         fi
     fi
 
-    fi
     # fix makefiles
     for mkfile in GNUmakefile Makefile; do
         EXTRA_LFLAGS=
