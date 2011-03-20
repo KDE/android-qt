@@ -4805,6 +4805,7 @@ if true; then ###[ '!' -f "$outpath/bin/qmake" ];
         cp -a mkspecs/`echo $XQMAKESPEC | sed "s,^${relpath}/mkspecs/,,"` mkspecs/default
     else
         if [ "$BUILD_ON_MSYS" = "yes" ]; then
+            # For the PC, mkspecs/default/qmake.conf contains a soft-link to the real file.
             MKSPECSPLATFORM=$XPLATFORM
             if [ "$MKSPECSPLATFORM" = "" ]; then
                 MKSPECSPLATFORM=$PLATFORM
@@ -4819,6 +4820,10 @@ QMAKESPEC_ORIGINAL=$MKSPECSPREFIX/mkspecs/$MKSPECSPLATFORM
 
 include(../$MKSPECSPLATFORM/qmake.conf)
 EOF
+            # Make sure that the soft-linked-to-file exists as it's probably needed
+            # during the build process.
+            mkdir -p $MKSPECSPREFIX/mkspecs/$MKSPECSPLATFORM
+            cp -rf mkspecs/$MKSPECSPLATFORM/* $MKSPECSPREFIX/mkspecs/$MKSPECSPLATFORM/
         else
             ln -s `echo $XQMAKESPEC | sed "s,^${relpath}/mkspecs/,,"` mkspecs/default
         fi
