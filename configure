@@ -182,15 +182,8 @@ UNAME_MACHINE=`(uname -m) 2>/dev/null` || UNAME_MACHINE=unknown
 UNAME_RELEASE=`(uname -r) 2>/dev/null` || UNAME_RELEASE=unknown
 UNAME_SYSTEM=`(uname -s) 2>/dev/null`  || UNAME_SYSTEM=unknown
 UNAME_VERSION=`(uname -v) 2>/dev/null` || UNAME_VERSION=unknown
-# early detection of Android, needed for linuxfb and linuxtp.
+
 XPLATFORM_ANDROID=no
-for ARG in $@
-do
-    if [ "$ARG" == "android-g++" ]; then
-        XPLATFORM_ANDROID=yes
-    fi
-done
-echo "XPLATFORM_ANDROID=$XPLATFORM_ANDROID"
 
 # detect the "echo without newline" style. usage: echo $ECHO_N "<string>$ECHO_C"
 if echo '\c' | grep '\c' >/dev/null; then
@@ -681,7 +674,7 @@ cp "$QMAKE_VARS_FILE" "$outpath/config.tests/.qmake.cache"
 QMakeVar add styles "cde mac motif plastique cleanlooks windows"
 QMakeVar add decorations "default windows styled"
 QMakeVar add mouse-drivers "pc"
-if [ "$UNAME_SYSTEM" = "Linux" -o "$XPLATFORM_ANDROID" = "yes" ] ; then
+if [ "$UNAME_SYSTEM" = "Linux" -o "$XPLATFORM_ANDROID" = "no" ] ; then
     QMakeVar add gfx-drivers "linuxfb"
     QMakeVar add mouse-drivers "linuxtp"
 fi
@@ -2611,9 +2604,13 @@ if [ "$OPT_SHADOW" = "yes" ]; then
     # symlink the mkspecs directory
     mkdir -p "$outpath/mkspecs"
     rm -rf "$outpath"/mkspecs/*
-    cp -rf "$relpath"/mkspecs/* "$outpath/mkspecs"
-    # ln -s "$relpath"/mkspecs/* "$outpath/mkspecs"
-    rm -rf "$outpath/mkspecs/default"
+    if [ "$BUILD_ON_MSYS" = "yes" ]; then
+        cp -rf "$relpath"/mkspecs/* "$outpath/mkspecs"
+        rm -rf "$outpath/mkspecs/default"
+    else
+        ln -s "$relpath"/mkspecs/* "$outpath/mkspecs"
+        rm -f "$outpath/mkspecs/default"
+    fi
 
     ShadowMkspecs()
     {
@@ -2632,19 +2629,31 @@ if [ "$OPT_SHADOW" = "yes" ]; then
 
     # symlink the doc directory
     rm -rf "$outpath/doc"
-    cp -rf "$relpath/doc" "$outpath/doc"
+    if [ "$BUILD_ON_MSYS" = "yes" ]; then
+        cp -rf "$relpath/doc" "$outpath/doc"
+    else
+        ln -s "$relpath/doc" "$outpath/doc"
+    fi
 
     # make sure q3porting.xml can be found
     mkdir -p "$outpath/tools/porting/src"
     rm -f "$outpath/tools/porting/src/q3porting.xml"
-    cp -rf "$relpath/tools/porting/src/q3porting.xml" "$outpath/tools/porting/src"
+    if [ "$BUILD_ON_MSYS" = "yes" ]; then
+        cp -rf "$relpath/tools/porting/src/q3porting.xml" "$outpath/tools/porting/src"
+    else
+        ln -s "$relpath/tools/porting/src/q3porting.xml" "$outpath/tools/porting/src"
+    fi
 fi
 
 # symlink fonts to be able to run application from build directory
 if [ "$PLATFORM_QWS" = "yes" -o "$PLATFORM_QPA" = "yes" ] && [ ! -d "${outpath}/lib/fonts" ]; then
     if [ "$PLATFORM" = "$XPLATFORM" ]; then
         mkdir -p "${outpath}/lib"
-        cp -rf "${relpath}/lib/fonts" "${outpath}/lib/fonts"
+        if [ "$BUILD_ON_MSYS" = "yes" ]; then
+            cp -rf "${relpath}/lib/fonts" "${outpath}/lib/fonts"
+        else
+            ln -s "${relpath}/lib/fonts" "${outpath}/lib/fonts"
+        fi
     fi
 fi
 
@@ -3349,16 +3358,19 @@ else
 fi
 
 QMAKE_CONF_COMPILER=`getQMakeConf "$XQMAKESPEC" | grep "^QMAKE_CXX[^_A-Z0-9]" | sed "s,.* *= *\(.*\)$,\1," | tail -1`
-echo "getQMakeConf returns QMAKE_CONF_COMPILER of $QMAKE_CONF_COMPILER"
-# Repeat what mkspecs for android does. This is horrible, but I can't see a way around it given what getQMakeConf does.
-NDK_TOOLCHAIN_PATH=$ANDROID_NDK_ROOT/toolchains/$ANDROID_NDK_TOOLCHAIN_PREFIX-$ANDROID_NDK_TOOLCHAIN_VERSION/prebuilt/$ANDROID_NDK_HOST
-NDK_TOOLCHAIN_PREFIX=arm-linux-androideabi
-QMAKE_CONF_COMPILER=${QMAKE_CONF_COMPILER//\$\$/\$}
-echo "NDK_TOOLCHAIN_PATH=$NDK_TOOLCHAIN_PATH"
-echo "NDK_TOOLCHAIN_PREFIX=$NDK_TOOLCHAIN_PREFIX"
-eval QMAKE_CONF_COMPILER=$QMAKE_CONF_COMPILER
-echo "..which resolves to $QMAKE_CONF_COMPILER"
-TEST_COMPILER="$CXX"
+
+if [ "$XPLATFORM_ANDROID" = "yes" ] ; then
+    # Repeat what mkspecs for android does. This is horrible, but I can't see a way around it given what getQMakeConf does.
+    NDK_TOOLCHAIN_PATH=$ANDROID_NDK_ROOT/toolchains/$ANDROID_NDK_TOOLCHAIN_PREFIX-$ANDROID_NDK_TOOLCHAIN_VERSION/prebuilt/$ANDROID_NDK_HOST
+    NDK_TOOLCHAIN_PREFIX=arm-linux-androideabi
+    QMAKE_CONF_COMPILER=$(echo "$QMAKE_CONF_COMPILER" | sed 's:\$\$:\$:g')
+
+#    echo "NDK_TOOLCHAIN_PATH=$NDK_TOOLCHAIN_PATH"
+#    echo "NDK_TOOLCHAIN_PREFIX=$NDK_TOOLCHAIN_PREFIX"
+    eval QMAKE_CONF_COMPILER=$QMAKE_CONF_COMPILER
+#    echo "..which resolves to $QMAKE_CONF_COMPILER"
+    TEST_COMPILER="$CXX"
+fi
 
 [ -z "$TEST_COMPILER" ] && TEST_COMPILER=$QMAKE_CONF_COMPILER
 if [ "$XPLATFORM_SYMBIAN_SBSV2" = "no" ]; then
@@ -4830,7 +4842,11 @@ if true; then ###[ '!' -f "$outpath/bin/qmake" ];
 #Link is not supported for Symbian build system
         cp -a mkspecs/`echo $XQMAKESPEC | sed "s,^${relpath}/mkspecs/,,"` mkspecs/default
     else
-        cp -rf mkspecs/`echo $XQMAKESPEC | sed "s,^${relpath}/mkspecs/,,"` mkspecs/default
+        if [ "$BUILD_ON_MSYS" = "yes" ]; then
+            cp -rf mkspecs/`echo $XQMAKESPEC | sed "s,^${relpath}/mkspecs/,,"` mkspecs/default
+        else
+            ln -s `echo $XQMAKESPEC | sed "s,^${relpath}/mkspecs/,,"` mkspecs/default
+        fi
     fi
     # fix makefiles
     for mkfile in GNUmakefile Makefile; do
@@ -7555,9 +7571,6 @@ fi
 if [ "$CFG_WEBKIT" = "auto" ]; then
     CFG_WEBKIT="$canBuildWebKit"
 fi
-
-CFG_WEBKIT=yes
-
 
 if [ "$CFG_WEBKIT" != "no" ]; then
     # This include takes care of adding "webkit" to QT_CONFIG.
