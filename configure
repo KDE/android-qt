@@ -4805,11 +4805,19 @@ if true; then ###[ '!' -f "$outpath/bin/qmake" ];
         cp -a mkspecs/`echo $XQMAKESPEC | sed "s,^${relpath}/mkspecs/,,"` mkspecs/default
     else
         if [ "$BUILD_ON_MSYS" = "yes" ]; then
+            MKSPECSPLATFORM=$XPLATFORM
+            if [ "$MKSPECSPLATFORM" = "" ]; then
+                MKSPECSPLATFORM=$PLATFORM
+            fi
+            MKSPECSPREFIX=$QT_INSTALL_PREFIX
+            if [ $MKSPECSPREFIX = "" ]; then
+                MKSPECSPREFIX=$relpath
+            fi
             mkdir -p mkspecs/default
             cat > mkspecs/default/qmake.conf <<EOF
-QMAKESPEC_ORIGINAL=$relpath/mkspecs/$XPLATFORM
+QMAKESPEC_ORIGINAL=$MKSPECSPREFIX/mkspecs/$MKSPECSPLATFORM
 
-include(../$XPLATFORM/qmake.conf)
+include(../$MKSPECSPLATFORM/qmake.conf)
 EOF
         else
             ln -s `echo $XQMAKESPEC | sed "s,^${relpath}/mkspecs/,,"` mkspecs/default
