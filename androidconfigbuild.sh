@@ -201,10 +201,8 @@ EOF
 if [ "$OSTYPE" = "msys" ]; then
 	MAKEDIR=`pwd -W`
 	MAKEFILE=$MAKEDIR/Makefile
-	MOCABLESMAKEFILE=$MAKEDIR/src/corelib/Makefile
 else
 	MAKEFILE=Makefile
-	MOCABLESMAKEFILE=Makefile
 fi
 
 if [ "$CLEAN_QT" -eq "1" ]; then
