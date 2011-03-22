@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -252,6 +252,7 @@ private:
 
     void genObject(QDeclarativeParser::Object *obj);
     void genObjectBody(QDeclarativeParser::Object *obj);
+    void genValueTypeProperty(QDeclarativeParser::Object *obj,QDeclarativeParser::Property *);
     void genComponent(QDeclarativeParser::Object *obj);
     void genValueProperty(QDeclarativeParser::Property *prop, QDeclarativeParser::Object *obj);
     void genListProperty(QDeclarativeParser::Property *prop, QDeclarativeParser::Object *obj);

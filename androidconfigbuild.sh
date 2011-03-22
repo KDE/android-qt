@@ -1,11 +1,7 @@
 #!/bin/bash
 
-echo $0 $@
-
 NDK_TOOLCHAIN_PREFIX=arm-linux-androideabi
 NDK_TOOLCHAIN_VERSION=4.4.3
-NDK_PLATFORM=9
-export ANDROID_PLATFORM=$NDK_PLATFORM
 
 #defaults:
 CLEAN_QT=1
@@ -17,14 +13,18 @@ EXCEPTIONS_QT=1
 DEBUG_QT=0
 RELEASE_QT=1
 MODIFY_DEST_DIR_QT=1
-PATCH_QT=0
+NDK_PLATFORM=4
+
+PLATFORM="-platform linux-g++"
+NDK_ROOT=/usr/local/android-ndk-r5
+NDK_HOST=linux-x86
 
 if [ "$OSTYPE" = "msys" ]; then
 	PLATFORM="-platform win32-g++"
 	DEST_DIR_QT=C:/Necessitas/Android/4.8.0
-else
-	PLATFORM="-platform linux-g++"
-	DEST_DIR_QT=/data/data/eu.licentia.necessitas.ministro/files/qt
+	NDK_HOST=windows
+	NDK_PLATFORM=9
+	export ANDROID_PLATFORM=$NDK_PLATFORM
 fi
 
 SRC_DIR_QT=`dirname $0`
@@ -79,13 +79,13 @@ EOF
 
 INSTSUFFIX=""
 CFGOPTIONS=""
-while getopts "p:l:q:b:k:c:n:o:f:v:a:h:x:d:r:m:i:" arg; do
+while getopts "p:c:q:b:k:n:o:f:v:a:h:x:d:r:m:i:" arg; do
 case $arg in
 	p)
 		help
 		exit 0
 		;;
-	l)
+	c)
 		CLEAN_QT=$OPTARG
 		;;
 	q)
@@ -96,9 +96,6 @@ case $arg in
 		;;
 	k)
 		INSTALL_QT=$OPTARG
-		;;
-	c)
-		PATCH_QT=$OPTARG
 		;;
 	n)
 		NDK_ROOT=$OPTARG
@@ -255,18 +252,9 @@ if [ "$BUILD_QT" = "1" ]; then
 		fi
 		make -f $MAKEFILE -j 9
 	done
-
-	if [ $PATCH_QT = 1 ]
-	then
-	    if [ "$OSTYPE" = "msys" ]; then
-	        $SRC_DIR_QT/qpatch.exe $SRC_DIR_QT/files-to-patch-android-mingw $DEST_DIR_QT $PWD
-	    else
-	        $SRC_DIR_QT/qpatch $SRC_DIR_QT/files-to-patch-android $DEST_DIR_QT $PWD
-	    fi
-	fi
 fi
 
-#INSTALL_ROOT=$QT_SRC_DIR/qt/$TARGET_ARCH make install
+
 if [ "$INSTALL_QT" = "1" ] ; then
 	make -f $MAKEFILE install
 	while [ "$?" != "0" ]
@@ -278,5 +266,6 @@ if [ "$INSTALL_QT" = "1" ] ; then
 		fi
 		make -f $MAKEFILE install
 	done
-	$SRC_DIR_QT/copy-private-headers.sh include $DEST_DIR_QT/private-headers
+	# Controversial - lets not do it...
+	# $SRC_DIR_QT/copy-private-headers.sh include $DEST_DIR_QT/private-headers
 fi

@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -507,6 +507,8 @@ public:
 
     static void processEnterEvent(QWindowSystemInterfacePrivate::EnterEvent *e);
     static void processLeaveEvent(QWindowSystemInterfacePrivate::LeaveEvent *e);
+
+    static void processActivatedEvent(QWindowSystemInterfacePrivate::ActivatedWindowEvent *e);
 
     static void processWindowSystemEvent(QWindowSystemInterfacePrivate::WindowSystemEvent *e);
 

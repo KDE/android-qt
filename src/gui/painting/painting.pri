@@ -34,6 +34,7 @@ HEADERS += \
         painting/qprinter.h \
         painting/qprinter_p.h \
         painting/qprinterinfo.h \
+        painting/qprinterinfo_p.h \
         painting/qrasterizer_p.h \
         painting/qregion.h \
         painting/qstroker_p.h \
@@ -73,6 +74,7 @@ SOURCES += \
         painting/qprintengine_pdf.cpp \
         painting/qprintengine_ps.cpp \
         painting/qprinter.cpp \
+        painting/qprinterinfo.cpp \
         painting/qrasterizer.cpp \
         painting/qregion.cpp \
         painting/qstroker.cpp \
@@ -232,8 +234,10 @@ x11 {
 }
 
 !embedded:!qpa:mac {
-        HEADERS += painting/qwindowsurface_mac_p.h
-        SOURCES += painting/qwindowsurface_mac.cpp
+        HEADERS += painting/qwindowsurface_mac_p.h \
+                   painting/qunifiedtoolbarsurface_mac_p.h
+        SOURCES += painting/qwindowsurface_mac.cpp \
+                   painting/qunifiedtoolbarsurface_mac.cpp
 }
 
 embedded {
@@ -257,12 +261,6 @@ symbian {
         MMP_RULES += armccIfdefBlock
         QMAKE_CXXFLAGS.ARMCC *= -O3
 }
-
-mac {
-       HEADERS += painting/qunifiedtoolbarsurface_mac_p.h
-       SOURCES += painting/qunifiedtoolbarsurface_mac.cpp
-}
-
 
 NEON_SOURCES += painting/qdrawhelper_neon.cpp
 NEON_HEADERS += painting/qdrawhelper_neon_p.h

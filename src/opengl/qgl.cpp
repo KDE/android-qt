@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -97,7 +97,7 @@
 #include "qlibrary.h"
 #include <qmutex.h>
 
-#ifndef QT_NO_EGL
+#if defined(QT_OPENGL_ES) && !defined(QT_NO_EGL)
 #include <EGL/egl.h>
 #endif
 
@@ -1729,6 +1729,7 @@ void QGLContextPrivate::init(QPaintDevice *dev, const QGLFormat &format)
     active_engine = 0;
     workaround_needsFullClearOnEveryFrame = false;
     workaround_brokenFBOReadBack = false;
+    workaround_brokenTexSubImage = false;
     workaroundsCached = false;
 
     workaround_brokenTextureFromPixmap = false;
@@ -1853,18 +1854,6 @@ QGLTextureCache::~QGLTextureCache()
 void QGLTextureCache::insert(QGLContext* ctx, qint64 key, QGLTexture* texture, int cost)
 {
     QWriteLocker locker(&m_lock);
-    if (m_cache.totalCost() + cost > m_cache.maxCost()) {
-        // the cache is full - make an attempt to remove something
-        const QList<QGLTextureCacheKey> keys = m_cache.keys();
-        int i = 0;
-        while (i < m_cache.count()
-               && (m_cache.totalCost() + cost > m_cache.maxCost())) {
-            QGLTexture *tex = m_cache.object(keys.at(i));
-            if (tex->context == ctx)
-                m_cache.remove(keys.at(i));
-            ++i;
-        }
-    }
     const QGLTextureCacheKey cacheKey = {key, QGLContextPrivate::contextGroup(ctx)};
     m_cache.insert(cacheKey, texture, cost);
 }
@@ -2125,7 +2114,9 @@ void QGLContextPrivate::cleanup()
 void QGLContextPrivate::setVertexAttribArrayEnabled(int arrayIndex, bool enabled)
 {
     Q_ASSERT(arrayIndex < QT_GL_VERTEX_ARRAY_TRACKED_COUNT);
+#ifdef glEnableVertexAttribArray
     Q_ASSERT(glEnableVertexAttribArray);
+#endif
 
     if (vertexAttributeArraysEnabledState[arrayIndex] && !enabled)
         glDisableVertexAttribArray(arrayIndex);
@@ -2138,7 +2129,9 @@ void QGLContextPrivate::setVertexAttribArrayEnabled(int arrayIndex, bool enabled
 
 void QGLContextPrivate::syncGlState()
 {
+#ifdef glEnableVertexAttribArray
     Q_ASSERT(glEnableVertexAttribArray);
+#endif
     for (int i = 0; i < QT_GL_VERTEX_ARRAY_TRACKED_COUNT; ++i) {
         if (vertexAttributeArraysEnabledState[i])
             glEnableVertexAttribArray(i);
@@ -3317,8 +3310,10 @@ bool QGLContext::create(const QGLContext* shareContext)
         QWidgetPrivate *wd = qt_widget_private(static_cast<QWidget *>(d->paintDevice));
         wd->usesDoubleBufferedGLContext = d->glFormat.doubleBuffer();
     }
+#ifndef Q_WS_QPA //We do this in choose context->setupSharing()
     if (d->sharing)  // ok, we managed to share
         QGLContextGroup::addShare(this, shareContext);
+#endif
     return d->valid;
 }
 
@@ -3779,24 +3774,7 @@ QGLWidget::QGLWidget(QWidget *parent, const QGLWidget* shareWidget, Qt::WindowFl
     setAttribute(Qt::WA_PaintOnScreen);
     setAttribute(Qt::WA_NoSystemBackground);
     setAutoFillBackground(true); // for compatibility
-#ifdef Q_WS_QPA
-    QPlatformWindowFormat platformFormat = QGLFormat::toPlatformWindowFormat(QGLFormat::defaultFormat());
-    platformFormat.setUseDefaultSharedContext(false);
-    if (shareWidget && shareWidget->d_func()->glcx) {
-        QPlatformGLContext *sharedPlatformContext = shareWidget->d_func()->glcx->d_func()->platformContext;
-        platformFormat.setSharedContext(sharedPlatformContext);
-    }
-    setPlatformWindowFormat(platformFormat);
-    winId(); // create window;
-    QGLContext *glContext = 0;
-    if (platformWindow())
-        glContext = QGLContext::fromPlatformGLContext(platformWindow()->glContext());
-    if (glContext){
-        d->init(glContext,shareWidget);
-    }
-#else
     d->init(new QGLContext(QGLFormat::defaultFormat(), this), shareWidget);
-#endif
 }
 
 
@@ -3836,24 +3814,7 @@ QGLWidget::QGLWidget(const QGLFormat &format, QWidget *parent, const QGLWidget* 
     setAttribute(Qt::WA_PaintOnScreen);
     setAttribute(Qt::WA_NoSystemBackground);
     setAutoFillBackground(true); // for compatibility
-#ifdef Q_WS_QPA
-    QPlatformWindowFormat platformFormat = QGLFormat::toPlatformWindowFormat(format);
-    platformFormat.setUseDefaultSharedContext(false);
-    if (shareWidget && shareWidget->d_func()->glcx) {
-        QPlatformGLContext *sharedPlatformContext = shareWidget->d_func()->glcx->d_func()->platformContext;
-        platformFormat.setSharedContext(sharedPlatformContext);
-    }
-    setPlatformWindowFormat(platformFormat);
-    winId(); // create window;
-    QGLContext *glContext = 0;
-    if (platformWindow())
-        glContext = QGLContext::fromPlatformGLContext(platformWindow()->glContext());
-    if (glContext){
-        d->init(glContext,shareWidget);
-    }
-#else
     d->init(new QGLContext(format, this), shareWidget);
-#endif
 }
 
 /*!
