@@ -148,20 +148,12 @@ translations.path=$$[QT_INSTALL_TRANSLATIONS]
 translations.files = $$QT_SOURCE_TREE/translations/*.qm
 INSTALLS += translations
 
-#qmake - this presents a problem for us. Android isn't win32,
-# and qmake doesn't seem to have amy separation of the host
-# and target...
 qmake.path=$$[QT_INSTALL_BINS]
-#win32 {
-#   qmake.files=$$QT_BUILD_TREE/bin/qmake.exe
-#} else {
-#   qmake.files=$$QT_BUILD_TREE/bin/qmake
-#}
-
-#This seems to be ok though...
-qmake.files  = $$QT_BUILD_TREE/bin/qmake
-qmake.files += $$QT_BUILD_TREE/bin/qmake.exe
-
+contains(QMAKE_HOST.os, Windows) {
+   qmake.files=$$QT_BUILD_TREE/bin/qmake.exe
+} else {
+   qmake.files=$$QT_BUILD_TREE/bin/qmake
+}
 INSTALLS += qmake
 
 #mkspecs
@@ -173,8 +165,8 @@ unix {
    mkspecs.commands += $(DEL_DIR) $(INSTALL_ROOT)$$mkspecs.path/default; $(MKDIR) $(INSTALL_ROOT)$$mkspecs.path/default; $(COPY_FILE) $$DEFAULT_QMAKESPEC/* $(INSTALL_ROOT)$$mkspecs.path/default/
    mkspecs.files -= $$QT_SOURCE_TREE/mkspecs/default
 }
-win32:!equals(QT_BUILD_TREE, $$QT_SOURCE_TREE) {
-    # When shadow building on Windows, the default mkspec only exists in the build tree.
+contains(QMAKE_HOST.os, Windows):!equals(QT_BUILD_TREE, $$QT_SOURCE_TREE) {
+    # When shadow building on Windows, the default mkspec only exists in the build tree (and it's a soft-link too)
     mkspecs.files += $$QT_BUILD_TREE/mkspecs/default
 }
 INSTALLS += mkspecs
