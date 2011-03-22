@@ -16,7 +16,7 @@ EXECPTIONS_QT=1
 DEBUG_QT=0
 RELEASE_QT=1
 MODIFY_DEST_DIR_QT=0
-
+TARGET_ARCH=armeabi
 help()
 {
 cat << EOF
@@ -31,6 +31,10 @@ OPTIONS:
    -b      Build qt
                    0 - don't build
                    1 - build
+   -a      Target cpu architecture. Default "$TARGET_ARCH"
+                   armeabi     - tune for android arm v5
+                   armeabi-v7a - tune for android arm v7
+                   Optional name suffix: v5/v7
    -h      Shared
                    0 - static version of qt
                    1 - shared version of qt
@@ -52,7 +56,7 @@ EOF
 
 INSTSUFFIX=""
 CFGOPTIONS=""
-while getopts "p:c:q:b:h:x:r:d:m:o:i:s:" arg; do
+while getopts "p:c:q:b:a:h:x:r:d:m:o:i:s:" arg; do
 echo $arg $OPTARG
 case $arg in
 	p)
@@ -70,6 +74,9 @@ case $arg in
 	b)
 		BUILD_QT=$OPTARG
 		echo "BUILD $BUILD_QT"
+		;;
+	a)
+		TARGET_ARCH=$OPTARG
 		;;
 	k)
 		INSTALL_QT=$OPTARG
@@ -159,5 +166,5 @@ if [ "$BUILD_QT"="0" ]; then
 	INSTALL_QT=0
 fi
 
-`dirname $0`/androidconfigbuild.sh -c $CLEAN_QT -q $CONFIGURE_QT -b $BUILD_QT -k $INSTALL_QT -c $INSTALL_QT -n $NDKDIR -o $NDKHOST -f arm-linux-androideabi -v 4.4.3 -a armeabi-v7a \
+`dirname $0`/androidconfigbuild.sh -c $CLEAN_QT -q $CONFIGURE_QT -b $BUILD_QT -k $INSTALL_QT -c $INSTALL_QT -n $NDKDIR -o $NDKHOST -f arm-linux-androideabi -v 4.4.3 -a $TARGET_ARCH \
          -h 1 -x 1 -d $DEBUG_QT -r $RELEASE_QT -m $MODIFY_DEST_DIR_QT -i $DEST_DIR_QT

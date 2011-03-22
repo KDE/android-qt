@@ -16,14 +16,14 @@ MODIFY_DEST_DIR_QT=1
 NDK_PLATFORM=4
 
 PLATFORM="-platform linux-g++"
-NDK_ROOT=/usr/local/android-ndk-r5
+NDK_ROOT=/usr/local/android-ndk-r5b
 NDK_HOST=linux-x86
 
 if [ "$OSTYPE" = "msys" ]; then
 	PLATFORM="-platform win32-g++"
 	DEST_DIR_QT=C:/Necessitas/Android/4.8.0
 	NDK_HOST=windows
-	NDK_PLATFORM=9
+	NDK_PLATFORM=4
 	export ANDROID_PLATFORM=$NDK_PLATFORM
 fi
 
