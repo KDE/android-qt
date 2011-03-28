@@ -1,3 +1,10 @@
+SOURCE_PATH = @SOURCE_PATH@
+BUILD_PATH = @BUILD_PATH@
+QTOBJS = @QMAKE_QTOBJS@
+QTSRCS = @QMAKE_QTSRCS@
+QMAKESPEC = @QMAKESPEC@
+LFLAGS = @QMAKE_LFLAGS@
+
 ifeq "$(SOURCE_PATH)" ""
 SOURCE_PATH = ..
 endif
@@ -12,7 +19,7 @@ endif
 # specific stuff for mingw g++ make
 #
 CXX	    =	g++
-CFLAGS	    =	-c -o$@ -O \
+CFLAGS  =	-c -o$@ -O \
 		-I. -Igenerators -Igenerators/unix \
 		-Igenerators/win32 -Igenerators/mac \
 		-Igenerators/symbian \
@@ -104,10 +111,10 @@ Makefile: Makefile.win32-g++-sh
 	@echo "Out of date, please rerun configure"
 
 clean::
-	-del $(OBJS) $(QTOBJS) $(ADDCLEAN)
+	-rm $(OBJS) $(QTOBJS) $(ADDCLEAN)
 
 distclean:: clean
-	-del qmake
+	-rm -f qmake.exe
 
 .c.o:
 	$(CXX) $(CFLAGS) $<

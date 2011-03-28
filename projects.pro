@@ -148,9 +148,8 @@ translations.path=$$[QT_INSTALL_TRANSLATIONS]
 translations.files = $$QT_SOURCE_TREE/translations/*.qm
 INSTALLS += translations
 
-#qmake
 qmake.path=$$[QT_INSTALL_BINS]
-win32 {
+contains(QMAKE_HOST.os, Windows) {
    qmake.files=$$QT_BUILD_TREE/bin/qmake.exe
 } else {
    qmake.files=$$QT_BUILD_TREE/bin/qmake
@@ -163,12 +162,11 @@ mkspecs.files=$$QT_BUILD_TREE/mkspecs/qconfig.pri $$files($$QT_SOURCE_TREE/mkspe
 mkspecs.files -= $$QT_SOURCE_TREE/mkspecs/modules
 unix { 
    DEFAULT_QMAKESPEC = $$QMAKESPEC
-   DEFAULT_QMAKESPEC ~= s,^.*mkspecs/,,g
-   mkspecs.commands += $(DEL_FILE) $(INSTALL_ROOT)$$mkspecs.path/default; $(SYMLINK) $$DEFAULT_QMAKESPEC $(INSTALL_ROOT)$$mkspecs.path/default
+   mkspecs.commands += $(DEL_DIR) $(INSTALL_ROOT)$$mkspecs.path/default; $(MKDIR) $(INSTALL_ROOT)$$mkspecs.path/default; $(COPY_FILE) $$DEFAULT_QMAKESPEC/* $(INSTALL_ROOT)$$mkspecs.path/default/
    mkspecs.files -= $$QT_SOURCE_TREE/mkspecs/default
 }
-win32:!equals(QT_BUILD_TREE, $$QT_SOURCE_TREE) {
-    # When shadow building on Windows, the default mkspec only exists in the build tree.
+contains(QMAKE_HOST.os, Windows):!equals(QT_BUILD_TREE, $$QT_SOURCE_TREE) {
+    # When shadow building on Windows, the default mkspec only exists in the build tree (and it's a soft-link too)
     mkspecs.files += $$QT_BUILD_TREE/mkspecs/default
 }
 INSTALLS += mkspecs
