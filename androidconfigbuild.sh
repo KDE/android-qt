@@ -7,13 +7,14 @@ NDK_TOOLCHAIN_VERSION=4.4.3
 CLEAN_QT=1
 CONFIGURE_QT=1
 BUILD_QT=1
-INSTALL_QT=1
+INSTALL_QT=0
 SHARED_QT=1
 EXCEPTIONS_QT=1
 DEBUG_QT=0
 RELEASE_QT=1
-MODIFY_DEST_DIR_QT=1
+MODIFY_DEST_DIR_QT=0
 NDK_PLATFORM=4
+DEST_DIR_QT=$PWD
 
 PLATFORM="-platform linux-g++"
 NDK_ROOT=/usr/local/android-ndk-r5b
@@ -39,7 +40,7 @@ usage: $0 options
 
 OPTIONS:
    -p      Shows this message
-   -l      Clean qt
+   -c      Clean qt
    -q      Qt build options
                    0 - don't configure qt (only compile) default
                    1 - configure qt and compile qt
@@ -49,9 +50,6 @@ OPTIONS:
    -s      Install qt
                    0 - don't install
                    1 - install
-   -c      Patch qt
-                   0 - don't patch qt (used to make the installer)
-                   1 - patch qt (default)
    -n      NDK root. Default "$NDK_ROOT"
    -o      NDK host. Default "$NDK_HOST"
    -f      NDK toolchain prefix. Default "$NDK_TOOLCHAIN_PREFIX"
@@ -169,9 +167,6 @@ fi
 
 if [ "$MODIFY_DEST_DIR_QT" -eq "1" ]; then
 	DEST_DIR_QT=${DEST_DIR_QT}-${INSTSUFFIX}
-else
-	echo "Please sepcify -m 1 to $0 to prevent configuration pollution. Exiting."
-	exit 1
 fi
 
 echo "New install of Qt will be to $DEST_DIR_QT"
@@ -236,13 +231,13 @@ then
 		-openssl -pch -reduce-relocations -reduce-exports \
 		-nomake demos -nomake examples -confirm-license \
 		$CFGOPTIONS -prefix $DEST_DIR_QT \
-		-script || exit 1
+		-script -javascript-jit || exit 1
 fi
 
 # This should loop until make succeeds, Workaround for Cygwin/MSYS
 # couldn't commit heap memory error
 if [ "$BUILD_QT" = "1" ]; then
-	make -f $MAKEFILE -j 9
+	make -f $MAKEFILE -j 3
 	while [ "$?" != "0" ]
 	do
 		if [ -f /usr/break-make ]; then
@@ -250,7 +245,7 @@ if [ "$BUILD_QT" = "1" ]; then
 			rm -f /usr/break-make
 			exit 1
 		fi
-		make -f $MAKEFILE -j 9
+		make -f $MAKEFILE -j 3
 	done
 fi
 

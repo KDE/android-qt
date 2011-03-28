@@ -178,7 +178,7 @@ for(QTLIB, $$list($$lower($$unique(QT)))) {
    else:isEqual(QTLIB, meegographicssystemhelper):qlib = QtMeeGoGraphicsSystemHelper
    else:isEqual(QTLIB, android) {
         contains(TEMPLATE, ".*app") {
-            CONFIG(android) {
+            CONFIG(android_qtmain) {
                 !contains(TARGET, ".so"): TARGET = lib$${TARGET}.so
                 SOURCES += $$[QT_INSTALL_PREFIX]/src/android/cpp/qtmain_android.cpp
                 QMAKE_LFLAGS += -Wl,--no-undefined -Wl,-z,noexecstack -shared -Wl,-soname,$$TARGET
