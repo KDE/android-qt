@@ -1035,7 +1035,7 @@ void UnixMakefileGenerator::init2()
         if (!project->values("QMAKE_AR_CMD").isEmpty())
             project->values("QMAKE_AR_CMD").first().replace("(TARGET)","(TARGETA)");
         else {
-            if (1 || Option::host_mode == Option::HOST_WIN_MODE) {
+            if (Option::host_mode == Option::HOST_WIN_MODE) {
                 project->values("QMAKE_AR_CMD").append("echo $(TARGETA) $(OBJECTS) > $(TARGETA).ar.cmdline\n\t$(AR) @$(TARGETA).ar.cmdline");
             }
             else {
@@ -1175,9 +1175,9 @@ void UnixMakefileGenerator::init2()
             }
         }
         if (project->values("QMAKE_LINK_SHLIB_CMD").isEmpty()) {
-            if (1 || Option::host_mode == Option::HOST_WIN_MODE) {
+            if (Option::host_mode == Option::HOST_WIN_MODE) {
                 project->values("QMAKE_LINK_SHLIB_CMD").append(
-                    "echo $(LFLAGS) -o $(TARGET) $(OBJECTS) $(LIBS) $(OBJCOMP) > $(TARGET).lnk.cmdline\n\t$(LINK) @$(TARGET).lnk.cmdline");
+					"echo $(LFLAGS) -o $(TARGET) $(OBJECTS) $(LIBS) $(OBJCOMP) > $(TARGET).lnk.cmdline\n\t$(LINK) @$(TARGET).lnk.cmdline\n\t$(DEL_FILE) $(TARGET).lnk.cmdline");
             }
             else {
                 project->values("QMAKE_LINK_SHLIB_CMD").append(
