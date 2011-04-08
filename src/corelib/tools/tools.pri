@@ -112,3 +112,7 @@ INCLUDEPATH += ../3rdparty/md5 \
 # Note: libm should be present by default becaue this is C++
 !macx-icc:!vxworks:!symbian:unix:LIBS_PRIVATE += -lm
 
+contains(CONFIG, android){
+    SOURCES += tools/android/cpu-features.c
+    HEADERS += tools/android/cpu-features.h
+}
