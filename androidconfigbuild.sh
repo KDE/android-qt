@@ -19,6 +19,7 @@ DEST_DIR_QT=$PWD
 PLATFORM="-platform linux-g++"
 NDK_ROOT=/usr/local/android-ndk-r5b
 NDK_HOST=linux-x86
+TARGET_ARCH=armeabi
 
 if [ "$OSTYPE" = "msys" ]; then
 	PLATFORM="-platform win32-g++"
@@ -231,7 +232,7 @@ then
 		-openssl -pch -reduce-relocations -reduce-exports \
 		-nomake demos -nomake examples -confirm-license \
 		$CFGOPTIONS -prefix $DEST_DIR_QT \
-		-script -javascript-jit || exit 1
+		-script -no-webkit || exit 1
 fi
 
 # This should loop until make succeeds, Workaround for Cygwin/MSYS

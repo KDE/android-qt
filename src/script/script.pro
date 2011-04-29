@@ -104,3 +104,12 @@ symbian {
 
 # WebKit doesn't compile in C++0x mode
 *-g++*:QMAKE_CXXFLAGS -= -std=c++0x -std=gnu++0x
+
+CONFIG(android) {
+    DEFINES += ANDROID_JSC_JIT arm
+    contains(QMAKE_CFLAGS, -mfpu=vfp): DEFINES += HAVE_VFP
+    QMAKE_CFLAGS_RELEASE -= -mthumb
+    QMAKE_CFLAGS_RELEASE += -marm
+    QMAKE_CXXFLAGS_RELEASE -= -mthumb
+    QMAKE_CXXFLAGS_RELEASE += -marm
+}
