@@ -829,6 +829,9 @@ QList<QSslCertificate> QSslSocketPrivate::systemCaCertificates()
     QDir currentDir;
     QStringList nameFilters;
     nameFilters << QLatin1String("*.pem") << QLatin1String("*.crt");
+# ifdef Q_OS_ANDROID
+    nameFilters << QLatin1String("*.der");
+# endif
     currentDir.setNameFilters(nameFilters);
     for (int a = 0; a < directories.count(); a++) {
         currentDir.setPath(QLatin1String(directories.at(a)));
@@ -841,10 +844,18 @@ QList<QSslCertificate> QSslSocketPrivate::systemCaCertificates()
     }
     QSetIterator<QString> it(certFiles);
     while(it.hasNext()) {
-        systemCerts.append(QSslCertificate::fromPath(it.next()));
+        const QString & fileName=it.next();
+# ifdef Q_OS_ANDROID
+        if (fileName.endsWith(".der", Qt::CaseInsensitive))
+            systemCerts.append(QSslCertificate::fromPath(fileName, QSsl::Der));
+        else
+# endif
+            systemCerts.append(QSslCertificate::fromPath(fileName, QSsl::Pem));
     }
+# ifndef Q_OS_ANDROID
     systemCerts.append(QSslCertificate::fromPath(QLatin1String("/etc/pki/tls/certs/ca-bundle.crt"), QSsl::Pem)); // Fedora, Mandriva
     systemCerts.append(QSslCertificate::fromPath(QLatin1String("/usr/local/share/certs/ca-root-nss.crt"), QSsl::Pem)); // FreeBSD's ca_root_nss
+# endif
 
 #elif defined(Q_OS_SYMBIAN)
     QList<QByteArray> certs;

@@ -264,3 +264,5 @@ if [ "$INSTALL_QT" = "1" ] ; then
 	# Controversial - lets not do it...
 	# $SRC_DIR_QT/copy-private-headers.sh include $DEST_DIR_QT/private-headers
 fi
+
+exit 0
