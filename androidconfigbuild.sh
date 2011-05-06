@@ -23,7 +23,6 @@ TARGET_ARCH=armeabi
 
 if [ "$OSTYPE" = "msys" ]; then
 	PLATFORM="-platform win32-g++"
-	DEST_DIR_QT=C:/Necessitas/Android/4.8.0
 	NDK_HOST=windows
 	NDK_PLATFORM=4
 	export ANDROID_PLATFORM=$NDK_PLATFORM
