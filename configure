@@ -6795,7 +6795,7 @@ elif [ "$XPLATFORM_SYMBIAN_SBSV2" = "yes" ]; then
 fi
 
 if [ "$CFG_JAVASCRIPTCORE_JIT" = "yes" ] || [ "$CFG_JAVASCRIPTCORE_JIT" = "auto" ]; then
-    if [ "$CFG_ARCH" = "arm" && "$XPLATFORM_ANDROID" != "yes"]; then
+    if [ "$CFG_ARCH" = "arm" && "$XPLATFORM_ANDROID" != "yes" ]; then
        "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/javascriptcore-jit "javascriptcore-jit" $L_FLAGS $I_FLAGS $l_FLAGS
         if [ $? != "0" ]; then
            CFG_JAVASCRIPTCORE_JIT=no
