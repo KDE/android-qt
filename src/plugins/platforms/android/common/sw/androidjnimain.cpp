@@ -159,8 +159,9 @@ namespace QtAndroid
         env->CallStaticVoidMethod(m_applicationClass, m_redrawSurfaceMethodID,
                             (jint)destinationRect.left(),
                             (jint)destinationRect.top(),
-                            (jint)destinationRect.right(),
-                            (jint)destinationRect.bottom());
+                            (jint)destinationRect.right()+1,
+                            (jint)destinationRect.bottom()+1);
+#warning FIXME dirty hack, figure out why it needs to add 1 to right and bottom !!!!
         m_javaVM->DetachCurrentThread();
     }
 
