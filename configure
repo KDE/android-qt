@@ -186,7 +186,7 @@ UNAME_VERSION=`(uname -v) 2>/dev/null` || UNAME_VERSION=unknown
 XPLATFORM_ANDROID=no
 for ARG in $@
 do
-    if [ "$ARG" == "android-g++" ]; then
+    if [ "$ARG" = "android-g++" ]; then
         XPLATFORM_ANDROID=yes
     fi
 done
