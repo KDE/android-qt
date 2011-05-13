@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2009 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -48,6 +48,8 @@
 #include "qgenericunixfontdatabase.h"
 #include "qxlibscreen.h"
 #include "qxlibclipboard.h"
+#include "qxlibdisplay.h"
+#include "qxlibnativeinterface.h"
 
 #if !defined(QT_NO_OPENGL)
 #if !defined(QT_OPENGL_ES_2)
@@ -65,9 +67,19 @@ QXlibIntegration::QXlibIntegration(bool useOpenGL)
     : mUseOpenGL(useOpenGL)
     , mFontDb(new QGenericUnixFontDatabase())
     , mClipboard(0)
+    , mNativeInterface(new QXlibNativeInterface)
 {
     mPrimaryScreen = new QXlibScreen();
     mScreens.append(mPrimaryScreen);
+}
+
+bool QXlibIntegration::hasCapability(QPlatformIntegration::Capability cap) const
+{
+    switch (cap) {
+    case ThreadedPixmaps: return true;
+    case OpenGL: return hasOpenGL();
+    default: return QPlatformIntegration::hasCapability(cap);
+    }
 }
 
 QPixmapData *QXlibIntegration::createPixmapData(QPixmapData::PixelType type) const
@@ -129,28 +141,33 @@ QPlatformClipboard * QXlibIntegration::clipboard() const
     return mClipboard;
 }
 
+QPlatformNativeInterface * QXlibIntegration::nativeInterface() const
+{
+    return mNativeInterface;
+}
+
 bool QXlibIntegration::hasOpenGL() const
 {
 #if !defined(QT_NO_OPENGL)
 #if !defined(QT_OPENGL_ES_2)
     QXlibScreen *screen = static_cast<const QXlibScreen *>(mScreens.at(0));
-    return glXQueryExtension(screen->display(), 0, 0) != 0;
+    return glXQueryExtension(screen->display()->nativeDisplay(), 0, 0) != 0;
 #else
     static bool eglHasbeenInitialized = false;
     static bool wasEglInitialized = false;
     if (!eglHasbeenInitialized) {
         eglHasbeenInitialized = true;
-        const QXlibScreen *screen = static_cast<const QXlibScreen *>(mScreens.at(0));
+        QXlibScreen *screen = static_cast<QXlibScreen *>(mScreens.at(0));
         EGLint major, minor;
         eglBindAPI(EGL_OPENGL_ES_API);
-        EGLDisplay disp = eglGetDisplay(screen->display());
+        EGLDisplay disp = eglGetDisplay(screen->display()->nativeDisplay());
         wasEglInitialized = eglInitialize(disp,&major,&minor);
+        screen->setEglDisplay(disp);
     }
     return wasEglInitialized;
 #endif
 #endif
     return false;
 }
-
 
 QT_END_NAMESPACE

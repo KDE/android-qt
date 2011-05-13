@@ -359,7 +359,7 @@ void QNetworkCookie::setValue(const QByteArray &value)
 }
 
 // ### move this to qnetworkcookie_p.h and share with qnetworkaccesshttpbackend
-static QPair<QByteArray, QByteArray> nextField(const QByteArray &text, int &position)
+static QPair<QByteArray, QByteArray> nextField(const QByteArray &text, int &position, bool isNameValue)
 {
     // format is one of:
     //    (1)  token
@@ -394,13 +394,22 @@ static QPair<QByteArray, QByteArray> nextField(const QByteArray &text, int &posi
         // quoted-string  = ( <"> *(qdtext | quoted-pair ) <"> )
         // qdtext         = <any TEXT except <">>
         // quoted-pair    = "\" CHAR
+
+        // If it is NAME=VALUE, retain the value as is
+        // refer to http://bugreports.qt.nokia.com/browse/QTBUG-17746
+        if (isNameValue)
+            second += '"';
         ++i;
         while (i < length) {
             register char c = text.at(i);
             if (c == '"') {
                 // end of quoted text
+                if (isNameValue)
+                    second += '"';
                 break;
             } else if (c == '\\') {
+                if (isNameValue)
+                    second += '\\';
                 ++i;
                 if (i >= length)
                     // broken line
@@ -423,7 +432,9 @@ static QPair<QByteArray, QByteArray> nextField(const QByteArray &text, int &posi
         position = i;
         for ( ; i < length; ++i) {
             register char c = text.at(i);
-            if (c == ',' || c == ';' || isLWS(c))
+            // for name value pairs, we want to parse until reaching the next ';'
+            // and not break when reaching a space char
+            if (c == ',' || c == ';' || ((isNameValue && (c == '\n' || c == '\r')) || (!isNameValue && isLWS(c))))
                 break;
         }
 
@@ -476,10 +487,11 @@ QByteArray QNetworkCookie::toRawForm(RawForm form) const
 
     result = d->name;
     result += '=';
-    if (d->value.contains(';') ||
+    if ((d->value.contains(';') ||
         d->value.contains(',') ||
-        d->value.contains(' ') ||
-        d->value.contains('"')) {
+        d->value.contains('"')) &&
+        (!d->value.startsWith('"') &&
+        !d->value.endsWith('"'))) {
         result += '"';
 
         QByteArray value = d->value;
@@ -726,7 +738,7 @@ static QDateTime parseDateString(const QByteArray &dateString)
         // 4 digit Year
         if (isNum
             && year == -1
-            && dateString.length() >= at + 3) {
+            && dateString.length() > at + 3) {
             if (isNumber(dateString[at + 1])
                 && isNumber(dateString[at + 2])
                 && isNumber(dateString[at + 3])) {
@@ -947,7 +959,7 @@ QList<QNetworkCookie> QNetworkCookiePrivate::parseSetCookieHeaderLine(const QByt
         QNetworkCookie cookie;
 
         // The first part is always the "NAME=VALUE" part
-        QPair<QByteArray,QByteArray> field = nextField(cookieString, position);
+        QPair<QByteArray,QByteArray> field = nextField(cookieString, position, true);
         if (field.first.isEmpty() || field.second.isNull())
             // parsing error
             break;
@@ -965,7 +977,7 @@ QList<QNetworkCookie> QNetworkCookiePrivate::parseSetCookieHeaderLine(const QByt
 
             case ';':
                 // new field in the cookie
-                field = nextField(cookieString, position);
+                field = nextField(cookieString, position, false);
                 field.first = field.first.toLower(); // everything but the NAME=VALUE is case-insensitive
 
                 if (field.first == "expires") {

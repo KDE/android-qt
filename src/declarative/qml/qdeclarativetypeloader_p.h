@@ -79,7 +79,7 @@ public:
         Loading,                 // Prior to data being received and dataReceived() being called
         WaitingForDependencies,  // While there are outstanding addDependency()s
         Complete,                // Finished
-        Error,                   // Error
+        Error                    // Error
     };
 
     enum Type {
@@ -215,10 +215,12 @@ class Q_AUTOTEST_EXPORT QDeclarativeTypeData : public QDeclarativeDataBlob
 public:
     struct TypeReference
     {
-        TypeReference() : type(0), typeData(0) {}
+        TypeReference() : type(0), majorVersion(0), minorVersion(0), typeData(0) {}
 
         QDeclarativeParser::Location location;
         QDeclarativeType *type;
+        int majorVersion;
+        int minorVersion;
         QDeclarativeTypeData *typeData;
     };
 

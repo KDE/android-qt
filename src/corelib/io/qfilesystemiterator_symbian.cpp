@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -88,8 +88,6 @@ QFileSystemIterator::QFileSystemIterator(const QFileSystemEntry &path, QDir::Fil
     else if (symbianMask == 0) {
         if ((filters & QDir::PermissionMask) == QDir::Writable)
             symbianMask = KEntryAttMatchExclude | KEntryAttReadOnly;
-        else if ((filters & QDir::PermissionMask) == QDir::Readable)
-            symbianMask = KEntryAttMatchExclusive | KEntryAttReadOnly;
     }
 
     lastError = dirHandle.Open(fs, qt_QString2TPtrC(absPath), symbianMask);

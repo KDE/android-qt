@@ -44,9 +44,15 @@
 
 #include <QEventLoop>
 #include <QTimer>
+#include <QThread>
 
 #include "qnetworkconfigmanager_p.h"
 #include "qnetworksession_p.h"
+
+#ifdef Q_OS_SYMBIAN
+#include <es_sock.h>
+#include <private/qcore_symbian_p.h>
+#endif
 
 #ifndef QT_NO_BEARERMANAGEMENT
 
@@ -250,6 +256,9 @@ QNetworkSession::QNetworkSession(const QNetworkConfiguration &connectionConfig, 
             }
         }
     }
+
+    qRegisterMetaType<QNetworkSession::State>();
+    qRegisterMetaType<QNetworkSession::SessionError>();
 }
 
 /*!
@@ -677,7 +686,7 @@ void QNetworkSession::connectNotify(const char *signal)
 
     //check for preferredConfigurationChanged() signal connect notification
     //This is not required on all platforms
-    if (QLatin1String(signal) == SIGNAL(preferredConfigurationChanged(QNetworkConfiguration,bool)))
+    if (qstrcmp(signal, SIGNAL(preferredConfigurationChanged(QNetworkConfiguration,bool))) == 0)
         d->setALREnabled(true);
 }
 
@@ -698,9 +707,43 @@ void QNetworkSession::disconnectNotify(const char *signal)
 
     //check for preferredConfigurationChanged() signal disconnect notification
     //This is not required on all platforms
-    if (QLatin1String(signal) == SIGNAL(preferredConfigurationChanged(QNetworkConfiguration,bool)))
+    if (qstrcmp(signal, SIGNAL(preferredConfigurationChanged(QNetworkConfiguration,bool))) == 0)
         d->setALREnabled(false);
 }
+
+#ifdef Q_OS_SYMBIAN
+RConnection* QNetworkSessionPrivate::nativeSession(QNetworkSession &s)
+{
+    if (!s.d)
+        return 0;
+    if (s.thread() != QThread::currentThread())
+        qWarning("QNetworkSessionPrivate::nativeSession called in wrong thread");
+    return s.d->nativeSession();
+}
+
+TInt QNetworkSessionPrivate::nativeOpenSocket(QNetworkSession& s, RSocket& sock, TUint family, TUint type, TUint protocol)
+{
+    if (!s.d)
+        return 0;
+    QMutexLocker lock(&(s.d->mutex));
+    RConnection *con = s.d->nativeSession();
+    if (!con || !con->SubSessionHandle())
+        return KErrNotReady;
+    return sock.Open(qt_symbianGetSocketServer(), family, type, protocol, *con);
+}
+
+TInt QNetworkSessionPrivate::nativeOpenHostResolver(QNetworkSession& s, RHostResolver& resolver, TUint family, TUint protocol)
+{
+    if (!s.d)
+        return 0;
+    QMutexLocker lock(&(s.d->mutex));
+    RConnection *con = s.d->nativeSession();
+    if (!con || !con->SubSessionHandle())
+        return KErrNotReady;
+    return resolver.Open(qt_symbianGetSocketServer(), family, protocol, *con);
+}
+
+#endif
 
 #include "moc_qnetworksession.cpp"
 

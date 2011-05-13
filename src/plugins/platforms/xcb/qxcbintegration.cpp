@@ -4,7 +4,7 @@
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
-** This file is part of the QtGui module of the Qt Toolkit.
+** This file is part of the plugins of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
 ** No Commercial Usage
@@ -44,6 +44,7 @@
 #include "qxcbscreen.h"
 #include "qxcbwindow.h"
 #include "qxcbwindowsurface.h"
+#include "qxcbnativeinterface.h"
 
 #include <xcb/xcb.h>
 
@@ -53,6 +54,10 @@
 
 #include <stdio.h>
 
+#ifdef XCB_USE_EGL
+#include <EGL/egl.h>
+#endif
+
 QXcbIntegration::QXcbIntegration()
     : m_connection(new QXcbConnection)
 {
@@ -60,11 +65,21 @@ QXcbIntegration::QXcbIntegration()
         m_screens << screen;
 
     m_fontDatabase = new QGenericUnixFontDatabase();
+    m_nativeInterface = new QXcbNativeInterface;
 }
 
 QXcbIntegration::~QXcbIntegration()
 {
     delete m_connection;
+}
+
+bool QXcbIntegration::hasCapability(QPlatformIntegration::Capability cap) const
+{
+    switch (cap) {
+    case ThreadedPixmaps: return true;
+    case OpenGL: return hasOpenGL();
+    default: return QPlatformIntegration::hasCapability(cap);
+    }
 }
 
 QPixmapData *QXcbIntegration::createPixmapData(QPixmapData::PixelType type) const
@@ -118,9 +133,19 @@ QPixmap QXcbIntegration::grabWindow(WId window, int x, int y, int width, int hei
 
 bool QXcbIntegration::hasOpenGL() const
 {
-#ifdef XCB_USE_XLIB_FOR_GLX
+#if defined(XCB_USE_GLX)
     return true;
-#else
-    return false;
+#elif defined(XCB_USE_EGL)
+    return m_connection->hasEgl();
+#elif defined(XCB_USE_DRI2)
+    if (m_connection->hasSupportForDri2()) {
+        return true;
+    }
 #endif
+    return false;
+}
+
+QPlatformNativeInterface * QXcbIntegration::nativeInterface() const
+{
+    return m_nativeInterface;
 }

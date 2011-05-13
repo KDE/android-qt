@@ -48,6 +48,8 @@ QT_BEGIN_HEADER
 
 #if defined(Q_OS_ANDROID)
 #  include "QtCore/qatomic_android.h"
+#elif defined(QT_ARCH_INTEGRITY)
+#  include "QtCore/qatomic_integrity.h"
 #elif defined(QT_ARCH_VXWORKS)
 #  include "QtCore/qatomic_vxworks.h"
 #elif defined(QT_ARCH_ALPHA)

@@ -108,6 +108,8 @@ win32 {
 }
 
 symbian {
+    exists($${EPOCROOT}epoc32/include/platform/mw/akntranseffect.h): DEFINES += QT_SYMBIAN_HAVE_AKNTRANSEFFECT_H
+
     SOURCES += \
         kernel/qapplication_s60.cpp \
         kernel/qeventdispatcher_s60.cpp \
@@ -223,7 +225,8 @@ qpa {
                 kernel/qdesktopwidget_qpa_p.h \
                 kernel/qplatformeventloopintegration_qpa.h \
                 kernel/qplatformcursor_qpa.h \
-                kernel/qplatformclipboard_qpa.h
+                kernel/qplatformclipboard_qpa.h \
+                kernel/qplatformnativeinterface_qpa.h
 
 	SOURCES += \
 		kernel/qapplication_qpa.cpp \
@@ -246,7 +249,9 @@ qpa {
                 kernel/qplatformeventloopintegration_qpa.cpp \
                 kernel/qplatformglcontext_qpa.cpp \
                 kernel/qplatformcursor_qpa.cpp \
-                kernel/qplatformclipboard_qpa.cpp
+                kernel/qplatformclipboard_qpa.cpp \
+                kernel/qplatformnativeinterface_qpa.cpp \
+                kernel/qsessionmanager_qpa.cpp
 
         contains(QT_CONFIG, glib) {
             SOURCES += \

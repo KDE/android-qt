@@ -128,6 +128,10 @@ extern bool qt_wince_is_pocket_pc();  //qguifunctions_wince.cpp
 
 //#define ALIEN_DEBUG
 
+#if defined(Q_OS_SYMBIAN)
+#include "qt_s60_p.h"
+#endif
+
 static void initResources()
 {
 #if defined(Q_WS_WINCE)
@@ -2438,6 +2442,11 @@ bool QApplication::event(QEvent *e)
 {
     Q_D(QApplication);
     if(e->type() == QEvent::Close) {
+#if defined(Q_OS_SYMBIAN)
+        // In order to have proper application-exit effects on Symbian, certain
+        // native APIs have to be called _before_ closing/destroying the widgets.
+        bool effectStarted = qt_beginFullScreenEffect();
+#endif
         QCloseEvent *ce = static_cast<QCloseEvent*>(e);
         ce->accept();
         closeAllWindows();
@@ -2451,8 +2460,14 @@ bool QApplication::event(QEvent *e)
                 break;
             }
         }
-        if(ce->isAccepted())
+        if (ce->isAccepted()) {
             return true;
+        } else {
+#if defined(Q_OS_SYMBIAN)
+            if (effectStarted)
+                qt_abortFullScreenEffect();
+#endif
+        }
     } else if(e->type() == QEvent::LanguageChange) {
 #ifndef QT_NO_TRANSLATION
         setLayoutDirection(qt_detectRTLLanguage()?Qt::RightToLeft:Qt::LeftToRight);
@@ -2771,7 +2786,7 @@ void QApplicationPrivate::dispatchEnterLeave(QWidget* enter, QWidget* leave) {
     for (int i = 0; i < leaveList.size(); ++i) {
         w = leaveList.at(i);
         if (!QApplication::activeModalWidget() || QApplicationPrivate::tryModalHelper(w, 0)) {
-#if defined(Q_WS_WIN) || defined(Q_WS_X11)
+#if defined(Q_WS_WIN) || defined(Q_WS_X11) || defined(Q_WS_MAC)
             if (leaveAfterRelease == w)
                 leaveAfterRelease = 0;
 #endif
@@ -3142,13 +3157,11 @@ bool QApplicationPrivate::sendMouseEvent(QWidget *receiver, QMouseEvent *event,
         // Dispatch enter/leave if:
         // 1) the mouse grabber is an alien widget
         // 2) the button is released on an alien widget
-
         QWidget *enter = 0;
         if (nativeGuard)
             enter = alienGuard ? alienWidget : nativeWidget;
         else // The receiver is typically deleted on mouse release with drag'n'drop.
             enter = QApplication::widgetAt(event->globalPos());
-
         dispatchEnterLeave(enter, leaveAfterRelease);
         leaveAfterRelease = 0;
         lastMouseReceiver = enter;
@@ -3695,15 +3708,6 @@ void QApplication::changeOverrideCursor(const QCursor &cursor)
     if (qApp->d_func()->cursor_list.isEmpty())
         return;
     qApp->d_func()->cursor_list.removeFirst();
-#ifdef QT_MAC_USE_COCOA
-    // We use native NSCursor stacks in Cocoa. The currentCursor is the
-    // top of this stack. So to avoid flickering of cursor, we have to
-    // change the cusor instead of pop-ing the existing OverrideCursor
-    // and pushing the new one.
-    qApp->d_func()->cursor_list.prepend(cursor);
-    qt_cocoaChangeOverrideCursor(cursor);
-    return;
-#endif
     setOverrideCursor(cursor);
 }
 #endif
@@ -4434,6 +4438,24 @@ bool QApplication::notify(QObject *receiver, QEvent *e)
         break;
     }
 #endif // QT_NO_GESTURES
+#ifdef QT_MAC_USE_COCOA
+    case QEvent::Enter:
+        if (receiver->isWidgetType()) {
+            QWidget *w = static_cast<QWidget *>(receiver);
+            if (w->testAttribute(Qt::WA_AcceptTouchEvents))
+                qt_widget_private(w)->registerTouchWindow(true);
+        }
+        res = d->notify_helper(receiver, e);
+    break;
+    case QEvent::Leave:
+        if (receiver->isWidgetType()) {
+            QWidget *w = static_cast<QWidget *>(receiver);
+            if (w->testAttribute(Qt::WA_AcceptTouchEvents))
+                qt_widget_private(w)->registerTouchWindow(false);
+        }
+        res = d->notify_helper(receiver, e);
+    break;
+#endif
     default:
         res = d->notify_helper(receiver, e);
         break;

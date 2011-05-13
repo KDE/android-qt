@@ -141,11 +141,8 @@ public:
     QWaitCondition thread_done;
 
     static void *start(void *arg);
-#if defined(Q_OS_SYMBIAN) || defined(Q_OS_ANDROID)
-    static void finish(void *arg, bool lockAnyway=true, bool closeNativeHandle=true);
-#else
     static void finish(void *);
-#endif
+
 #endif // Q_OS_UNIX
 
 #if defined(Q_OS_WIN32) || defined(Q_OS_WINCE)
@@ -201,6 +198,7 @@ public:
     void deref();
 
     QThread *thread;
+    Qt::HANDLE threadId;
     bool quitNow;
     int loopLevel;
     QAbstractEventDispatcher *eventDispatcher;
@@ -208,8 +206,7 @@ public:
     QPostEventList postEventList;
     bool canWait;
     QVector<void *> tls;
-
-    QMutex mutex;
+    bool isAdopted;
 
 # ifdef Q_OS_SYMBIAN
     RThread symbian_thread_handle;

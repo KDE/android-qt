@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -90,11 +90,11 @@ public:
     QOpenKODEIntegration();
     ~QOpenKODEIntegration();
 
+    bool hasCapability(QPlatformIntegration::Capability cap) const;
+
     QPixmapData *createPixmapData(QPixmapData::PixelType type) const;
     QPlatformWindow *createPlatformWindow(QWidget *widget, WId winId = 0) const;
     QWindowSurface *createWindowSurface(QWidget *widget, WId winId) const;
-
-    bool hasOpenGL() const;
 
     QPlatformEventLoopIntegration *createEventLoopIntegration() const;
 
@@ -104,10 +104,14 @@ public:
 
     static GLuint blitterProgram();
 
+    void setMainGLContext(QEGLPlatformContext *ctx) { mMainGlContext = ctx; }
+    void mainGLContext() const { return mMainGlContext; }
+
 private:
     QList<QPlatformScreen *> mScreens;
     QOpenKODEEventLoopIntegration *mEventLoopIntegration;
     QPlatformFontDatabase *mFontDb;
+    QEGLPlatformContext *mMainGlContext;
 };
 
 QT_END_NAMESPACE

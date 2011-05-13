@@ -254,12 +254,20 @@ void QLineControl::setSelection(int start, int length)
         m_selstart = start;
         m_selend = qMin(start + length, (int)m_text.length());
         m_cursor = m_selend;
-    } else {
+    } else if (length < 0){
         if (start == m_selend && start + length == m_selstart)
             return;
         m_selstart = qMax(start + length, 0);
         m_selend = start;
         m_cursor = m_selstart;
+    } else if (m_selstart != m_selend) {
+        m_selstart = 0;
+        m_selend = 0;
+        m_cursor = start;
+    } else {
+        m_cursor = start;
+        emitCursorPositionChanged();
+        return;
     }
     emit selectionChanged();
     emitCursorPositionChanged();
@@ -414,13 +422,17 @@ void QLineControl::processInputMethodEvent(QInputMethodEvent *event)
     if (isGettingInput) {
         // If any text is being input, remove selected text.
         priorState = m_undoState;
+        if (echoMode() == QLineEdit::PasswordEchoOnEdit && !passwordEchoEditing()) {
+            updatePasswordEchoEditing(true);
+            m_selstart = 0;
+            m_selend = m_text.length();
+        }
         removeSelectedText();
     }
 
-
     int c = m_cursor; // cursor position after insertion of commit string
     if (event->replacementStart() <= 0)
-        c += event->commitString().length() + qMin(-event->replacementStart(), event->replacementLength());
+        c += event->commitString().length() - qMin(-event->replacementStart(), event->replacementLength());
 
     m_cursor += event->replacementStart();
 
@@ -431,7 +443,7 @@ void QLineControl::processInputMethodEvent(QInputMethodEvent *event)
         removeSelectedText();
     }
     if (!event->commitString().isEmpty()) {
-        insert(event->commitString());
+        internalInsert(event->commitString());
         cursorPositionChanged = true;
     }
 
@@ -456,6 +468,7 @@ void QLineControl::processInputMethodEvent(QInputMethodEvent *event)
 #ifndef QT_NO_IM
     setPreeditArea(m_cursor, event->preeditString());
 #endif //QT_NO_IM
+    const int oldPreeditCursor = m_preeditCursor;
     m_preeditCursor = event->preeditString().length();
     m_hideCursor = false;
     QList<QTextLayout::FormatRange> formats;
@@ -479,6 +492,8 @@ void QLineControl::processInputMethodEvent(QInputMethodEvent *event)
     updateDisplayText(/*force*/ true);
     if (cursorPositionChanged)
         emitCursorPositionChanged();
+    else if (m_preeditCursor != oldPreeditCursor)
+        emit updateMicroFocus();
     if (isGettingInput)
         finishChange(priorState);
 }
@@ -541,10 +556,13 @@ void QLineControl::draw(QPainter *painter, const QPoint &offset, const QRect &cl
 */
 void QLineControl::selectWordAtPos(int cursor)
 {
-    int c = m_textLayout.previousCursorPosition(cursor, QTextLayout::SkipWords);
+    int next = cursor + 1;
+    if(next > end())
+        --next;
+    int c = m_textLayout.previousCursorPosition(next, QTextLayout::SkipWords);
     moveCursor(c, false);
     // ## text layout should support end of words.
-    int end = m_textLayout.nextCursorPosition(cursor, QTextLayout::SkipWords);
+    int end = m_textLayout.nextCursorPosition(c, QTextLayout::SkipWords);
     while (end > cursor && m_text[end-1].isSpace())
         --end;
     moveCursor(end, true);
@@ -633,7 +651,12 @@ void QLineControl::internalSetText(const QString &txt, int pos, bool edited)
     m_modifiedState =  m_undoState = 0;
     m_cursor = (pos < 0 || pos > m_text.length()) ? m_text.length() : pos;
     m_textDirty = (oldText != m_text);
-    finishChange(-1, true, edited);
+    bool changed = finishChange(-1, true, edited);
+
+#ifndef QT_NO_ACCESSIBILITY
+    if (changed)
+        QAccessible::updateAccessibility(parent(), 0, QAccessible::TextUpdated);
+#endif
 }
 
 
@@ -1220,6 +1243,9 @@ void QLineControl::emitCursorPositionChanged()
         const int oldLast = m_lastCursorPos;
         m_lastCursorPos = m_cursor;
         cursorPositionChanged(oldLast, m_cursor);
+#ifndef QT_NO_ACCESSIBILITY
+        QAccessible::updateAccessibility(parent(), 0, QAccessible::TextCaretMoved);
+#endif
     }
 }
 
@@ -1567,6 +1593,7 @@ void QLineControl::processKeyEvent(QKeyEvent* event)
     }
 
     bool unknown = false;
+    bool visual = cursorMoveStyle() == QTextCursor::Visual;
 
     if (false) {
     }
@@ -1631,11 +1658,11 @@ void QLineControl::processKeyEvent(QKeyEvent* event)
 #endif
             moveCursor(selectionEnd(), false);
         } else {
-            cursorForward(0, layoutDirection() == Qt::LeftToRight ? 1 : -1);
+            cursorForward(0, visual ? 1 : (layoutDirection() == Qt::LeftToRight ? 1 : -1));
         }
     }
     else if (event == QKeySequence::SelectNextChar) {
-        cursorForward(1, layoutDirection() == Qt::LeftToRight ? 1 : -1);
+        cursorForward(1, visual ? 1 : (layoutDirection() == Qt::LeftToRight ? 1 : -1));
     }
     else if (event == QKeySequence::MoveToPreviousChar) {
 #if !defined(Q_WS_WIN) || defined(QT_NO_COMPLETER)
@@ -1646,11 +1673,11 @@ void QLineControl::processKeyEvent(QKeyEvent* event)
 #endif
             moveCursor(selectionStart(), false);
         } else {
-            cursorForward(0, layoutDirection() == Qt::LeftToRight ? -1 : 1);
+            cursorForward(0, visual ? -1 : (layoutDirection() == Qt::LeftToRight ? -1 : 1));
         }
     }
     else if (event == QKeySequence::SelectPreviousChar) {
-        cursorForward(1, layoutDirection() == Qt::LeftToRight ? -1 : 1);
+        cursorForward(1, visual ? -1 : (layoutDirection() == Qt::LeftToRight ? -1 : 1));
     }
     else if (event == QKeySequence::MoveToNextWord) {
         if (echoMode() == QLineEdit::Normal)

@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -69,16 +69,6 @@ QPlatformEventLoopIntegration *QPlatformIntegration::createEventLoopIntegration(
 }
 
 /*!
-    Returns whether the given platform integration supports OpenGL.
-
-    Default implementation returns false,
-*/
-bool QPlatformIntegration::hasOpenGL() const
-{
-    return false;
-}
-
-/*!
     Accessor for the platform integrations fontdatabase.
 
     Default implementation returns a default QPlatformFontDatabase.
@@ -102,6 +92,9 @@ QPlatformFontDatabase *QPlatformIntegration::fontDatabase() const
     \sa QPlatformClipboard
 
 */
+
+#ifndef QT_NO_CLIPBOARD
+
 QPlatformClipboard *QPlatformIntegration::clipboard() const
 {
     static QPlatformClipboard *clipboard = 0;
@@ -109,6 +102,13 @@ QPlatformClipboard *QPlatformIntegration::clipboard() const
         clipboard = new QPlatformClipboard;
     }
     return clipboard;
+}
+
+#endif
+
+QPlatformNativeInterface * QPlatformIntegration::nativeInterface() const
+{
+    return 0;
 }
 
 /*!
@@ -210,5 +210,16 @@ QPlatformClipboard *QPlatformIntegration::clipboard() const
     Returnes the content of the window specified with the WId handle within the boundaries of
     QRect(x,y,width,height).
 */
+
+
+bool QPlatformIntegration::hasCapability(Capability cap) const
+{
+    Q_UNUSED(cap);
+    return false;
+}
+
+
+
+
 
 QT_END_NAMESPACE

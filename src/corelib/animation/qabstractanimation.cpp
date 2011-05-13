@@ -167,7 +167,7 @@ Q_GLOBAL_STATIC(QThreadStorage<QUnifiedTimer *>, unifiedTimer)
 
 QUnifiedTimer::QUnifiedTimer() :
     QObject(), defaultDriver(this), lastTick(0), timingInterval(DEFAULT_TIMER_INTERVAL),
-    currentAnimationIdx(0), consistentTiming(false), slowMode(false),
+    currentAnimationIdx(0), insideTick(false), consistentTiming(false), slowMode(false),
     slowdownFactor(5.0f), isPauseTimerActive(false), runningLeafAnimations(0)
 {
     time.invalidate();
@@ -206,6 +206,10 @@ void QUnifiedTimer::ensureTimerUpdate()
 
 void QUnifiedTimer::updateAnimationsTime()
 {
+    //setCurrentTime can get this called again while we're the for loop. At least with pauseAnimations
+    if(insideTick)
+        return;
+
     qint64 totalElapsed = time.elapsed();
     // ignore consistentTiming in case the pause timer is active
     int delta = (consistentTiming && !isPauseTimerActive) ?
@@ -223,12 +227,14 @@ void QUnifiedTimer::updateAnimationsTime()
     //it might happen in some cases that the time doesn't change because events are delayed
     //when the CPU load is high
     if (delta) {
+        insideTick = true;
         for (currentAnimationIdx = 0; currentAnimationIdx < animations.count(); ++currentAnimationIdx) {
             QAbstractAnimation *animation = animations.at(currentAnimationIdx);
             int elapsed = QAbstractAnimationPrivate::get(animation)->totalCurrentTime
                           + (animation->direction() == QAbstractAnimation::Forward ? delta : -delta);
             animation->setCurrentTime(elapsed);
         }
+        insideTick = false;
         currentAnimationIdx = 0;
     }
 }
@@ -404,6 +410,8 @@ void QUnifiedTimer::installAnimationDriver(QAnimationDriver *d)
    The default animation system is driven by a timer that fires at regular intervals.
    In some scenarios, it is better to drive the animation based on other synchronization
    mechanisms, such as the vertical refresh rate of the screen.
+
+   \internal
  */
 
 QAnimationDriver::QAnimationDriver(QObject *parent)
@@ -420,6 +428,8 @@ QAnimationDriver::QAnimationDriver(QAnimationDriverPrivate &dd, QObject *parent)
 /*!
     Advances the animation based on the current time. This function should
     be continuously called by the driver while the animation is running.
+
+    \internal
  */
 void QAnimationDriver::advance()
 {
@@ -434,6 +444,8 @@ void QAnimationDriver::advance()
 /*!
     Installs this animation driver. The animation driver is thread local and
     will only apply for the thread its installed in.
+
+    \internal
  */
 void QAnimationDriver::install()
 {
@@ -471,6 +483,8 @@ void QAnimationDriver::stop()
 
     This function is called by the animation framework to notify the driver
     that it should start running.
+
+    \internal
  */
 
 /*!
@@ -478,6 +492,8 @@ void QAnimationDriver::stop()
 
     This function is called by the animation framework to notify the driver
     that it should stop running.
+
+    \internal
  */
 
 /*!
@@ -491,6 +507,7 @@ QDefaultAnimationDriver::QDefaultAnimationDriver(QUnifiedTimer *timer)
 void QDefaultAnimationDriver::timerEvent(QTimerEvent *e)
 {
     Q_ASSERT(e->timerId() == m_timer.timerId());
+    Q_UNUSED(e); // if the assertions are disabled
     advance();
 }
 

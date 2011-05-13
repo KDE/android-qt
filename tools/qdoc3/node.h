@@ -55,7 +55,6 @@
 #include "doc.h"
 #include "location.h"
 #include "text.h"
-#include <QUuid>
 
 QT_BEGIN_NAMESPACE
 
@@ -87,8 +86,8 @@ class Node
 
     enum SubType { 
         NoSubType,
-        Example, 
-        HeaderFile, 
+        Example,
+        HeaderFile,
         File,
         Image,
         Group,
@@ -114,7 +113,7 @@ class Node
         Commendable, 
         Main, 
         Internal 
-    }; // don't reorder thisw enum
+    }; // don't reorder this enum
     
     enum ThreadSafeness { 
         UnspecifiedSafeness, 
@@ -165,6 +164,7 @@ class Node
     virtual bool isReimp() const { return false; }
     virtual bool isFunction() const { return false; }
     virtual bool isQmlNode() const { return false; }
+    virtual bool isInternal() const { return false; }
     Type type() const { return typ; }
     virtual SubType subType() const { return NoSubType; }
     InnerNode* parent() const { return par; }
@@ -191,7 +191,7 @@ class Node
     void clearRelated() { rel = 0; }
 
     virtual QString fileBase() const;
-    QUuid guid() const;
+    QString guid() const;
     QString ditaXmlHref();
     QString extractClassName(const QString &string) const;
 
@@ -223,7 +223,7 @@ class Node
     QString u;
     QString sinc;
     QString tpl;
-    mutable QUuid uuid;
+    mutable QString uuid;
 };
 
 class FunctionNode;
@@ -466,6 +466,8 @@ class QmlPropertyNode : public LeafNode
     bool isAttached() const { return att; }
     virtual bool isQmlNode() const { return true; }
 
+    const PropertyNode *correspondingProperty(const Tree *tree) const;
+
     const QString& element() const { return static_cast<QmlPropGroupNode*>(parent())->element(); }
 
  private:
@@ -637,6 +639,7 @@ class FunctionNode : public LeafNode
     virtual bool isQmlNode() const { 
         return ((type() == QmlSignal) || (type() == QmlMethod)); 
     }
+    virtual bool isInternal() const;
 
     void debug() const;
 
@@ -688,6 +691,7 @@ class PropertyNode : public LeafNode
     void setRuntimeScrFunc(const QString& scrf) { runtimeScrFunc = scrf; }
     void setConstant() { cst = true; }
     void setFinal() { fnl = true; }
+    void setRevision(int revision) { rev = revision; }
 
     const QString &dataType() const { return dt; }
     QString qualifiedDataType() const;
@@ -731,6 +735,7 @@ class PropertyNode : public LeafNode
     Trool usr;
     bool cst;
     bool fnl;
+    int rev;
     const PropertyNode* overrides;
 };
 

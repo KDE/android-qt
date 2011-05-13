@@ -52,24 +52,27 @@
 
 #include <unistd.h>
 #include <fcntl.h>
+
+#ifndef QT_NO_WAYLAND_XKB
 #include <X11/extensions/XKBcommon.h>
 #include <X11/keysym.h>
+#endif
 
 QWaylandInputDevice::QWaylandInputDevice(struct wl_display *display,
 					 uint32_t id)
     : mDisplay(display)
-    , mInputDevice(wl_input_device_create(display, id))
+    , mInputDevice(wl_input_device_create(display, id, 1))
     , mPointerFocus(NULL)
     , mKeyboardFocus(NULL)
     , mButtons(0)
 {
-    struct xkb_rule_names names;
-
     wl_input_device_add_listener(mInputDevice,
 				 &inputDeviceListener,
 				 this);
     wl_input_device_set_user_data(mInputDevice, this);
 
+#ifndef QT_NO_WAYLAND_XKB
+    struct xkb_rule_names names;
     names.rules = "evdev";
     names.model = "pc105";
     names.layout = "us";
@@ -77,6 +80,15 @@ QWaylandInputDevice::QWaylandInputDevice(struct wl_display *display,
     names.options = "";
 
     mXkb = xkb_compile_keymap_from_rules(&names);
+#endif
+}
+
+void QWaylandInputDevice::handleWindowDestroyed(QWaylandWindow *window)
+{
+    if (window == mPointerFocus)
+        mPointerFocus = 0;
+    if (window == mKeyboardFocus)
+        mKeyboardFocus = 0;
 }
 
 void QWaylandInputDevice::inputHandleMotion(void *data,
@@ -88,6 +100,12 @@ void QWaylandInputDevice::inputHandleMotion(void *data,
     Q_UNUSED(input_device);
     QWaylandInputDevice *inputDevice = (QWaylandInputDevice *) data;
     QWaylandWindow *window = inputDevice->mPointerFocus;
+
+    if (window == NULL) {
+	/* We destroyed the pointer focus surface, but the server
+	 * didn't get the message yet. */
+	return;
+    }
 
     inputDevice->mSurfacePos = QPoint(surface_x, surface_y);
     inputDevice->mGlobalPos = QPoint(x, y);
@@ -107,6 +125,12 @@ void QWaylandInputDevice::inputHandleButton(void *data,
     QWaylandInputDevice *inputDevice = (QWaylandInputDevice *) data;
     QWaylandWindow *window = inputDevice->mPointerFocus;
     Qt::MouseButton qt_button;
+
+    if (window == NULL) {
+	/* We destroyed the pointer focus surface, but the server
+	 * didn't get the message yet. */
+	return;
+    }
 
     switch (button) {
     case 272:
@@ -135,6 +159,7 @@ void QWaylandInputDevice::inputHandleButton(void *data,
 					     inputDevice->mButtons);
 }
 
+#ifndef QT_NO_WAYLAND_XKB
 static Qt::KeyboardModifiers translateModifiers(int s)
 {
     const uchar qt_alt_mask = XKB_COMMON_MOD1_MASK;
@@ -201,11 +226,13 @@ static uint32_t translateKey(uint32_t sym, char *string, size_t size)
 	return toupper(sym);
     }
 }
+#endif
 
 void QWaylandInputDevice::inputHandleKey(void *data,
 					 struct wl_input_device *input_device,
 					 uint32_t time, uint32_t key, uint32_t state)
 {
+#ifndef QT_NO_WAYLAND_XKB
     Q_UNUSED(input_device);
     QWaylandInputDevice *inputDevice = (QWaylandInputDevice *) data;
     QWaylandWindow *window = inputDevice->mKeyboardFocus;
@@ -213,6 +240,12 @@ void QWaylandInputDevice::inputHandleKey(void *data,
     Qt::KeyboardModifiers modifiers;
     QEvent::Type type;
     char s[2];
+
+    if (window == NULL) {
+	/* We destroyed the keyboard focus surface, but the server
+	 * didn't get the message yet. */
+	return;
+    }
 
     code = key + inputDevice->mXkb->min_key_code;
 
@@ -235,15 +268,13 @@ void QWaylandInputDevice::inputHandleKey(void *data,
 
     sym = translateKey(sym, s, sizeof s);
 
-    qWarning("keycode %d, sym %d, string %d, modifiers 0x%x",
-	     code, sym, s[0], (int) inputDevice->mModifiers);
-
     if (window) {
         QWindowSystemInterface::handleKeyEvent(window->widget(),
                                                time, type, sym,
                                                inputDevice->mModifiers,
                                                QString::fromLatin1(s));
     }
+#endif
 }
 
 void QWaylandInputDevice::inputHandlePointerFocus(void *data,
@@ -280,6 +311,7 @@ void QWaylandInputDevice::inputHandleKeyboardFocus(void *data,
 						   struct wl_surface *surface,
 						   struct wl_array *keys)
 {
+#ifndef QT_NO_WAYLAND_XKB
     Q_UNUSED(input_device);
     Q_UNUSED(time);
     QWaylandInputDevice *inputDevice = (QWaylandInputDevice *) data;
@@ -303,7 +335,7 @@ void QWaylandInputDevice::inputHandleKeyboardFocus(void *data,
 	inputDevice->mKeyboardFocus = NULL;
 	QWindowSystemInterface::handleWindowActivated(0);
     }
-
+#endif
 }
 
 const struct wl_input_device_listener QWaylandInputDevice::inputDeviceListener = {

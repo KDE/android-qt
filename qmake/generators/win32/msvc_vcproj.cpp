@@ -360,6 +360,25 @@ QUuid VcprojGenerator::increaseUUID(const QUuid &id)
     return result;
 }
 
+QStringList VcprojGenerator::collectSubDirs(QMakeProject *proj)
+{
+    QStringList subdirs;
+    QStringList tmp_proj_subdirs = proj->variables()["SUBDIRS"];
+    for(int x = 0; x < tmp_proj_subdirs.size(); ++x) {
+        QString tmpdir = tmp_proj_subdirs.at(x);
+        if(!proj->isEmpty(tmpdir + ".file")) {
+            if(!proj->isEmpty(tmpdir + ".subdir"))
+                warn_msg(WarnLogic, "Cannot assign both file and subdir for subdir %s",
+                         tmpdir.toLatin1().constData());
+            tmpdir = proj->first(tmpdir + ".file");
+        } else if(!proj->isEmpty(tmpdir + ".subdir")) {
+            tmpdir = proj->first(tmpdir + ".subdir");
+        }
+        subdirs += tmpdir;
+    }
+    return subdirs;
+}
+
 void VcprojGenerator::writeSubDirs(QTextStream &t)
 {
     // Check if all requirements are fulfilled
@@ -394,7 +413,6 @@ void VcprojGenerator::writeSubDirs(QTextStream &t)
     QHash<QString, VcsolutionDepend*> solution_depends;
     QList<VcsolutionDepend*> solution_cleanup;
 
-    QStringList subdirs = project->values("SUBDIRS");
     QString oldpwd = qmake_getpwd();
 
     // Make sure that all temp projects are configured
@@ -403,16 +421,9 @@ void VcprojGenerator::writeSubDirs(QTextStream &t)
     QStringList old_after_vars = Option::after_user_vars;
     Option::after_user_vars.append("CONFIG+=release");
 
+    QStringList subdirs = collectSubDirs(project);
     for(int i = 0; i < subdirs.size(); ++i) {
         QString tmp = subdirs.at(i);
-        if(!project->isEmpty(tmp + ".file")) {
-            if(!project->isEmpty(tmp + ".subdir"))
-                warn_msg(WarnLogic, "Cannot assign both file and subdir for subdir %s",
-                         tmp.toLatin1().constData());
-            tmp = project->first(tmp + ".file");
-        } else if(!project->isEmpty(tmp + ".subdir")) {
-            tmp = project->first(tmp + ".subdir");
-        }
         QFileInfo fi(fileInfo(Option::fixPathToLocalOS(tmp, true)));
         if(fi.exists()) {
             if(fi.isDir()) {
@@ -436,19 +447,8 @@ void VcprojGenerator::writeSubDirs(QTextStream &t)
                         continue;
                     }
                     if(tmp_proj.first("TEMPLATE") == "vcsubdirs") {
-                        QStringList tmp_proj_subdirs = tmp_proj.variables()["SUBDIRS"];
-                        for(int x = 0; x < tmp_proj_subdirs.size(); ++x) {
-                            QString tmpdir = tmp_proj_subdirs.at(x);
-                            if(!tmp_proj.isEmpty(tmpdir + ".file")) {
-                                if(!tmp_proj.isEmpty(tmpdir + ".subdir"))
-                                    warn_msg(WarnLogic, "Cannot assign both file and subdir for subdir %s",
-                                            tmpdir.toLatin1().constData());
-                                tmpdir = tmp_proj.first(tmpdir + ".file");
-                            } else if(!tmp_proj.isEmpty(tmpdir + ".subdir")) {
-                                tmpdir = tmp_proj.first(tmpdir + ".subdir");
-                            }
+                        foreach(const QString &tmpdir, collectSubDirs(&tmp_proj))
                             subdirs += fileFixify(tmpdir);
-                        }
                     } else if(tmp_proj.first("TEMPLATE") == "vcapp" || tmp_proj.first("TEMPLATE") == "vclib") {
                         // Initialize a 'fake' project to get the correct variables
                         // and to be able to extract all the dependencies
@@ -878,22 +878,16 @@ void VcprojGenerator::initConfiguration()
         break;
     }
 
+    conf.OutputDirectory = project->first("DESTDIR");
+    if (conf.OutputDirectory.isEmpty())
+        conf.OutputDirectory = ".\\";
+    if (!conf.OutputDirectory.endsWith("\\"))
+        conf.OutputDirectory += '\\';
     if (conf.CompilerVersion >= NET2010) {
-        conf.OutputDirectory = project->first("DESTDIR");
-
-        if(conf.OutputDirectory.isEmpty())
-            conf.OutputDirectory = ".\\";
-
-        if(!conf.OutputDirectory.endsWith("\\"))
-            conf.OutputDirectory += '\\';
-
         // The target name could have been changed.
         conf.PrimaryOutput = project->first("TARGET");
         if ( !conf.PrimaryOutput.isEmpty() && !project->first("TARGET_VERSION_EXT").isEmpty() && project->isActiveConfig("shared"))
             conf.PrimaryOutput.append(project->first("TARGET_VERSION_EXT"));
-    } else {
-        conf.PrimaryOutput = project->first("PrimaryOutput");
-        conf.OutputDirectory = ".";
     }
 
     conf.Name = project->values("BUILD_NAME").join(" ");
@@ -982,13 +976,7 @@ void VcprojGenerator::initCompilerTool()
 void VcprojGenerator::initLibrarianTool()
 {
     VCConfiguration &conf = vcProject.Configuration;
-    conf.librarian.OutputFile = project->first("DESTDIR");
-    if(conf.librarian.OutputFile.isEmpty())
-        conf.librarian.OutputFile = ".\\";
-
-    if(!conf.librarian.OutputFile.endsWith("\\"))
-        conf.librarian.OutputFile += '\\';
-
+    conf.librarian.OutputFile = "$(OutDir)\\";
     conf.librarian.OutputFile += project->first("MSVCPROJ_TARGET");
     conf.librarian.AdditionalOptions += project->values("QMAKE_LIBFLAGS");
 }
@@ -1018,24 +1006,7 @@ void VcprojGenerator::initLinkerTool()
         }
     }
 
-    switch (projectTarget) {
-    case Application:
-        conf.linker.OutputFile = project->first("DESTDIR");
-        break;
-    case SharedLib:
-        conf.linker.parseOptions(project->values("MSVCPROJ_LIBOPTIONS"));
-        conf.linker.OutputFile = project->first("DESTDIR");
-        break;
-    case StaticLib: //unhandled - added to remove warnings..
-        break;
-    }
-
-    if(conf.linker.OutputFile.isEmpty())
-        conf.linker.OutputFile = ".\\";
-
-    if(!conf.linker.OutputFile.endsWith("\\"))
-        conf.linker.OutputFile += '\\';
-
+    conf.linker.OutputFile = "$(OutDir)\\";
     conf.linker.OutputFile += project->first("MSVCPROJ_TARGET");
 
     if(project->isActiveConfig("dll")){
@@ -1054,7 +1025,7 @@ void VcprojGenerator::initResourceTool()
     if(project->isActiveConfig("debug"))
         conf.resource.PreprocessorDefinitions += "_DEBUG";
     if(project->isActiveConfig("staticlib"))
-        conf.resource.ResourceOutputFileName = project->first("DESTDIR") + "/$(InputName).res";
+        conf.resource.ResourceOutputFileName = "$(OutDir)\\$(InputName).res";
 }
 
 void VcprojGenerator::initIDLTool()
@@ -1072,22 +1043,26 @@ void VcprojGenerator::initPreBuildEventTools()
 void VcprojGenerator::initPostBuildEventTools()
 {
     VCConfiguration &conf = vcProject.Configuration;
-    if(!project->values("QMAKE_POST_LINK").isEmpty()) {
+    if (!project->values("QMAKE_POST_LINK").isEmpty()) {
         QStringList cmdline = VCToolBase::fixCommandLine(var("QMAKE_POST_LINK"));
         conf.postBuild.CommandLine = cmdline;
         conf.postBuild.Description = cmdline.join(QLatin1String("\r\n"));
+        conf.postBuild.ExcludedFromBuild = _False;
     }
 
     QString signature = !project->isEmpty("SIGNATURE_FILE") ? var("SIGNATURE_FILE") : var("DEFAULT_SIGNATURE");
     bool useSignature = !signature.isEmpty() && !project->isActiveConfig("staticlib") &&
                         !project->isEmpty("CE_SDK") && !project->isEmpty("CE_ARCH");
-    if(useSignature)
+    if (useSignature) {
         conf.postBuild.CommandLine.prepend(
                 QLatin1String("signtool sign /F ") + signature + QLatin1String(" \"$(TargetPath)\""));
+        conf.postBuild.ExcludedFromBuild = _False;
+    }
 
-    if(!project->values("MSVCPROJ_COPY_DLL").isEmpty()) {
+    if (!project->values("MSVCPROJ_COPY_DLL").isEmpty()) {
         conf.postBuild.Description += var("MSVCPROJ_COPY_DLL_DESC");
         conf.postBuild.CommandLine += var("MSVCPROJ_COPY_DLL");
+        conf.postBuild.ExcludedFromBuild = _False;
     }
 }
 
@@ -1218,6 +1193,7 @@ void VcprojGenerator::initPreLinkEventTools()
         QStringList cmdline = VCToolBase::fixCommandLine(var("QMAKE_PRE_LINK"));
         conf.preLink.CommandLine = cmdline;
         conf.preLink.Description = cmdline.join(QLatin1String("\r\n"));
+        conf.preLink.ExcludedFromBuild = _False;
     }
 }
 
@@ -1343,6 +1319,9 @@ void VcprojGenerator::initResourceFiles()
 
                 dep_cmd = Option::fixPathToLocalOS(dep_cmd, true, false);
                 if(canExecute(dep_cmd)) {
+                    dep_cmd.prepend(QLatin1String("cd ")
+                                    + escapeFilePath(Option::fixPathToLocalOS(Option::output_dir, false))
+                                    + QLatin1String(" && "));
                     if(FILE *proc = QT_POPEN(dep_cmd.toLatin1().constData(), "r")) {
                         QString indeps;
                         while(!feof(proc)) {
@@ -1353,7 +1332,8 @@ void VcprojGenerator::initResourceFiles()
                         }
                         QT_PCLOSE(proc);
                         if(!indeps.isEmpty())
-                            deps += fileFixify(indeps.replace('\n', ' ').simplified().split(' '));
+                            deps += fileFixify(indeps.replace('\n', ' ').simplified().split(' '),
+                                               QString(), Option::output_dir);
                     }
                 }
             }
@@ -1575,19 +1555,6 @@ QString VcprojGenerator::findTemplate(QString file)
         return "";
     debug_msg(1, "Generator: MSVC.NET: Found template \'%s\'", ret.toLatin1().constData());
     return ret;
-}
-
-void VcprojGenerator::processPrlVariable(const QString &var, const QStringList &l)
-{
-    if(var == "QMAKE_PRL_DEFINES") {
-        QStringList &out = project->values("MSVCPROJ_DEFINES");
-        for(QStringList::ConstIterator it = l.begin(); it != l.end(); ++it) {
-            if(out.indexOf((*it)) == -1)
-                out.append((" /D " + *it));
-        }
-    } else {
-        MakefileGenerator::processPrlVariable(var, l);
-    }
 }
 
 void VcprojGenerator::outputVariables()

@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -69,13 +69,10 @@ public:
     virtual QPlatformWindowFormat platformWindowFormat() const = 0;
 
     const static QPlatformGLContext *currentContext();
-    static QPlatformGLContext *defaultSharedContext();
 
 protected:
-
-    static void setDefaultSharedContext(QPlatformGLContext *sharedContext);
-
     QScopedPointer<QPlatformGLContextPrivate> d_ptr;
+
 private:
     //hack to make it work with QGLContext::CurrentContext
     friend class QGLContext;

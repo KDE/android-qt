@@ -169,7 +169,7 @@ public:
     int indexOfEnumerator(const QByteArray& name);
     int indexOfClassInfo(const QByteArray& name);
 
-    typedef int (*StaticMetacallFunction)(QMetaObject::Call, int, void **);
+    typedef QMetaObjectExtraData::StaticMetacallFunction StaticMetacallFunction;
 
     QMetaObjectBuilder::StaticMetacallFunction staticMetacallFunction() const;
     void setStaticMetacallFunction(QMetaObjectBuilder::StaticMetacallFunction value);
@@ -258,7 +258,6 @@ public:
     bool isUser() const;
     bool hasStdCppSet() const;
     bool isEnumOrFlag() const;
-    bool isDynamic() const;
 
     void setReadable(bool value);
     void setWritable(bool value);
@@ -270,7 +269,6 @@ public:
     void setUser(bool value);
     void setStdCppSet(bool value);
     void setEnumOrFlag(bool value);
-    void setDynamic(bool value);
 
 private:
     const QMetaObjectBuilder *_mobj;

@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -203,7 +203,6 @@ void QEglFSScreen::createAndSetPlatformContext()
     attribList[temp++] = EGL_NONE;
 
     QEGLPlatformContext *platformContext = new QEGLPlatformContext(m_dpy,config,attribList,m_surface,EGL_OPENGL_ES_API);
-    platformContext->makeDefaultSharedContext();
     m_platformContext = platformContext;
 
     EGLint w,h;                    // screen size detection

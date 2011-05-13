@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -229,7 +229,7 @@ static int qt_gl_resolve_features()
                    QGLFunctions::Buffers |
                    QGLFunctions::CompressedTextures |
                    QGLFunctions::Multisample;
-    QGLExtensionMatcher extensions(reinterpret_cast<const char *>(glGetString(GL_EXTENSIONS)));
+    QGLExtensionMatcher extensions;
     if (extensions.match("GL_OES_framebuffer_object"))
         features |= QGLFunctions::Framebuffers;
     if (extensions.match("GL_OES_blend_equation_separate"))
@@ -244,7 +244,7 @@ static int qt_gl_resolve_features()
 #else
     int features = 0;
     QGLFormat::OpenGLVersionFlags versions = QGLFormat::openGLVersionFlags();
-    QGLExtensionMatcher extensions(reinterpret_cast<const char *>(glGetString(GL_EXTENSIONS)));
+    QGLExtensionMatcher extensions;
 
     // Recognize features by extension name.
     if (extensions.match("GL_ARB_multitexture"))

@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -122,7 +122,9 @@ QOpenKODEScreen::QOpenKODEScreen(KDDisplayNV *kdDisplay,  KDDesktopNV *kdDesktop
 }
 
 QOpenKODEIntegration::QOpenKODEIntegration()
-    : mEventLoopIntegration(0), mFontDb(new QGenericUnixFontDatabase())
+    : mEventLoopIntegration(0)
+    , mFontDb(new QGenericUnixFontDatabase())
+    , mMainGlContext(0)
 {
     if (kdInitializeNV() == KD_ENOTINITIALIZED) {
         qFatal("Did not manage to initialize openkode");
@@ -185,6 +187,16 @@ QOpenKODEIntegration::~QOpenKODEIntegration()
     delete mFontDb;
 }
 
+
+bool QOpenKODEIntegration::hasCapability(QPlatformIntegration::Capability cap) const
+{
+    switch (cap) {
+    case ThreadedPixmaps: return true;
+    case OpenGL: return true;
+    default: return QPlatformIntegration::hasCapability(cap);
+    }
+}
+
 QPixmapData *QOpenKODEIntegration::createPixmapData(QPixmapData::PixelType type) const
 {
     return new QGLPixmapData(type);
@@ -215,11 +227,6 @@ QWindowSurface *QOpenKODEIntegration::createWindowSurface(QWidget *widget, WId) 
     }
 
     return returnSurface;
-}
-
-bool QOpenKODEIntegration::hasOpenGL() const
-{
-    return true;
 }
 
 QPlatformEventLoopIntegration *QOpenKODEIntegration::createEventLoopIntegration() const

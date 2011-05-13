@@ -109,9 +109,8 @@ QDeclarativeTypeNameScriptClass::queryProperty(Object *obj, const Identifier &na
 
     } else if (data->type) {
 
-        QString strName = toString(name);
-
-        if (strName.at(0).isUpper()) {
+        if (startsWithUpper(name)) {
+            QString strName = toString(name);
             // Must be an enum
             if (data->mode == IncludeEnums) {
                 // ### Optimize
@@ -153,13 +152,13 @@ QDeclarativeTypeNameScriptClass::property(Object *obj, const Identifier &name)
     }
 }
 
-void QDeclarativeTypeNameScriptClass::setProperty(Object *o, const Identifier &n, const QScriptValue &v)
+void QDeclarativeTypeNameScriptClass::setProperty(Object *, const Identifier &n, const QScriptValue &v)
 {
     Q_ASSERT(object);
     Q_ASSERT(!type);
 
     QDeclarativeEnginePrivate *ep = QDeclarativeEnginePrivate::get(engine);
-    ep->objectClass->setProperty(((TypeNameData *)o)->object, n, v, context());
+    ep->objectClass->setProperty(object, n, v, context());
 }
 
 QT_END_NAMESPACE

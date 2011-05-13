@@ -49,7 +49,9 @@
 #include "qdeclarative.h"
 #include "qdeclarativecontext.h"
 #include "private/qdeclarativeglobal_p.h"
+#include "private/qdeclarativedebugtrace_p.h"
 
+#include <QtCore/qstringbuilder.h>
 #include <QtCore/qdebug.h>
 
 QT_BEGIN_NAMESPACE
@@ -165,6 +167,13 @@ QDeclarativeBoundSignal *QDeclarativeBoundSignal::cast(QObject *o)
 int QDeclarativeBoundSignal::qt_metacall(QMetaObject::Call c, int id, void **a)
 {
     if (c == QMetaObject::InvokeMetaMethod && id == evaluateIdx) {
+        if (!m_expression)
+            return -1;
+        if (QDeclarativeDebugService::isDebuggingEnabled()) {
+            QDeclarativeDebugTrace::startRange(QDeclarativeDebugTrace::HandlingSignal);
+            QDeclarativeDebugTrace::rangeData(QDeclarativeDebugTrace::HandlingSignal, QLatin1String(m_signal.signature()) % QLatin1String(": ") % m_expression->expression());
+            QDeclarativeDebugTrace::rangeLocation(QDeclarativeDebugTrace::HandlingSignal, m_expression->sourceFile(), m_expression->lineNumber());
+        }
         m_isEvaluating = true;
         if (!m_paramsValid) {
             if (!m_signal.parameterTypes().isEmpty())
@@ -180,6 +189,7 @@ int QDeclarativeBoundSignal::qt_metacall(QMetaObject::Call c, int id, void **a)
         }
         if (m_params) m_params->clearValues();
         m_isEvaluating = false;
+        QDeclarativeDebugTrace::endRange(QDeclarativeDebugTrace::HandlingSignal);
         return -1;
     } else {
         return QObject::qt_metacall(c, id, a);
@@ -187,13 +197,12 @@ int QDeclarativeBoundSignal::qt_metacall(QMetaObject::Call c, int id, void **a)
 }
 
 QDeclarativeBoundSignalParameters::QDeclarativeBoundSignalParameters(const QMetaMethod &method, 
-                                                   QObject *parent)
+                                                                     QObject *parent)
 : QObject(parent), types(0), values(0)
 {
     MetaObject *mo = new MetaObject(this);
 
     // ### Optimize!
-    // ### Ensure only supported types are allowed, otherwise it might crash
     QMetaObjectBuilder mob;
     mob.setSuperClass(&QDeclarativeBoundSignalParameters::staticMetaObject);
     mob.setClassName("QDeclarativeBoundSignalParameters");
@@ -216,9 +225,41 @@ QDeclarativeBoundSignalParameters::QDeclarativeBoundSignalParameters(const QMeta
             QMetaPropertyBuilder prop = mob.addProperty(name, "QObject*");
             prop.setWritable(false);
         } else {
-            types[ii] = t;
-            QMetaPropertyBuilder prop = mob.addProperty(name, type);
-            prop.setWritable(false);
+            QByteArray propType = type;
+            if (t >= QVariant::UserType || t == QVariant::Invalid) {
+                //copy of QDeclarativeObjectScriptClass::enumType()
+                QByteArray scope;
+                QByteArray name;
+                int scopeIdx = propType.lastIndexOf("::");
+                if (scopeIdx != -1) {
+                    scope = propType.left(scopeIdx);
+                    name = propType.mid(scopeIdx + 2);
+                } else {
+                    name = propType;
+                }
+                const QMetaObject *meta;
+                if (scope == "Qt")
+                    meta = &QObject::staticQtMetaObject;
+                else
+                    meta = parent->parent()->metaObject();   //### assumes parent->parent()
+                for (int i = meta->enumeratorCount() - 1; i >= 0; --i) {
+                    QMetaEnum m = meta->enumerator(i);
+                    if ((m.name() == name) && (scope.isEmpty() || (m.scope() == scope))) {
+                        t = QVariant::Int;
+                        propType = "int";
+                        break;
+                    }
+                }
+            }
+            if (QDeclarativeMetaType::canCopy(t)) {
+                types[ii] = t;
+                QMetaPropertyBuilder prop = mob.addProperty(name, propType);
+                prop.setWritable(false);
+            } else {
+                types[ii] = 0x80000000 | t;
+                QMetaPropertyBuilder prop = mob.addProperty(name, "QVariant");
+                prop.setWritable(false);
+            }
         }
     }
     myMetaObject = mob.toMetaObject();
@@ -249,7 +290,11 @@ int QDeclarativeBoundSignalParameters::metaCall(QMetaObject::Call c, int id, voi
         return -1;
 
     if (c == QMetaObject::ReadProperty && id >= 1) {
-        QDeclarativeMetaType::copy(types[id - 1], a[0], values[id]);
+        if (types[id - 1] & 0x80000000) {
+            *((QVariant *)a[0]) = QVariant(types[id - 1] & 0x7FFFFFFF, values[id]);
+        } else {
+            QDeclarativeMetaType::copy(types[id - 1], a[0], values[id]);
+        }
         return -1;
     } else {
         return qt_metacall(c, id, a);

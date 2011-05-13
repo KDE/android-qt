@@ -40,7 +40,11 @@
 ****************************************************************************/
 
 #include "private/qkeymapper_p.h"
+#include <private/qcore_symbian_p.h>
 #include <e32keys.h>
+#include <e32cmn.h>
+#include <centralrepository.h>
+#include <biditext.h>
 
 QT_BEGIN_NAMESPACE
 
@@ -65,8 +69,17 @@ void QKeyMapperPrivate::clearMappings()
 
 QString QKeyMapperPrivate::translateKeyEvent(int keySym, Qt::KeyboardModifiers /* modifiers */)
 {
-    if (keySym >= Qt::Key_Escape)
-        return QString();
+    if (keySym >= Qt::Key_Escape) {
+        switch (keySym) {
+        case Qt::Key_Tab:
+            return QString(QChar('\t'));
+        case Qt::Key_Return:    // fall through
+        case Qt::Key_Enter:
+            return QString(QChar('\r'));
+        default:
+            return QString();
+        }
+    }
 
     // Symbian doesn't actually use modifiers, but gives us the character code directly.
 
@@ -214,4 +227,32 @@ int QKeyMapperPrivate::mapQtToS60ScanCodes(int qtKey)
     }
     return res;
 }
+
+void QKeyMapperPrivate::updateInputLanguage()
+{
+#ifdef Q_WS_S60
+    TInt err;
+    CRepository *repo;
+    const TUid KCRUidAknFep = TUid::Uid(0x101F876D);
+    const TUint32 KAknFepInputTxtLang = 0x00000005;
+    TRAP(err, repo = CRepository::NewL(KCRUidAknFep));
+    if (err != KErrNone)
+        return;
+
+    TInt symbianLang;
+    err = repo->Get(KAknFepInputTxtLang, symbianLang);
+    delete repo;
+    if (err != KErrNone)
+        return;
+
+    QString qtLang = QString::fromAscii(qt_symbianLocaleName(symbianLang));
+    keyboardInputLocale = QLocale(qtLang);
+    keyboardInputDirection = (TBidiText::ScriptDirectionality(TLanguage(symbianLang)) == TBidiText::ERightToLeft)
+            ? Qt::RightToLeft : Qt::LeftToRight;
+#else
+    keyboardInputLocale = QLocale();
+    keyboardInputDirection = Qt::LeftToRight;
+#endif
+}
+
 QT_END_NAMESPACE

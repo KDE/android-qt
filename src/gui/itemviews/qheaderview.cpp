@@ -643,8 +643,12 @@ int QHeaderView::sectionSize(int logicalIndex) const
 }
 
 /*!
-    Returns the section position of the given \a logicalIndex, or -1 if the
-    section is hidden.
+
+    Returns the section position of the given \a logicalIndex, or -1
+    if the section is hidden. The position is measured in pixels from
+    the first visible item's top-left corner to the top-left corner of
+    the item with \a logicalIndex. The measurement is along the x-axis
+    for horizontal headers and along the y-axis for vertical headers.
 
     \sa sectionViewportPosition()
 */
@@ -3274,9 +3278,17 @@ void QHeaderViewPrivate::clear()
 void QHeaderViewPrivate::flipSortIndicator(int section)
 {
     Q_Q(QHeaderView);
-    bool ascending = (sortIndicatorSection != section
-                      || sortIndicatorOrder == Qt::DescendingOrder);
-    q->setSortIndicator(section, ascending ? Qt::AscendingOrder : Qt::DescendingOrder);
+    Qt::SortOrder sortOrder;
+    if (sortIndicatorSection == section) {
+        sortOrder = (sortIndicatorOrder == Qt::DescendingOrder) ? Qt::AscendingOrder : Qt::DescendingOrder;
+    } else {
+        const QVariant value = model->headerData(section, orientation, Qt::InitialSortOrderRole);
+        if (value.canConvert(QVariant::Int))
+            sortOrder = static_cast<Qt::SortOrder>(value.toInt());
+        else
+            sortOrder = Qt::AscendingOrder;
+    }
+    q->setSortIndicator(section, sortOrder);
 }
 
 void QHeaderViewPrivate::cascadingResize(int visual, int newSize)

@@ -64,7 +64,6 @@ QT_BEGIN_NAMESPACE
 // #define QT_USE_MEMCPY_DUFF
 
 #ifndef QT_NO_QWS_CURSOR
-bool qt_sw_cursor=false;
 Q_GUI_EXPORT QScreenCursor * qt_screencursor = 0;
 #endif
 Q_GUI_EXPORT QScreen * qt_screen = 0;
@@ -118,8 +117,6 @@ ClearCacheFunc QScreen::clearCacheFunc = 0;
 
     Returns a pointer to the application's unique screen cursor.
 */
-
-extern bool qws_sw_cursor;
 
 /*!
     Constructs a screen cursor
@@ -1768,7 +1765,7 @@ QImage::Format QScreenPrivate::preferredImageFormat() const
     This function is called by every \l{Qt for Embedded Linux}
     application on startup, and must be implemented to map in the
     framebuffer and the accelerated drivers that the graphics card
-    control registers.  Note that coonnect must be called \e before
+    control registers.  Note that connect must be called \e before
     the initDevice() function.
 
     Ensure that true is returned if a connection to the screen device

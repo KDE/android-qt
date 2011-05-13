@@ -1587,6 +1587,9 @@ static void getXDefault(const char *group, const char *key, int *val)
         int v = strtol(str, &end, 0);
         if (str != end)
             *val = v;
+        // otherwise use fontconfig to convert the string to integer
+        else
+            FcNameConstant((FcChar8 *) str, val);
     }
 }
 
@@ -2237,6 +2240,7 @@ void qt_init(QApplicationPrivate *priv, int,
         }
         getXDefault("Xft", FC_ANTIALIAS, &X11->fc_antialias);
 #ifdef FC_HINT_STYLE
+        X11->fc_hint_style = -1;
         getXDefault("Xft", FC_HINT_STYLE, &X11->fc_hint_style);
 #endif
 #if 0
@@ -2277,6 +2281,13 @@ void qt_init(QApplicationPrivate *priv, int,
         // Attempt to determine the current running X11 Desktop Enviornment
         // Use dbus if/when we can, but fall back to using windowManagerName() for now
 
+#ifndef QT_NO_XFIXES
+        if (X11->ptrXFixesSelectSelectionInput)
+            X11->ptrXFixesSelectSelectionInput(X11->display, QX11Info::appRootWindow(), ATOM(_NET_WM_CM_S0),
+                                       XFixesSetSelectionOwnerNotifyMask
+                                       | XFixesSelectionWindowDestroyNotifyMask
+                                       | XFixesSelectionClientCloseNotifyMask);
+#endif // QT_NO_XFIXES
         X11->compositingManagerRunning = XGetSelectionOwner(X11->display,
                                                             ATOM(_NET_WM_CM_S0));
         X11->desktopEnvironment = DE_UNKNOWN;
@@ -3212,6 +3223,8 @@ int QApplication::x11ProcessEvent(XEvent* event)
         XFixesSelectionNotifyEvent *req =
             reinterpret_cast<XFixesSelectionNotifyEvent *>(event);
         X11->time = req->selection_timestamp;
+        if (req->selection == ATOM(_NET_WM_CM_S0))
+            X11->compositingManagerRunning = req->owner;
     }
 #endif
 
@@ -5227,14 +5240,15 @@ bool QETWidget::translateConfigEvent(const XEvent *event)
         bool trust = isVisible()
                      && (d->topData()->parentWinId == XNone ||
                          d->topData()->parentWinId == QX11Info::appRootWindow());
+        bool isCPos = false;
 
         if (event->xconfigure.send_event || trust) {
             // if a ConfigureNotify comes from a real sendevent request, we can
             // trust its values.
             newCPos.rx() = event->xconfigure.x + event->xconfigure.border_width;
             newCPos.ry() = event->xconfigure.y + event->xconfigure.border_width;
+            isCPos = true;
         }
-
         if (isVisible())
             QApplication::syncX();
 
@@ -5260,6 +5274,7 @@ bool QETWidget::translateConfigEvent(const XEvent *event)
                                    otherEvent.xconfigure.border_width;
                     newCPos.ry() = otherEvent.xconfigure.y +
                                    otherEvent.xconfigure.border_width;
+                    isCPos = true;
                 }
             }
 #ifndef QT_NO_XSYNC
@@ -5270,6 +5285,19 @@ bool QETWidget::translateConfigEvent(const XEvent *event)
                     break;
             }
 #endif // QT_NO_XSYNC
+        }
+
+        if (!isCPos) {
+            // we didn't get an updated position of the toplevel.
+            // either we haven't moved or there is a bug in the window manager.
+            // anyway, let's query the position to be certain.
+            int x, y;
+            Window child;
+            XTranslateCoordinates(X11->display, internalWinId(),
+                                  QApplication::desktop()->screen(d->xinfo.screen())->internalWinId(),
+                                  0, 0, &x, &y, &child);
+            newCPos.rx() = x;
+            newCPos.ry() = y;
         }
 
         QRect cr (geometry());
@@ -5314,18 +5342,6 @@ bool QETWidget::translateConfigEvent(const XEvent *event)
     }
 
     if (wasResize) {
-        static bool slowResize = qgetenv("QT_SLOW_TOPLEVEL_RESIZE").toInt();
-        if (d->extra->compress_events && !slowResize && !data->in_show && isVisible()) {
-            QApplication::syncX();
-            XEvent otherEvent;
-            while (XCheckTypedWindowEvent(X11->display, internalWinId(), ConfigureNotify, &otherEvent)
-                   && !qt_x11EventFilter(&otherEvent) && !x11Event(&otherEvent)
-                   && otherEvent.xconfigure.event == otherEvent.xconfigure.window) {
-                data->crect.setWidth(otherEvent.xconfigure.width);
-                data->crect.setHeight(otherEvent.xconfigure.height);
-            }
-        }
-
         if (isVisible() && data->crect.size() != oldSize) {
             Q_ASSERT(d->extra->topextra);
             QWidgetBackingStore *bs = d->extra->topextra->backingStore.data();
@@ -5334,7 +5350,7 @@ bool QETWidget::translateConfigEvent(const XEvent *event)
             // resize optimization in order to get invalidated regions for resized widgets.
             // The optimization discards all invalidateBuffer() calls since we're going to
             // repaint everything anyways, but that's not the case with static contents.
-            if (!slowResize && !hasStaticContents)
+            if (!hasStaticContents)
                 d->extra->topextra->inTopLevelResize = true;
             QResizeEvent e(data->crect.size(), oldSize);
             QApplication::sendSpontaneousEvent(this, &e);
@@ -5658,10 +5674,21 @@ static void sm_performSaveYourself(QSessionManagerPrivate* smd)
     sm_setProperty(QString::fromLatin1(SmProgram), argument0);
     // tell the session manager about our user as well.
     struct passwd *entryPtr = 0;
-#if !defined(QT_NO_THREAD) && defined(_POSIX_THREAD_SAFE_FUNCTIONS) && !defined(Q_OS_OPENBSD)
-    QVarLengthArray<char, 1024> buf(sysconf(_SC_GETPW_R_SIZE_MAX));
+#if defined(_POSIX_THREAD_SAFE_FUNCTIONS) && (_POSIX_THREAD_SAFE_FUNCTIONS - 0 > 0)
+    QVarLengthArray<char, 1024> buf(qMax<long>(sysconf(_SC_GETPW_R_SIZE_MAX), 1024L));
     struct passwd entry;
-    getpwuid_r(geteuid(), &entry, buf.data(), buf.size(), &entryPtr);
+    while (getpwuid_r(geteuid(), &entry, buf.data(), buf.size(), &entryPtr) == ERANGE) {
+        if (buf.size() >= 32768) {
+            // too big already, fail
+            static char badusername[] = "";
+            entryPtr = &entry;
+            entry.pw_name = badusername;
+            break;
+        }
+
+        // retry with a bigger buffer
+        buf.resize(buf.size() * 2);
+    }
 #else
     entryPtr = getpwuid(geteuid());
 #endif

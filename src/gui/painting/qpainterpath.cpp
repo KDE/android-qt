@@ -240,12 +240,12 @@ static void qt_debug_path(const QPainterPath &path)
     provides two methods for filling paths:
 
     \table
-    \row
-    \o \inlineimage qt-fillrule-oddeven.png
-    \o \inlineimage qt-fillrule-winding.png
     \header
     \o Qt::OddEvenFill
     \o Qt::WindingFill
+    \row
+    \o \inlineimage qt-fillrule-oddeven.png
+    \o \inlineimage qt-fillrule-winding.png
     \endtable
 
     See the Qt::FillRule documentation for the definition of the
@@ -315,12 +315,12 @@ static void qt_debug_path(const QPainterPath &path)
     QPainterPath to draw text.
 
     \table
-    \row
-    \o \inlineimage qpainterpath-example.png
-    \o \inlineimage qpainterpath-demo.png
     \header
     \o \l {painting/painterpaths}{Painter Paths Example}
     \o \l {demos/deform}{Vector Deformation Demo}
+    \row
+    \o \inlineimage qpainterpath-example.png
+    \o \inlineimage qpainterpath-demo.png
     \endtable
 
     \sa QPainterPathStroker, QPainter, QRegion, {Painter Paths Example}
@@ -874,7 +874,7 @@ void QPainterPath::arcTo(const QRectF &rect, qreal startAngle, qreal sweepLength
            rect.x(), rect.y(), rect.width(), rect.height(), startAngle, sweepLength);
 #endif
 
-    if (!qt_is_finite(rect.x()) && !qt_is_finite(rect.y()) || !qt_is_finite(rect.width()) || !qt_is_finite(rect.height())
+    if ((!qt_is_finite(rect.x()) && !qt_is_finite(rect.y())) || !qt_is_finite(rect.width()) || !qt_is_finite(rect.height())
         || !qt_is_finite(startAngle) || !qt_is_finite(sweepLength)) {
 #ifndef QT_NO_DEBUG
         qWarning("QPainterPath::arcTo: Adding arc where a parameter is NaN or Inf, ignoring call");
@@ -1126,6 +1126,7 @@ void QPainterPath::addText(const QPointF &point, const QFont &f, const QString &
     QTextEngine *eng = layout.engine();
     layout.beginLayout();
     QTextLine line = layout.createLine();
+    Q_UNUSED(line);
     layout.endLayout();
     const QScriptLine &sl = eng->lines[0];
     if (!sl.length || !eng->layoutData)
@@ -1279,12 +1280,12 @@ Qt::FillRule QPainterPath::fillRule() const
     fillRule. Qt provides two methods for filling paths:
 
     \table
-    \row
-    \o \inlineimage qt-fillrule-oddeven.png
-    \o \inlineimage qt-fillrule-winding.png
     \header
     \o Qt::OddEvenFill (default)
     \o Qt::WindingFill
+    \row
+    \o \inlineimage qt-fillrule-oddeven.png
+    \o \inlineimage qt-fillrule-winding.png
     \endtable
 
     \sa fillRule()
@@ -1724,7 +1725,7 @@ static void qt_painterpath_isect_line(const QPointF &p1,
 }
 
 static void qt_painterpath_isect_curve(const QBezier &bezier, const QPointF &pt,
-                                       int *winding)
+                                       int *winding, int depth = 0)
 {
     qreal y = pt.y();
     qreal x = pt.x();
@@ -1739,7 +1740,7 @@ static void qt_painterpath_isect_curve(const QBezier &bezier, const QPointF &pt,
         // hit lower limit... This is a rough threshold, but its a
         // tradeoff between speed and precision.
         const qreal lower_bound = qreal(.001);
-        if (bounds.width() < lower_bound && bounds.height() < lower_bound) {
+        if (depth == 32 || (bounds.width() < lower_bound && bounds.height() < lower_bound)) {
             // We make the assumption here that the curve starts to
             // approximate a line after while (i.e. that it doesn't
             // change direction drastically during its slope)
@@ -1752,8 +1753,8 @@ static void qt_painterpath_isect_curve(const QBezier &bezier, const QPointF &pt,
         // split curve and try again...
         QBezier first_half, second_half;
         bezier.split(&first_half, &second_half);
-        qt_painterpath_isect_curve(first_half, pt, winding);
-        qt_painterpath_isect_curve(second_half, pt, winding);
+        qt_painterpath_isect_curve(first_half, pt, winding, depth + 1);
+        qt_painterpath_isect_curve(second_half, pt, winding, depth + 1);
     }
 }
 
@@ -1897,39 +1898,39 @@ static bool qt_painterpath_isect_line_rect(qreal x1, qreal y1, qreal x2, qreal y
     return false;
 }
 
-static bool qt_isect_curve_horizontal(const QBezier &bezier, qreal y, qreal x1, qreal x2)
+static bool qt_isect_curve_horizontal(const QBezier &bezier, qreal y, qreal x1, qreal x2, int depth = 0)
 {
     QRectF bounds = bezier.bounds();
 
     if (y >= bounds.top() && y < bounds.bottom()
         && bounds.right() >= x1 && bounds.left() < x2) {
         const qreal lower_bound = qreal(.01);
-        if (bounds.width() < lower_bound && bounds.height() < lower_bound)
+        if (depth == 32 || (bounds.width() < lower_bound && bounds.height() < lower_bound))
             return true;
 
         QBezier first_half, second_half;
         bezier.split(&first_half, &second_half);
-        if (qt_isect_curve_horizontal(first_half, y, x1, x2)
-            || qt_isect_curve_horizontal(second_half, y, x1, x2))
+        if (qt_isect_curve_horizontal(first_half, y, x1, x2, depth + 1)
+            || qt_isect_curve_horizontal(second_half, y, x1, x2, depth + 1))
             return true;
     }
     return false;
 }
 
-static bool qt_isect_curve_vertical(const QBezier &bezier, qreal x, qreal y1, qreal y2)
+static bool qt_isect_curve_vertical(const QBezier &bezier, qreal x, qreal y1, qreal y2, int depth = 0)
 {
     QRectF bounds = bezier.bounds();
 
     if (x >= bounds.left() && x < bounds.right()
         && bounds.bottom() >= y1 && bounds.top() < y2) {
         const qreal lower_bound = qreal(.01);
-        if (bounds.width() < lower_bound && bounds.height() < lower_bound)
+        if (depth == 32 || (bounds.width() < lower_bound && bounds.height() < lower_bound))
             return true;
 
         QBezier first_half, second_half;
         bezier.split(&first_half, &second_half);
-        if (qt_isect_curve_vertical(first_half, x, y1, y2)
-            || qt_isect_curve_vertical(second_half, x, y1, y2))
+        if (qt_isect_curve_vertical(first_half, x, y1, y2, depth + 1)
+            || qt_isect_curve_vertical(second_half, x, y1, y2, depth + 1))
             return true;
     }
      return false;
@@ -2923,8 +2924,11 @@ QPointF QPainterPath::pointAtPercent(qreal t) const
         return QPointF();
     }
 
-    if (isEmpty())
+    if (!d_ptr || d_ptr->elements.size() == 0)
         return QPointF();
+
+    if (d_ptr->elements.size() == 1)
+        return d_ptr->elements.at(0);
 
     qreal totalLength = length();
     qreal curLen = 0;

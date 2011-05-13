@@ -65,6 +65,7 @@
 #include <private/qpaintengine_raster_p.h>
 
 #include <private/qimage_p.h>
+#include <private/qfont_p.h>
 
 QT_BEGIN_NAMESPACE
 
@@ -118,9 +119,6 @@ const QVector<QRgb> *qt_image_colortable(const QImage &image)
 {
     return &image.d->colortable;
 }
-
-Q_GUI_EXPORT extern int qt_defaultDpiX();
-Q_GUI_EXPORT extern int qt_defaultDpiY();
 
 QBasicAtomicInt qimage_serial_number = Q_BASIC_ATOMIC_INITIALIZER(1);
 
@@ -477,12 +475,12 @@ bool QImageData::checkForAlphaPixels() const
     function. For example:
 
     \table
+    \header
+    \o {2,1}32-bit
     \row
     \o \inlineimage qimage-32bit_scaled.png
     \o
     \snippet doc/src/snippets/code/src_gui_image_qimage.cpp 0
-    \header
-    \o {2,1}32-bit
     \endtable
 
     In case of a 8-bit and monchrome images, the pixel value is only
@@ -498,12 +496,12 @@ bool QImageData::checkForAlphaPixels() const
     example:
 
     \table
+    \header
+    \o {2,1} 8-bit
     \row
     \o \inlineimage qimage-8bit_scaled.png
     \o
     \snippet doc/src/snippets/code/src_gui_image_qimage.cpp 1
-    \header
-    \o {2,1} 8-bit
     \endtable
 
     QImage also provide the scanLine() function which returns a
@@ -797,6 +795,8 @@ QImage::QImage()
     Constructs an image with the given \a width, \a height and \a
     format.
 
+    A \l{isNull()}{null} image will be returned if memory cannot be allocated.
+
     \warning This will create a QImage with uninitialized data. Call
     fill() to fill the image with an appropriate pixel value before
     drawing onto it with QPainter.
@@ -809,6 +809,8 @@ QImage::QImage(int width, int height, Format format)
 
 /*!
     Constructs an image with the given \a size and \a format.
+
+    A \l{isNull()}{null} image is returned if memory cannot be allocated.
 
     \warning This will create a QImage with uninitialized data. Call
     fill() to fill the image with an appropriate pixel value before

@@ -95,7 +95,8 @@ public:
         WritingState = 2,       // writing the data
         WaitingState = 4,       // waiting for reply
         ReadingState = 8,       // reading the reply
-        BusyState = (ConnectingState|WritingState|WaitingState|ReadingState)
+        ClosingState = 16,
+        BusyState = (ConnectingState|WritingState|WaitingState|ReadingState|ClosingState)
     };
     QAbstractSocket *socket;
     bool ssl;
@@ -115,6 +116,9 @@ public:
 #ifndef QT_NO_OPENSSL
     bool ignoreAllSslErrors;
     QList<QSslError> ignoreSslErrorsList;
+#endif
+#ifndef QT_NO_BEARERMANAGEMENT
+    QSharedPointer<QNetworkSession> networkSession;
 #endif
 
     // HTTP pipelining -> http://en.wikipedia.org/wiki/Http_pipelining

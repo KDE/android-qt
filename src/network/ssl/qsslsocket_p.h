@@ -73,6 +73,7 @@ QT_BEGIN_NAMESPACE
     typedef OSStatus (*PtrSecTrustSettingsCopyCertificates)(int, CFArrayRef*);
     typedef OSStatus (*PtrSecTrustCopyAnchorCertificates)(CFArrayRef*);
 #elif defined(Q_OS_WIN)
+#include <windows.h>
 #include <wincrypt.h>
 #ifndef HCRYPTPROV_LEGACY
 #define HCRYPTPROV_LEGACY HCRYPTPROV
@@ -111,6 +112,8 @@ public:
     // if set, this hostname is used for certificate validation instead of the hostname
     // that was used for connecting to.
     QString verificationPeerName;
+
+    bool allowRootCertOnDemandLoading;
 
     static bool supportsSsl();
     static void ensureInitialized();
@@ -168,6 +171,9 @@ private:
 
     static bool s_libraryLoaded;
     static bool s_loadedCiphersAndCerts;
+protected:
+    static bool s_loadRootCertsOnDemand;
+    static QList<QByteArray> unixRootCertDirectories();
 };
 
 QT_END_NAMESPACE

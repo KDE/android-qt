@@ -92,7 +92,6 @@ protected:
     virtual bool mergeBuildProject(MakefileGenerator *other);
 
     virtual bool openOutput(QFile &file, const QString &build) const;
-    virtual void processPrlVariable(const QString &, const QStringList &);
     virtual bool findLibraries();
     virtual void outputVariables();
     QString fixFilename(QString ofile) const;
@@ -132,6 +131,7 @@ protected:
     QList<VcprojGenerator*> mergedProjects;
 
 private:
+    QStringList collectSubDirs(QMakeProject *proj);
     QUuid increaseUUID(const QUuid &id);
     friend class VCFilter;
 };

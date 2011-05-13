@@ -4,7 +4,7 @@
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
-** This file is part of the QtOpenVG module of the Qt Toolkit.
+** This file is part of the plugins of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
 ** No Commercial Usage
@@ -117,6 +117,10 @@ extern "C" {
 #  include "X11/extensions/sync.h"
 }
 #endif
+
+#ifndef QT_NO_XFIXES
+#include <X11/extensions/Xfixes.h>
+#endif // QT_NO_XFIXES
 
 // #define QT_NO_XKB
 #ifndef QT_NO_XKB

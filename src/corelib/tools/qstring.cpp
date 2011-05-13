@@ -106,6 +106,14 @@ QTextCodec *QString::codecForCStrings;
 static QHash<void *, QByteArray> *asciiCache = 0;
 #endif
 
+#ifdef QT_USE_ICU
+// qlocale_icu.cpp
+extern bool qt_ucol_strcoll(const QChar *source, int sourceLength, const QChar *target, int targetLength, int *result);
+extern bool qt_u_strToUpper(const QString &str, QString *out, const QLocale &locale);
+extern bool qt_u_strToLower(const QString &str, QString *out, const QLocale &locale);
+#endif
+
+
 // internal
 int qFindString(const QChar *haystack, int haystackLen, int from,
     const QChar *needle, int needleLen, Qt::CaseSensitivity cs);
@@ -431,7 +439,6 @@ const QString::Null QString::null = { };
     \ingroup shared
     \ingroup string-processing
 
-
     QString stores a string of 16-bit \l{QChar}s, where each QChar
     corresponds one Unicode 4.0 character. (Unicode characters
     with code values above 65535 are stored using surrogate pairs,
@@ -658,10 +665,11 @@ const QString::Null QString::null = { };
     class.)
 
     \table 100 %
+    \header
+    \o Note for C Programmers
+
     \row
     \o
-    \section1 Note for C Programmers
-
     Due to C++'s type system and the fact that QString is
     \l{implicitly shared}, QStrings may be treated like \c{int}s or
     other basic types. For example:
@@ -3890,8 +3898,7 @@ const char *QString::latin1_helper() const
     If \a size is -1 (default), it is taken to be qstrlen(\a
     str).
 
-    QTextCodec::codecForLocale() is used to perform the conversion
-    from Unicode.
+    QTextCodec::codecForLocale() is used to perform the conversion.
 
     \sa toLocal8Bit(), fromAscii(), fromLatin1(), fromUtf8()
 */
@@ -4829,6 +4836,14 @@ int QString::localeAwareCompare_helper(const QChar *data1, int length1,
     TPtrC p2 = TPtrC16(reinterpret_cast<const TUint16 *>(data2), length2);
     return p1.CompareC(p2);
 #elif defined(Q_OS_UNIX)
+#  if defined(QT_USE_ICU)
+    int res;
+    if (qt_ucol_strcoll(data1, length1, data2, length2, &res)) {
+        if (res == 0)
+            res = ucstrcmp(data1, length1, data2, length2);
+        return res;
+    } // else fall through
+#  endif
     // declared in <string.h>
     int delta = strcoll(toLocal8Bit_helper(data1, length1), toLocal8Bit_helper(data2, length2));
     if (delta == 0)
@@ -4964,6 +4979,15 @@ QString QString::toLower() const
     if (!d->size)
         return *this;
 
+#ifdef QT_USE_ICU
+    {
+        QString result;
+        if (qt_u_strToLower(*this, &result, QLocale()))
+            return result;
+        // else fall through and use Qt's toUpper
+    }
+#endif
+
     const ushort *e = d->data + d->size;
 
     // this avoids one out of bounds check in the loop
@@ -5054,6 +5078,15 @@ QString QString::toUpper() const
         return *this;
     if (!d->size)
         return *this;
+
+#ifdef QT_USE_ICU
+    {
+        QString result;
+        if (qt_u_strToUpper(*this, &result, QLocale()))
+            return result;
+        // else fall through and use Qt's toUpper
+    }
+#endif
 
     const ushort *e = d->data + d->size;
 

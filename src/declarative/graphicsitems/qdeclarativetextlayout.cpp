@@ -63,9 +63,6 @@ public:
     QVector<QChar> chars;
 };
 
-Q_GUI_EXPORT extern int qt_defaultDpiX();
-Q_GUI_EXPORT extern int qt_defaultDpiY();
-
 namespace {
 class DrawTextItemRecorder: public QPaintEngine
 {
@@ -99,7 +96,6 @@ class DrawTextItemRecorder: public QPaintEngine
                     needFreshCurrentItem = false;
 
                     last.numChars += ti.num_chars;
-                    last.numGlyphs += ti.glyphs.numGlyphs;
 
                 }
             } 
@@ -111,7 +107,7 @@ class DrawTextItemRecorder: public QPaintEngine
                 currentItem.font = ti.font();
                 currentItem.charOffset = charOffset;
                 currentItem.numChars = ti.num_chars;
-                currentItem.numGlyphs = ti.glyphs.numGlyphs;
+                currentItem.numGlyphs = 0;
                 currentItem.glyphOffset = glyphOffset;
                 currentItem.positionOffset = positionOffset;
                 currentItem.useBackendOptimizations = m_useBackendOptimizations;
@@ -121,6 +117,8 @@ class DrawTextItemRecorder: public QPaintEngine
                 m_inertText->items.append(currentItem);
             }
 
+            QStaticTextItem &currentItem = m_inertText->items.last();
+
             QTransform matrix = m_untransformedCoordinates ? QTransform() : state->transform();
             matrix.translate(position.x(), position.y());
 
@@ -129,18 +127,18 @@ class DrawTextItemRecorder: public QPaintEngine
             ti.fontEngine->getGlyphPositions(ti.glyphs, matrix, ti.flags, glyphs, positions);
 
             int size = glyphs.size();
-            Q_ASSERT(size == ti.glyphs.numGlyphs);
             Q_ASSERT(size == positions.size());
+            currentItem.numGlyphs += size;
 
             m_inertText->glyphs.resize(m_inertText->glyphs.size() + size);
             m_inertText->positions.resize(m_inertText->glyphs.size());
             m_inertText->chars.resize(m_inertText->chars.size() + ti.num_chars);
 
             glyph_t *glyphsDestination = m_inertText->glyphs.data() + glyphOffset;
-            qMemCopy(glyphsDestination, glyphs.constData(), sizeof(glyph_t) * ti.glyphs.numGlyphs);
+            qMemCopy(glyphsDestination, glyphs.constData(), sizeof(glyph_t) * size);
 
             QFixedPoint *positionsDestination = m_inertText->positions.data() + positionOffset;
-            qMemCopy(positionsDestination, positions.constData(), sizeof(QFixedPoint) * ti.glyphs.numGlyphs);
+            qMemCopy(positionsDestination, positions.constData(), sizeof(QFixedPoint) * size);
 
             QChar *charsDestination = m_inertText->chars.data() + charOffset;
             qMemCopy(charsDestination, ti.chars, sizeof(QChar) * ti.num_chars);
@@ -298,7 +296,7 @@ void QDeclarativeTextLayout::clearLayout()
     QTextLayout::clearLayout();
 }
 
-void QDeclarativeTextLayout::prepare()
+void QDeclarativeTextLayout::prepare(QPainter *painter)
 {
     if (!d || !d->cached) {
 
@@ -307,6 +305,7 @@ void QDeclarativeTextLayout::prepare()
 
         InertTextPainter *itp = inertTextPainter();
         itp->device.begin(d);
+        itp->painter.setPen(painter->pen());
         QTextLayout::draw(&itp->painter, QPointF(0, 0));
 
         glyph_t *glyphPool = d->glyphs.data();
@@ -325,6 +324,12 @@ void QDeclarativeTextLayout::prepare()
     }
 }
 
+// Defined in qpainter.cpp
+extern Q_GUI_EXPORT void qt_draw_decoration_for_glyphs(QPainter *painter, const glyph_t *glyphArray,
+                                                       const QFixedPoint *positions, int glyphCount,
+                                                       QFontEngine *fontEngine, const QFont &font,
+                                                       const QTextCharFormat &charFormat);
+
 void QDeclarativeTextLayout::draw(QPainter *painter, const QPointF &p)
 {
     QPainterPrivate *priv = QPainterPrivate::get(painter);
@@ -339,7 +344,7 @@ void QDeclarativeTextLayout::draw(QPainter *painter, const QPointF &p)
         return;
     }
 
-    prepare();
+    prepare(painter);
 
     int itemCount = d->items.count();
 
@@ -370,6 +375,10 @@ void QDeclarativeTextLayout::draw(QPainter *painter, const QPointF &p)
             currentColor = item.color;
         }
         priv->extended->drawStaticTextItem(&item);
+
+        qt_draw_decoration_for_glyphs(painter, item.glyphs, item.glyphPositions,
+                                      item.numGlyphs, item.fontEngine(), painter->font(),
+                                      QTextCharFormat());
     }
     if (currentColor != oldPen.color())
         painter->setPen(oldPen);

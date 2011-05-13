@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2009 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -49,6 +49,7 @@ QT_BEGIN_NAMESPACE
 
 class QXlibCursor;
 class QXlibKeyboard;
+class QXlibDisplay;
 
 class QXlibScreen : public QPlatformScreen
 {
@@ -58,16 +59,14 @@ public:
 
     ~QXlibScreen();
 
-    QString displayName() const { return mDisplayName; }
-
     QRect geometry() const { return mGeometry; }
     int depth() const { return mDepth; }
     QImage::Format format() const { return mFormat; }
     QSize physicalSize() const { return mPhysicalSize; }
 
-    Window rootWindow() { return RootWindow(mDisplay, mScreen); }
-    unsigned long blackPixel() { return BlackPixel(mDisplay, mScreen); }
-    unsigned long whitePixel() { return WhitePixel(mDisplay, mScreen); }
+    Window rootWindow();
+    unsigned long blackPixel();
+    unsigned long whitePixel();
 
     bool handleEvent(XEvent *xe);
     bool waitForClipboardEvent(Window win, int type, XEvent *event, int timeout);
@@ -76,10 +75,17 @@ public:
 
     static QXlibScreen *testLiteScreenForWidget(QWidget *widget);
 
-    Display *display() const;
+    QXlibDisplay *display() const;
     int xScreenNumber() const;
 
+    Visual *defaultVisual() const;
+
     QXlibKeyboard *keyboard() const;
+
+#if !defined(QT_NO_OPENGL) && defined(QT_OPENGL_ES_2)
+    void *eglDisplay() const { return mEGLDisplay; }
+    void setEglDisplay(void *display) { mEGLDisplay = display; }
+#endif
 
 public slots:
     void eventDispatcher();
@@ -87,7 +93,6 @@ public slots:
 private:
 
     void handleSelectionRequest(XEvent *event);
-    QString mDisplayName;
     QRect mGeometry;
     QSize mPhysicalSize;
     int mDepth;
@@ -95,7 +100,10 @@ private:
     QXlibCursor *mCursor;
     QXlibKeyboard *mKeyboard;
 
-    Display * mDisplay;
+    QXlibDisplay * mDisplay;
+#if !defined(QT_NO_OPENGL) && defined(QT_OPENGL_ES_2)
+    void *mEGLDisplay;
+#endif
     int mScreen;
 };
 

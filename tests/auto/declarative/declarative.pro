@@ -31,6 +31,7 @@ contains(QT_CONFIG, private_tests) {
            qdeclarativeanchors \
            qdeclarativeanimatedimage \
            qdeclarativeanimations \
+           qdeclarativeapplication \
            qdeclarativebehaviors \
            qdeclarativebinding \
            qdeclarativeborderimage \
@@ -55,6 +56,7 @@ contains(QT_CONFIG, private_tests) {
            qdeclarativeloader \
            qdeclarativemousearea \
            qdeclarativepathview \
+           qdeclarativepincharea \
            qdeclarativepositioners \
            qdeclarativeproperty \
            qdeclarativepropertymap \
@@ -74,11 +76,6 @@ contains(QT_CONFIG, private_tests) {
            qdeclarativeworkerscript \
            qdeclarativexmllistmodel \
            qpacketprotocol
-
-contains(QT_CONFIG, webkit) {
-    SUBDIRS += \
-           qdeclarativewebview
-}
 }
 
 # Tests which should run in Pulse

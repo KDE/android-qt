@@ -69,12 +69,16 @@ public:
 			const QString& pattern );
     QString quoteSnippet(const Location &docLocation, const QString &identifier);
 
+    static QStringList splitLines(const QString &line);
+
 private:
-    QString getLine();
+    QString getLine(int unindent = 0);
     void failedAtEnd( const Location& docLocation, const QString& command );
     bool match( const Location& docLocation, const QString& pattern,
     		const QString& line );
     QString commentForCode() const;
+    QString removeSpecialLines(const QString &line, const QString &comment,
+                               int unindent = 0);
 
     bool silent; 
     bool validRegExp;

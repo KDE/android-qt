@@ -72,9 +72,7 @@ QT_BEGIN_NAMESPACE
 
 // The cache limit describes the maximum "junk" in the cache.
 // These are the same defaults as QPixmapCache
-#if defined(Q_OS_SYMBIAN)
-static int cache_limit = 1024 * 1024; // 1048 KB cache limit for symbian
-#elif defined(Q_WS_QWS) || defined(Q_WS_WINCE)
+#if defined(Q_WS_QWS) || defined(Q_WS_WINCE)
 static int cache_limit = 2048 * 1024; // 2048 KB cache limit for embedded
 #else
 static int cache_limit = 10240 * 1024; // 10 MB cache limit for desktop
@@ -426,7 +424,8 @@ void QDeclarativePixmapReader::processJobs()
                     replies.remove(reply);
                     reply->close();
                 }
-                delete job;
+                // deleteLater, since not owned by this thread
+                job->deleteLater();
             }
             cancelled.clear();
         }
@@ -959,20 +958,20 @@ QRect QDeclarativePixmap::rect() const
 
 void QDeclarativePixmap::load(QDeclarativeEngine *engine, const QUrl &url)
 {
-    load(engine, url, QSize(), false);
+    load(engine, url, QSize(), QDeclarativePixmap::Cache);
 }
 
-void QDeclarativePixmap::load(QDeclarativeEngine *engine, const QUrl &url, bool async)
+void QDeclarativePixmap::load(QDeclarativeEngine *engine, const QUrl &url, QDeclarativePixmap::Options options)
 {
-    load(engine, url, QSize(), async);
+    load(engine, url, QSize(), options);
 }
 
 void QDeclarativePixmap::load(QDeclarativeEngine *engine, const QUrl &url, const QSize &size)
 {
-    load(engine, url, size, false);
+    load(engine, url, size, QDeclarativePixmap::Cache);
 }
 
-void QDeclarativePixmap::load(QDeclarativeEngine *engine, const QUrl &url, const QSize &requestSize, bool async)
+void QDeclarativePixmap::load(QDeclarativeEngine *engine, const QUrl &url, const QSize &requestSize, QDeclarativePixmap::Options options)
 {
     if (d) { d->release(); d = 0; }
 
@@ -982,19 +981,20 @@ void QDeclarativePixmap::load(QDeclarativeEngine *engine, const QUrl &url, const
     QHash<QDeclarativePixmapKey, QDeclarativePixmapData *>::Iterator iter = store->m_cache.find(key);
 
     if (iter == store->m_cache.end()) {
-        if (async) {
+        if (options & QDeclarativePixmap::Asynchronous) {
             // pixmaps can only be loaded synchronously
             if (url.scheme() == QLatin1String("image") 
                     && QDeclarativeEnginePrivate::get(engine)->getImageProviderType(url) == QDeclarativeImageProvider::Pixmap) {
-                async = false;
+                options &= ~QDeclarativePixmap::Asynchronous;
             }
         }
 
-        if (!async) {
+        if (!(options & QDeclarativePixmap::Asynchronous)) {
             bool ok = false;
             d = createPixmapDataSync(engine, url, requestSize, &ok);
             if (ok) {
-                d->addToCache();
+                if (options & QDeclarativePixmap::Cache)
+                    d->addToCache();
                 return;
             }
             if (d)  // loadable, but encountered error while loading
@@ -1007,7 +1007,8 @@ void QDeclarativePixmap::load(QDeclarativeEngine *engine, const QUrl &url, const
         QDeclarativePixmapReader *reader = QDeclarativePixmapReader::instance(engine);
 
         d = new QDeclarativePixmapData(url, requestSize);
-        d->addToCache();
+        if (options & QDeclarativePixmap::Cache)
+            d->addToCache();
 
         d->reply = reader->getImage(d);
     } else {

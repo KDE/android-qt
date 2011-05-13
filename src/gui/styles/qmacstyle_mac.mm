@@ -3084,7 +3084,7 @@ void QMacStyle::drawPrimitive(PrimitiveElement pe, const QStyleOption *opt, QPai
         }
         break;
     case PE_PanelScrollAreaCorner: {
-        const QBrush brush(qApp->palette().brush(QPalette::Base));
+        const QBrush brush(opt->palette.brush(QPalette::Base));
         p->fillRect(opt->rect, brush);
         p->setPen(QPen(QColor(217, 217, 217)));
         p->drawLine(opt->rect.topLeft(), opt->rect.topRight());
@@ -4621,6 +4621,13 @@ void QMacStyle::drawComplexControl(ComplexControl cc, const QStyleOptionComplex 
                     tdi.attributes &= ~kThemeTrackShowThumb;
                 if (scrollBarLength < scrollButtonsCutoffSize(scrollButtonsCutoff, sizePolicy))
                     tdi.enableState = kThemeTrackNothingToScroll;
+            } else {
+                if (!(slider->subControls & SC_SliderHandle))
+                    tdi.attributes &= ~kThemeTrackShowThumb;
+#if MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_5
+                if (!(slider->subControls & SC_SliderGroove))
+                    tdi.attributes |= kThemeTrackHideTrack;
+#endif
             }
 
             HIThemeDrawTrack(&tdi, tracking ? 0 : &macRect, cg,
@@ -4700,7 +4707,7 @@ void QMacStyle::drawComplexControl(ComplexControl cc, const QStyleOptionComplex 
 
                 HIThemeFrameDrawInfo fdi;
                 fdi.version = qt_mac_hitheme_version;
-                fdi.state = kThemeStateInactive;
+                fdi.state = tds;
                 fdi.kind = kHIThemeFrameTextFieldSquare;
                 fdi.isFocused = false;
                 HIRect hirect = qt_hirectForQRect(lineeditRect);

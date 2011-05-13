@@ -588,7 +588,7 @@ void QWidgetBackingStore::markDirty(const QRegion &rgn, QWidget *widget, bool up
         return;
     }
 
-    if (!windowSurface->hasPartialUpdateSupport()) {
+    if (!windowSurface->hasFeature(QWindowSurface::PartialUpdates)) {
         fullUpdatePending = true;
         sendUpdateRequest(tlw, updateImmediately);
         return;
@@ -683,7 +683,7 @@ void QWidgetBackingStore::markDirty(const QRect &rect, QWidget *widget, bool upd
         return;
     }
 
-    if (!windowSurface->hasPartialUpdateSupport()) {
+    if (!windowSurface->hasFeature(QWindowSurface::PartialUpdates)) {
         fullUpdatePending = true;
         sendUpdateRequest(tlw, updateImmediately);
         return;
@@ -1142,6 +1142,11 @@ void QWidgetBackingStore::sync(QWidget *exposedWidget, const QRegion &exposedReg
         || !exposedWidget->updatesEnabled() || exposedRegion.isEmpty()) {
         return;
     }
+
+    // If there's no preserved contents support we always need
+    // to do a full repaint before flushing
+    if (!windowSurface->hasFeature(QWindowSurface::PreservedContents))
+        fullUpdatePending = true;
 
     // Nothing to repaint.
     if (!isDirty()) {

@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -150,7 +150,7 @@ void QPlatformWindow::setParent(const QPlatformWindow *parent)
 /*!
   Reimplement to set the window title to \a title
 */
-void QPlatformWindow::setWindowTitle(const QString &title) {}
+void QPlatformWindow::setWindowTitle(const QString &) {}
 
 /*!
   Reimplement to be able to let Qt rais windows to the top of the desktop

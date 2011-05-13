@@ -228,7 +228,7 @@ static QString varMap(const QString &x)
     return ret;
 }
 
-static QStringList split_arg_list(QString params)
+static QStringList split_arg_list(const QString &params)
 {
     int quote = 0;
     QStringList args;
@@ -253,6 +253,8 @@ static QStringList split_arg_list(QString params)
                 while(x > last && params_data[x-1].unicode() == SPACE)
                     --x;
                 args << params.mid(last, x - last);
+                // Could do a check for unmatched parens here, but split_value_list()
+                // is called on all our output, so mistakes will be caught anyway.
                 return args;
             }
             ushort unicode = params_data[x].unicode();
@@ -285,6 +287,7 @@ static QStringList split_value_list(const QString &vals)
     QString build;
     QStringList ret;
     ushort quote = 0;
+    int parens = 0;
 
     const ushort LPAREN = '(';
     const ushort RPAREN = ')';
@@ -295,7 +298,7 @@ static QStringList split_value_list(const QString &vals)
     ushort unicode;
     const QChar *vals_data = vals.data();
     const int vals_len = vals.length();
-    for(int x = 0, parens = 0; x < vals_len; x++) {
+    for(int x = 0; x < vals_len; x++) {
         unicode = vals_data[x].unicode();
         if(x != (int)vals_len-1 && unicode == BACKSLASH &&
             (vals_data[x+1].unicode() == SINGLEQUOTE || vals_data[x+1].unicode() == DOUBLEQUOTE)) {
@@ -319,6 +322,11 @@ static QStringList split_value_list(const QString &vals)
     }
     if(!build.isEmpty())
         ret << build;
+    if (parens)
+        warn_msg(WarnDeprecated, "%s:%d: Unmatched parentheses are deprecated.",
+                 parser.file.toLatin1().constData(), parser.line_no);
+    // Could do a check for unmatched quotes here, but doVariableReplaceExpand()
+    // is called on all our output, so mistakes will be caught anyway.
     return ret;
 }
 
@@ -1334,10 +1342,10 @@ QMakeProject::read(uchar cmd)
             }
 
             if(QDir::isRelativePath(qmakespec)) {
-                if (QFile::exists(qmakespec+"/qmake.conf")) {
-                    Option::mkfile::qmakespec = QFileInfo(Option::mkfile::qmakespec).absoluteFilePath();
-                } else if (QFile::exists(Option::output_dir+"/"+qmakespec+"/qmake.conf")) {
+                if (QFile::exists(Option::output_dir+"/"+qmakespec+"/qmake.conf")) {
                     qmakespec = Option::mkfile::qmakespec = QFileInfo(Option::output_dir+"/"+qmakespec).absoluteFilePath();
+                } else if (QFile::exists(qmakespec+"/qmake.conf")) {
+                    Option::mkfile::qmakespec = QFileInfo(Option::mkfile::qmakespec).absoluteFilePath();
                 } else {
                     bool found_mkspec = false;
                     for(QStringList::ConstIterator it = mkspec_roots.begin(); it != mkspec_roots.end(); ++it) {
@@ -1639,10 +1647,10 @@ QMakeProject::doProjectInclude(QString file, uchar flags, QMap<QString, QStringL
     if(flags & IncludeFlagFeature) {
         if(!file.endsWith(Option::prf_ext))
             file += Option::prf_ext;
+        validateModes(); // init dir_sep
         if(file.indexOf(Option::dir_sep) == -1 || !QFile::exists(file)) {
             static QStringList *feature_roots = 0;
             if(!feature_roots) {
-                validateModes();
                 feature_roots = new QStringList(qmake_feature_paths(prop));
                 qmakeAddCacheClear(qmakeDeleteCacheClear<QStringList>, (void**)&feature_roots);
             }
@@ -1677,10 +1685,10 @@ QMakeProject::doProjectInclude(QString file, uchar flags, QMap<QString, QStringL
             }
             if(format == UnknownFormat)
                 return IncludeNoExist;
-            if(place["QMAKE_INTERNAL_INCLUDED_FEATURES"].indexOf(file) != -1)
-                return IncludeFeatureAlreadyLoaded;
-            place["QMAKE_INTERNAL_INCLUDED_FEATURES"].append(file);
         }
+        if(place["QMAKE_INTERNAL_INCLUDED_FEATURES"].indexOf(file) != -1)
+            return IncludeFeatureAlreadyLoaded;
+        place["QMAKE_INTERNAL_INCLUDED_FEATURES"].append(file);
     }
     if(QDir::isRelativePath(file)) {
         QStringList include_roots;
@@ -2762,6 +2770,20 @@ QMakeProject::expand(const QString &str)
     return QStringList();
 }
 
+QString
+QMakeProject::expand(const QString &str, const QString &file, int line)
+{
+    bool ok;
+    parser_info pi = parser;
+    parser.file = file;
+    parser.line_no = line;
+    parser.from_file = false;
+    QMap<QString, QStringList> tmp = vars;
+    const QStringList ret = doVariableReplaceExpand(str, tmp, &ok);
+    parser = pi;
+    return ok ? ret.join(QString(Option::field_sep)) : QString();
+}
+
 QStringList
 QMakeProject::expand(const QString &func, const QList<QStringList> &args)
 {
@@ -2962,6 +2984,9 @@ QMakeProject::doVariableReplaceExpand(const QString &str, QMap<QString, QStringL
     else if(!current.isEmpty())
         ret.append(current);
     //qDebug() << "REPLACE" << str << ret;
+    if (quote)
+        warn_msg(WarnDeprecated, "%s:%d: Unmatched quotes are deprecated.",
+                 parser.file.toLatin1().constData(), parser.line_no);
     return ret;
 }
 
@@ -2985,6 +3010,7 @@ QStringList &QMakeProject::values(const QString &_var, QMap<QString, QStringList
         var = ".BUILTIN." + var;
         place[var] = QStringList(qmake_getpwd());
     } else if(var == QLatin1String("DIR_SEPARATOR")) {
+        validateModes();
         var = ".BUILTIN." + var;
         place[var] =  QStringList(Option::dir_sep);
     } else if(var == QLatin1String("DIRLIST_SEPARATOR")) {
@@ -3013,17 +3039,17 @@ QStringList &QMakeProject::values(const QString &_var, QMap<QString, QStringList
         if(!Option::user_template.isEmpty()) {
             var = ".BUILTIN.USER." + var;
             place[var] =  QStringList(Option::user_template);
-        } else if(!place[var].isEmpty()) {
-            QString orig_template = place["TEMPLATE"].first(), real_template;
+        } else {
+            QString orig_template, real_template;
+            if(!place[var].isEmpty())
+                orig_template = place[var].first();
+            real_template = orig_template.isEmpty() ? "app" : orig_template;
             if(!Option::user_template_prefix.isEmpty() && !orig_template.startsWith(Option::user_template_prefix))
-                real_template = Option::user_template_prefix + orig_template;
-            if(!real_template.isEmpty()) {
+                real_template.prepend(Option::user_template_prefix);
+            if(real_template != orig_template) {
                 var = ".BUILTIN." + var;
                 place[var] = QStringList(real_template);
             }
-        } else {
-            var = ".BUILTIN." + var;
-            place[var] =  QStringList("app");
         }
     } else if(var.startsWith(QLatin1String("QMAKE_HOST."))) {
         QString ret, type = var.mid(11);

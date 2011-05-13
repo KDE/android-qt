@@ -40,7 +40,6 @@
 ****************************************************************************/
 
 #include <QMetaObject>
-#include <QDebug>
 #include "codemarker.h"
 #include "config.h"
 #include "node.h"
@@ -60,7 +59,6 @@ QList<CodeMarker *> CodeMarker::markers;
   been read.
  */
 CodeMarker::CodeMarker()
-    : slow(false)
 {
     markers.prepend(this);
 }
@@ -75,14 +73,11 @@ CodeMarker::~CodeMarker()
 }
 
 /*!
-  The only thing a code market initializes is its \e{slow}
-  flag. The \e{slow} flag indicates whether the operations
-  that slow down qdoc are to be performed or not. It is
-  turned off by default. 
+  A code market performs no initialization by default. Marker-specific
+  initialization is performed in subclasses.
  */
 void CodeMarker::initializeMarker(const Config &config)
 {
-    slow = config.getBool(QLatin1String(CONFIG_SLOW));
 }
 
 /*!
@@ -496,7 +491,7 @@ static QString encode(const QString &string)
 #endif
 }
 
-QStringList CodeMarker::macRefsForNode(const Node *node)
+QStringList CodeMarker::macRefsForNode(Node *node)
 {
     QString result = QLatin1String("cpp/");
     switch (node->type()) {
@@ -588,7 +583,7 @@ QStringList CodeMarker::macRefsForNode(const Node *node)
          {
              NodeList list = static_cast<const PropertyNode*>(node)->functions();
              QStringList stringList;
-             foreach (const Node *node, list) {
+             foreach (Node* node, list) {
                 stringList += macRefsForNode(node);
              }
              return stringList;

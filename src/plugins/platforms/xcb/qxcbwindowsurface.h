@@ -4,7 +4,7 @@
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
-** This file is part of the QtGui module of the Qt Toolkit.
+** This file is part of the plugins of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
 ** No Commercial Usage
@@ -62,9 +62,11 @@ public:
     bool scroll(const QRegion &area, int dx, int dy);
 
     void beginPaint(const QRegion &);
+    void endPaint(const QRegion &);
 
 private:
     QXcbShmImage *m_image;
+    bool m_syncingResize;
 };
 
 #endif

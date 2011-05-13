@@ -129,6 +129,8 @@ class Q_AUTOTEST_EXPORT QDeclarativeMouseArea : public QDeclarativeItem
     Q_PROPERTY(Qt::MouseButtons acceptedButtons READ acceptedButtons WRITE setAcceptedButtons NOTIFY acceptedButtonsChanged)
     Q_PROPERTY(bool hoverEnabled READ hoverEnabled WRITE setHoverEnabled NOTIFY hoverEnabledChanged)
     Q_PROPERTY(QDeclarativeDrag *drag READ drag CONSTANT) //### add flicking to QDeclarativeDrag or add a QDeclarativeFlick ???
+    Q_PROPERTY(bool preventStealing READ preventStealing WRITE setPreventStealing NOTIFY preventStealingChanged REVISION 1)
+    Q_PROPERTY(QDeclarativeListProperty<QGraphicsObject> forwardTo READ forwardTo);
 
 public:
     QDeclarativeMouseArea(QDeclarativeItem *parent=0);
@@ -153,6 +155,11 @@ public:
 
     QDeclarativeDrag *drag();
 
+    bool preventStealing() const;
+    void setPreventStealing(bool prevent);
+
+    QDeclarativeListProperty<QGraphicsObject> forwardTo();
+
 Q_SIGNALS:
     void hoveredChanged();
     void pressedChanged();
@@ -161,6 +168,7 @@ Q_SIGNALS:
     void hoverEnabledChanged();
     void positionChanged(QDeclarativeMouseEvent *mouse);
     void mousePositionChanged(QDeclarativeMouseEvent *mouse);
+    Q_REVISION(1) void preventStealingChanged();
 
     void pressed(QDeclarativeMouseEvent *mouse);
     void pressAndHold(QDeclarativeMouseEvent *mouse);

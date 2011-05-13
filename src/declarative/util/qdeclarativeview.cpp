@@ -72,12 +72,11 @@
 QT_BEGIN_NAMESPACE
 
 DEFINE_BOOL_CONFIG_OPTION(frameRateDebug, QML_SHOW_FRAMERATE)
-extern Q_GUI_EXPORT bool qt_applefontsmoothing_enabled;
 
 class QDeclarativeScene : public QGraphicsScene
 {
 public:
-    QDeclarativeScene();
+    QDeclarativeScene(QObject *parent = 0);
 
 protected:
     virtual void keyPressEvent(QKeyEvent *);
@@ -88,7 +87,7 @@ protected:
     virtual void mouseReleaseEvent(QGraphicsSceneMouseEvent *);
 };
 
-QDeclarativeScene::QDeclarativeScene()
+QDeclarativeScene::QDeclarativeScene(QObject *parent) : QGraphicsScene(parent)
 {
 }
 
@@ -132,7 +131,8 @@ class QDeclarativeViewPrivate : public QGraphicsViewPrivate, public QDeclarative
     Q_DECLARE_PUBLIC(QDeclarativeView)
 public:
     QDeclarativeViewPrivate()
-        : root(0), declarativeItemRoot(0), graphicsWidgetRoot(0), component(0), resizeMode(QDeclarativeView::SizeViewToRootObject), initialSize(0,0) {}
+        : root(0), declarativeItemRoot(0), graphicsWidgetRoot(0), component(0),
+          resizeMode(QDeclarativeView::SizeViewToRootObject), initialSize(0,0) {}
     ~QDeclarativeViewPrivate() { delete root; delete engine; }
     void execute();
     void itemGeometryChanged(QDeclarativeItem *item, const QRectF &newGeometry, const QRectF &oldGeometry);
@@ -155,8 +155,6 @@ public:
     QElapsedTimer frameTimer;
 
     void init();
-
-    QDeclarativeScene scene;
 };
 
 void QDeclarativeViewPrivate::execute()
@@ -195,9 +193,9 @@ void QDeclarativeViewPrivate::itemGeometryChanged(QDeclarativeItem *resizeItem, 
     \since 4.7
     \brief The QDeclarativeView class provides a widget for displaying a Qt Declarative user interface.
 
-    QDeclarativeItem objects can be placed on a standard QGraphicsScene and 
-    displayed with QGraphicsView. QDeclarativeView is a QGraphicsView subclass 
-    provided as a convenience for displaying QML files, and connecting between 
+    QDeclarativeItem objects can be placed on a standard QGraphicsScene and
+    displayed with QGraphicsView. QDeclarativeView is a QGraphicsView subclass
+    provided as a convenience for displaying QML files, and connecting between
     QML and C++ Qt objects.
 
     QDeclarativeView provides:
@@ -234,7 +232,10 @@ void QDeclarativeViewPrivate::itemGeometryChanged(QDeclarativeItem *resizeItem, 
     you can connect to the statusChanged() signal and monitor for QDeclarativeView::Error.
     The errors are available via QDeclarativeView::errors().
 
-    \sa {Integrating QML with existing Qt UI code}, {Using QML in C++ Applications}
+    If you're using your own QGraphicsScene-based scene with QDeclarativeView, remember to
+    enable scene's sticky focus mode and to set itemIndexMethod to QGraphicsScene::NoIndex.
+
+    \sa {Integrating QML Code with Existing Qt UI Code}, {Using QML Bindings in C++ Applications}
 */
 
 
@@ -248,7 +249,7 @@ void QDeclarativeViewPrivate::itemGeometryChanged(QDeclarativeItem *resizeItem, 
 
 /*!
   \fn QDeclarativeView::QDeclarativeView(QWidget *parent)
-  
+
   Constructs a QDeclarativeView with the given \a parent.
 */
 QDeclarativeView::QDeclarativeView(QWidget *parent)
@@ -277,7 +278,7 @@ void QDeclarativeViewPrivate::init()
 {
     Q_Q(QDeclarativeView);
     engine = new QDeclarativeEngine();
-    q->setScene(&scene);
+    q->setScene(new QDeclarativeScene(q));
 
     q->setOptimizationFlags(QGraphicsView::DontSavePainterState);
     q->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -286,11 +287,18 @@ void QDeclarativeViewPrivate::init()
 
     // These seem to give the best performance
     q->setViewportUpdateMode(QGraphicsView::BoundingRectViewportUpdate);
-    scene.setItemIndexMethod(QGraphicsScene::NoIndex);
+    q->scene()->setItemIndexMethod(QGraphicsScene::NoIndex);
     q->viewport()->setFocusPolicy(Qt::NoFocus);
     q->setFocusPolicy(Qt::StrongFocus);
 
-    scene.setStickyFocus(true);  //### needed for correct focus handling
+    q->scene()->setStickyFocus(true);  //### needed for correct focus handling
+
+#ifdef QDECLARATIVEVIEW_NOBACKGROUND
+    q->setAttribute(Qt::WA_OpaquePaintEvent);
+    q->setAttribute(Qt::WA_NoSystemBackground);
+    q->viewport()->setAttribute(Qt::WA_OpaquePaintEvent);
+    q->viewport()->setAttribute(Qt::WA_NoSystemBackground);
+#endif
 }
 
 /*!
@@ -557,14 +565,14 @@ void QDeclarativeView::continueExecute()
 void QDeclarativeView::setRootObject(QObject *obj)
 {
     Q_D(QDeclarativeView);
-    if (d->root == obj)
+    if (d->root == obj || !scene())
         return;
     if (QDeclarativeItem *declarativeItem = qobject_cast<QDeclarativeItem *>(obj)) {
-        d->scene.addItem(declarativeItem);
+        scene()->addItem(declarativeItem);
         d->root = declarativeItem;
         d->declarativeItemRoot = declarativeItem;
     } else if (QGraphicsObject *graphicsObject = qobject_cast<QGraphicsObject *>(obj)) {
-        d->scene.addItem(graphicsObject);
+        scene()->addItem(graphicsObject);
         d->root = graphicsObject;
         if (graphicsObject->isWidget()) {
             d->graphicsWidgetRoot = static_cast<QGraphicsWidget*>(graphicsObject);
@@ -695,17 +703,10 @@ void QDeclarativeView::paintEvent(QPaintEvent *event)
     QDeclarativeDebugTrace::startRange(QDeclarativeDebugTrace::Painting);
 
     int time = 0;
-    if (frameRateDebug()) 
+    if (frameRateDebug())
         time = d->frameTimer.restart();
 
-#ifdef Q_WS_MAC
-    bool oldSmooth = qt_applefontsmoothing_enabled;
-    qt_applefontsmoothing_enabled = false;
-#endif
     QGraphicsView::paintEvent(event);
-#ifdef Q_WS_MAC
-    qt_applefontsmoothing_enabled = oldSmooth;
-#endif
 
     QDeclarativeDebugTrace::endRange(QDeclarativeDebugTrace::Painting);
 

@@ -45,12 +45,8 @@ for(PROJECT, $$list($$lower($$unique(QT_BUILD_PARTS)))) {
     } else:isEqual(PROJECT, docs) {
        contains(QT_BUILD_PARTS, tools):include(doc/doc.pri)
     } else:isEqual(PROJECT, translations) {
-       contains(QT_BUILD_PARTS, tools) {
-          include(translations/translations.pri)  # ts targets
-       } else {
-          !wince*:SUBDIRS += tools/linguist/lrelease
-       }
-       SUBDIRS += translations                    # qm build step
+       !contains(QT_BUILD_PARTS, tools):!wince*:SUBDIRS += tools/linguist/lrelease
+       SUBDIRS += translations
     } else:isEqual(PROJECT, qmake) {
 #      SUBDIRS += qmake
     } else {
@@ -142,11 +138,6 @@ CLEAN_DEPS += qmakeclean
 CONFIG -= qt
 
 ### installations ####
-
-#translations
-translations.path=$$[QT_INSTALL_TRANSLATIONS]
-translations.files = $$QT_SOURCE_TREE/translations/*.qm
-INSTALLS += translations
 
 qmake.path=$$[QT_INSTALL_BINS]
 contains(QMAKE_HOST.os, Windows) {

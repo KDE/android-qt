@@ -81,11 +81,13 @@
 #  define FM_DEBUG if (false) qDebug
 #endif
 
+#if defined(Q_WS_WIN) && !defined(QT_NO_DIRECTWRITE)
+#  include <dwrite.h>
+#endif
+
 QT_BEGIN_NAMESPACE
 
 #define SMOOTH_SCALABLE 0xffff
-
-Q_GUI_EXPORT extern int qt_defaultDpiY(); // in qfont.cpp
 
 bool qt_enable_test_font = false;
 
@@ -132,6 +134,21 @@ static int getFontWeight(const QString &weightString)
         return (int) QFont::Black;
 
     return (int) QFont::Normal;
+}
+
+// convert 0 ~ 1000 integer to QFont::Weight
+QFont::Weight weightFromInteger(int weight)
+{
+    if (weight < 400)
+        return QFont::Light;
+    else if (weight < 600)
+        return QFont::Normal;
+    else if (weight < 700)
+        return QFont::DemiBold;
+    else if (weight < 800)
+        return QFont::Bold;
+    else
+        return QFont::Black;
 }
 
 struct QtFontEncoding
@@ -495,8 +512,6 @@ QtFontFoundry *QtFontFamily::foundry(const QString &f, bool create)
 
 // ### copied to tools/makeqpf/qpf2.cpp
 
-#if (defined(Q_WS_QWS) && !defined(QT_NO_FREETYPE)) || defined(Q_WS_WIN)  || defined(Q_OS_SYMBIAN) || (defined(Q_WS_MAC) && !defined(QT_MAC_USE_COCOA))
-
 // see the Unicode subset bitfields in the MSDN docs
 static int requiredUnicodeBits[QFontDatabase::WritingSystemsCount][2] = {
         // Any,
@@ -574,7 +589,7 @@ static int requiredUnicodeBits[QFontDatabase::WritingSystemsCount][2] = {
 #define JapaneseCsbBit 17
 #define KoreanCsbBit 21
 
-static QList<QFontDatabase::WritingSystem> determineWritingSystemsFromTrueTypeBits(quint32 unicodeRange[4], quint32 codePageRange[2])
+QList<QFontDatabase::WritingSystem> qt_determine_writing_systems_from_truetype_bits(quint32 unicodeRange[4], quint32 codePageRange[2])
 {
     QList<QFontDatabase::WritingSystem> writingSystems;
     bool hasScript = false;
@@ -621,7 +636,6 @@ static QList<QFontDatabase::WritingSystem> determineWritingSystemsFromTrueTypeBi
 
     return writingSystems;
 }
-#endif
 
 #if defined(Q_OS_SYMBIAN) && defined(QT_NO_FREETYPE)
 // class with virtual destructor, derived in qfontdatabase_s60.cpp
@@ -643,9 +657,24 @@ public:
 #if defined(Q_OS_SYMBIAN) && defined(QT_NO_FREETYPE)
           , symbianExtras(0)
 #endif
+#if defined(Q_WS_WIN) && !defined(QT_NO_DIRECTWRITE)
+          , directWriteFactory(0)
+          , directWriteGdiInterop(0)
+#endif
     { }
+
     ~QFontDatabasePrivate() {
         free();
+#if defined(Q_OS_SYMBIAN) && defined(QT_NO_FREETYPE)
+        if (symbianExtras)
+            delete symbianExtras;
+#endif
+#if defined(Q_WS_WIN) && !defined(QT_NO_DIRECTWRITE)
+    if (directWriteGdiInterop)
+        directWriteGdiInterop->Release();
+    if (directWriteFactory != 0)
+        directWriteFactory->Release();
+#endif
     }
     QtFontFamily *family(const QString &f, bool = false);
     void free() {
@@ -654,12 +683,6 @@ public:
         ::free(families);
         families = 0;
         count = 0;
-#if defined(Q_OS_SYMBIAN) && defined(QT_NO_FREETYPE)
-        if (symbianExtras) {
-            delete symbianExtras;
-            symbianExtras = 0;
-        }
-#endif
         // don't clear the memory fonts!
     }
 
@@ -668,6 +691,12 @@ public:
     QString systemLang;
 #endif
     QtFontFamily **families;
+
+#if defined(Q_WS_WIN) && !defined(QT_NO_DIRECTWRITE)
+    IDWriteFactory *directWriteFactory;
+    IDWriteGdiInterop *directWriteGdiInterop;
+#endif
+
 
     struct ApplicationFont {
         QString fileName;
@@ -678,6 +707,10 @@ public:
         QVector<FONTSIGNATURE> signatures;
 #elif defined(Q_WS_MAC)
         ATSFontContainerRef handle;
+#elif defined(Q_OS_SYMBIAN) && defined(QT_NO_FREETYPE)
+        QString temporaryFileName;
+        TInt screenDeviceFontFileId;
+        TUid fontStoreFontFileUid;
 #endif
         QStringList families;
     };
@@ -706,7 +739,7 @@ public:
 #if defined(Q_WS_QWS)
     QDataStream *stream;
 #elif defined(Q_OS_SYMBIAN) && defined(QT_NO_FREETYPE)
-    const QSymbianFontDatabaseExtras *symbianExtras;
+    QSymbianFontDatabaseExtras *symbianExtras;
 #endif
 #if defined(Q_WS_QWS) || defined(Q_WS_QPA)
     QStringList fallbackFamilies;
@@ -854,7 +887,7 @@ QStringList QFontDatabasePrivate::addTTFile(const QByteArray &file, const QByteA
                     os2->ulCodePageRange1, os2->ulCodePageRange2
                 };
 
-                writingSystems = determineWritingSystemsFromTrueTypeBits(unicodeRange, codePageRange);
+                writingSystems = qt_determine_writing_systems_from_truetype_bits(unicodeRange, codePageRange);
                 //for (int i = 0; i < writingSystems.count(); ++i)
                 //    qDebug() << QFontDatabase::writingSystemName(writingSystems.at(i));
             }
@@ -916,6 +949,11 @@ static const int scriptForWritingSystem[] = {
     QUnicodeTables::Runic, // Runic
     QUnicodeTables::Nko // Nko
 };
+
+int qt_script_for_writing_system(QFontDatabase::WritingSystem writingSystem)
+{
+    return scriptForWritingSystem[writingSystem];
+}
 
 
 #if defined Q_WS_QWS || (defined(Q_WS_X11) && !defined(QT_NO_FONTCONFIG)) || defined(Q_WS_WIN)
@@ -1086,6 +1124,12 @@ QT_BEGIN_INCLUDE_NAMESPACE
 #  include "qfontdatabase_qpa.cpp"
 #elif defined(Q_OS_SYMBIAN)
 #  include "qfontdatabase_s60.cpp"
+#endif
+#if !defined(Q_WS_X11)
+QString QFontDatabase::resolveFontFamilyAlias(const QString &family)
+{
+    return family;
+}
 #endif
 QT_END_INCLUDE_NAMESPACE
 
@@ -2575,6 +2619,8 @@ bool QFontDatabasePrivate::isApplicationFont(const QString &fileName)
     \note Adding application fonts on Unix/X11 platforms without fontconfig is
     currently not supported.
 
+    \note On Symbian, the font family names get truncated to a length of 20 characters.
+
     \sa addApplicationFontFromData(), applicationFontFamilies(), removeApplicationFont()
 */
 int QFontDatabase::addApplicationFont(const QString &fileName)
@@ -2604,6 +2650,8 @@ int QFontDatabase::addApplicationFont(const QString &fileName)
 
     \bold{Note:} Adding application fonts on Unix/X11 platforms without fontconfig is
     currently not supported.
+
+    \note On Symbian, the font family names get truncated to a length of 20 characters.
 
     \sa addApplicationFont(), applicationFontFamilies(), removeApplicationFont()
 */

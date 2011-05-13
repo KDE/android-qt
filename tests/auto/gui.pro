@@ -2,7 +2,7 @@
 # (i.e. QT=core gui network).
 # The test system is allowed to run these tests before the rest of Qt has
 # been compiled.
-# 
+#
 TEMPLATE=subdirs
 SUBDIRS=\
     gestures \
@@ -49,6 +49,7 @@ SUBDIRS=\
     qfiledialog \
     qfiledialog2 \
     qfileiconprovider \
+    qfileopenevent \
     qfilesystemmodel \
     qfocusframe \
     qfont \
@@ -81,13 +82,9 @@ SUBDIRS=\
     qgroupbox \
     qguivariant \
     qheaderview \
-    qhelpcontentmodel \
-    qhelpenginecore \
-    qhelpgenerator \
-    qhelpindexmodel \
-    qhelpprojectdata \
     qicoimageformat \
     qicon \
+    qidentityproxymodel \
     qimageiohandler \
     qimagereader \
     qimagewriter \
@@ -116,10 +113,8 @@ SUBDIRS=\
     qmimedata \
     qmouseevent_modal \
     qmovie \
+    qvolatileimage \
     qnetworkaccessmanager_and_qprogressdialog \
-    qnetworkcachemetadata \
-    qnetworkdiskcache \
-    qnetworkreply \
     qpaintengine \
     qpainterpath \
     qpainterpathstroker \
@@ -142,6 +137,7 @@ SUBDIRS=\
     qpushbutton \
     qquaternion \
     qradiobutton \
+    qrawfont \
     qregexpvalidator \
     qregion \
     qscrollarea \
@@ -172,7 +168,6 @@ SUBDIRS=\
     qtabbar \
     qtableview \
     qtablewidget \
-    qtcpserver \
     qtcpsocket \
     qtessellator \
     qtextblock \
@@ -199,7 +194,6 @@ SUBDIRS=\
     qtreeview \
     qtreewidget \
     qtreewidgetitemiterator \
-    qudpsocket \
     qundogroup \
     qundostack \
     qvectornd \
@@ -223,10 +217,5 @@ win32:SUBDIRS -= qtextpiecetable
            qtextpiecetable \
 
 symbian:SUBDIRS -= \
-    qhelpcontentmodel \
-    qhelpenginecore \
-    qhelpgenerator \
-    qhelpindexmodel \
-    qhelpprojectdata \
     qsystemtrayicon \
 

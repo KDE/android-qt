@@ -54,7 +54,15 @@
 #include <QtCore/qvarlengtharray.h>
 #include <QtScript/qscriptcontextinfo.h>
 
-Q_DECLARE_METATYPE(QScriptValue);
+Q_DECLARE_METATYPE(QScriptValue)
+
+#if defined(__GNUC__)
+# if (__GNUC__ * 100 + __GNUC_MINOR__) >= 405
+// The code in this file does not violate strict aliasing, but GCC thinks it does
+// so turn off the warnings for us to have a clean build
+#  pragma GCC diagnostic ignored "-Wstrict-aliasing"
+# endif
+#endif
 
 QT_BEGIN_NAMESPACE
 
@@ -149,8 +157,8 @@ QDeclarativeObjectScriptClass::queryProperty(Object *object, const Identifier &n
 
 QScriptClass::QueryFlags
 QDeclarativeObjectScriptClass::queryProperty(QObject *obj, const Identifier &name,
-                                    QScriptClass::QueryFlags flags, QDeclarativeContextData *evalContext,
-                                    QueryHints hints)
+                                             QScriptClass::QueryFlags flags, QDeclarativeContextData *evalContext,
+                                             QueryHints hints)
 {
     Q_UNUSED(flags);
     lastData = 0;
@@ -165,6 +173,12 @@ QDeclarativeObjectScriptClass::queryProperty(QObject *obj, const Identifier &nam
 
     QDeclarativeEnginePrivate *enginePrivate = QDeclarativeEnginePrivate::get(engine);
     lastData = QDeclarativePropertyCache::property(engine, obj, name, local);
+    if ((hints & ImplicitObject) && lastData && lastData->revision != 0) {
+
+        QDeclarativeData *ddata = QDeclarativeData::get(obj);
+        if (ddata && ddata->propertyCache && !ddata->propertyCache->isAllowedInRevision(lastData)) 
+            return 0;
+    }
 
     if (lastData)
         return QScriptClass::HandlesReadAccess | QScriptClass::HandlesWriteAccess;
@@ -354,8 +368,20 @@ void QDeclarativeObjectScriptClass::setProperty(QObject *obj,
         }
     }
 
+    QDeclarativeBinding *newBinding = 0;
+    if (value.isFunction() && !value.isRegExp()) {
+        QScriptContextInfo ctxtInfo(context);
+        QDeclarativePropertyCache::ValueTypeData valueTypeData;
+
+        newBinding = new QDeclarativeBinding(value, obj, evalContext);
+        newBinding->setSourceLocation(ctxtInfo.fileName(), ctxtInfo.functionStartLineNumber());
+        newBinding->setTarget(QDeclarativePropertyPrivate::restore(*lastData, valueTypeData, obj, evalContext));
+        if (newBinding->expression().contains(QLatin1String("this")))
+            newBinding->setEvaluateFlags(newBinding->evaluateFlags() | QDeclarativeBinding::RequiresThisObject);
+    }
+
     QDeclarativeAbstractBinding *delBinding =
-        QDeclarativePropertyPrivate::setBinding(obj, lastData->coreIndex, -1, 0);
+        QDeclarativePropertyPrivate::setBinding(obj, lastData->coreIndex, -1, newBinding);
     if (delBinding)
         delBinding->destroy();
 
@@ -374,9 +400,8 @@ void QDeclarativeObjectScriptClass::setProperty(QObject *obj,
         QString error = QLatin1String("Cannot assign [undefined] to ") +
                         QLatin1String(QMetaType::typeName(lastData->propType));
         context->throwError(error);
-    } else if (!value.isRegExp() && value.isFunction()) {
-        QString error = QLatin1String("Cannot assign a function to a property.");
-        context->throwError(error);
+    } else if (value.isFunction() && !value.isRegExp()) {
+        // this is handled by the binding creation above
     } else {
         QVariant v;
         if (lastData->flags & QDeclarativePropertyCache::Data::IsQList)

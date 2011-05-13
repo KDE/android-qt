@@ -13,7 +13,9 @@ SOURCES = \
         qxlibkeyboard.cpp \
         qxlibclipboard.cpp \
         qxlibmime.cpp \
-        qxlibstatic.cpp
+        qxlibstatic.cpp \
+        qxlibdisplay.cpp \
+        qxlibnativeinterface.cpp
 
 HEADERS = \
         qxlibintegration.h \
@@ -24,7 +26,9 @@ HEADERS = \
         qxlibkeyboard.h \
         qxlibclipboard.h \
         qxlibmime.h \
-        qxlibstatic.h
+        qxlibstatic.h \
+        qxlibdisplay.h \
+        qxlibnativeinterface.h
 
 LIBS += -lX11 -lXext
 
@@ -37,18 +41,19 @@ include (../fontdatabases/genericunix/genericunix.pri)
 contains(QT_CONFIG, opengl) {
     QT += opengl
     !contains(QT_CONFIG, opengles2) {
+        include (../glxconvenience/glxconvenience.pri)
         HEADERS += qglxintegration.h
         SOURCES += qglxintegration.cpp
     } else { # There is no easy way to detect if we'r suppose to use glx or not
         HEADERS += \
             ../eglconvenience/qeglplatformcontext.h \
             ../eglconvenience/qeglconvenience.h \
-            qxlibeglintegration.h
+            ../eglconvenience/qxlibeglintegration.h
 
         SOURCES += \
             ../eglconvenience/qeglplatformcontext.cpp \
             ../eglconvenience/qeglconvenience.cpp \
-            qxlibeglintegration.cpp
+            ../eglconvenience/qxlibeglintegration.cpp
         LIBS += -lEGL
     }
 }

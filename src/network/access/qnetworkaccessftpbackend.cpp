@@ -153,6 +153,10 @@ void QNetworkAccessFtpBackend::open()
     if (!objectCache->requestEntry(cacheKey, this,
                              SLOT(ftpConnectionReady(QNetworkAccessCache::CacheableObject*)))) {
         ftp = new QNetworkAccessCachedFtpConnection;
+#ifndef QT_NO_BEARERMANAGEMENT
+        //copy network session down to the QFtp
+        ftp->setProperty("_q_networksession", property("_q_networksession"));
+#endif
 #ifndef QT_NO_NETWORKPROXY
         if (proxy.type() == QNetworkProxy::FtpCachingProxy)
             ftp->setProxy(proxy.hostName(), proxy.port());
@@ -307,8 +311,10 @@ void QNetworkAccessFtpBackend::ftpDone()
             // logged in successfully, send the stat requests (if supported)
             QString command = url().path();
             command.prepend(QLatin1String("%1 "));
-            if (supportsSize)
+            if (supportsSize) {
+                ftp->rawCommand(QLatin1String("TYPE I"));
                 sizeId = ftp->rawCommand(command.arg(QLatin1String("SIZE"))); // get size
+            }
             if (supportsMdtm)
                 mdtmId = ftp->rawCommand(command.arg(QLatin1String("MDTM"))); // get modified time
             if (!supportsSize && !supportsMdtm)

@@ -4,7 +4,7 @@
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
-** This file is part of the QtGui module of the Qt Toolkit.
+** This file is part of the plugins of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
 ** No Commercial Usage
@@ -55,6 +55,7 @@ public:
     QXcbIntegration();
     ~QXcbIntegration();
 
+    bool hasCapability(Capability cap) const;
     QPixmapData *createPixmapData(QPixmapData::PixelType type) const;
     QPlatformWindow *createPlatformWindow(QWidget *widget, WId winId) const;
     QWindowSurface *createWindowSurface(QWidget *widget, WId winId) const;
@@ -65,13 +66,16 @@ public:
     QPixmap grabWindow(WId window, int x, int y, int width, int height) const;
 
     QPlatformFontDatabase *fontDatabase() const;
-    bool hasOpenGL() const;
+
+    QPlatformNativeInterface *nativeInterface()const;
 
 private:
+    bool hasOpenGL() const;
     QList<QPlatformScreen *> m_screens;
     QXcbConnection *m_connection;
 
     QPlatformFontDatabase *m_fontDatabase;
+    QPlatformNativeInterface *m_nativeInterface;
 };
 
 QT_END_NAMESPACE

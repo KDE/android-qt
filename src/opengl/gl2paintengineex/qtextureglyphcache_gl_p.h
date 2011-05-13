@@ -133,12 +133,16 @@ public:
     void setContext(const QGLContext *context);
     inline const QGLContext *context() const { return ctx; }
 
+    inline int serialNumber() const { return m_serialNumber; }
+
     enum FilterMode {
         Nearest,
         Linear
     };
     FilterMode filterMode() const { return m_filterMode; }
     void setFilterMode(FilterMode m) { m_filterMode = m; }
+
+    void clear();
 
     void freeResource(void *) { ctx = 0; }
 
@@ -152,6 +156,8 @@ private:
 
     GLfloat m_vertexCoordinateArray[8];
     GLfloat m_textureCoordinateArray[8];
+
+    int m_serialNumber;
 };
 
 QT_END_NAMESPACE

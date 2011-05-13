@@ -42,12 +42,11 @@
 #include "private/qdeclarativevaluetype_p.h"
 
 #include "private/qdeclarativemetatype_p.h"
+#include "private/qfont_p.h"
 
 #include <QtCore/qdebug.h>
 
 QT_BEGIN_NAMESPACE
-
-Q_GUI_EXPORT int qt_defaultDpi();
 
 template<typename T>
 int qmlRegisterValueTypeEnums(const char *uri, int versionMajor, int versionMinor, const char *qmlName)
@@ -71,6 +70,7 @@ int qmlRegisterValueTypeEnums(const char *uri, int versionMajor, int versionMino
 
         0, 0,
 
+        0,
         0
     };
 

@@ -110,6 +110,10 @@ win32 {
             SOURCES += io/qfilesystemwatcher_symbian.cpp
             HEADERS += io/qfilesystemwatcher_symbian_p.h
             INCLUDEPATH += $$MW_LAYER_SYSTEMINCLUDE
-            LIBS += -lplatformenv
+            LIBS += -lplatformenv -lesock
         }
+}
+integrity {
+	SOURCES += io/qfsfileengine_unix.cpp \
+	           io/qfsfileengine_iterator_unix.cpp
 }

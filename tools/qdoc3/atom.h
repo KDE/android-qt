@@ -46,7 +46,7 @@
 #ifndef ATOM_H
 #define ATOM_H
 
-#include <qstring.h>
+#include <qstringlist.h>
 
 #define QDOC_QML
 
@@ -56,102 +56,136 @@ class Atom
 {
  public:
     enum Type { 
-        AbstractLeft, 
-        AbstractRight, 
+        AbstractLeft,       // 00
+        AbstractRight,
         AnnotatedList,
         AutoLink,
-        BaseName, 
+        BaseName,
         BriefLeft,
-        BriefRight, 
+        BriefRight,
         C,
-        CaptionLeft, 
+        CaptionLeft,
         CaptionRight,
-        Code, 
-        CodeBad, 
-        CodeNew, 
-        CodeOld, 
+        Code,               // 10
+        CodeBad,
+        CodeNew,
+        CodeOld,
         CodeQuoteArgument,
         CodeQuoteCommand,
+        DivLeft,            // 16
+        DivRight,           // 17
 #ifdef QDOC_QML
         EndQmlText,
 #endif
         FootnoteLeft,
-        FootnoteRight,
-        FormatElse, 
+        FootnoteRight,      // 20
+        FormatElse,
         FormatEndif,
         FormatIf,
         FormattingLeft,
         FormattingRight,
         GeneratedList,
-        Image, 
+        GuidLink,
+        Image,
         ImageText,
-        InlineImage,
+        InlineImage,        // 30
+#ifdef QDOC_QML
+        JavaScript,
+        EndJavaScript,
+#endif
         LegaleseLeft,
         LegaleseRight,
-        LineBreak, 
-        Link, 
+        LineBreak,
+        Link,
         LinkNode,
-        ListLeft, 
+        ListLeft,
         ListItemNumber,
-        ListTagLeft,
+        ListTagLeft,        // 40
         ListTagRight,
         ListItemLeft,
-        ListItemRight, 
-        ListRight, 
-        Nop, 
+        ListItemRight,
+        ListRight,
+        Nop,
         ParaLeft,
-        ParaRight, 
+        ParaRight,
 #ifdef QDOC_QML
         Qml,
         QmlText,
 #endif
-        QuotationLeft, 
+        QuotationLeft,      // 50
         QuotationRight,
         RawString,
         SectionLeft,
         SectionRight,
         SectionHeadingLeft,
         SectionHeadingRight,
-        SidebarLeft, 
+        SidebarLeft,
         SidebarRight,
         SinceList,
-        SnippetCommand,
+        SnippetCommand,     // 60
         SnippetIdentifier,
         SnippetLocation,
         String,
         TableLeft,
-        TableRight, 
+        TableRight,
         TableHeaderLeft,
         TableHeaderRight,
         TableRowLeft,
-        TableRowRight, 
-        TableItemLeft, 
+        TableRowRight,
+        TableItemLeft,      // 70
         TableItemRight,
         TableOfContents,
         Target,
         UnhandledFormat, 
         UnknownCommand,
-        Last = UnknownCommand 
+        Last = UnknownCommand
     };
 
-    Atom(Type type, const QString &string = "")
-	: nxt(0), typ(type), str(string) { }
-    Atom(Atom *prev, Type type, const QString &string = "")
-	: nxt(prev->nxt), typ(type), str(string) { prev->nxt = this; }
+    Atom(Type type, const QString& string = "")
+	: nxt(0), typ(type) 
+    {
+        strs << string; 
+    }
 
-    void appendChar(QChar ch) { str += ch; }
-    void appendString(const QString& string) { str += string; }
-    void chopString() { str.chop(1); }
-    void setString(const QString &string) { str = string; }
-    Atom *next() { return nxt; }
-    void setNext(Atom *newNext) { nxt = newNext; }
+    Atom(Type type, const QString& p1, const QString& p2)
+	: nxt(0), typ(type) 
+    { 
+        strs << p1; 
+        if (!p2.isEmpty()) 
+            strs << p2; 
+    }
 
-    const Atom *next() const { return nxt; }
-    const Atom *next(Type t) const;
-    const Atom *next(Type t, const QString& s) const;
+    Atom(Atom* prev, Type type, const QString& string = "")
+	: nxt(prev->nxt), typ(type) 
+    { 
+        strs << string; 
+        prev->nxt = this; 
+    }
+    
+    Atom(Atom* prev, Type type, const QString& p1, const QString& p2)
+	: nxt(prev->nxt), typ(type) 
+    { 
+        strs << p1; 
+        if (!p2.isEmpty()) 
+            strs << p2; 
+        prev->nxt = this; 
+    }
+
+    void appendChar(QChar ch) { strs[0] += ch; }
+    void appendString(const QString& string) { strs[0] += string; }
+    void chopString() { strs[0].chop(1); }
+    void setString(const QString& string) { strs[0] = string; }
+    Atom* next() { return nxt; }
+    void setNext(Atom* newNext) { nxt = newNext; }
+
+    const Atom* next() const { return nxt; }
+    const Atom* next(Type t) const;
+    const Atom* next(Type t, const QString& s) const;
     Type type() const { return typ; }
     QString typeString() const;
-    const QString& string() const { return str; }
+    const QString& string() const { return strs[0]; }
+    const QString& string(int i) const { return strs[i]; }
+    int count() const { return strs.size(); }
     void dump() const;
 
     static QString BOLD_;
@@ -159,6 +193,7 @@ class Atom
     static QString ITALIC_;
     static QString LINK_;
     static QString PARAMETER_;
+    static QString SPAN_;
     static QString SUBSCRIPT_;
     static QString SUPERSCRIPT_;
     static QString TELETYPE_;
@@ -174,9 +209,9 @@ class Atom
     static QString UPPERROMAN_;
 
  private:
-    Atom *nxt;
+    Atom* nxt;
     Type typ;
-    QString str;
+    QStringList strs;
 };
 
 #define ATOM_FORMATTING_BOLD            "bold"
@@ -184,6 +219,7 @@ class Atom
 #define ATOM_FORMATTING_ITALIC          "italic"
 #define ATOM_FORMATTING_LINK            "link"
 #define ATOM_FORMATTING_PARAMETER       "parameter"
+#define ATOM_FORMATTING_SPAN            "span "
 #define ATOM_FORMATTING_SUBSCRIPT       "subscript"
 #define ATOM_FORMATTING_SUPERSCRIPT     "superscript"
 #define ATOM_FORMATTING_TELETYPE        "teletype"

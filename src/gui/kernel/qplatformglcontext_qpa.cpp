@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -123,24 +123,6 @@ QPlatformGLContext::~QPlatformGLContext()
         doneCurrent();
     }
 
-}
-
-
-/*!
-    Makes it possible to set the context which can be the default for making new contexts.
-*/
-void QPlatformGLContext::setDefaultSharedContext(QPlatformGLContext *sharedContext)
-{
-    QPlatformGLContextPrivate::staticSharedContext = sharedContext;
-}
-
-/*!
-    Default shared context is intended to be a globally awailable pointer to a context which can
-    be used for sharing resources when creating new contexts. Its default value is 0;
-*/
-QPlatformGLContext *QPlatformGLContext::defaultSharedContext()
-{
-    return QPlatformGLContextPrivate::staticSharedContext;
 }
 
 /*!

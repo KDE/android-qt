@@ -4,7 +4,7 @@
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
-** This file is part of the QtGui module of the Qt Toolkit.
+** This file is part of the plugins of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
 ** No Commercial Usage
@@ -921,6 +921,8 @@ void QXcbKeyboard::handleKeyEvent(QWidget *widget, QEvent::Type type, xcb_keycod
     if (state & 128)
         col += altGrOffset;
 
+    Q_XCB_NOOP(connection());
+
 #ifdef XCB_KEYBOARD_DEBUG
     printf("key code: %d, state: %d, syms: ", code, state);
     for (int i = 0; i <= 5; ++i) {
@@ -928,6 +930,8 @@ void QXcbKeyboard::handleKeyEvent(QWidget *widget, QEvent::Type type, xcb_keycod
     }
     printf("\n");
 #endif
+
+    Q_XCB_NOOP(connection());
 
     xcb_keysym_t sym = xcb_key_symbols_get_keysym(m_key_symbols, code, col);
     if (sym == XCB_NO_SYMBOL)
@@ -939,6 +943,8 @@ void QXcbKeyboard::handleKeyEvent(QWidget *widget, QEvent::Type type, xcb_keycod
         else
             sym = toupper(sym);
     }
+
+    Q_XCB_NOOP(connection());
 
     QByteArray chars;
 

@@ -1284,9 +1284,26 @@ QImage QFontEngineWin::alphaRGBMapForGlyph(glyph_t glyph, QFixed, int margin, co
     return rgbMask;
 }
 
+// From qfontdatabase_win.cpp
+extern QFontEngine *qt_load_font_engine_win(const QFontDef &request);
+QFontEngine *QFontEngineWin::cloneWithSize(qreal pixelSize) const
+{
+    QFontDef request = fontDef;
+    QString actualFontName = request.family;
+    if (!uniqueFamilyName.isEmpty())
+        request.family = uniqueFamilyName;
+    request.pixelSize = pixelSize;
+
+    QFontEngine *fontEngine = qt_load_font_engine_win(request);
+    if (fontEngine != NULL)
+        fontEngine->fontDef.family = actualFontName;
+
+    return fontEngine;
+}
+
 // -------------------------------------- Multi font engine
 
-QFontEngineMultiWin::QFontEngineMultiWin(QFontEngineWin *first, const QStringList &fallbacks)
+QFontEngineMultiWin::QFontEngineMultiWin(QFontEngine *first, const QStringList &fallbacks)
         : QFontEngineMulti(fallbacks.size()+1),
           fallbacks(fallbacks)
 {

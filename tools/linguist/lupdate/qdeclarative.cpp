@@ -62,6 +62,7 @@
 
 #include <iostream>
 #include <cstdlib>
+#include <cctype>
 
 QT_BEGIN_NAMESPACE
 
@@ -225,7 +226,7 @@ protected:
                     const QString id = literal->value->asString();
                     bool plural = node->arguments->next;
 
-                    TranslatorMessage msg(QString(), QString(),
+                    TranslatorMessage msg(QString(), sourcetext,
                         QString(), QString(), m_fileName,
                         node->firstSourceLocation().startLine, QStringList(),
                         TranslatorMessage::Unfinished, plural);

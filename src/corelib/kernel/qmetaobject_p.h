@@ -78,7 +78,8 @@ enum PropertyFlags  {
     ResolveEditable = 0x00080000,
     User = 0x00100000,
     ResolveUser = 0x00200000,
-    Notify = 0x00400000
+    Notify = 0x00400000,
+    Revisioned = 0x00800000
 };
 
 enum MethodFlags  {
@@ -95,7 +96,8 @@ enum MethodFlags  {
 
     MethodCompatibility = 0x10,
     MethodCloned = 0x20,
-    MethodScriptable = 0x40
+    MethodScriptable = 0x40,
+    MethodRevisioned = 0x80
 };
 
 enum MetaObjectFlags {
@@ -116,6 +118,7 @@ struct QMetaObjectPrivate
     int flags; //since revision 3
     int signalCount; //since revision 4
     // revision 5 introduces changes in normalized signatures, no new members
+    // revision 6 added qt_static_metacall as a member of each Q_OBJECT and inside QMetaObject itself
 
     static inline const QMetaObjectPrivate *get(const QMetaObject *metaobject)
     { return reinterpret_cast<const QMetaObjectPrivate*>(metaobject->d.data); }
@@ -123,7 +126,7 @@ struct QMetaObjectPrivate
     static int indexOfSignalRelative(const QMetaObject **baseObject,
                                      const char* name,
                                      bool normalizeStringData);
-    static int indexOfSlot(const QMetaObject *m,
+    static int indexOfSlotRelative(const QMetaObject **m,
                            const char *slot,
                            bool normalizeStringData);
     static int originalClone(const QMetaObject *obj, int local_method_index);
@@ -134,7 +137,8 @@ struct QMetaObjectPrivate
     static void memberIndexes(const QObject *obj, const QMetaMethod &member,
                               int *signalIndex, int *methodIndex);
     static bool connect(const QObject *sender, int signal_index,
-                        const QObject *receiver, int method_index,
+                        const QObject *receiver, int method_index_relative,
+                        const QMetaObject *rmeta = 0,
                         int type = 0, int *types = 0);
     static bool disconnect(const QObject *sender, int signal_index,
                            const QObject *receiver, int method_index,

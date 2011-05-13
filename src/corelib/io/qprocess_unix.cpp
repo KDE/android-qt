@@ -120,7 +120,7 @@ static inline char *strdup(const char *data)
 #endif
 
 static int qt_qprocess_deadChild_pipe[2];
-static void (*qt_sa_old_sigchld_handler)(int) = 0;
+static struct sigaction qt_sa_old_sigchld_handler;
 static void qt_sa_sigchld_handler(int signum)
 {
     qt_safe_write(qt_qprocess_deadChild_pipe[1], "", 1);
@@ -128,8 +128,10 @@ static void qt_sa_sigchld_handler(int signum)
     fprintf(stderr, "*** SIGCHLD\n");
 #endif
 
-    if (qt_sa_old_sigchld_handler && qt_sa_old_sigchld_handler != SIG_IGN)
-        qt_sa_old_sigchld_handler(signum);
+    // load it as volatile
+    void (*oldAction)(int) = ((volatile struct sigaction *)&qt_sa_old_sigchld_handler)->sa_handler;
+    if (oldAction && oldAction != SIG_IGN)
+        oldAction(signum);
 }
 
 static inline void add_fd(int &nfds, int fd, fd_set *fdset)
@@ -169,27 +171,17 @@ private:
 
 Q_GLOBAL_STATIC(QMutex, processManagerGlobalMutex)
 
-static QProcessManager *processManagerInstance = 0;
-
-static QProcessManager *processManager()
-{
+static QProcessManager *processManager() {
     // The constructor of QProcessManager should be called only once
     // so we cannot use Q_GLOBAL_STATIC directly for QProcessManager
     QMutex *mutex = processManagerGlobalMutex();
     QMutexLocker locker(mutex);
-
-    if (!processManagerInstance)
-        QProcessPrivate::initializeProcessManager();
-
-    Q_ASSERT(processManagerInstance);
-    return processManagerInstance;
+    static QProcessManager processManager;
+    return &processManager;
 }
 
 QProcessManager::QProcessManager()
 {
-    // can only be called from main thread
-    Q_ASSERT(!qApp || qApp->thread() == QThread::currentThread());
-
 #if defined (QPROCESS_DEBUG)
     qDebug() << "QProcessManager::QProcessManager()";
 #endif
@@ -200,16 +192,11 @@ QProcessManager::QProcessManager()
 
     // set up the SIGCHLD handler, which writes a single byte to the dead
     // child pipe every time a child dies.
-    struct sigaction oldAction;
     struct sigaction action;
     memset(&action, 0, sizeof(action));
     action.sa_handler = qt_sa_sigchld_handler;
     action.sa_flags = SA_NOCLDSTOP;
-    ::sigaction(SIGCHLD, &action, &oldAction);
-    if (oldAction.sa_handler != qt_sa_sigchld_handler)
-	qt_sa_old_sigchld_handler = oldAction.sa_handler;
-
-    processManagerInstance = this;
+    ::sigaction(SIGCHLD, &action, &qt_sa_old_sigchld_handler);
 }
 
 QProcessManager::~QProcessManager()
@@ -229,17 +216,11 @@ QProcessManager::~QProcessManager()
     qDeleteAll(children.values());
     children.clear();
 
-    struct sigaction oldAction;
-    struct sigaction action;
-    memset(&action, 0, sizeof(action));
-    action.sa_handler = qt_sa_old_sigchld_handler;
-    action.sa_flags = SA_NOCLDSTOP;
-    ::sigaction(SIGCHLD, &action, &oldAction);
-    if (oldAction.sa_handler != qt_sa_sigchld_handler) {
-        ::sigaction(SIGCHLD, &oldAction, 0);
+    struct sigaction currentAction;
+    ::sigaction(SIGCHLD, 0, &currentAction);
+    if (currentAction.sa_handler == qt_sa_sigchld_handler) {
+        ::sigaction(SIGCHLD, &qt_sa_old_sigchld_handler, 0);
     }
-
-    processManagerInstance = 0;
 }
 
 void QProcessManager::run()
@@ -507,8 +488,8 @@ static char **_q_dupEnvironment(const QHash<QByteArray, QByteArray> &environment
     }
 
     if (needToAddLibraryPath)
-        envp[(*envc)++] = ::strdup(QByteArray(libraryPath) + '=' +
-                                 envLibraryPath);
+        envp[(*envc)++] = ::strdup(QByteArray(QByteArray(libraryPath) + '=' +
+                                 envLibraryPath).constData());
     return envp;
 }
 
@@ -659,7 +640,7 @@ void QProcessPrivate::startProcess()
     if (childPid < 0) {
         // Cleanup, report error and return
 #if defined (QPROCESS_DEBUG)
-        qDebug("qt_fork failed: %s", qt_error_string(lastForkErrno));
+        qDebug("qt_fork failed: %s", qPrintable(qt_error_string(lastForkErrno)));
 #endif
         processManager()->unlock();
         q->setProcessState(QProcess::NotRunning);
@@ -863,7 +844,7 @@ qint64 QProcessPrivate::writeToStdin(const char *data, qint64 maxlen)
     qDebug("QProcessPrivate::writeToStdin(%p \"%s\", %lld) == %lld",
            data, qt_prettyDebug(data, maxlen, 16).constData(), maxlen, written);
     if (written == -1)
-        qDebug("QProcessPrivate::writeToStdin(), failed to write (%s)", qt_error_string(errno));
+        qDebug("QProcessPrivate::writeToStdin(), failed to write (%s)", qPrintable(qt_error_string(errno)));
 #endif
     // If the O_NONBLOCK flag is set and If some data can be written without blocking
     // the process, write() will transfer what it can and return the number of bytes written.
@@ -1306,15 +1287,7 @@ bool QProcessPrivate::startDetached(const QString &program, const QStringList &a
 
 void QProcessPrivate::initializeProcessManager()
 {
-    if (qApp && qApp->thread() != QThread::currentThread()) {
-        // The process manager must be initialized in the main thread
-        // Note: The call below will re-enter this function, but in the right thread,
-        // so the else statement below will be executed.
-        QMetaObject::invokeMethod(qApp, "_q_initializeProcessManager", Qt::BlockingQueuedConnection);
-    } else {
-        static QProcessManager processManager;
-        Q_UNUSED(processManager);
-    }
+    (void) processManager();
 }
 
 QT_END_NAMESPACE

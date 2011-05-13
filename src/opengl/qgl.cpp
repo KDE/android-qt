@@ -69,6 +69,7 @@
 
 #if !defined(QT_OPENGL_ES_1)
 #include "gl2paintengineex/qpaintengineex_opengl2_p.h"
+#include <private/qwindowsurface_gl_p.h>
 #endif
 
 #ifndef QT_OPENGL_ES_2
@@ -90,7 +91,6 @@
 #include <private/qpixmapdata_p.h>
 #include <private/qpixmapdata_gl_p.h>
 #include <private/qglpixelbuffer_p.h>
-#include <private/qwindowsurface_gl_p.h>
 #include <private/qimagepixmapcleanuphooks_p.h>
 #include "qcolormap.h"
 #include "qfile.h"
@@ -99,6 +99,9 @@
 
 #if defined(QT_OPENGL_ES) && !defined(QT_NO_EGL)
 #include <EGL/egl.h>
+#endif
+#ifdef QGL_USE_TEXTURE_POOL
+#include <private/qgltexturepool_p.h>
 #endif
 
 // #define QT_GL_CONTEXT_RESOURCE_DEBUG
@@ -1420,10 +1423,6 @@ QGLFormat::OpenGLVersionFlags QGLFormat::openGLVersionFlags()
         }
     }
 
-#ifdef Q_WS_QPA
-    hasOpenGL(); // ### I have no idea why this is needed here, but it makes things work for testlite
-#endif
-
     QString versionString(QLatin1String(reinterpret_cast<const char*>(glGetString(GL_VERSION))));
     OpenGLVersionFlags versionFlags = qOpenGLVersionFlagsFromString(versionString);
     if (currentCtx) {
@@ -1735,6 +1734,9 @@ void QGLContextPrivate::init(QPaintDevice *dev, const QGLFormat &format)
     workaround_brokenTextureFromPixmap = false;
     workaround_brokenTextureFromPixmap_init = false;
 
+    workaround_brokenAlphaTexSubImage = false;
+    workaround_brokenAlphaTexSubImage_init = false;
+
     for (int i = 0; i < QT_GL_VERTEX_ARRAY_TRACKED_COUNT; ++i)
         vertexAttributeArraysEnabledState[i] = false;
 }
@@ -1791,7 +1793,7 @@ static void convertFromGLImage(QImage &img, int w, int h, bool alpha_format, boo
 
 QImage qt_gl_read_framebuffer(const QSize &size, bool alpha_format, bool include_alpha)
 {
-    QImage img(size, (alpha_format && include_alpha) ? QImage::Format_ARGB32
+    QImage img(size, (alpha_format && include_alpha) ? QImage::Format_ARGB32_Premultiplied
                                                      : QImage::Format_RGB32);
     int w = size.width();
     int h = size.height();
@@ -2032,6 +2034,10 @@ struct DDSFormat {
     indicate that the pixmap should be memory managed along side with
     the pixmap/image that it stems from, e.g. installing destruction
     hooks in them.
+
+    \omitvalue TemporarilyCachedBindOption Used by paint engines on some
+    platforms to indicate that the pixmap or image texture is possibly
+    cached only temporarily and must be destroyed immediately after the use.
 
     \omitvalue InternalBindOption
 */
@@ -2537,8 +2543,18 @@ QGLTexture* QGLContextPrivate::bindTexture(const QImage &image, GLenum target, G
 #endif
 
     const QImage &constRef = img; // to avoid detach in bits()...
+#ifdef QGL_USE_TEXTURE_POOL
+    QGLTexturePool::instance()->createPermanentTexture(tx_id,
+                                                        target,
+                                                        0, internalFormat,
+                                                        img.width(), img.height(),
+                                                        externalFormat,
+                                                        pixel_type,
+                                                        constRef.bits());
+#else
     glTexImage2D(target, 0, internalFormat, img.width(), img.height(), 0, externalFormat,
                  pixel_type, constRef.bits());
+#endif
 #if defined(QT_OPENGL_ES_2)
     if (genMipmap)
         glGenerateMipmap(target);
@@ -2576,7 +2592,6 @@ QGLTexture *QGLContextPrivate::textureCacheLookup(const qint64 key, GLenum targe
     }
     return 0;
 }
-
 
 /*! \internal */
 QGLTexture *QGLContextPrivate::bindTexture(const QPixmap &pixmap, GLenum target, GLint format, QGLContext::BindOptions options)
@@ -5340,12 +5355,69 @@ QGLWidget::QGLWidget(QGLContext *context, QWidget *parent,
 
 #endif // QT3_SUPPORT
 
+typedef GLubyte * (*qt_glGetStringi)(GLenum, GLuint);
+
+#ifndef GL_NUM_EXTENSIONS
+#define GL_NUM_EXTENSIONS 0x821D
+#endif
+
+QGLExtensionMatcher::QGLExtensionMatcher(const char *str)
+{
+    init(str);
+}
+
+QGLExtensionMatcher::QGLExtensionMatcher()
+{
+    const char *extensionStr = reinterpret_cast<const char *>(glGetString(GL_EXTENSIONS));
+
+    if (extensionStr) {
+        init(extensionStr);
+    } else {
+        // clear error state
+        while (glGetError()) {}
+
+        const QGLContext *ctx = QGLContext::currentContext();
+        if (ctx) {
+            qt_glGetStringi glGetStringi = (qt_glGetStringi)ctx->getProcAddress(QLatin1String("glGetStringi"));
+
+            GLint numExtensions;
+            glGetIntegerv(GL_NUM_EXTENSIONS, &numExtensions);
+
+            for (int i = 0; i < numExtensions; ++i) {
+                const char *str = reinterpret_cast<const char *>(glGetStringi(GL_EXTENSIONS, i));
+
+                m_offsets << m_extensions.size();
+
+                while (*str != 0)
+                    m_extensions.append(*str++);
+                m_extensions.append(' ');
+            }
+        }
+    }
+}
+
+void QGLExtensionMatcher::init(const char *str)
+{
+    m_extensions = str;
+
+    // make sure extension string ends with a space
+    if (!m_extensions.endsWith(' '))
+        m_extensions.append(' ');
+
+    int index = 0;
+    int next = 0;
+    while ((next = m_extensions.indexOf(' ', index)) >= 0) {
+        m_offsets << index;
+        index = next + 1;
+    }
+}
+
 /*
     Returns the GL extensions for the current context.
 */
 QGLExtensions::Extensions QGLExtensions::currentContextExtensions()
 {
-    QGLExtensionMatcher extensions(reinterpret_cast<const char *>(glGetString(GL_EXTENSIONS)));
+    QGLExtensionMatcher extensions;
     Extensions glExtensions;
 
     if (extensions.match("GL_ARB_texture_rectangle"))
@@ -5585,6 +5657,21 @@ void *QGLContextGroupResourceBase::value(const QGLContext *context)
 {
     QGLContextGroup *group = QGLContextPrivate::contextGroup(context);
     return group->m_resources.value(this, 0);
+}
+
+void QGLContextGroupResourceBase::cleanup(const QGLContext *ctx)
+{
+    void *resource = value(ctx);
+
+    if (resource != 0) {
+        QGLShareContextScope scope(ctx);
+        freeResource(resource);
+
+        QGLContextGroup *group = QGLContextPrivate::contextGroup(ctx);
+        group->m_resources.remove(this);
+        m_groups.removeOne(group);
+        active.deref();
+    }
 }
 
 void QGLContextGroupResourceBase::cleanup(const QGLContext *ctx, void *value)

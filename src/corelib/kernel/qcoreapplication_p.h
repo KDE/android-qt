@@ -55,6 +55,7 @@
 
 #include "QtCore/qcoreapplication.h"
 #include "QtCore/qtranslator.h"
+#include "QtCore/qsettings.h"
 #include "private/qobject_p.h"
 
 #ifdef Q_OS_SYMBIAN
@@ -84,8 +85,6 @@ public:
     bool sendThroughApplicationEventFilters(QObject *, QEvent *);
     bool sendThroughObjectEventFilters(QObject *, QEvent *);
     bool notify_helper(QObject *, QEvent *);
-
-    void _q_initializeProcessManager();
 
     virtual QString appName() const;
     virtual void createEventDispatcher();
@@ -141,6 +140,7 @@ public:
 #if defined(QT3_SUPPORT)
     static bool useQt3Support;
 #endif
+    static QSettings *trolltechConf();
 };
 
 QT_END_NAMESPACE

@@ -130,7 +130,7 @@ const int SourcePixmap=1;
 
 class QScreenCursor;
 extern QScreenCursor *qt_screencursor;
-extern bool qt_sw_cursor;
+extern bool qws_sw_cursor;
 
 class Q_GUI_EXPORT QScreenCursor
 {
@@ -145,7 +145,7 @@ public:
 
     bool supportsAlphaCursor() const { return supportsAlpha; }
 
-    static bool enabled() { return qt_sw_cursor; }
+    static bool enabled() { return qws_sw_cursor; }
 
     QRect boundingRect() const { return QRect(pos - hotspot, size); }
     QImage image() const { return cursor; }
@@ -193,7 +193,7 @@ class Q_GUI_EXPORT QScreen {
 public:
     enum ClassId { LinuxFBClass, TransformedClass, VNCClass, MultiClass,
                    VFbClass, DirectFBClass, SvgalibClass, ProxyClass,
-                   GLClass, CustomClass = 1024 };
+                   GLClass, IntfbClass, CustomClass = 1024 };
 
     QScreen(int display_id, ClassId classId);
     explicit QScreen(int display_id);
@@ -358,6 +358,7 @@ private:
     friend class QLinuxFbScreen;
     friend class QVFbScreen;
     friend class QProxyScreen;
+    friend class QIntfbScreen;
 #endif
     friend void qt_solidFill_setup(QScreen*, const QColor&, const QRegion&);
     friend void qt_blit_setup(QScreen *screen, const QImage &image,

@@ -3323,6 +3323,13 @@ void QStyleSheetStyle::drawControl(ControlElement ce, const QStyleOption *opt, Q
         }
         break;
 
+    case CE_FocusFrame:
+        if (!rule.hasNativeBorder()) {
+            rule.drawBorder(p, opt->rect);
+            return;
+        }
+        break;
+
     case CE_PushButton:
         if (const QStyleOptionButton *btn = qstyleoption_cast<const QStyleOptionButton *>(opt)) {
             if (rule.hasDrawable() || rule.hasBox() || rule.hasPosition() || rule.hasPalette() ||
@@ -4238,7 +4245,7 @@ void QStyleSheetStyle::drawPrimitive(PrimitiveElement pe, const QStyleOption *op
         return;
 
     case PE_Widget:
-        if (!rule.hasDrawable()) {
+        if (w && !rule.hasDrawable()) {
             QWidget *container = containerWidget(w);
             if (styleSheetCaches->autoFillDisabledWidgets.contains(container)
                 && (container == w || !renderRule(container, opt).hasBackground())) {

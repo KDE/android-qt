@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -174,8 +174,10 @@ QFileSystemEntry QFileSystemEngine::canonicalName(const QFileSystemEntry &entry,
     if (entry.isEmpty() || entry.isRoot())
         return entry;
 
-#ifdef __UCLIBC__
-    return QFileSystemEntry::slowCanonicalName(entry);
+#if !defined(Q_OS_MAC) && _POSIX_VERSION < 200809L
+    // realpath(X,0) is not supported
+    Q_UNUSED(data);
+    return QFileSystemEntry(slowCanonicalized(absoluteName(entry).filePath()));
 #else
     char *ret = 0;
 # if defined(Q_OS_MAC) && !defined(QT_NO_CORESERVICES)
@@ -360,6 +362,7 @@ bool QFileSystemEngine::fillMetaData(const QFileSystemEntry &entry, QFileSystemM
         const QByteArray &path = entry.nativeFilePath();
         nativeFilePath = path.constData();
         nativeFilePathLength = path.size();
+        Q_UNUSED(nativeFilePathLength);
     }
 
     bool entryExists = true; // innocent until proven otherwise
@@ -539,8 +542,7 @@ bool QFileSystemEngine::copyFile(const QFileSystemEntry &source, const QFileSyst
 {
     Q_UNUSED(source);
     Q_UNUSED(target);
-    // # we can implement this using sendfile(2)
-    //when this function returns false, block copy is used in QFile which sets the error code.
+    error = QSystemError(ENOSYS, QSystemError::StandardLibraryError); //Function not implemented
     return false;
 }
 

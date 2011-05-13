@@ -144,10 +144,11 @@ private slots:
     void taskQTBUG_7537_appearsAndSort();
     void taskQTBUG_7716_unnecessaryDynamicSorting();
     void taskQTBUG_10287_unnecessaryMapCreation();
+    void taskQTBUG_17812_resetInvalidate_data();
+    void taskQTBUG_17812_resetInvalidate();
 
     void testMultipleProxiesWithSelection();
     void mapSelectionFromSource();
-    void testResetInternalData();
     void filteredColumns();
 
 protected:
@@ -3181,142 +3182,6 @@ void tst_QSortFilterProxyModel::taskQTBUG_10287_unnecessaryMapCreation()
     // No assert failure, it passes.
 }
 
-/**
- * A proxy which changes the background color for items ending in 'y' or 'r'
- */
-class CustomDataProxy : public QSortFilterProxyModel
-{
-    Q_OBJECT
-
-public:
-    CustomDataProxy(QObject *parent = 0)
-        : QSortFilterProxyModel(parent)
-    {
-        setDynamicSortFilter(true);
-    }
-
-    void setSourceModel(QAbstractItemModel *sourceModel)
-    {
-        // It would be possible to use only the modelReset signal of the source model to clear
-        // the data in *this, however, this requires that the slot is connected
-        // before QSortFilterProxyModel::setSourceModel is called, and even then depends
-        // on the order of invokation of slots being the same as the order of connection.
-        // ie, not reliable.
-//         connect(sourceModel, SIGNAL(modelReset()), SLOT(resetInternalData()));
-        QSortFilterProxyModel::setSourceModel(sourceModel);
-        // Making the connect after the setSourceModel call clears the data too late.
-//         connect(sourceModel, SIGNAL(modelReset()), SLOT(resetInternalData()));
-
-        // This could be done in data(), but the point is to need to cache something in the proxy
-        // which needs to be cleared on reset.
-        for (int i = 0; i < sourceModel->rowCount(); ++i)
-        {
-            if (sourceModel->index(i, 0).data().toString().endsWith(QLatin1Char('y')))
-            {
-                m_backgroundColours.insert(i, Qt::blue);
-            } else if (sourceModel->index(i, 0).data().toString().endsWith(QLatin1Char('r')))
-            {
-                m_backgroundColours.insert(i, Qt::red);
-            }
-        }
-    }
-
-    QVariant data(const QModelIndex &index, int role) const
-    {
-        if (role != Qt::BackgroundRole)
-            return QSortFilterProxyModel::data(index, role);
-        return m_backgroundColours.value(index.row());
-    }
-
-private slots:
-  void resetInternalData()
-  {
-      m_backgroundColours.clear();
-  }
-
-private:
-    QHash<int, QColor> m_backgroundColours;
-};
-
-class ModelObserver : public QObject
-{
-    Q_OBJECT
-public:
-  ModelObserver(QAbstractItemModel *model, QObject *parent = 0)
-    : QObject(parent), m_model(model)
-  {
-    connect(m_model, SIGNAL(modelAboutToBeReset()), SLOT(modelAboutToBeReset()));
-    connect(m_model, SIGNAL(modelReset()), SLOT(modelReset()));
-  }
-
-public slots:
-  void modelAboutToBeReset()
-  {
-    int reds = 0, blues = 0;
-    for (int i = 0; i < m_model->rowCount(); ++i)
-    {
-      QColor color = m_model->index(i, 0).data(Qt::BackgroundRole).value<QColor>();
-      if (color == Qt::blue)
-        ++blues;
-      if (color == Qt::red)
-        ++reds;
-    }
-    QCOMPARE(blues, 11);
-    QCOMPARE(reds, 4);
-  }
-
-  void modelReset()
-  {
-    int reds = 0, blues = 0;
-    for (int i = 0; i < m_model->rowCount(); ++i)
-    {
-      QColor color = m_model->index(i, 0).data(Qt::BackgroundRole).value<QColor>();
-      if (color == Qt::blue)
-        ++blues;
-      if (color == Qt::red)
-        ++reds;
-    }
-    QCOMPARE(reds, 0);
-    QCOMPARE(blues, 0);
-  }
-
-private:
-  QAbstractItemModel * const m_model;
-
-};
-
-void tst_QSortFilterProxyModel::testResetInternalData()
-{
-
-    QStringListModel model(QStringList() << "Monday"
-                                         << "Tuesday"
-                                         << "Wednesday"
-                                         << "Thursday"
-                                         << "Friday"
-                                         << "January"
-                                         << "February"
-                                         << "March"
-                                         << "April"
-                                         << "May"
-                                         << "Saturday"
-                                         << "June"
-                                         << "Sunday"
-                                         << "July"
-                                         << "August"
-                                         << "September"
-                                         << "October"
-                                         << "November"
-                                         << "December");
-
-    CustomDataProxy proxy;
-    proxy.setSourceModel(&model);
-
-    ModelObserver observer(&proxy);
-
-    // Cause the source model to reset.
-    model.setStringList(QStringList() << "Spam" << "Eggs");
-}
-
 class FilteredColumnProxyModel : public QSortFilterProxyModel
 {
   Q_OBJECT
@@ -3349,6 +3214,61 @@ void tst_QSortFilterProxyModel::filteredColumns()
     insertCommand->setEndRow(0);
     // Parent is QModelIndex()
     insertCommand->doCommand();
+}
+
+void tst_QSortFilterProxyModel::taskQTBUG_17812_resetInvalidate_data()
+{
+    QTest::addColumn<int>("test");
+    QTest::addColumn<bool>("works");
+
+    QTest::newRow("nothing") << 0 << false;
+    QTest::newRow("reset") << 1 << true;
+    QTest::newRow("invalidate") << 2 << true;
+    QTest::newRow("invalidate_filter") << 3 << true;
+}
+
+void tst_QSortFilterProxyModel::taskQTBUG_17812_resetInvalidate()
+{
+    QFETCH(int, test);
+    QFETCH(bool, works);
+
+    struct Proxy : QSortFilterProxyModel {
+        QString pattern;
+        virtual bool filterAcceptsRow(int source_row, const QModelIndex&) const {
+            return sourceModel()->data(sourceModel()->index(source_row, 0)).toString().contains(pattern);
+        }
+        void notifyChange(int test) {
+            switch (test) {
+            case 0: break;
+            case 1: reset(); break;
+            case 2: invalidate(); break;
+            case 3: invalidateFilter(); break;
+            }
+        }
+    };
+
+    QStringListModel sourceModel(QStringList() << "Poisson" << "Vache" << "Brebis"
+                                               << "Elephant" << "Cochon" << "Serpent"
+                                               << "Mouton" << "Ecureuil" << "Mouche");
+    Proxy proxy;
+    proxy.pattern = QString::fromLatin1("n");
+    proxy.setSourceModel(&sourceModel);
+
+    QCOMPARE(proxy.rowCount(), 5);
+    for (int i = 0; i < proxy.rowCount(); i++) {
+        QVERIFY(proxy.data(proxy.index(i,0)).toString().contains('n'));
+    }
+
+    proxy.pattern = QString::fromLatin1("o");
+    proxy.notifyChange(test);
+
+    QCOMPARE(proxy.rowCount(), works ? 4 : 5);
+    bool ok = true;
+    for (int i = 0; i < proxy.rowCount(); i++) {
+        if (!proxy.data(proxy.index(i,0)).toString().contains('o'))
+            ok = false;
+    }
+    QCOMPARE(ok, works);
 }
 
 QTEST_MAIN(tst_QSortFilterProxyModel)

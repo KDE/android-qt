@@ -267,24 +267,22 @@ static QEglContext *createContext(QPaintDevice *device)
     int redSize = configProps.value(EGL_RED_SIZE);
     if (redSize == EGL_DONT_CARE || redSize == 0)
         configProps.setPixelFormat(QImage::Format_ARGB32);  // XXX
-#ifndef QVG_SCISSOR_CLIP
-    // If we are using the mask to clip, then explicitly request a mask.
     configProps.setValue(EGL_ALPHA_MASK_SIZE, 1);
-#endif
 #ifdef EGL_VG_ALPHA_FORMAT_PRE_BIT
-    configProps.setValue(EGL_SURFACE_TYPE, EGL_WINDOW_BIT |
-                         EGL_VG_ALPHA_FORMAT_PRE_BIT);
+    configProps.setValue(EGL_SURFACE_TYPE, EGL_WINDOW_BIT
+                         | EGL_SWAP_BEHAVIOR_PRESERVED_BIT
+                         | EGL_VG_ALPHA_FORMAT_PRE_BIT);
     configProps.setRenderableType(QEgl::OpenVG);
     if (!context->chooseConfig(configProps)) {
         // Try again without the "pre" bit.
-        configProps.setValue(EGL_SURFACE_TYPE, EGL_WINDOW_BIT);
+        configProps.setValue(EGL_SURFACE_TYPE, EGL_WINDOW_BIT | EGL_SWAP_BEHAVIOR_PRESERVED_BIT);
         if (!context->chooseConfig(configProps)) {
             delete context;
             return 0;
         }
     }
 #else
-    configProps.setValue(EGL_SURFACE_TYPE, EGL_WINDOW_BIT);
+    configProps.setValue(EGL_SURFACE_TYPE, EGL_WINDOW_BIT | EGL_SWAP_BEHAVIOR_PRESERVED_BIT);
     configProps.setRenderableType(QEgl::OpenVG);
     if (!context->chooseConfig(configProps)) {
         delete context;
@@ -771,6 +769,11 @@ bool QVGEGLWindowSurfaceDirect::scroll(QWidget *widget, const QRegion& area, int
         context->lazyDoneCurrent();
         return true;
     }
+#else
+    Q_UNUSED(widget);
+    Q_UNUSED(area);
+    Q_UNUSED(dx);
+    Q_UNUSED(dy);
 #endif
     return false;
 }

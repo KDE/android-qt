@@ -4,7 +4,7 @@
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
-** This file is part of the QtGui module of the Qt Toolkit.
+** This file is part of the plugins of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
 ** No Commercial Usage
@@ -43,12 +43,13 @@
 #define QXCBWINDOW_H
 
 #include <QtGui/QPlatformWindow>
+#include <QtGui/QPlatformWindowFormat>
 
 #include <xcb/xcb.h>
+#include <xcb/sync.h>
 
 #include "qxcbobject.h"
 
-class QGLXContext;
 class QXcbScreen;
 
 class QXcbWindow : public QXcbObject, public QPlatformWindow
@@ -88,13 +89,20 @@ public:
 
     void handleMouseEvent(xcb_button_t detail, uint16_t state, xcb_timestamp_t time, const QPoint &local, const QPoint &global);
 
+    void updateSyncRequestCounter();
+
 private:
+    void setNetWmWindowTypes(Qt::WindowFlags flags);
+
     QXcbScreen *m_screen;
 
     xcb_window_t m_window;
-#ifdef XCB_USE_XLIB_FOR_GLX
-    QGLXContext *m_glx_context;
-#endif
+    QPlatformGLContext *m_context;
+
+    xcb_sync_int64_t m_syncValue;
+    xcb_sync_counter_t m_syncCounter;
+
+    bool m_hasReceivedSyncRequest;
 };
 
 #endif
