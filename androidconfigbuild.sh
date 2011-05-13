@@ -237,7 +237,7 @@ then
 		$PLATFORM -host-little-endian \
 		-little-endian -no-qt3support -no-largefile \
 		-openssl -pch -reduce-relocations -reduce-exports \
-		-nomake demos -nomake examples -confirm-license \
+		-nomake demos -no-multimedia -nomake examples -confirm-license \
 		$CFGOPTIONS -prefix $DEST_DIR_QT \
 		-script -no-webkit || exit 1
 fi
