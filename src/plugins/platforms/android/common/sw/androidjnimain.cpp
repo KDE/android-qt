@@ -210,6 +210,12 @@ namespace QtAndroid
         env->CallStaticVoidMethod(m_applicationClass, m_setFullScreenMethodID, fullScreen);
         m_javaVM->DetachCurrentThread();
     }
+
+    void * javaVM()
+    {
+        return m_javaVM;
+    }
+
 }
 
 static void startQtAndroidPlugin(JNIEnv* /*env*/, jobject /*object*/)

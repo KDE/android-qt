@@ -46,5 +46,7 @@ namespace QtAndroid
     void showSoftwareKeyboard();
     void hideSoftwareKeyboard();
     // Software keyboard support
+
+    void * javaVM();
 }
 #endif // ANDROID_APP_H

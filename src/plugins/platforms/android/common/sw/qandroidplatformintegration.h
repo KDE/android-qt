@@ -29,6 +29,7 @@
 #define QGRAPHICSSYSTEM_MINIMAL_H
 
 #include <QPlatformIntegration>
+#include <QPlatformNativeInterface>
 #include "../../fb_base/fb_base.h"
 #include <jni.h>
 
@@ -45,6 +46,12 @@ public:
 public slots:
     QRegion doRedraw();
 
+};
+
+class QAndroidPlatformNativeInterface : public QPlatformNativeInterface
+{
+public:
+    virtual void *nativeResourceForWidget(const QByteArray &resource, QWidget *widget);
 };
 
 class QAndroidPlatformIntegration : public QPlatformIntegration
@@ -64,10 +71,10 @@ public:
     virtual void setDesktopSize(int width, int height);
     virtual void setDisplayMetrics(int width, int height);
     QPlatformFontDatabase *fontDatabase() const;
+    virtual QPlatformNativeInterface *nativeInterface() const;
 
     void pauseApp();
     void resumeApp();
-
     static void setDefaultDisplayMetrics(int gw, int gh, int sw, int sh);
     static void setDefaultDesktopSize(int gw, int gh);
 
@@ -80,7 +87,7 @@ private:
     QPlatformFontDatabase *mAndroidFDB;
     QImage * mFbScreenImage;
     QPainter *compositePainter;
-
+    QAndroidPlatformNativeInterface * m_androidPlatformNativeInterface;
 };
 
 QT_END_NAMESPACE

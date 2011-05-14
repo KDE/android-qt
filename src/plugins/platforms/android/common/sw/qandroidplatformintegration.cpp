@@ -96,8 +96,16 @@ QRegion QAndroidPlatformScreen::doRedraw()
     return touched;
 }
 
+void *QAndroidPlatformNativeInterface::nativeResourceForWidget(const QByteArray &resource, QWidget *widget)
+{
+    if (!widget && resource=="JavaVM")
+        return QtAndroid::javaVM();
+    return 0;
+};
+
 QAndroidPlatformIntegration::QAndroidPlatformIntegration()
 {
+    m_androidPlatformNativeInterface =  new QAndroidPlatformNativeInterface();
     mPrimaryScreen = new QAndroidPlatformScreen();
     mScreens.append(mPrimaryScreen);
     m_mainThread=QThread::currentThread();
@@ -108,6 +116,7 @@ QAndroidPlatformIntegration::QAndroidPlatformIntegration()
 
 QAndroidPlatformIntegration::~QAndroidPlatformIntegration()
 {
+    delete m_androidPlatformNativeInterface;
     delete mAndroidFDB;
     QtAndroid::setAndroidPlatformIntegration(NULL);
 }
@@ -115,6 +124,11 @@ QAndroidPlatformIntegration::~QAndroidPlatformIntegration()
 QPlatformFontDatabase *QAndroidPlatformIntegration::fontDatabase() const
 {
     return mAndroidFDB;
+}
+
+QPlatformNativeInterface *QAndroidPlatformIntegration::nativeInterface() const
+{
+    return m_androidPlatformNativeInterface;
 }
 
 void QAndroidPlatformIntegration::setDefaultDisplayMetrics(int gw, int gh, int sw, int sh)
