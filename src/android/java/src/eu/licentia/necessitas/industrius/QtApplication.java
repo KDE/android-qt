@@ -37,6 +37,7 @@ import android.view.MotionEvent;
 public class QtApplication extends Application
 {
     private static QtActivity m_mainActivity = null;
+    private static QtSurface m_mainView = null;
     public static Object m_mainActivityMutex = new Object(); // mutex used to synchronize runnable operations
 
     public static final String QtTAG = "Qt JAVA"; // string used for Log.x
@@ -50,6 +51,16 @@ public class QtApplication extends Application
     private static double m_displayMetricsYDpi = .0;
     private static int m_oldx, m_oldy;
     private static final int m_moveThreshold = 0;
+
+    public static QtActivity mainActivity()
+    {
+        return m_mainActivity;
+    }
+
+    public static QtSurface mainView()
+    {
+        return m_mainView;
+    }
 
     // this method loads full path libs
     public static void loadQtLibraries(String[] libraries)
@@ -105,6 +116,13 @@ public class QtApplication extends Application
         synchronized (m_mainActivityMutex)
         {
             m_mainActivity = qtMainActivity;
+        }
+    }
+    public static void setMainView(QtSurface qtSurface)
+    {
+        synchronized (m_mainActivityMutex)
+        {
+            m_mainView = qtSurface;
         }
     }
 
@@ -426,5 +444,3 @@ public class QtApplication extends Application
     public static native void updateWindow();
     // window methods
 }
-
-

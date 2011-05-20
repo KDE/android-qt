@@ -29,6 +29,7 @@ package eu.licentia.necessitas.industrius;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Iterator;
 
 import android.app.Activity;
@@ -52,11 +53,14 @@ import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.KeyCharacterMap;
 import android.view.KeyEvent;
+import android.view.SurfaceHolder;
+import android.view.SurfaceView;
 import android.view.Window;
 import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
 import eu.licentia.necessitas.ministro.IMinistro;
 import eu.licentia.necessitas.ministro.IMinistroCallback;
+import eu.licentia.necessitas.mobile.QtCamera;
 
 public class QtActivity extends Activity {
 
@@ -65,7 +69,6 @@ public class QtActivity extends Activity {
     private static final int NECESSITAS_API_LEVEL=1; // Necessitas api level.
 
     private String m_qtLibs[]=null;
-
     private int m_id=-1;
     private boolean softwareKeyboardIsVisible=false;
     private long m_metaState;
@@ -73,6 +76,7 @@ public class QtActivity extends Activity {
     private boolean m_fullScreen=false;
     private boolean m_started = false;
     private QtSurface m_surface=null;
+    private static QtLayout m_layout=null;
 
     private void startApplication(String [] libs, String environment, String params)
     {
@@ -172,6 +176,7 @@ public class QtActivity extends Activity {
 
     private boolean m_quitApp = true;
     private Process m_debuggerProcess=null; // debugger process
+	private static SurfaceView m_surfaceView;
     private void exitApplication()
     {
         AlertDialog errorDialog = new AlertDialog.Builder(QtActivity.this).create();
@@ -183,6 +188,7 @@ public class QtActivity extends Activity {
         });
         errorDialog.show();
     }
+
     private void startApp(final boolean firstStart)
     {
         try
@@ -198,14 +204,15 @@ public class QtActivity extends Activity {
             }
             int resourceId = ai.metaData.getInt("android.app.qt_libs_resource_id");
             m_qtLibs=getResources().getStringArray(resourceId);
-
             if (getIntent().getExtras()!= null && getIntent().getExtras().containsKey("use_local_qt_libs")
                     && getIntent().getExtras().getString("use_local_qt_libs").equals("true"))
             {
-                String libs[] = new String[m_qtLibs.length+1];
-                int i=0;
-                for (;i<m_qtLibs.length;i++)
-                        libs[i]="/data/local/qt/lib/lib"+m_qtLibs[i]+".so";
+                ArrayList<String> libraryList= new ArrayList<String>();
+                for(int i=0;i<m_qtLibs.length;i++)
+                {
+                    libraryList.add("/data/local/qt/lib/lib"+m_qtLibs[i]+".so");
+                }
+
                 int apiLevel=android.os.Build.VERSION.SDK_INT;
                 if (apiLevel<4) // this should never happen !
                     apiLevel=4; // Necessitas, we have a problem !
@@ -217,7 +224,11 @@ public class QtActivity extends Activity {
                         if (apiLevel>8)
                             apiLevel=8; // android >8 are compatible with android-8
                 }
-                libs[i]="/data/local/qt/plugins/platforms/android/libandroid-"+apiLevel+".so";
+                
+                libraryList.add("/data/local/qt/plugins/platforms/android/libandroid-"+apiLevel+".so");
+                
+                String[] libs=new String[libraryList.size()];
+             	libs=libraryList.toArray(libs);
                 m_ministroCallback.libs(libs,"QT_IMPORT_PATH=/data/local/qt/imports\tQT_PLUGIN_PATH=/data/local/qt/plugins", "-platform\tandroid", 0,null);
                 return;
             }
@@ -288,9 +299,30 @@ public class QtActivity extends Activity {
                             metrics.xdpi, metrics.ydpi);
         }
         requestWindowFeature(Window.FEATURE_NO_TITLE);
-        setContentView(m_surface = new QtSurface(this, m_id));
+        m_layout=new QtLayout(this);
+        m_surface = new QtSurface(this, m_id);
+        m_layout.addView(m_surface,0); 
+        m_surfaceView = new SurfaceView(this);
+        m_surfaceView.getHolder().setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
+        m_surfaceView.getHolder().addCallback(m_layout);
+        m_surfaceView.setFocusable(true);
+       	m_layout.addView(m_surfaceView,1,new QtLayout.LayoutParams(0,0,1,1));
+		setContentView(m_layout);
+		m_layout.bringChildToFront(m_surface);
+    	QtCamera.setSurfaceView(m_surfaceView);
         if (null == getLastNonConfigurationInstance())
             startApp(true);
+	}
+    public static void setCameraViewVisible(boolean set,int[] position)
+    {
+    	if(set == true)
+    	{
+      		m_layout.updateViewLayout(m_surfaceView, new QtLayout.LayoutParams(position[0],position[1],position[2],position[3]));
+    	}
+    	else
+    	{
+    		m_layout.updateViewLayout(m_surfaceView, new QtLayout.LayoutParams(0,0,1,1));
+    	}
     }
 
     @Override
