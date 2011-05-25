@@ -36,7 +36,7 @@ INCLUDEPATH = $$QMAKE_INCDIR_QT $$INCLUDEPATH #prepending prevents us from picki
 win32:INCLUDEPATH += $$QMAKE_INCDIR_QT/ActiveQt
 
 # As order does matter for static libs, we reorder the QT variable here
-TMPLIBS = declarative webkit phonon multimedia dbus testlib script scripttools svg qt3support sql xmlpatterns xml egl opengl openvg gui network core meegographicssystemhelper android
+TMPLIBS = declarative webkit phonon multimedia dbus testlib script scripttools svg qt3support sql xmlpatterns xml egl opengl openvg gui network core meegographicssystemhelper
 for(QTLIB, $$list($$TMPLIBS)) {
    contains(QT, $$QTLIB): QT_ORDERED += $$QTLIB
 }
@@ -176,18 +176,6 @@ for(QTLIB, $$list($$lower($$unique(QT)))) {
    } else:isEqual(QTLIB, declarative):qlib = QtDeclarative
    else:isEqual(QTLIB, multimedia):qlib = QtMultimedia
    else:isEqual(QTLIB, meegographicssystemhelper):qlib = QtMeeGoGraphicsSystemHelper
-   else:isEqual(QTLIB, android) {
-        contains(TEMPLATE, ".*app") {
-            CONFIG(android_qtmain) {
-                !contains(TARGET, ".so"): TARGET = lib$${TARGET}.so
-                SOURCES += $$[QT_INSTALL_PREFIX]/src/android/cpp/qtmain_android.cpp
-                QMAKE_LFLAGS += -Wl,--no-undefined -Wl,-z,noexecstack -shared -Wl,-soname,$$TARGET
-             } else {
-                QMAKE_LFLAGS += $$ANDROID_PLATFORM_PATH/lib/crtbegin_dynamic.o
-                QMAKE_LIBS = $$ANDROID_PLATFORM_PATH/lib/crtend_android.o $$QMAKE_LIBS
-            }
-        }
-   }
    else:message("Unknown QT: $$QTLIB"):qlib =
    !isEmpty(qlib) {
       target_qt:isEqual(TARGET, qlib) {
@@ -209,6 +197,20 @@ qt_compat {
    !qt_compat_no_warning:QTDIR_build:warning(***USE of COMPAT inside of QTDIR!**) #just for us
    INCLUDEPATH *= $$QMAKE_INCDIR_QT/Qt
    DEFINES *= QT_COMPAT
+}
+CONFIG(android) {
+    contains(TEMPLATE, ".*app") {
+        CONFIG(android_app) {
+            QMAKE_LFLAGS += $$ANDROID_PLATFORM_PATH/lib/crtbegin_dynamic.o
+            QMAKE_LIBS = $$ANDROID_PLATFORM_PATH/lib/crtend_android.o $$QMAKE_LIBS
+        } else {
+            !contains(TARGET, ".so"): TARGET = lib$${TARGET}.so
+            CONFIG(android_qtmain): SOURCES += $$[QT_INSTALL_PREFIX]/src/android/cpp/qtmain_android.cpp
+            QMAKE_LFLAGS += -Wl,--no-undefined -Wl,-z,noexecstack -shared -Wl,-soname,$$TARGET
+        }
+    }else {
+            QMAKE_LFLAGS += -Wl,--no-undefined -Wl,-z,noexecstack -shared -Wl,-soname,$$TARGET
+    }
 }
 
 wince*:static:gui {
