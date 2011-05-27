@@ -9,6 +9,7 @@ build_all:!build_pass {
     CONFIG += release
 }
 mac:CONFIG -= app_bundle incremental
+mac:CONFIG += x86 x86_64
 
 DEFINES += \
         QT_BOOTSTRAPPED \

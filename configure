@@ -3330,6 +3330,8 @@ if [ "$PLATFORM_MAC" = "yes" ]; then
         fi
     done
 fi
+MAC_CONFIG_TEST_COMMANDLINE="-arch i386 -arch x86_64"
+CFG_MAC_ARCHS="x86 x86_64"
 
 # pass on $CFG_SDK to the configure tests.
 if [ '!' -z "$CFG_SDK" ]; then

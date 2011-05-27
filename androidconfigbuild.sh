@@ -27,8 +27,8 @@ if [ "$OSTYPE" = "msys" ]; then
 	NDK_PLATFORM=4
 	export ANDROID_PLATFORM=$NDK_PLATFORM
 else
-	if [ "$OSTYPE" = "darwin10.0" -o "$OSTYPE" = "darwin9.0" ]; then
-		PLATFORM="-platform macx-g++"
+	if [ "$OSTYPE" = "darwin9.0" -o "$OSTYPE" = "darwin10.0" ]; then
+		PLATFORM="-platform macx-g++42"
 		NDK_ROOT=/usr/local/android/android-ndk-r5b
 		NDK_HOST=darwin-x86
 		NDK_PLATFORM=4

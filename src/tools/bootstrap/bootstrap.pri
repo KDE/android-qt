@@ -62,6 +62,8 @@ win32:LIBS += -luser32
 
 mac {
     CONFIG -= incremental
+    CONFIG += x86
+    CONFIG += x86_64
     LIBS += -framework CoreServices
 }
 
