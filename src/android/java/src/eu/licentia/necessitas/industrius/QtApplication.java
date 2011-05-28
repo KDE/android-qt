@@ -224,13 +224,11 @@ public class QtApplication extends Application
     public static native void terminateQt();
     // application methods
 
-    @SuppressWarnings("unused")
     private static void quitApp()
     {
         m_mainActivity.finish();
     }
 
-    @SuppressWarnings("unused")
     private static void redrawSurface(final int left, final int top, final int right, final int bottom )
     {
         runAction(new Runnable() {
@@ -377,7 +375,6 @@ public class QtApplication extends Application
     }
 
 
-    @SuppressWarnings("unused")
     private static void showSoftwareKeyboard()
     {
         runAction(new Runnable() {
@@ -388,7 +385,6 @@ public class QtApplication extends Application
         });
     }
 
-    @SuppressWarnings("unused")
     private static void hideSoftwareKeyboard()
     {
         runAction(new Runnable() {
@@ -399,7 +395,6 @@ public class QtApplication extends Application
         });
     }
 
-    @SuppressWarnings("unused")
     private static void setFullScreen(final boolean fullScreen)
     {
         runAction(new Runnable() {

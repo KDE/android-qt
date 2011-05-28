@@ -1,6 +1,6 @@
 /*
     Copyright (c) 2009-2011, BogDan Vatra <bog_dan_ro@yahoo.com>
-    Copyright (c) 2011 Elektrobit (EB), All rights reserved. 
+    Copyright (c) 2011 Elektrobit (EB), All rights reserved.
     Contact: oss-devel@elektrobit.com
     All rights reserved.
 
@@ -29,25 +29,14 @@
 
 package eu.licentia.necessitas.industrius;
 
-import java.io.IOException;
-
 import android.content.Context;
-import android.hardware.Camera;
-import android.hardware.Camera.Parameters;
 import android.util.AttributeSet;
-import android.view.SurfaceHolder;
 import android.view.View;
 import android.view.ViewGroup;
-import eu.licentia.necessitas.mobile.QtCamera;
 
-public class QtLayout extends ViewGroup implements SurfaceHolder.Callback{
-	private static int m_surfaceDestroyedOff = 0;
-	public static boolean m_surfaceDestroyed = false;
-	private static Camera m_camera;
-	private Parameters m_params;
-
-	public QtLayout(Context context) {
-    	super(context);
+public class QtLayout extends ViewGroup{
+    public QtLayout(Context context) {
+        super(context);
     }
 
     public QtLayout(Context context, AttributeSet attrs) {
@@ -90,17 +79,17 @@ public class QtLayout extends ViewGroup implements SurfaceHolder.Callback{
         // Check against minimum height and width
         maxHeight = Math.max(maxHeight, getSuggestedMinimumHeight());
         maxWidth = Math.max(maxWidth, getSuggestedMinimumWidth());
-        
+
         setMeasuredDimension(resolveSize(maxWidth, widthMeasureSpec),
                 resolveSize(maxHeight, heightMeasureSpec));
     }
 
     /**
-     * Returns a set of layout parameters with a width of
-     * {@link android.view.ViewGroup.LayoutParams#WRAP_CONTENT},
-     * a height of {@link android.view.ViewGroup.LayoutParams#WRAP_CONTENT}
-     * and with the coordinates (0, 0).
-     */
+    * Returns a set of layout parameters with a width of
+    * {@link android.view.ViewGroup.LayoutParams#WRAP_CONTENT},
+    * a height of {@link android.view.ViewGroup.LayoutParams#WRAP_CONTENT}
+    * and with the coordinates (0, 0).
+    */
     @Override
     protected ViewGroup.LayoutParams generateDefaultLayoutParams() {
         return new LayoutParams(android.view.ViewGroup.LayoutParams.WRAP_CONTENT, android.view.ViewGroup.LayoutParams.WRAP_CONTENT, 0, 0);
@@ -128,7 +117,7 @@ public class QtLayout extends ViewGroup implements SurfaceHolder.Callback{
         }
     }
 
-    // Override to allow type-checking of LayoutParams. 
+    // Override to allow type-checking of LayoutParams.
     @Override
     protected boolean checkLayoutParams(ViewGroup.LayoutParams p) {
         return p instanceof QtLayout.LayoutParams;
@@ -140,32 +129,32 @@ public class QtLayout extends ViewGroup implements SurfaceHolder.Callback{
     }
 
     /**
-     * Per-child layout information associated with AbsoluteLayout.
-     * See
-     * {@link android.R.styleable#AbsoluteLayout_Layout Absolute Layout Attributes}
-     * for a list of all child view attributes that this class supports.
-     */
+    * Per-child layout information associated with AbsoluteLayout.
+    * See
+    * {@link android.R.styleable#AbsoluteLayout_Layout Absolute Layout Attributes}
+    * for a list of all child view attributes that this class supports.
+    */
     public static class LayoutParams extends ViewGroup.LayoutParams {
         /**
-         * The horizontal, or X, location of the child within the view group.
-         */
+        * The horizontal, or X, location of the child within the view group.
+        */
         public int x;
         /**
-         * The vertical, or Y, location of the child within the view group.
-         */
+        * The vertical, or Y, location of the child within the view group.
+        */
         public int y;
 
         /**
-         * Creates a new set of layout parameters with the specified width,
-         * height and location.
-         *
-         * @param width the width, either {@link #FILL_PARENT},
-                  {@link #WRAP_CONTENT} or a fixed size in pixels
-         * @param height the height, either {@link #FILL_PARENT},
-                  {@link #WRAP_CONTENT} or a fixed size in pixels
-         * @param x the X location of the child
-         * @param y the Y location of the child
-         */
+        * Creates a new set of layout parameters with the specified width,
+        * height and location.
+        *
+        * @param width the width, either {@link #FILL_PARENT},
+                {@link #WRAP_CONTENT} or a fixed size in pixels
+        * @param height the height, either {@link #FILL_PARENT},
+                {@link #WRAP_CONTENT} or a fixed size in pixels
+        * @param x the X location of the child
+        * @param y the Y location of the child
+        */
         public LayoutParams(int width, int height, int x, int y) {
             super(width, height);
             this.x = x;
@@ -173,79 +162,15 @@ public class QtLayout extends ViewGroup implements SurfaceHolder.Callback{
         }
 
         /**
-         * {@inheritDoc}
-         */
+        * {@inheritDoc}
+        */
         public LayoutParams(ViewGroup.LayoutParams source) {
             super(source);
         }
     }
 
-	@Override
-	public void surfaceChanged(SurfaceHolder holder, int format, int width,
-			int height) {
-		if((QtCamera.m_screenOff == true && m_surfaceDestroyedOff == 2) || m_surfaceDestroyed == true)
-		{
-			m_camera = QtCamera.getCamera();
-                        if (m_camera!=null)
-			{
-				try {
-					m_camera.reconnect();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-				m_params = m_camera.getParameters();
-				m_params.setPreviewSize(720,480);
-				m_camera.setParameters(m_params);
-		    	m_camera.setPreviewCallback(QtCamera.m_previewCallback);
-		    	try {
-					m_camera.setPreviewDisplay(null);
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-		    	m_camera.startPreview();
-			}
-			QtCamera.m_screenOff = false;
-			m_surfaceDestroyedOff = 0;
-			m_surfaceDestroyed = false;
-		}
-	}
-
-	@Override
-	public void surfaceCreated(SurfaceHolder holder) {
-		
-	}
-
-	@Override
-	public void surfaceDestroyed(SurfaceHolder holder) {
-		
-		if(QtCamera.m_screenOff == true)
-		{
-			m_surfaceDestroyedOff++;
-		}
-		else
-		{
-			m_surfaceDestroyed = true;
-			if(QtCamera.m_recorder != null) 
-			{
-				QtCamera.m_recorder.stop();
-				QtCamera.m_recorder.reset();
-				QtCamera.m_recorder.release();
-				QtCamera.m_recorder = null; 
-				QtCamera.stopRecord(); 
-			} 
-		}
-	}
-
-	public void bringChildFront(int child)
-	{
-		bringChildToFront(getChildAt(child));
-	}
+    public void bringChildFront(int child)
+    {
+        bringChildToFront(getChildAt(child));
+    }
 }
-	
-
-
-
-
-
-
-
