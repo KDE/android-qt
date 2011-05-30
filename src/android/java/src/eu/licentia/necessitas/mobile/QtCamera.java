@@ -22,11 +22,11 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Bitmap;
+import android.graphics.Bitmap.CompressFormat;
 import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
 import android.graphics.Rect;
 import android.graphics.YuvImage;
-import android.graphics.Bitmap.CompressFormat;
 import android.hardware.Camera;
 import android.hardware.Camera.Parameters;
 import android.hardware.Camera.PictureCallback;
@@ -35,11 +35,13 @@ import android.hardware.Camera.ShutterCallback;
 import android.hardware.Camera.Size;
 import android.media.MediaRecorder;
 import android.util.Log;
+import android.view.SurfaceHolder;
+import android.view.SurfaceHolder.Callback;
 import android.view.SurfaceView;
-import eu.licentia.necessitas.industrius.QtActivity;
 import eu.licentia.necessitas.industrius.QtApplication;
+import eu.licentia.necessitas.industrius.QtLayout;
 
-public class QtCamera implements PreviewCallback{
+public class QtCamera implements PreviewCallback, Callback{
     private static Camera m_camera;
     public ShutterCallback shutterCallback;
     public PictureCallback rawCallback;
@@ -57,7 +59,7 @@ public class QtCamera implements PreviewCallback{
     private int m_width;
     private int m_height;
     public static MediaRecorder m_recorder=null;
-    private static SurfaceView m_surfaceView;
+    private SurfaceView m_surfaceView;
     private String m_videoOutputPath = null;
     private int m_videoOutFormat = MediaRecorder.OutputFormat.MPEG_4;
     private int m_videoFrameRate = 30;
@@ -67,8 +69,9 @@ public class QtCamera implements PreviewCallback{
     private int m_audioBitRate=0;
     private int m_audioChannelsCount=0;
     int[] m_videoPreviewParams;
-    public static boolean m_screenOff = false;
-
+    public boolean m_screenOff = false;
+    private int m_surfaceDestroyedOff = 0;
+    public boolean m_surfaceDestroyed = false;
     QtCamera()
     {
         setActivity();
@@ -79,6 +82,11 @@ public class QtCamera implements PreviewCallback{
         IntentFilter filter = new IntentFilter(Intent.ACTION_SCREEN_OFF);
         BroadcastReceiver mReceiver = new ScreenReceiver();
         QtApplication.mainActivity().registerReceiver(mReceiver, filter);
+        m_surfaceView = new SurfaceView(QtApplication.mainActivity());
+        m_surfaceView.getHolder().setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
+        m_surfaceView.getHolder().addCallback(this);
+        m_surfaceView.setFocusable(true);
+        QtApplication.mainActivity().getQtLayout().addView(m_surfaceView,1,new QtLayout.LayoutParams(0,0,1,1));
     }
 
     public static Camera getCamera()
@@ -89,11 +97,6 @@ public class QtCamera implements PreviewCallback{
     public void setOutputFile(String filename)
     {
         m_videoOutputPath = filename;
-    }
-
-    public static void setSurfaceView(SurfaceView view)
-    {
-        m_surfaceView = view;
     }
 
     public void setOutputFormat(int format)
@@ -134,7 +137,7 @@ public class QtCamera implements PreviewCallback{
         m_activity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                QtActivity.setCameraViewVisible(true,m_videoPreviewParams);
+                QtApplication.mainActivity().getQtLayout().updateViewLayout(m_surfaceView, new QtLayout.LayoutParams(m_videoPreviewParams[0],m_videoPreviewParams[1],m_videoPreviewParams[2],m_videoPreviewParams[3]));
             }
         });
         m_camera.stopPreview();
@@ -228,7 +231,7 @@ public class QtCamera implements PreviewCallback{
         }
         m_activity.runOnUiThread(new Runnable() {
             public void run() {
-                QtActivity.setCameraViewVisible(false,m_videoPreviewParams);
+                QtApplication.mainActivity().getQtLayout().updateViewLayout(m_surfaceView, new QtLayout.LayoutParams(0,0,1,1));
             }
         });
 
@@ -532,4 +535,61 @@ public class QtCamera implements PreviewCallback{
         }
     }
 
+    @Override
+    public void surfaceChanged(SurfaceHolder holder, int format, int width,
+            int height)
+    {
+        if((m_screenOff == true && m_surfaceDestroyedOff == 2) || m_surfaceDestroyed == true)
+        {
+            m_camera = QtCamera.getCamera();
+            if (m_camera!=null)
+            {
+                try {
+                        m_camera.reconnect();
+                } catch (IOException e) {
+                        e.printStackTrace();
+                }
+                m_params = m_camera.getParameters();
+                m_params.setPreviewSize(720,480);
+                m_camera.setParameters(m_params);
+                m_camera.setPreviewCallback(QtCamera.m_previewCallback);
+                try {
+                    m_camera.setPreviewDisplay(null);
+                } catch (IOException e) {
+                        e.printStackTrace();
+                }
+                m_camera.startPreview();
+            }
+            m_screenOff = false;
+            m_surfaceDestroyedOff = 0;
+            m_surfaceDestroyed = false;
+        }
+    }
+
+    @Override
+    public void surfaceCreated(SurfaceHolder holder) {
+        // TODO Auto-generated method stub
+
+    }
+
+    @Override
+    public void surfaceDestroyed(SurfaceHolder holder) {
+
+        if(m_screenOff == true)
+        {
+                m_surfaceDestroyedOff++;
+        }
+        else
+        {
+                m_surfaceDestroyed = true;
+                if(QtCamera.m_recorder != null)
+                {
+                        QtCamera.m_recorder.stop();
+                        QtCamera.m_recorder.reset();
+                        QtCamera.m_recorder.release();
+                        QtCamera.m_recorder = null;
+                        QtCamera.stopRecord();
+                }
+        }
+    }
 }

@@ -38,7 +38,6 @@ namespace QtAndroid
 {
     void flushImage(const QPoint & pos, const QImage & image, const QRect & rect);
     void setAndroidPlatformIntegration(QAndroidPlatformIntegration * androidGraphicsSystem);
-    void setQtThread(QThread * thread);
 
     void setFullScreen(bool fullScreen);
 

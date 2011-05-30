@@ -39,7 +39,6 @@ public class QtFeedback extends BroadcastReceiver{
     private int m_resumeTime=0;
     private AlarmManager m_alarmManager=null;
     private PendingIntent m_pendingIntent=null;
-    private int m_getFileDur=0;
 
     public QtFeedback() {
         m_alarmManager = (AlarmManager) QtApplication.mainActivity().getSystemService(Activity.ALARM_SERVICE);
@@ -69,7 +68,6 @@ public class QtFeedback extends BroadcastReceiver{
         } catch (IOException e) {
             e.printStackTrace();
         }
-        m_getFileDur = m_mediaPlayer.getDuration();
     }
 
 

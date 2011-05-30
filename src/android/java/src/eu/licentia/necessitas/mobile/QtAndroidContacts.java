@@ -394,6 +394,7 @@ public class QtAndroidContacts
         return id;
     }
 
+    @SuppressWarnings("unused")
     private String saveContact(MyContacts qtContacts)
     {
         ContentValues values = new ContentValues();
@@ -639,6 +640,7 @@ public class QtAndroidContacts
         QtApplication.mainActivity().getContentResolver().insert(ContactsContract.Data.CONTENT_URI, values);
     }
 
+    @SuppressWarnings("unused")
     private int removeContact(String id)
     {
         int deleted = 0;
@@ -663,6 +665,7 @@ public class QtAndroidContacts
         return deleted;
     }
 
+    @SuppressWarnings("unused")
     private void updateContact(String id,MyContacts qtContacts)
     {
 

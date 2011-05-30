@@ -533,24 +533,24 @@ public class QtSystemInfo
                 if((intent.getAction().equals(Intent.ACTION_CONFIGURATION_CHANGED)))
                 {
                     Log.i("QtSystemInfo", "orientationchage wont be called");
-                        int orientation;
+                    int orientation; /// ?!?!?!
 
-                        switch(m_display.getRotation())
-                        {
-                            case Surface.ROTATION_270:
-                            case Surface.ROTATION_90:
-                                orientation= 1;
-                                break;
+                    switch(m_display.getRotation())
+                    {
+                        case Surface.ROTATION_270:
+                        case Surface.ROTATION_90:
+                            orientation= 1;
+                            break;
 
-                            case Surface.ROTATION_0:
-                            case Surface.ROTATION_180:
-                                orientation= 2;
-                                break;
+                        case Surface.ROTATION_0:
+                        case Surface.ROTATION_180:
+                            orientation= 2;
+                            break;
 
-                            default:
-                                orientation=0;
-                                break;
-                        }
+                        default:
+                            orientation=0;
+                            break;
+                    }
                 }
             }
         };
