@@ -15,7 +15,6 @@ RELEASE_QT=1
 MODIFY_DEST_DIR_QT=0
 NDK_PLATFORM=4
 DEST_DIR_QT=$PWD
-
 PLATFORM="-platform linux-g++"
 NDK_ROOT=/usr/local/android-ndk-r5b
 NDK_HOST=linux-x86
@@ -25,14 +24,12 @@ if [ "$OSTYPE" = "msys" ]; then
 	PLATFORM="-platform win32-g++"
 	NDK_HOST=windows
 	NDK_PLATFORM=4
-	export ANDROID_PLATFORM=$NDK_PLATFORM
 else
 	if [ "$OSTYPE" = "darwin9.0" -o "$OSTYPE" = "darwin10.0" ]; then
 		PLATFORM="-platform macx-g++42"
 		NDK_ROOT=/usr/local/android/android-ndk-r5b
 		NDK_HOST=darwin-x86
 		NDK_PLATFORM=4
-		export ANDROID_PLATFORM=$NDK_PLATFORM
 	fi
 fi
 
@@ -177,6 +174,12 @@ if [ "$MODIFY_DEST_DIR_QT" -eq "1" ]; then
 	DEST_DIR_QT=${DEST_DIR_QT}-${INSTSUFFIX}
 fi
 
+# Should add an ANDROID_MIN_PLATFORM qmake var that
+# NQTC can read and use to prevent selecting earlier platforms.
+if [ "$TARGET_ARCH" = "armeabi-v7a" ]; then
+	NDK_PLATFORM=5
+fi
+
 echo "New install of Qt will be to $DEST_DIR_QT"
 
 # Please set the following evn vars correctly !!!
@@ -185,6 +188,8 @@ export ANDROID_NDK_HOST=$NDK_HOST
 export ANDROID_NDK_TOOLCHAIN_PREFIX=$NDK_TOOLCHAIN_PREFIX
 export ANDROID_NDK_TOOLCHAIN_VERSION=$NDK_TOOLCHAIN_VERSION
 export ANDROID_TARGET_ARCH=$TARGET_ARCH
+export ANDROID_PLATFORM=$NDK_PLATFORM
+export ANDROID_NDK_PLATFORM=android-$NDK_PLATFORM
 
 cat << EOF
 Compiling qt with the following env vars:
@@ -192,6 +197,7 @@ ANDROID_NDK_ROOT=$NDK_ROOT
 ANDROID_NDK_HOST=$NDK_HOST
 ANDROID_NDK_TOOLCHAIN_PREFIX=$NDK_TOOLCHAIN_PREFIX
 ANDROID_NDK_TOOLCHAIN_VERSION=$NDK_TOOLCHAIN_VERSION
+ANDROID_PLATFORM=$NDK_PLATFORM
 ANDROID_NDK_PLATFORM=android-$NDK_PLATFORM
 ANDROID_TARGET_ARCH=$TARGET_ARCH
 EOF
