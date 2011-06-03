@@ -187,7 +187,7 @@ for(QTLIB, $$list($$lower($$unique(QT)))) {
                QMAKE_LFLAGS += -Wl,--no-undefined -Wl,-z,noexecstack -shared -Wl,-soname,$$TARGET
            }
        }else {
-            QMAKE_LFLAGS += -Wl,--no-undefined -Wl,-z,noexecstack -shared -Wl,-soname,$$TARGET
+            QMAKE_LFLAGS += -Wl,--no-undefined -Wl,-z,noexecstack -shared
        }
    }
    else:message("Unknown QT: $$QTLIB"):qlib =
