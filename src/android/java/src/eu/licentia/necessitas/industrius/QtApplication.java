@@ -247,7 +247,7 @@ public class QtApplication extends Application
     }
 
 
-    //@!ANDROID-4
+    //@ANDROID-5
     static private int getAction(int index, MotionEvent event)
     {
         int action=event.getAction();
@@ -296,11 +296,11 @@ public class QtApplication extends Application
         }
         return 2;
     }
-    //@!ANDROID-4
+    //@ANDROID-5
 
     static public void sendTouchEvent(MotionEvent event, int id)
     {
-        //@!ANDROID-4
+        //@ANDROID-5
         touchBegin(id);
         for (int i=0;i<event.getPointerCount();i++)
                 touchAdd(id,event.getPointerId(i), getAction(i, event), i==0,
@@ -320,7 +320,7 @@ public class QtApplication extends Application
             default:
                 touchEnd(id,1);
         }
-        //@!ANDROID-4
+        //@ANDROID-5
 
         switch (event.getAction())
         {

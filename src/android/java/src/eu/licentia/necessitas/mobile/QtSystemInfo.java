@@ -36,9 +36,9 @@ import java.util.Locale;
 import java.util.Map;
 
 import android.app.KeyguardManager;
-//@!ANDROID-4
+//@ANDROID-5
 import android.bluetooth.BluetoothAdapter;
-//@!ANDROID-4
+//@ANDROID-5
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -60,19 +60,19 @@ import android.provider.Settings.SettingNotFoundException;
 import android.telephony.CellLocation;
 import android.telephony.PhoneStateListener;
 import android.telephony.ServiceState;
-//@!ANDROID-4
+//@ANDROID-5
 import android.telephony.SignalStrength;
-//@!ANDROID-4
+//@ANDROID-5
 import android.telephony.TelephonyManager;
 import android.telephony.gsm.GsmCellLocation;
 import android.util.DisplayMetrics;
-//@!ANDROID-4
+//@ANDROID-5
 import android.util.Log;
-//@!ANDROID-4
+//@ANDROID-5
 import android.view.Display;
-//@!ANDROID-4
+//@ANDROID-5
 import android.view.Surface;
-//@!ANDROID-4
+//@ANDROID-5
 import eu.licentia.necessitas.industrius.QtApplication;
 
 
@@ -118,9 +118,9 @@ public class QtSystemInfo
     private PowerManager m_powerManager;
     private WakeLock m_wakeLock;
 
-//@!ANDROID-4
+//@ANDROID-5
     private  BluetoothAdapter m_bluetoothAdapter;
-//@!ANDROID-4
+//@ANDROID-5
     private TelephonyManager m_telephonyManager;
     private BroadcastReceiver m_deviceInfoBroadcastReceiver;
     //display
@@ -148,9 +148,9 @@ public class QtSystemInfo
         QtApplication.mainActivity().runOnUiThread(new Runnable() {
 
             public void run() {
-//@!ANDROID-4
+//@ANDROID-5
                 m_bluetoothAdapter=BluetoothAdapter.getDefaultAdapter();
-//@!ANDROID-4
+//@ANDROID-5
             }
         });
         m_powerManager = (PowerManager)QtApplication.mainActivity().getSystemService(Context.POWER_SERVICE);
@@ -212,7 +212,7 @@ public class QtSystemInfo
 
     private void createBatteryBroadcastReceiver ()
     {
-//@!ANDROID-4
+//@ANDROID-5
         m_batteryInfoBroadcastReceiver=new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent)
@@ -269,15 +269,15 @@ public class QtSystemInfo
 
             }
         };
-//@!ANDROID-4
+//@ANDROID-5
     }
     public void initDevice ()
     {
         createDeviceInfoBroadcastReceiver ();
         QtApplication.mainActivity().registerReceiver(m_deviceInfoBroadcastReceiver,new IntentFilter(AudioManager.RINGER_MODE_CHANGED_ACTION));
-//@!ANDROID-4
+//@ANDROID-5
         QtApplication.mainActivity().registerReceiver(m_deviceInfoBroadcastReceiver,new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED));
-//@!ANDROID-4
+//@ANDROID-5
         QtApplication.mainActivity().registerReceiver(m_deviceInfoBroadcastReceiver,new IntentFilter(Intent.ACTION_SCREEN_OFF));
         QtApplication.mainActivity().registerReceiver(m_deviceInfoBroadcastReceiver,new IntentFilter(Intent.ACTION_SCREEN_ON));
 
@@ -302,7 +302,7 @@ public class QtSystemInfo
             @Override
             public void onReceive(Context context, Intent intent)
             {
-//@!ANDROID-4
+//@ANDROID-5
                 if((intent.getAction().equals(BluetoothAdapter.ACTION_STATE_CHANGED)))
                 {
                     boolean state=false;
@@ -320,7 +320,7 @@ public class QtSystemInfo
                     }
                     bluetoothStateChanged(state);
                 }
-//@!ANDROID-4
+//@ANDROID-5
 
                 if((intent.getAction().equals(AudioManager.RINGER_MODE_CHANGED_ACTION)))
                 {
@@ -341,7 +341,7 @@ public class QtSystemInfo
         };
     }
 
-//@!ANDROID-4
+//@ANDROID-5
     public boolean bluetoothPowerState ()
     {
         boolean state;
@@ -382,7 +382,7 @@ public class QtSystemInfo
             return true;
         }
     }
-//@!ANDROID-4
+//@ANDROID-5
 
     public String imei ()
     {
@@ -429,7 +429,7 @@ public class QtSystemInfo
     {
         Configuration configuration=new Configuration();
         int inputMethod=0x0000001;//by default the keys will have a key and buttons
-//@!ANDROID-4
+//@ANDROID-8
     PackageManager pm=QtApplication.mainActivity().getPackageManager();
         if(pm.hasSystemFeature(PackageManager.FEATURE_TOUCHSCREEN))
         {
@@ -440,7 +440,7 @@ public class QtSystemInfo
         {
             inputMethod|=0x0000010;
         }
-//@!ANDROID-4
+//@ANDROID-8
         if(configuration.keyboard==Configuration.KEYBOARD_QWERTY)
         {
             inputMethod|=0x0000004;
@@ -524,7 +524,7 @@ public class QtSystemInfo
 
     private void createDisplayInfoBroadcastReceiver ()
     {
-//@!ANDROID-4
+//@ANDROID-8
         m_displayInfoBroadcastReceiver=new BroadcastReceiver() {
 
             @Override
@@ -554,7 +554,7 @@ public class QtSystemInfo
                 }
             }
         };
-//@!ANDROID-4
+//@ANDROID-8
     }
 
     public float getDPIHeight  ()
@@ -581,7 +581,7 @@ public class QtSystemInfo
 
     public int orientation ()
     {
-//@!ANDROID-4
+//@ANDROID-8
         switch(m_display.getRotation())
         {
             case Surface.ROTATION_270:
@@ -593,11 +593,11 @@ public class QtSystemInfo
                 return 2;
 
             default:
-//@!ANDROID-4
+//@ANDROID-8
                 return -1;
-//@!ANDROID-4
+//@ANDROID-8
         }
-//@!ANDROID-4
+//@ANDROID-8
     }
 
     public int backLightStatus()
@@ -647,9 +647,9 @@ public class QtSystemInfo
     public void initSystemGeneralInfo()
     {
         createGeneralSystemInfo ();
-//@!ANDROID-4
+//@ANDROID-5
         QtApplication.mainActivity().registerReceiver(m_generalSystemInfo,new IntentFilter(Intent.ACTION_LOCALE_CHANGED));
-//@!ANDROID-4
+//@ANDROID-5
     }
 
     public void exitSystemGeneralInfo ()
@@ -701,15 +701,17 @@ public class QtSystemInfo
     public int[] featuresAvailable()
     {
         int[] features=new int[14];
-//@!ANDROID-4
+//@ANDROID-5
         PackageManager pm=QtApplication.mainActivity().getPackageManager();
-        if(pm.hasSystemFeature(PackageManager.FEATURE_BLUETOOTH))
-        {
-            features[0]=0;
-        }
         if(pm.hasSystemFeature(PackageManager.FEATURE_CAMERA))
         {
             features[1]=1;
+        }
+//@ANDROID-5
+//@ANDROID-8
+        if(pm.hasSystemFeature(PackageManager.FEATURE_BLUETOOTH))
+        {
+            features[0]=0;
         }
         if((pm.hasSystemFeature(PackageManager.FEATURE_LOCATION_GPS))||
                 (pm.hasSystemFeature(PackageManager.FEATURE_LOCATION_NETWORK)))
@@ -720,7 +722,7 @@ public class QtSystemInfo
         {
             features[7]=8;
         }
-//@!ANDROID-4
+//@ANDROID-8
         if(sdcardFeatureAvailable ())
         {
             features[3]=5;
@@ -880,7 +882,7 @@ public class QtSystemInfo
                         }
                     }
 
-//@!ANDROID-4
+//@ANDROID-5
                     @Override
                     public void  onSignalStrengthsChanged (SignalStrength signalStrength)
                     {
@@ -896,7 +898,7 @@ public class QtSystemInfo
                         }
                         QtSystemInfo.phoneSignalStrengthChanged(strength);
                     }
-//@!ANDROID-4
+//@ANDROID-5
 
                     @Override
                     public void  onServiceStateChanged  (ServiceState serviceState)
@@ -937,7 +939,7 @@ public class QtSystemInfo
                         QtSystemInfo.networkNameChanged(networkmode, networkName);
                     }
 
-//@!ANDROID-4
+//@ANDROID-5
                     @Override
                     public void  onDataConnectionStateChanged  (int state, int networkType)
                     {
@@ -976,7 +978,7 @@ public class QtSystemInfo
 
                         QtSystemInfo.networkStatusChanged(state, networkType);
                     }
-//@!ANDROID-4
+//@ANDROID-5
                 };
 
             }
@@ -986,9 +988,9 @@ public class QtSystemInfo
         QtApplication.mainActivity().registerReceiver(m_networkBroadcastReceiver,new IntentFilter(WifiManager.NETWORK_STATE_CHANGED_ACTION));
         QtApplication.mainActivity().registerReceiver(m_networkBroadcastReceiver,new IntentFilter(WifiManager.WIFI_STATE_CHANGED_ACTION));
         int events=
-//@!ANDROID-4
+//@ANDROID-5
             PhoneStateListener.LISTEN_SIGNAL_STRENGTHS|
-//@!ANDROID-4
+//@ANDROID-5
             PhoneStateListener.LISTEN_SERVICE_STATE
                 |PhoneStateListener.LISTEN_DATA_CONNECTION_STATE
                 |PhoneStateListener.LISTEN_CELL_LOCATION;
@@ -1075,11 +1077,11 @@ public class QtSystemInfo
         case 5:
             networkName="";
             break;
-//@!ANDROID-4
+//@ANDROID-5
         case 6:
             networkName=m_bluetoothAdapter.getName();
             break;
-//@!ANDROID-4
+//@ANDROID-5
         case 7:
             break;
         case 8:
@@ -1094,14 +1096,14 @@ public class QtSystemInfo
                 networkName=m_telephonyManager.getNetworkOperatorName();
             }
             break;
-//@!ANDROID-4
+//@ANDROID-5
         case 10:
             if(m_telephonyManager.getNetworkType()==TelephonyManager.NETWORK_TYPE_HSPA)
             {
                 networkName=m_telephonyManager.getNetworkOperatorName();
             }
             break;
-//@!ANDROID-4
+//@ANDROID-5
         default:
             networkName="";
         }
@@ -1123,7 +1125,7 @@ public class QtSystemInfo
 
     public int bluetoothStatus()
     {
-//@!ANDROID-4
+//@ANDROID-5
         if(m_bluetoothAdapter.isDiscovering())
         {
             return 3;
@@ -1133,7 +1135,7 @@ public class QtSystemInfo
             return 5;
         }
         else
-//@!ANDROID-4
+//@ANDROID-5
         {
             return 0;
         }
@@ -1214,9 +1216,9 @@ public class QtSystemInfo
 
     public int currentMode ()
     {
-//@!ANDROID-4
+//@ANDROID-5
     PackageManager pm=QtApplication.mainActivity().getPackageManager();
-//@!ANDROID-4
+//@ANDROID-5
         if(m_telephonyManager.getPhoneType()==TelephonyManager.PHONE_TYPE_GSM)
         {
             return 1;
@@ -1225,12 +1227,12 @@ public class QtSystemInfo
         {
             return 2;
         }
-//@!ANDROID-4
+//@ANDROID-8
         else if (pm.hasSystemFeature(PackageManager.FEATURE_WIFI))
         {
             return 4;
         }
-//@!ANDROID-4
+//@ANDROID-8
         else
         {
             return 0;

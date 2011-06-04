@@ -13,6 +13,7 @@ THIS SOFTWARE IS PROVIDED BY Elektrobit (EB) ''AS IS'' AND ANY EXPRESS OR IMPLIE
 
 package eu.licentia.necessitas.mobile;
 
+//@ANDROID-8
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
@@ -155,7 +156,7 @@ public class QtCamera implements PreviewCallback, Callback{
         long currentDateTimeString = System.currentTimeMillis();
         String filePath;
 
-        // WARNING unsafe hardcoded path !!!
+// WARNING unsafe hardcoded path !!!
         if(m_videoOutputPath == null)
         {
             if(m_videoOutFormat == 1)
@@ -568,7 +569,7 @@ public class QtCamera implements PreviewCallback, Callback{
 
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
-        // TODO Auto-generated method stub
+    // TODO Auto-generated method stub
 
     }
 
@@ -593,3 +594,4 @@ public class QtCamera implements PreviewCallback, Callback{
         }
     }
 }
+//@ANDROID-8

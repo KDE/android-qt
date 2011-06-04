@@ -29,7 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 package eu.licentia.necessitas.mobile;
-//@!ANDROID-4
+//@ANDROID-5
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -1274,4 +1274,4 @@ class OnlineAccount
         m_type = type;
     }
 }
-//@!ANDROID-4
+//@ANDROID-5
