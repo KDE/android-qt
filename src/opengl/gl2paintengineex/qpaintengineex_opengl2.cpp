@@ -2047,6 +2047,10 @@ bool QGL2PaintEngineEx::end()
     }
 #endif
 
+#ifdef ANDROID
+    glFlush();
+#endif
+
     return false;
 }
 
