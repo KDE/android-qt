@@ -44,7 +44,9 @@ What do you need to do:
 5. deploy projects including(!) local Qt libs:
     Projects -> Run -> Deploy Configuration -> "Deploy local qt libs"
     ... don't forget to set the your(!) qt libs for your project:
-    Projects -> Build -> General -> Qt version 
+    Projects -> Build -> General -> Qt version
+    ... and change the Android target SDK to something >=android-8
+    Projects -> Run -> Package configuration -> Android target SDK
 
 6. Now the application should run in raster-mode because
      a, you haven't replaced the java files yet
