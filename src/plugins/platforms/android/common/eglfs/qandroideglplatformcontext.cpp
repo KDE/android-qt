@@ -1,0 +1,162 @@
+/****************************************************************************
+**
+** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
+** All rights reserved.
+** Contact: Nokia Corporation (qt-info@nokia.com)
+**
+** This file is part of the plugins of the Qt Toolkit.
+**
+** $QT_BEGIN_LICENSE:LGPL$
+** No Commercial Usage
+** This file contains pre-release code and may not be distributed.
+** You may use this file in accordance with the terms and conditions
+** contained in the Technology Preview License Agreement accompanying
+** this package.
+**
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL included in the
+** packaging of this file.  Please review the following information to
+** ensure the GNU Lesser General Public License version 2.1 requirements
+** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, Nokia gives you certain additional
+** rights.  These rights are described in the Nokia Qt LGPL Exception
+** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+**
+** If you have questions regarding the use of this file, please contact
+** Nokia at qt-info@nokia.com.
+**
+**
+**
+**
+**
+**
+**
+**
+** $QT_END_LICENSE$
+**
+****************************************************************************/
+
+#include "qandroideglplatformcontext.h"
+
+#include <QPlatformWindow>
+#include <QDebug>
+
+#include <EGL/egl.h>
+#include "qeglconvenience.h"
+
+
+QAndroidEglFSPlatformContext::QAndroidEglFSPlatformContext(EGLDisplay display, EGLConfig config, EGLint contextAttrs[], EGLSurface surface, EGLenum eglApi)
+    : QPlatformGLContext()
+    , m_eglDisplay(display)
+    , m_eglSurface(surface)
+    , m_eglApi(eglApi)
+{
+    if (m_eglSurface == EGL_NO_SURFACE) {
+        qWarning("Createing QEGLPlatformContext with no surface");
+    }
+
+    eglBindAPI(m_eglApi);
+    m_eglContext = eglCreateContext(m_eglDisplay,config, EGL_NO_CONTEXT, contextAttrs);
+    qt_checkAndWarnAboutEGLError("QEGLPlatformContext::QEGLPlatformContext(...)", "eglCreateContext(m_eglDisplay,config, EGL_NO_CONTEXT, contextAttrs)");
+    if (m_eglContext == EGL_NO_CONTEXT) {
+        EGLint foo = eglGetError();
+        qWarning("Could not create the egl context  .... error: %x\n", foo);
+        eglTerminate(m_eglDisplay);
+        qFatal("EGL error");
+    }
+
+    m_windowFormat = qt_qPlatformWindowFormatFromConfig(display,config);
+//    m_windowFormat.setSharedContext(this);
+}
+
+QAndroidEglFSPlatformContext::~QAndroidEglFSPlatformContext()
+{
+#ifdef QEGL_EXTRA_DEBUG
+    qWarning("QEglContext::~QEglContext(): %p\n",this);
+#endif
+    if (m_eglSurface != EGL_NO_SURFACE) {
+        doneCurrent();
+        eglDestroySurface(m_eglDisplay, m_eglSurface);
+        m_eglSurface = EGL_NO_SURFACE;
+    }
+
+    if (m_eglContext != EGL_NO_CONTEXT) {
+        eglDestroyContext(m_eglDisplay, m_eglContext);
+        m_eglContext = EGL_NO_CONTEXT;
+    }
+}
+
+void QAndroidEglFSPlatformContext::makeCurrent()
+{
+    QPlatformGLContext::makeCurrent();    
+
+    eglBindAPI(m_eglApi);
+    bool ok = eglMakeCurrent(m_eglDisplay, m_eglSurface, m_eglSurface, m_eglContext);
+    if (!ok)
+        qWarning("QEGLPlatformContext::makeCurrent: eglError: %d, this: %p, surface: %p, context: %p\n", eglGetError(), this, m_eglSurface, m_eglContext);
+#ifdef QEGL_EXTRA_DEBUG
+    static bool showDebug = true;
+    if (showDebug) {
+        showDebug = false;
+        const char *str = (const char*)glGetString(GL_VENDOR);
+        qWarning("Vendor %s\n", str);
+        str = (const char*)glGetString(GL_RENDERER);
+        qWarning("Renderer %s\n", str);
+        str = (const char*)glGetString(GL_VERSION);
+        qWarning("Version %s\n", str);
+
+        str = (const char*)glGetString(GL_SHADING_LANGUAGE_VERSION);
+        qWarning("Extensions %s\n",str);
+
+        str = (const char*)glGetString(GL_EXTENSIONS);
+        qWarning("Extensions %s\n", str);
+
+    }
+#endif
+}
+void QAndroidEglFSPlatformContext::doneCurrent()
+{
+    qDebug() << "void QEGLPlatformContext::doneCurrent()";
+
+    QPlatformGLContext::doneCurrent();
+#ifdef QEGL_EXTRA_DEBUG
+    qWarning("QEglContext::doneCurrent(): %p\n",this);
+#endif
+    eglBindAPI(m_eglApi);
+    bool ok = eglMakeCurrent(m_eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+    if (!ok)
+        qWarning("QEGLPlatformContext::doneCurrent(): eglError: %d, this: %p \n", eglGetError(), this);
+}
+void QAndroidEglFSPlatformContext::swapBuffers()
+{
+#ifdef QEGL_EXTRA_DEBUG
+    qWarning("QEglContext::swapBuffers:%p\n",this);
+#endif
+    eglBindAPI(m_eglApi);
+    bool ok = eglSwapBuffers(m_eglDisplay, m_eglSurface);
+    if (!ok)
+        qWarning("QEGLPlatformContext::swapBuffers(): eglError: %d, this: %p \n", eglGetError(), this);
+}
+void* QAndroidEglFSPlatformContext::getProcAddress(const QString& procName)
+{
+#ifdef QEGL_EXTRA_DEBUG
+    qWarning("QEglContext::getProcAddress%p\n",this);
+#endif
+    eglBindAPI(m_eglApi);
+    return (void *)eglGetProcAddress(qPrintable(procName));
+}
+
+void QAndroidEglFSPlatformContext::makeDefaultSharedContext()
+{
+#warning FIXME
+    setDefaultSharedContext(this); // This is deprecated ... only working with reverting f7c8ac6e59906ab9fda9bbe1420e7b9a0ebb153d
+    // ... longterm: remove this function  ... if not possible otherwise make it work again...
+}
+
+QPlatformWindowFormat QAndroidEglFSPlatformContext::platformWindowFormat() const
+{
+    return m_windowFormat;
+}
