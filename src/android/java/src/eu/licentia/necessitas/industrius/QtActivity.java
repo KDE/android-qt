@@ -209,19 +209,12 @@ public class QtActivity extends Activity {
                     libraryList.add("/data/local/qt/lib/lib"+m_qtLibs[i]+".so");
                 }
 
-                int apiLevel=android.os.Build.VERSION.SDK_INT;
-                if (apiLevel<4) // this should never happen !
-                    apiLevel=4; // Necessitas, we have a problem !
-                else
+                if (getIntent().getExtras().containsKey("load_local_libs"))
                 {
-                    if (apiLevel>5 && apiLevel<8)
-                        apiLevel=5; //  android-6, and 7 are compatible with android-5
-                    else
-                        if (apiLevel>8)
-                            apiLevel=8; // android >8 are compatible with android-8
+                    String []extraLibs=getIntent().getExtras().getString("load_local_libs").split(";");
+                    for (int i=0;i<extraLibs.length;i++)
+                        libraryList.add("/data/local/qt/"+extraLibs[i]);
                 }
-
-                libraryList.add("/data/local/qt/plugins/platforms/android/libandroid-"+apiLevel+".so");
 
                 String[] libs=new String[libraryList.size()];
                 libs=libraryList.toArray(libs);

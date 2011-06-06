@@ -156,7 +156,7 @@ public class QtCamera implements PreviewCallback, Callback{
         long currentDateTimeString = System.currentTimeMillis();
         String filePath;
 
-// WARNING unsafe hardcoded path !!!
+        // WARNING unsafe hardcoded path !!!
         if(m_videoOutputPath == null)
         {
             if(m_videoOutFormat == 1)

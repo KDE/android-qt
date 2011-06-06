@@ -1,0 +1,46 @@
+<rules>
+    <platforms>
+        <version value="4"/>
+        <version value="5"/>
+        <version value="6" symlink="5"/>
+        <version value="7" symlink="5"/>
+        <version value="8"/>
+        <version value="9" symlink="8"/>
+        <version value="10" symlink="8"/>
+        <version value="11" symlink="8"/>
+        <version value="12" symlink="8"/>
+    </platforms>
+    <dependencies>
+        <lib name="QtGui">
+            <depends>
+            <!-- %1 will be replaced with device matched api level, e.g. if the device has api level 11 %1 will be replaced with 8 -->
+                <lib file="plugins/platforms/android/libandroid-%1.so"/>
+            </depends>
+        </lib>
+
+        <lib name="QtContacts">
+            <depends>
+                <lib file="plugins/contacts/libqtcontacts_android.so"/>
+            </depends>
+        </lib>
+
+        <lib name="QtFeedback">
+            <depends>
+                <lib file="plugins/feedback/libqtfeedback_android.so"/>
+            </depends>
+        </lib>
+
+        <lib name="QtSensors">
+            <depends>
+                <lib file="plugins/sensors/libqtsensors_android.so"/>
+            </depends>
+        </lib>
+
+        <lib name="QtMultimediaKit">
+            <depends>
+                <lib file="plugins/mediaservice/libqtmultimediakit_androidmedia.so"/>
+                <lib file="plugins/mediaservice/libqtmultimediakit_androidcam.so"/>
+            </depends>
+        </lib>
+    </dependencies>
+</rules>
