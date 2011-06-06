@@ -176,9 +176,9 @@ fi
 
 # Should add an ANDROID_MIN_PLATFORM qmake var that
 # NQTC can read and use to prevent selecting earlier platforms.
-if [ "$TARGET_ARCH" = "armeabi-v7a" ]; then
-	NDK_PLATFORM=5
-fi
+#if [ "$TARGET_ARCH" = "armeabi-v7a" ]; then
+#    NDK_PLATFORM=5
+#fi
 
 echo "New install of Qt will be to $DEST_DIR_QT"
 
