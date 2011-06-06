@@ -69,10 +69,13 @@ public:
     virtual QPlatformWindowFormat platformWindowFormat() const = 0;
 
     const static QPlatformGLContext *currentContext();
+    static QPlatformGLContext *defaultSharedContext();
 
 protected:
-    QScopedPointer<QPlatformGLContextPrivate> d_ptr;
 
+    static void setDefaultSharedContext(QPlatformGLContext *sharedContext);
+
+    QScopedPointer<QPlatformGLContextPrivate> d_ptr;
 private:
     //hack to make it work with QGLContext::CurrentContext
     friend class QGLContext;

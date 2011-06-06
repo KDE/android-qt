@@ -104,14 +104,10 @@ public:
 
     static GLuint blitterProgram();
 
-    void setMainGLContext(QEGLPlatformContext *ctx) { mMainGlContext = ctx; }
-    void mainGLContext() const { return mMainGlContext; }
-
 private:
     QList<QPlatformScreen *> mScreens;
     QOpenKODEEventLoopIntegration *mEventLoopIntegration;
     QPlatformFontDatabase *mFontDb;
-    QEGLPlatformContext *mMainGlContext;
 };
 
 QT_END_NAMESPACE

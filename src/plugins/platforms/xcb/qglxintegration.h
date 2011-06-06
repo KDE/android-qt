@@ -73,6 +73,8 @@ private:
     QPlatformWindowFormat m_windowFormat;
 
     QGLXContext (QXcbScreen *screen, Drawable drawable, GLXContext context);
+    static QMutex m_defaultSharedContextMutex;
+    static void createDefaultSharedContext(QXcbScreen *xd);
 };
 
 #endif

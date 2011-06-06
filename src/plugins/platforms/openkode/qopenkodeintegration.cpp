@@ -122,9 +122,7 @@ QOpenKODEScreen::QOpenKODEScreen(KDDisplayNV *kdDisplay,  KDDesktopNV *kdDesktop
 }
 
 QOpenKODEIntegration::QOpenKODEIntegration()
-    : mEventLoopIntegration(0)
-    , mFontDb(new QGenericUnixFontDatabase())
-    , mMainGlContext(0)
+    : mEventLoopIntegration(0), mFontDb(new QGenericUnixFontDatabase())
 {
     if (kdInitializeNV() == KD_ENOTINITIALIZED) {
         qFatal("Did not manage to initialize openkode");
