@@ -5,6 +5,8 @@ include($$QT_BUILD_TREE/src/plugins/platforms/fontdatabases/basicunix/basicunix.
 
 QTDIR_build:DESTDIR = $$QT_BUILD_TREE/plugins/platforms/android
 
+QT += opengl
+
 LIBS += -lEGL
 
 INCLUDEPATH += $$PWD $$PWD/..
