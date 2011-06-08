@@ -7,6 +7,8 @@ QTDIR_build:DESTDIR = $$QT_BUILD_TREE/plugins/platforms/android
 
 QT += opengl
 
+DEFINES += QEGL_EXTRA_DEBUG
+
 LIBS += -lEGL
 
 INCLUDEPATH += $$PWD $$PWD/..
