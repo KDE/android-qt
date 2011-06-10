@@ -314,7 +314,7 @@ static void mouseUp(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/, jint x, j
 static void mouseMove(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/, jint x, jint y)
 {
     QWindowSystemInterface::handleMouseEvent(0,
-                                             QEvent::MouseButtonPress,QPoint(x,y),QPoint(x,y),
+                                             QEvent::MouseMove,QPoint(x,y),QPoint(x,y),
                                              Qt::MouseButtons(Qt::LeftButton));
 }
 
