@@ -858,6 +858,7 @@ CFG_COREWLAN=auto
 CFG_ICD=auto
 CFG_NOPROCESS=no
 CFG_ICU=auto
+CFG_OPENSSL_SOURCE=
 
 # initalize variables used for installation
 QT_INSTALL_PREFIX=
@@ -1146,6 +1147,11 @@ while [ "$#" -gt 0 ]; do
             VAL=$1
         fi
 	;;
+    -openssl-source)
+        VAR="openssl-source"
+        shift
+        VAL="$1"
+    ;;
     -hostprefix)
         VAR=`echo $1 | sed "s,^-\(.*\),\1,"`
         # this option may or may not be followed by an argument
@@ -2091,6 +2097,9 @@ while [ "$#" -gt 0 ]; do
         else
             UNKNOWN_OPT=yes
         fi
+        ;;
+    openssl-source)
+	CFG_OPENSSL_SOURCE="$VAL"
         ;;
     ptmalloc)
         if [ "$VAL" = "yes" ]; then
@@ -8522,6 +8531,7 @@ QT_BUILD_TREE = \$\$quote($outpath)
 QT_BUILD_PARTS = $CFG_BUILD_PARTS
 QMAKE_ABSOLUTE_SOURCE_ROOT = \$\$QT_SOURCE_TREE
 QMAKE_MOC_SRC    = \$\$QT_BUILD_TREE/src/moc
+QT_OPENSSL_SOURCE = \$\$quote($CFG_OPENSSL_SOURCE)
 
 #local paths that cannot be queried from the QT_INSTALL_* properties while building QTDIR
 QMAKE_MOC        = \$\$QT_BUILD_TREE/bin/moc

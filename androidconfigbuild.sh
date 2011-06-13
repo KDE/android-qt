@@ -12,12 +12,25 @@ SHARED_QT=1
 EXCEPTIONS_QT=1
 DEBUG_QT=0
 MODIFY_DEST_DIR_QT=0
+DOWNLOAD_OPENSSL=1
 NDK_PLATFORM=4
 DEST_DIR_QT=$PWD
 PLATFORM="-platform linux-g++"
 NDK_ROOT=/usr/local/android-ndk-r5b
 NDK_HOST=linux-x86
 TARGET_ARCH=armeabi
+
+SRC_DIR_QT=`dirname $0`
+pushd .
+SRC_DIR_QT=`(cd "$SRC_DIR_QT"; /bin/pwd)`
+popd
+
+#openssl vars
+OPENSSL_PACKAGE="openssl-1.0.0d.tar.gz"
+OPENSSL_NAME=`echo $OPENSSL_PACKAGE|sed 's#\.tar.gz##g'`
+OPENSSL_URL=http://www.openssl.org/source/$OPENSSL_PACKAGE
+OPENSSL_PREFIX=$SRC_DIR_QT/src/3rdparty/android/src/openssl
+OPENSSL_ROOT=$OPENSSL_PREFIX/$OPENSSL_NAME
 
 if [ "$OSTYPE" = "msys" ]; then
 	PLATFORM="-platform win32-g++"
@@ -31,11 +44,6 @@ else
 		NDK_PLATFORM=4
 	fi
 fi
-
-SRC_DIR_QT=`dirname $0`
-pushd .
-SRC_DIR_QT=`(cd "$SRC_DIR_QT"; /bin/pwd)`
-popd
 
 help()
 {
@@ -74,12 +82,16 @@ OPTIONS:
    -m      Modify install path according to passed in options (name suffixes applied in above listed order).
 
    -i      Install path. Default "$DEST_DIR_QT"
+   -w      Download the OpenSSL sources from "$OPENSSL_URL and
+	   extract to "$OPENSSL_PREFIX"
+		   0 - don't download
+		   1 - download
 EOF
 }
 
 INSTSUFFIX=""
 CFGOPTIONS=""
-while getopts "p:c:q:b:k:n:o:f:v:a:h:x:d:r:m:i:" arg; do
+while getopts "p:c:q:b:k:n:o:f:v:a:h:x:d:r:m:i:w:" arg; do
 case $arg in
 	p)
 		help
@@ -141,12 +153,28 @@ case $arg in
 	m)
 		MODIFY_DEST_DIR_QT=$OPTARG
 		;;
+	w)
+		DOWNLOAD_OPENSSL=$OPTARG
+		;;
 	?)
 		help
 		exit 0
 		;;
 esac
 done
+
+if [ "$DOWNLOAD_OPENSSL" -eq "1" ]; then
+	if [ ! -d "$OPENSSL_ROOT" ]; then
+	    echo "Downloading OpenSSL sources from $OPENSSL_URL."
+	    wget "$OPENSSL_URL" --no-verbose --directory-prefix="$OPENSSL_PREFIX"
+	    echo "Extracting OpenSSL sources to $OPENSSL_PREFIX."
+	    tar -xzf "$OPENSSL_PREFIX/$OPENSSL_PACKAGE" -C "$OPENSSL_PREFIX"
+	    echo "Cleaning up $OPENSSL_PREFIX/$OPENSSL_PACKAGE."
+	    rm "$OPENSSL_PREFIX/$OPENSSL_PACKAGE"
+	else
+	    echo "Found existing OpenSSL sources in $OPENSSL_ROOT."
+	fi
+fi
 
 if [ "$DEBUG_QT" -eq "1" ]; then
 	CFGOPTIONS="${CFGOPTIONS} -debug "
@@ -231,6 +259,7 @@ then
 		-openssl -pch -reduce-relocations -reduce-exports \
 		-nomake demos -no-multimedia -nomake examples -confirm-license \
 		$CFGOPTIONS -prefix $DEST_DIR_QT \
+		-openssl-source $OPENSSL_ROOT \
 		-script -no-webkit || exit 1
 fi
 
