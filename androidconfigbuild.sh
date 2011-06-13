@@ -171,6 +171,10 @@ if [ "$DOWNLOAD_OPENSSL" -eq "1" ]; then
 	    tar -xzf "$OPENSSL_PREFIX/$OPENSSL_PACKAGE" -C "$OPENSSL_PREFIX"
 	    echo "Cleaning up $OPENSSL_PREFIX/$OPENSSL_PACKAGE."
 	    rm "$OPENSSL_PREFIX/$OPENSSL_PACKAGE"
+	    echo "Patching $OPENSSL_ROOT/crypto/bio/bss_fd.c"
+	    echo "#ifdef INCLUDE_BSS_FILE" >> $OPENSSL_ROOT/crypto/bio/bss_fd.c
+	    echo "#include \"bio/bss_file.c\"" >> $OPENSSL_ROOT/crypto/bio/bss_fd.c
+	    echo "#endif" >> $OPENSSL_ROOT/crypto/bio/bss_fd.c
 	else
 	    echo "Found existing OpenSSL sources in $OPENSSL_ROOT."
 	fi
