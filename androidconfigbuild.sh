@@ -52,7 +52,7 @@ OPTIONS:
    -b      Build qt
                    0 - don't build
                    1 - build
-   -s      Install qt
+   -k      Install qt
                    0 - don't install
                    1 - install
    -n      NDK root. Default "$NDK_ROOT"
