@@ -58,7 +58,8 @@ public:
     QPaintEngine *paintEngine() const;
 
     virtual void endPaint() {
-        qDebug() << "virtual void QAndroidEglFSPaintDevice::endPaint()  ... This function is not called because of a unknown bug ... if you see this message in a running application please send a email to thomas.senyk@nokia.com";
+        QGLPaintDevice::endPaint();
+//        qDebug() << "virtual void QAndroidEglFSPaintDevice::endPaint()  ... This function is not called because of a unknown bug ... if you see this message in a running application please send a email to thomas.senyk@nokia.com";
     }
 
 private:

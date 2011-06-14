@@ -65,9 +65,13 @@ public:
     int depth() const;
     QImage::Format format() const;
 
-    QPlatformGLContext *platformContext() const;
+    QAndroidEglFSPlatformContext *platformContext() const;
+
+public slots:
+    void surfaceChanged();
 
 private:
+    void createWindowSurface();
     void createAndSetPlatformContext() const;
     void createAndSetPlatformContext();
 
@@ -77,9 +81,9 @@ private:
     int m_depth;
     QImage::Format m_format;
     QAndroidEglFSPlatformContext *m_platformContext;
-    EGLDisplay m_dpy;
-    EGLSurface mPBSurface;
-
+    EGLDisplay m_display;
+    EGLSurface m_windowSurface;
+    EGLConfig  m_config;
 
 
     // functions for Android-On-Screen-Blitting:

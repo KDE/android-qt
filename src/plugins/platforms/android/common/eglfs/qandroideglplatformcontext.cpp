@@ -90,6 +90,13 @@ QAndroidEglFSPlatformContext::~QAndroidEglFSPlatformContext()
     }
 }
 
+void QAndroidEglFSPlatformContext::setSurface(EGLSurface surface)
+{
+    doneCurrent();
+    m_eglSurface = surface;
+    makeCurrent();
+}
+
 void QAndroidEglFSPlatformContext::makeCurrent()
 {
     QPlatformGLContext::makeCurrent();    

@@ -65,7 +65,7 @@ QPlatformIntegration* QAndroidPlatformIntegrationPlugin::create(const QString &k
     Q_UNUSED(paramList);
     qDebug() << "QAndroidPlatformIntegrationPlugin::create" << key;
     if (key.toLower() == "android")
-        return new QAndroidEglFSIntegration;
+        return new QAndroidPlatformIntegration;
     return 0;
 }
 

@@ -52,6 +52,7 @@ public class QtApplication extends Application
     private static int m_oldx, m_oldy;
     private static final int m_moveThreshold = 0;
 
+
     public static QtActivity mainActivity()
     {
         return m_mainActivity;
@@ -405,8 +406,6 @@ public class QtApplication extends Application
             }
         });
     }
-
-    public static native void setEglObject(Object eglObject);
 
     // screen methods
     public static native void setDisplayMetrics(int screenWidthPixels,

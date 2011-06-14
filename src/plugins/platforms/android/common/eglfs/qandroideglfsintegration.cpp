@@ -78,7 +78,7 @@ public:
 };
 
 
-QAndroidEglFSIntegration::QAndroidEglFSIntegration()
+QAndroidPlatformIntegration::QAndroidPlatformIntegration()
     : mFontDb(new QAndroidPlatformFontDatabase())
 {
     m_primaryScreen = new QAndroidEglFSScreen(EGL_DEFAULT_DISPLAY);
@@ -91,7 +91,7 @@ QAndroidEglFSIntegration::QAndroidEglFSIntegration()
     QtAndroid::setAndroidPlatformIntegration(this);
 }
 
-QPixmapData *QAndroidEglFSIntegration::createPixmapData(QPixmapData::PixelType type) const
+QPixmapData *QAndroidPlatformIntegration::createPixmapData(QPixmapData::PixelType type) const
 {
     QGLPixmapData* result = new QGLPixmapData(type);
 
@@ -101,7 +101,7 @@ QPixmapData *QAndroidEglFSIntegration::createPixmapData(QPixmapData::PixelType t
     return result;
 }
 
-QPlatformWindow *QAndroidEglFSIntegration::createPlatformWindow(QWidget *widget, WId winId) const
+QPlatformWindow *QAndroidPlatformIntegration::createPlatformWindow(QWidget *widget, WId winId) const
 {
     Q_UNUSED(winId);
 
@@ -114,7 +114,7 @@ QPlatformWindow *QAndroidEglFSIntegration::createPlatformWindow(QWidget *widget,
 }
 
 
-QWindowSurface *QAndroidEglFSIntegration::createWindowSurface(QWidget *widget, WId winId) const
+QWindowSurface *QAndroidPlatformIntegration::createWindowSurface(QWidget *widget, WId winId) const
 {
     Q_UNUSED(winId);
 
@@ -126,28 +126,34 @@ QWindowSurface *QAndroidEglFSIntegration::createWindowSurface(QWidget *widget, W
     return result;
 }
 
-QPlatformFontDatabase *QAndroidEglFSIntegration::fontDatabase() const
+QPlatformFontDatabase *QAndroidPlatformIntegration::fontDatabase() const
 {
     return mFontDb;
 }
 
+void QAndroidPlatformIntegration::surfaceChanged()
+{
+    if (m_primaryScreen)
+        QMetaObject::invokeMethod(m_primaryScreen, "surfaceChanged", Qt::AutoConnection);
+}
+
 // JNI stuff:
 #include <QDebug>
-void QAndroidEglFSIntegration::pauseApp()
+void QAndroidPlatformIntegration::pauseApp()
 {
     qDebug() << "void QEglFSIntegration::pauseApp()";
 //    if (QAbstractEventDispatcher::instance(mMainThread))
 //        QAbstractEventDispatcher::instance(mMainThread)->interrupt();
 }
 
-void QAndroidEglFSIntegration::resumeApp()
+void QAndroidPlatformIntegration::resumeApp()
 {
     qDebug() << "void QEglFSIntegration::resumeApp()";
 //    if (QAbstractEventDispatcher::instance(mMainThread))
 //        QAbstractEventDispatcher::instance(mMainThread)->wakeUp();
 }
 
-void QAndroidEglFSIntegration::setDefaultDisplayMetrics(int /*gw*/, int /*gh*/, int /*sw*/, int /*sh*/)
+void QAndroidPlatformIntegration::setDefaultDisplayMetrics(int /*gw*/, int /*gh*/, int /*sw*/, int /*sh*/)
 {
 //    mDefaultGeometryWidth=gw;
 //    mDefaultGeometryHeight=gh;
@@ -155,13 +161,13 @@ void QAndroidEglFSIntegration::setDefaultDisplayMetrics(int /*gw*/, int /*gh*/, 
 //    mDefaultPhysicalSizeHeight=sh;
 }
 
-void QAndroidEglFSIntegration::setDefaultDesktopSize(int /*gw*/, int /*gh*/)
+void QAndroidPlatformIntegration::setDefaultDesktopSize(int /*gw*/, int /*gh*/)
 {
 //    mDefaultGeometryWidth=gw;
 //    mDefaultGeometryHeight=gh;
 }
 
-void QAndroidEglFSIntegration::setDesktopSize(int /*width*/, int /*height*/)
+void QAndroidPlatformIntegration::setDesktopSize(int /*width*/, int /*height*/)
 {
 //    qDebug()<<"setDesktopSize";
 //    if (mPrimaryScreen)
@@ -169,7 +175,7 @@ void QAndroidEglFSIntegration::setDesktopSize(int /*width*/, int /*height*/)
 //    qDebug()<<"setDesktopSize done";
 }
 
-void QAndroidEglFSIntegration::setDisplayMetrics(int /*width*/, int /*height*/)
+void QAndroidPlatformIntegration::setDisplayMetrics(int /*width*/, int /*height*/)
 {
 //    qDebug()<<"setDisplayMetrics";
 //    if (mPrimaryScreen)

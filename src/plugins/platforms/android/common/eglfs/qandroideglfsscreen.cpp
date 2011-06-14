@@ -47,6 +47,12 @@
 #include "androidjnimain.h"
 #include "GLES2/gl2.h"
 
+#include <android/api-level.h>
+
+#if __ANDROID_API__>8
+# include <android/native_window.h>
+#endif
+
 #include <QThread>
 #include <QDebug>
 
@@ -92,29 +98,26 @@ QAndroidEglFSScreen::QAndroidEglFSScreen(EGLNativeDisplayType display)
     : m_depth(32)
     , m_format(QImage::Format_Invalid)
     , m_platformContext(0)
-    , mPBSurface(0)
+    , m_windowSurface(EGL_NO_SURFACE)
 {
 #ifdef QEGL_EXTRA_DEBUG
     qWarning("QEglScreen %p\n", this);
 #endif
 
     EGLint major, minor;
-#ifdef QEGL_EXTRA_DEBUG
-    EGLint index;
-#endif
     if (!eglBindAPI(EGL_OPENGL_ES_API)) {
         qWarning("Could not bind GL_ES API\n");
         qFatal("EGL error");
     }
 
-    m_dpy = eglGetDisplay(display);
-    if (m_dpy == EGL_NO_DISPLAY) {
+    m_display = eglGetDisplay(display);
+    if (m_display == EGL_NO_DISPLAY) {
         qWarning("Could not open egl display\n");
         qFatal("EGL error");
     }
-    qWarning("Opened display %p\n", m_dpy);
+    qWarning("Opened display %p\n", m_display);
 
-    if (!eglInitialize(m_dpy, &major, &minor)) {
+    if (!eglInitialize(m_display, &major, &minor)) {
         qWarning("Could not initialize egl display\n");
         qFatal("EGL error");
     }
@@ -129,12 +132,73 @@ QAndroidEglFSScreen::QAndroidEglFSScreen(EGLNativeDisplayType display)
         if (!ok)
             swapInterval = 1;
     }
-    eglSwapInterval(m_dpy, swapInterval);
+    eglSwapInterval(m_display, swapInterval);
+    createAndSetPlatformContext();
 }
 
-void QAndroidEglFSScreen::createAndSetPlatformContext() const {
-    const_cast<QAndroidEglFSScreen *>(this)->createAndSetPlatformContext();
+#define NAME_NOT_FOUND 1
+#define NO_ERROR 0
+
+static int32_t getConfigFormatInfo(EGLint configID,
+        int32_t& /*pixelFormat*/, int32_t& /*depthFormat*/)
+{
+    switch(configID) {
+    case 0:
+        break;
+    case 1:
+        break;
+    case 2:
+        break;
+    case 3:
+        break;
+    case 4:
+        break;
+    case 5:
+        break;
+    case 6:
+        break;
+    case 7:
+        break;
+    default:
+        return NAME_NOT_FOUND;
+    }
+    return NO_ERROR;
 }
+
+
+static void checkBadMatch(EGLDisplay dpy, EGLConfig config,
+                     NativeWindowType window, const EGLint */*attrib_list*/)
+{
+    qDebug()<<"checkBadMatch";
+    if (window == 0)
+    {
+        qDebug()<<"(window == 0)";
+        return;
+    }
+    EGLint surfaceType;
+    if (eglGetConfigAttrib(dpy, config, EGL_SURFACE_TYPE, &surfaceType) == EGL_FALSE)
+        return;
+
+    if (!(surfaceType & EGL_WINDOW_BIT))
+    {
+        qDebug()<<"(!(surfaceType & EGL_WINDOW_BIT))";
+        return;
+    }
+
+    EGLint configID;
+    if (eglGetConfigAttrib(dpy, config, EGL_CONFIG_ID, &configID) == EGL_FALSE)
+    {
+        qDebug()<<"eglGetConfigAttrib(dpy, config, EGL_CONFIG_ID, &configID) == EGL_FALSE";
+        return;
+    }
+    int32_t depthFormat;
+    int32_t pixelFormat;
+    if (getConfigFormatInfo(configID, pixelFormat, depthFormat) != NO_ERROR) {
+        qDebug()<<"getConfigFormatInfo(configID, pixelFormat, depthFormat) != NO_ERROR";
+        return;
+    }
+}
+
 
 int nextBiggerPow2(int start, int max){
     int i = 2;
@@ -145,6 +209,56 @@ int nextBiggerPow2(int start, int max){
     else        return i;
 }
 
+void QAndroidEglFSScreen::createWindowSurface()
+{
+    if (m_windowSurface!=EGL_NO_SURFACE)
+    { // unbind and destroy old surface
+        eglMakeCurrent(m_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+        eglDestroySurface(m_display, m_windowSurface);
+        m_windowSurface = EGL_NO_SURFACE;
+    }
+    EGLint maxWidth = 2048; // just to have something if eglGetConfigAttrib doesn't work
+    eglGetConfigAttrib(m_display, m_config, EGL_MAX_PBUFFER_WIDTH, &maxWidth);
+    EGLint maxHeight = 2048;
+    eglGetConfigAttrib(m_display, m_config, EGL_MAX_PBUFFER_HEIGHT, &maxHeight);
+    EGLint temp = 0;
+    EGLint surfaceAttribList[32];
+    surfaceAttribList[temp++] = EGL_WIDTH;
+    surfaceAttribList[temp++] = nextBiggerPow2(mGeometry.width(), maxWidth);
+
+    surfaceAttribList[temp++] = EGL_HEIGHT;
+    surfaceAttribList[temp++] = nextBiggerPow2(mGeometry.height(), maxHeight);
+
+    surfaceAttribList[temp++] = EGL_TEXTURE_FORMAT;
+    surfaceAttribList[temp++] = EGL_TEXTURE_RGBA;
+
+    surfaceAttribList[temp++] = EGL_TEXTURE_TARGET;
+    surfaceAttribList[temp++] = EGL_TEXTURE_2D;
+
+    surfaceAttribList[temp++] = EGL_NONE;
+    EGLNativeWindowType window=QtAndroid::getNativeWindow();
+#if __ANDROID_API__>8
+    qDebug()<<"ANativeWindow_settings width "<<ANativeWindow_getWidth(window)<<" height "<<ANativeWindow_getHeight(window)<<" format "<< ANativeWindow_getFormat(window);
+    EGLint format;
+    eglGetConfigAttrib(m_display, m_config, EGL_NATIVE_VISUAL_ID, &format);
+    ANativeWindow_setBuffersGeometry(window, 0, 0, format);
+#endif
+    qDebug()<<"QAndroidEglFSScreen::createWindowSurface"<<window;
+    checkBadMatch(m_display, m_config, window, 0);
+    m_windowSurface = eglCreateWindowSurface(m_display, m_config, window, 0);
+//    m_windowSurface = eglCreatePbufferSurface(m_display, m_config, surfaceAttribList);
+    qt_checkAndWarnAboutEGLError("QEglFSScreen::createAndSetPlatformContext()", "eglCreatePbufferSurface(m_display, m_config, surfaceAttribList).    (Note: a known error on a lot of devices is:  EGL_BAD_PARAMETER (0x300C / 12300))");
+    if (m_windowSurface == EGL_NO_SURFACE) {
+        qWarning("Could not create the egl surface: error = 0x%x\n", eglGetError());
+        eglTerminate(m_display);
+        qFatal("EGL error");
+    }
+}
+
+void QAndroidEglFSScreen::createAndSetPlatformContext() const {
+    const_cast<QAndroidEglFSScreen *>(this)->createAndSetPlatformContext();
+}
+
 void QAndroidEglFSScreen::createAndSetPlatformContext()
 {
     QPlatformWindowFormat platformFormat = QPlatformWindowFormat::defaultFormat();
@@ -152,7 +266,8 @@ void QAndroidEglFSScreen::createAndSetPlatformContext()
     platformFormat.setWindowApi(QPlatformWindowFormat::OpenGL);
 
     QByteArray depthString = qgetenv("QT_QPA_EGLFS_DEPTH");
-    if (depthString.toInt() == 16) {
+    if (true)//depthString.toInt() == 16)
+    {
         platformFormat.setDepth(16);
         platformFormat.setRedBufferSize(5);
         platformFormat.setGreenBufferSize(6);
@@ -171,59 +286,55 @@ void QAndroidEglFSScreen::createAndSetPlatformContext()
         platformFormat.setSampleBuffers(true);
     }
 
-    EGLConfig config = q_configFromQPlatformWindowFormat(m_dpy, platformFormat);
+//    const EGLint attribs[] = {
+//            EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
+//            EGL_BLUE_SIZE, 5,
+//            EGL_GREEN_SIZE, 6,
+//            EGL_RED_SIZE, 5,
+//            EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+//            EGL_NONE
+//    };
+
+//    EGLint numConfigs;
+//    eglChooseConfig(m_display, attribs, &m_config, 1, &numConfigs);
+    m_config = q_configFromQPlatformWindowFormat(m_display, platformFormat);
+
 #ifdef QEGL_EXTRA_DEBUG
-    qWarning("Configuration %d matches requirements\n", (int)config);
+    qWarning("Configuration %d matches requirements\n", (int)m_config);
 
     for (int index = 0; attrs[index].attr != -1; ++index) {
         EGLint value;
-        if (eglGetConfigAttrib(m_dpy, config, attrs[index].attr, &value)) {
+        if (eglGetConfigAttrib(m_display, m_config, attrs[index].attr, &value)) {
             qWarning("\t%s: %d\n", attrs[index].name, (int)value);
         }
     }
     qWarning("\n");
 #endif
 
-    EGLint maxWidth = 2048; // just to have something if eglGetConfigAttrib doesn't work
-    eglGetConfigAttrib(m_dpy, config, EGL_MAX_PBUFFER_WIDTH, &maxWidth);
-    EGLint maxHeight = 2048;
-    eglGetConfigAttrib(m_dpy, config, EGL_MAX_PBUFFER_HEIGHT, &maxHeight);
-
     EGLint temp = 0;
-    EGLint surfaceAttribList[32];
-    surfaceAttribList[temp++] = EGL_WIDTH;
-    surfaceAttribList[temp++] = nextBiggerPow2(mGeometry.width(), maxWidth);
+//    EGLint surfaceAttribList[32];
+//    surfaceAttribList[temp++] = EGL_WIDTH;
+//    surfaceAttribList[temp++] = nextBiggerPow2(mGeometry.width(), maxWidth);
 
-    surfaceAttribList[temp++] = EGL_HEIGHT;
-    surfaceAttribList[temp++] = nextBiggerPow2(mGeometry.height(), maxHeight);
+//    surfaceAttribList[temp++] = EGL_HEIGHT;
+//    surfaceAttribList[temp++] = nextBiggerPow2(mGeometry.height(), maxHeight);
 
-    surfaceAttribList[temp++] = EGL_TEXTURE_FORMAT;
-    surfaceAttribList[temp++] = EGL_TEXTURE_RGBA;
+//    surfaceAttribList[temp++] = EGL_TEXTURE_FORMAT;
+//    surfaceAttribList[temp++] = EGL_TEXTURE_RGBA;
 
-    surfaceAttribList[temp++] = EGL_TEXTURE_TARGET;
-    surfaceAttribList[temp++] = EGL_TEXTURE_2D;
+//    surfaceAttribList[temp++] = EGL_TEXTURE_TARGET;
+//    surfaceAttribList[temp++] = EGL_TEXTURE_2D;
 
-    surfaceAttribList[temp++] = EGL_NONE;
+//    surfaceAttribList[temp++] = EGL_NONE;
 
 
-    mPBSurface = eglCreatePbufferSurface(m_dpy, config, surfaceAttribList);
-    qt_checkAndWarnAboutEGLError("QEglFSScreen::createAndSetPlatformContext()", "eglCreatePbufferSurface(m_dpy, config, surfaceAttribList).    (Note: a known error on a lot of devices is:  EGL_BAD_PARAMETER (0x300C / 12300))");
-    if (mPBSurface == EGL_NO_SURFACE) {
-        qWarning("Could not create the egl surface: error = 0x%x\n", eglGetError());
-        eglTerminate(m_dpy);
-        qFatal("EGL error");
-    }
-
-    EGLint w,h;                    // screen size detection
-    eglQuerySurface(m_dpy, mPBSurface, EGL_WIDTH, &w);
-    eglQuerySurface(m_dpy, mPBSurface, EGL_HEIGHT, &h);
-#ifdef QEGL_EXTRA_DEBUG
-    qDebug() << "eglQuerySurface(m_dpy, mPBSurface,...) returned:" << w << "for EGL_WIDTH and" << h << "for EGL_HEIGHT";
-#endif
-    if(w <= 0 || h <= 0)
-        qFatal("PBufferSurface has invalid size!!!");
-    mPbufferSize = QSize(w,h);
-
+//    m_windowSurface = eglCreatePbufferSurface(m_display, m_config, surfaceAttribList);
+//    qt_checkAndWarnAboutEGLError("QEglFSScreen::createAndSetPlatformContext()", "eglCreatePbufferSurface(m_display, m_config, surfaceAttribList).    (Note: a known error on a lot of devices is:  EGL_BAD_PARAMETER (0x300C / 12300))");
+//    if (m_windowSurface == EGL_NO_SURFACE) {
+//        qWarning("Could not create the egl surface: error = 0x%x\n", eglGetError());
+//        eglTerminate(m_display);
+//        qFatal("EGL error");
+//    }
     EGLint attribList[32];
     temp = 0;
 
@@ -231,9 +342,23 @@ void QAndroidEglFSScreen::createAndSetPlatformContext()
     attribList[temp++] = 2; // GLES version 2
     attribList[temp++] = EGL_NONE;
 
-    QAndroidEglFSPlatformContext *platformContext = new QAndroidEglFSPlatformContext(m_dpy,config,attribList,mPBSurface,EGL_OPENGL_ES_API);
+
+    createWindowSurface();
+
+    QAndroidEglFSPlatformContext *platformContext = new QAndroidEglFSPlatformContext(m_display,m_config,attribList,m_windowSurface,EGL_OPENGL_ES_API);
 #warning FIXME
     platformContext->makeDefaultSharedContext(); // This is deprecated ... only working with reverting f7c8ac6e59906ab9fda9bbe1420e7b9a0ebb153d
+    EGLint w,h;                    // screen size detection
+    eglQuerySurface(m_display, m_windowSurface, EGL_WIDTH, &w);
+    eglQuerySurface(m_display, m_windowSurface, EGL_HEIGHT, &h);
+#ifdef QEGL_EXTRA_DEBUG
+    qDebug() << "eglQuerySurface(m_display, mPBSurface,...) returned:" << w << "for EGL_WIDTH and" << h << "for EGL_HEIGHT";
+#endif
+    if(w <= 0 || h <= 0)
+        qFatal("PBufferSurface has invalid size!!!");
+    mPbufferSize = QSize(w,h);
+    mGeometry.setSize(mPbufferSize);
+
     platformContext->makeCurrent();              // Is this necessary?
 
     m_platformContext = platformContext;
@@ -262,7 +387,8 @@ QImage::Format QAndroidEglFSScreen::format() const
     }
     return m_format;
 }
-QPlatformGLContext *QAndroidEglFSScreen::platformContext() const
+
+QAndroidEglFSPlatformContext *QAndroidEglFSScreen::platformContext() const
 {
     if (!m_platformContext) {
         QAndroidEglFSScreen *that = const_cast<QAndroidEglFSScreen *>(this);
@@ -271,6 +397,11 @@ QPlatformGLContext *QAndroidEglFSScreen::platformContext() const
     return m_platformContext;
 }
 
+void QAndroidEglFSScreen::surfaceChanged()
+{
+    createWindowSurface();
+    platformContext()->setSurface(m_windowSurface);
+}
 
 
 #include "gl_code.h"
@@ -364,14 +495,14 @@ void QAndroidEglFSScreen::renderFrame()
     glUniform1i(mTextureUnitUniform, 0);
 
 
-    eglBindTexImage(m_dpy, mPBSurface, EGL_BACK_BUFFER);
-    qt_checkAndWarnAboutEGLError("QEglFSScreen::renderFrame()", "eglBindTexImage(m_dpy, mPBSurface, EGL_BACK_BUFFER)");
+    eglBindTexImage(m_display, m_windowSurface, EGL_BACK_BUFFER);
+    qt_checkAndWarnAboutEGLError("QEglFSScreen::renderFrame()", "eglBindTexImage(m_display, mPBSurface, EGL_BACK_BUFFER)");
 
     glDrawElements ( GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, indices );
     qt_checkAndWarnAboutGLError("QEglFSScreen::renderFrame()", "glDrawElements ( GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, indices );");
 
-    eglReleaseTexImage(m_dpy, mPBSurface, EGL_BACK_BUFFER);
-    qt_checkAndWarnAboutEGLError("QEglFSScreen::renderFrame()", "eglReleaseTexImage(m_dpy, mPBSurface, EGL_BACK_BUFFER);");
+    eglReleaseTexImage(m_display, m_windowSurface, EGL_BACK_BUFFER);
+    qt_checkAndWarnAboutEGLError("QEglFSScreen::renderFrame()", "eglReleaseTexImage(m_display, mPBSurface, EGL_BACK_BUFFER);");
 
 }
 

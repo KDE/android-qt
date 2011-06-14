@@ -5,7 +5,9 @@ DEFINES = QT_STATICPLUGIN
 CONFIG += dll
 
 INCLUDEPATH += $$NDK_ROOT/platforms/android-9/arch-arm/usr/include
-LIBS += -L$$NDK_ROOT/platforms/android-9/arch-arm/usr/lib -ljnigraphics
+INCLUDEPATH -= $$NDK_ROOT/platforms/$$ANDROID_PLATFORM/arch-arm/usr/include
+
+LIBS += -L$$NDK_ROOT/platforms/android-9/arch-arm/usr/lib -ljnigraphics -landroid
 
 include($$QT_SOURCE_TREE/src/plugins/platforms/android/common/eglfs/eglfs.pri)
 

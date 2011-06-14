@@ -52,6 +52,8 @@ public:
     QAndroidEglFSPlatformContext(EGLDisplay display, EGLConfig config, EGLint contextAttrs[], EGLSurface surface, EGLenum eglApi);
     ~QAndroidEglFSPlatformContext();
 
+    void setSurface(EGLSurface surface);
+
     void makeCurrent();
     void doneCurrent();
     void swapBuffers();

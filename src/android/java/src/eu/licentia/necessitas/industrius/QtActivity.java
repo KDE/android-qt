@@ -130,7 +130,7 @@ public class QtActivity extends Activity {
                 environment=homePath;
 
             QtApplication.startApplication(params, environment);
-            m_surface.applicationStared();
+            m_surface.applicationStared( true );
             m_started = true;
         }
         catch (NameNotFoundException e)
@@ -287,7 +287,7 @@ public class QtActivity extends Activity {
                             metrics.widthPixels, metrics.heightPixels,
                             metrics.xdpi, metrics.ydpi);
         }
-        requestWindowFeature(Window.FEATURE_NO_TITLE);
+        // requestWindowFeature(Window.FEATURE_NO_TITLE);
         m_layout=new QtLayout(this);
         m_surface = new QtSurface(this, m_id);
         m_layout.addView(m_surface,0);
@@ -300,6 +300,11 @@ public class QtActivity extends Activity {
     public QtLayout getQtLayout()
     {
         return m_layout;
+    }
+
+    public QtSurface getQtSurface()
+    {
+        return m_surface;
     }
 
     @Override
@@ -334,11 +339,11 @@ public class QtActivity extends Activity {
             Iterator<Runnable> itr=QtApplication.getLostActions().iterator();
             while(itr.hasNext())
                 runOnUiThread(itr.next());
-                if (m_started)
-                {
-                    QtApplication.clearLostActions();
-                    QtApplication.updateWindow();
-                }
+            if (m_started)
+            {
+                QtApplication.clearLostActions();
+                QtApplication.updateWindow();
+            }
         }
         super.onResume();
     }
@@ -370,7 +375,7 @@ public class QtActivity extends Activity {
         setFullScreen(savedInstanceState.getBoolean("FullScreen"));
         m_started = savedInstanceState.getBoolean("Started");
         if (m_started)
-            m_surface.applicationStared();
+            m_surface.applicationStared( true );
     }
 
     public void showSoftwareKeyboard()

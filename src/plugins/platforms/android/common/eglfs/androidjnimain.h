@@ -28,16 +28,19 @@
 #ifndef ANDROID_APP_H
 #define ANDROID_APP_H
 
+#define QT_OPENGL_LIB
+
+#include <EGL/eglplatform.h>
+
 class QImage;
 class QRect;
 class QPoint;
 class QThread;
-class QAndroidEglFSIntegration;
+class QAndroidPlatformIntegration;
 
 namespace QtAndroid
 {
-    void flushImage(const QPoint & pos, const QImage & image, const QRect & rect);
-    void setAndroidPlatformIntegration(QAndroidEglFSIntegration * androidGraphicsSystem);
+    void setAndroidPlatformIntegration(QAndroidPlatformIntegration * androidGraphicsSystem);
     void setQtThread(QThread * thread);
 
     void setFullScreen(bool fullScreen);
@@ -46,5 +49,11 @@ namespace QtAndroid
     void showSoftwareKeyboard();
     void hideSoftwareKeyboard();
     // Software keyboard support
+
+#ifndef QT_OPENGL_LIB
+    void flushImage(const QPoint & pos, const QImage & image, const QRect & rect);
+#else
+    EGLNativeWindowType getNativeWindow(bool waitToCreate=true);
+#endif
 }
 #endif // ANDROID_APP_H

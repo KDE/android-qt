@@ -215,7 +215,7 @@ EGLConfig q_configFromQPlatformWindowFormat(EGLDisplay display, const QPlatformW
 
     configureAttributes.append(EGL_RENDERABLE_TYPE);
     if (format.windowApi() == QPlatformWindowFormat::OpenVG) {
-        configureAttributes.append(EGL_OPENVG_BIT);        
+        configureAttributes.append(EGL_OPENVG_BIT);
     } else {
         configureAttributes.append(EGL_OPENGL_ES2_BIT);
     }

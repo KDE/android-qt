@@ -51,10 +51,10 @@ QT_BEGIN_HEADER
 
 QT_BEGIN_NAMESPACE
 
-class QAndroidEglFSIntegration : public QPlatformIntegration
+class QAndroidPlatformIntegration : public QPlatformIntegration
 {
 public:
-    QAndroidEglFSIntegration();
+    QAndroidPlatformIntegration();
 
     QPixmapData *createPixmapData(QPixmapData::PixelType type) const;
     QPlatformWindow *createPlatformWindow(QWidget *widget, WId winId) const;
@@ -64,6 +64,7 @@ public:
 
     QPlatformFontDatabase *fontDatabase() const;
 
+    void surfaceChanged();
 
 private:
     QPlatformFontDatabase *mFontDb;
