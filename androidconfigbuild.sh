@@ -11,7 +11,6 @@ INSTALL_QT=0
 SHARED_QT=1
 EXCEPTIONS_QT=1
 DEBUG_QT=0
-RELEASE_QT=1
 MODIFY_DEST_DIR_QT=0
 NDK_PLATFORM=4
 DEST_DIR_QT=$PWD
@@ -72,8 +71,6 @@ OPTIONS:
                    Optional name suffix: Xc/Nx
    -d      Build debug qt
                    Optional name suffix: D/R/DaR
-   -r      Build release qt
-                   Optional name suffix: R/D/DaR
    -m      Modify install path according to passed in options (name suffixes applied in above listed order).
 
    -i      Install path. Default "$DEST_DIR_QT"
@@ -138,9 +135,6 @@ case $arg in
 	d)
 		DEBUG_QT=$OPTARG
 		;;
-	r)
-		RELEASE_QT=$OPTARG
-		;;
 	i)
 		DEST_DIR_QT=$OPTARG
 		;;
@@ -154,20 +148,12 @@ case $arg in
 esac
 done
 
-if [ "$DEBUG_QT" -eq "1" -a "$RELEASE_QT" -eq "1" ]; then
-	# This doesn't work, the release and debug builds use the same
-	# temporary folders and end up with a release lib/dll that's really
-	# a debug one.
-	CFGOPTIONS="${CFGOPTIONS} -debug-and-release "
-	INSTSUFFIX="${INSTSUFFIX}DaR"
+if [ "$DEBUG_QT" -eq "1" ]; then
+	CFGOPTIONS="${CFGOPTIONS} -debug "
+	INSTSUFFIX="${INSTSUFFIX}D"
 else
-	if [ "$DEBUG_QT" -eq "1" ]; then
-		CFGOPTIONS="${CFGOPTIONS} -debug "
-		INSTSUFFIX="${INSTSUFFIX}D"
-	else
-		CFGOPTIONS="${CFGOPTIONS} -release "
-		INSTSUFFIX="${INSTSUFFIX}R"
-	fi
+	CFGOPTIONS="${CFGOPTIONS} -release "
+	INSTSUFFIX="${INSTSUFFIX}R"
 fi
 
 if [ "$MODIFY_DEST_DIR_QT" -eq "1" ]; then
