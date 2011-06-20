@@ -25,30 +25,23 @@
     SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef ANDROID_APP_H
-#define ANDROID_APP_H
+#ifndef ANDROIDPLATFORMDESKTOPSERVICE_H
+#define ANDROIDPLATFORMDESKTOPSERVICE_H
 
-#include<jni.h>
+#include <QPlatformDesktopService>
+#include <androidjnimain.h>
+#include <jni.h>
 
-class QImage;
-class QRect;
-class QPoint;
-class QThread;
-class QAndroidPlatformIntegration;
-
-namespace QtAndroid
+class QAndroidPlatformDesktopService: public QPlatformDesktopService
 {
-    void flushImage(const QPoint & pos, const QImage & image, const QRect & rect);
-    void setAndroidPlatformIntegration(QAndroidPlatformIntegration * androidGraphicsSystem);
+public:
+    QAndroidPlatformDesktopService();
+    virtual QString displayName ( QDesktopServices::StandardLocation type );
+    virtual bool openUrl ( const QUrl & url );
+    virtual QString storageLocation ( QDesktopServices::StandardLocation type );
+private:
+    jmethodID m_openURIMethodID;
 
-    void setFullScreen(bool fullScreen);
+};
 
-    // Software keyboard support
-    void showSoftwareKeyboard();
-    void hideSoftwareKeyboard();
-    // Software keyboard support
-
-    JavaVM * javaVM();
-    jclass applicationClass();
-}
-#endif // ANDROID_APP_H
+#endif // ANDROIDPLATFORMDESKTOPSERVICE_H

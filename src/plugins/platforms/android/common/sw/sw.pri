@@ -9,9 +9,11 @@ INCLUDEPATH += $$PWD $$PWD/..
 SOURCES += $$PWD/androidplatformplugin.cpp \
            $$PWD/androidjnimain.cpp \
            $$PWD/qandroidplatformintegration.cpp \
+           $$PWD/qandroidplatformdesktopservice.cpp \
            $$PWD/../qandroidinputcontext.cpp
 
 HEADERS += $$PWD/qandroidplatformintegration.h \
+           $$PWD/qandroidplatformdesktopservice.h \
            $$PWD/../qandroidinputcontext.h
 
 include($$QT_SOURCE_TREE/src/plugins/platforms/fb_base/fb_base.pri)

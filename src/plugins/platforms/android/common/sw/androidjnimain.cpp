@@ -211,9 +211,14 @@ namespace QtAndroid
         m_javaVM->DetachCurrentThread();
     }
 
-    void * javaVM()
+    JavaVM * javaVM()
     {
         return m_javaVM;
+    }
+
+    jclass applicationClass()
+    {
+        return m_applicationClass;
     }
 
 }

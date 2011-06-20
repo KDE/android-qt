@@ -31,6 +31,8 @@ import java.io.File;
 import java.util.ArrayList;
 
 import android.app.Application;
+import android.content.Intent;
+import android.net.Uri;
 import android.util.Log;
 import android.view.MotionEvent;
 
@@ -60,6 +62,13 @@ public class QtApplication extends Application
     public static QtSurface mainView()
     {
         return m_mainView;
+    }
+
+    public static void openURL(String url)
+    {
+        Uri uri = Uri.parse(url);
+        Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+        mainActivity().startActivity(intent);
     }
 
     // this method loads full path libs

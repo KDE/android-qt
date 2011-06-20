@@ -43,6 +43,7 @@
 
 #include <QtGui/QPlatformFontDatabase>
 #include <QtGui/QPlatformClipboard>
+#include <QtGui/QPlatformDesktopService>
 
 QT_BEGIN_NAMESPACE
 
@@ -218,7 +219,17 @@ bool QPlatformIntegration::hasCapability(Capability cap) const
     return false;
 }
 
-
+/*!
+  Documentation needed
+*/
+QPlatformDesktopService * QPlatformIntegration::platformDesktopService()
+{
+    static QPlatformDesktopService *ds = 0;
+    if (!ds) {
+        ds = new QPlatformDesktopService;
+    }
+    return ds;
+}
 
 
 
