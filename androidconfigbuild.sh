@@ -70,6 +70,7 @@ OPTIONS:
                    armeabi     - tune for android arm v5
                    armeabi-v7a - tune for android arm v7
                    Optional name suffix: v5/v7
+   -l      Android API Level. Default "$NDK_PLATFORM"
    -h      Shared
                    0 - Build static version of qt
                    1 - Build shared version of qt
@@ -91,7 +92,7 @@ EOF
 
 INSTSUFFIX=""
 CFGOPTIONS=""
-while getopts "p:c:q:b:k:n:o:f:v:a:h:x:d:r:m:i:w:" arg; do
+while getopts "p:c:q:b:k:n:o:f:v:a:l:h:x:d:r:m:i:w:" arg; do
 case $arg in
 	p)
 		help
@@ -133,6 +134,9 @@ case $arg in
 			INSTSUFFIX="${INSTSUFFIX}St"
 			CFGOPTIONS="${CFGOPTIONS} -static "
 		fi
+		;;
+    l)
+	    NDK_PLATFORM=$OPTARG
 		;;
 	x)
 		EXCEPTIONS_QT=$OPTARG
