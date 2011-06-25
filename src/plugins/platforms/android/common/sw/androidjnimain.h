@@ -28,7 +28,8 @@
 #ifndef ANDROID_APP_H
 #define ANDROID_APP_H
 
-#include<jni.h>
+#include <jni.h>
+#include <android/asset_manager.h>
 
 class QImage;
 class QRect;
@@ -49,6 +50,8 @@ namespace QtAndroid
     // Software keyboard support
 
     JavaVM * javaVM();
+    AAssetManager* assetManager();
+
     jclass applicationClass();
 }
 #endif // ANDROID_APP_H

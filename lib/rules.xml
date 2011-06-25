@@ -5,10 +5,10 @@
         <version value="6" symlink="5"/>
         <version value="7" symlink="5"/>
         <version value="8"/>
-        <version value="9" symlink="8"/>
-        <version value="10" symlink="8"/>
-        <version value="11" symlink="8"/>
-        <version value="12" symlink="8"/>
+        <version value="9"/>
+        <version value="10" symlink="9"/>
+        <version value="11" symlink="9"/>
+        <version value="12" symlink="9"/>
     </platforms>
     <dependencies>
         <lib name="QtGui">
