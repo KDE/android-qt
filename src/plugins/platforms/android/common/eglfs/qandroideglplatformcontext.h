@@ -49,7 +49,7 @@
 class QAndroidEglFSPlatformContext : public QPlatformGLContext
 {
 public:
-    QAndroidEglFSPlatformContext(EGLDisplay display, EGLConfig config, EGLint contextAttrs[], EGLSurface surface, EGLenum eglApi);
+    QAndroidEglFSPlatformContext(EGLDisplay display, EGLConfig config, EGLSurface surface, EGLenum eglApi);
     ~QAndroidEglFSPlatformContext();
 
     void setSurface(EGLSurface surface);

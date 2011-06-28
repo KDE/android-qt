@@ -53,7 +53,7 @@ QT_BEGIN_NAMESPACE
 
 class QPlatformGLContext;
 
-class QAndroidEglFSScreen : public QPlatformScreen //huh: FullScreenScreen ;) just to follow namespace
+class QAndroidEglFSScreen : public QPlatformScreen
 {
     Q_OBJECT
 
@@ -76,7 +76,6 @@ private:
     void createAndSetPlatformContext();
 
     QRect mGeometry;
-    QSize mPbufferSize;
 
     int m_depth;
     QImage::Format m_format;
@@ -84,22 +83,6 @@ private:
     EGLDisplay m_display;
     EGLSurface m_windowSurface;
     EGLConfig  m_config;
-
-
-    // functions for Android-On-Screen-Blitting:
-public:
-    bool setupGraphics(int w, int h);
-    void renderFrame();
-
-private:
-    // members for Android-On-Screen-Blitting:
-    GLuint mGLSLProgram;
-    GLuint mPositionVertexAttrib;
-    GLuint mTexCoordAttrib;
-    GLuint mTextureUnitUniform;
-    GLuint mPBTextureID;
-
-
 };
 
 QT_END_NAMESPACE

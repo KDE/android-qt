@@ -53,6 +53,7 @@
 # include <android/native_window.h>
 #endif
 
+#include <QWindowSystemInterface>
 #include <QThread>
 #include <QDebug>
 
@@ -133,7 +134,6 @@ QAndroidEglFSScreen::QAndroidEglFSScreen(EGLNativeDisplayType display)
             swapInterval = 1;
     }
     eglSwapInterval(m_display, swapInterval);
-    createAndSetPlatformContext();
 }
 
 #define NAME_NOT_FOUND 1
@@ -199,16 +199,6 @@ static void checkBadMatch(EGLDisplay dpy, EGLConfig config,
     }
 }
 
-
-int nextBiggerPow2(int start, int max){
-    int i = 2;
-    while(i < start)
-        i *=2;
-
-    if(i > max) return max;
-    else        return i;
-}
-
 void QAndroidEglFSScreen::createWindowSurface()
 {
     if (m_windowSurface!=EGL_NO_SURFACE)
@@ -217,25 +207,7 @@ void QAndroidEglFSScreen::createWindowSurface()
         eglDestroySurface(m_display, m_windowSurface);
         m_windowSurface = EGL_NO_SURFACE;
     }
-    EGLint maxWidth = 2048; // just to have something if eglGetConfigAttrib doesn't work
-    eglGetConfigAttrib(m_display, m_config, EGL_MAX_PBUFFER_WIDTH, &maxWidth);
-    EGLint maxHeight = 2048;
-    eglGetConfigAttrib(m_display, m_config, EGL_MAX_PBUFFER_HEIGHT, &maxHeight);
-    EGLint temp = 0;
-    EGLint surfaceAttribList[32];
-    surfaceAttribList[temp++] = EGL_WIDTH;
-    surfaceAttribList[temp++] = nextBiggerPow2(mGeometry.width(), maxWidth);
 
-    surfaceAttribList[temp++] = EGL_HEIGHT;
-    surfaceAttribList[temp++] = nextBiggerPow2(mGeometry.height(), maxHeight);
-
-    surfaceAttribList[temp++] = EGL_TEXTURE_FORMAT;
-    surfaceAttribList[temp++] = EGL_TEXTURE_RGBA;
-
-    surfaceAttribList[temp++] = EGL_TEXTURE_TARGET;
-    surfaceAttribList[temp++] = EGL_TEXTURE_2D;
-
-    surfaceAttribList[temp++] = EGL_NONE;
     EGLNativeWindowType window=QtAndroid::getNativeWindow();
 #if __ANDROID_API__>8
     qDebug()<<"ANativeWindow_settings width "<<ANativeWindow_getWidth(window)<<" height "<<ANativeWindow_getHeight(window)<<" format "<< ANativeWindow_getFormat(window);
@@ -246,13 +218,26 @@ void QAndroidEglFSScreen::createWindowSurface()
     qDebug()<<"QAndroidEglFSScreen::createWindowSurface"<<window;
     checkBadMatch(m_display, m_config, window, 0);
     m_windowSurface = eglCreateWindowSurface(m_display, m_config, window, 0);
-//    m_windowSurface = eglCreatePbufferSurface(m_display, m_config, surfaceAttribList);
-    qt_checkAndWarnAboutEGLError("QEglFSScreen::createAndSetPlatformContext()", "eglCreatePbufferSurface(m_display, m_config, surfaceAttribList).    (Note: a known error on a lot of devices is:  EGL_BAD_PARAMETER (0x300C / 12300))");
+
     if (m_windowSurface == EGL_NO_SURFACE) {
         qWarning("Could not create the egl surface: error = 0x%x\n", eglGetError());
         eglTerminate(m_display);
         qFatal("EGL error");
     }
+
+    EGLint w,h;                    // screen size detection
+    eglQuerySurface(m_display, m_windowSurface, EGL_WIDTH, &w);
+    eglQuerySurface(m_display, m_windowSurface, EGL_HEIGHT, &h);
+
+#ifdef QEGL_EXTRA_DEBUG
+    qDebug() << "eglQuerySurface(m_display, m_windowSurface,...) returned:" << w << "for EGL_WIDTH and" << h << "for EGL_HEIGHT";
+#endif
+
+    if(w <= 0 || h <= 0)
+        qFatal("EGL-WindowSurface has invalid size!");
+
+    mGeometry.setWidth(w);
+    mGeometry.setHeight(h);
 }
 
 void QAndroidEglFSScreen::createAndSetPlatformContext() const {
@@ -286,17 +271,6 @@ void QAndroidEglFSScreen::createAndSetPlatformContext()
         platformFormat.setSampleBuffers(true);
     }
 
-//    const EGLint attribs[] = {
-//            EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
-//            EGL_BLUE_SIZE, 5,
-//            EGL_GREEN_SIZE, 6,
-//            EGL_RED_SIZE, 5,
-//            EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
-//            EGL_NONE
-//    };
-
-//    EGLint numConfigs;
-//    eglChooseConfig(m_display, attribs, &m_config, 1, &numConfigs);
     m_config = q_configFromQPlatformWindowFormat(m_display, platformFormat);
 
 #ifdef QEGL_EXTRA_DEBUG
@@ -311,66 +285,23 @@ void QAndroidEglFSScreen::createAndSetPlatformContext()
     qWarning("\n");
 #endif
 
-    EGLint temp = 0;
-//    EGLint surfaceAttribList[32];
-//    surfaceAttribList[temp++] = EGL_WIDTH;
-//    surfaceAttribList[temp++] = nextBiggerPow2(mGeometry.width(), maxWidth);
-
-//    surfaceAttribList[temp++] = EGL_HEIGHT;
-//    surfaceAttribList[temp++] = nextBiggerPow2(mGeometry.height(), maxHeight);
-
-//    surfaceAttribList[temp++] = EGL_TEXTURE_FORMAT;
-//    surfaceAttribList[temp++] = EGL_TEXTURE_RGBA;
-
-//    surfaceAttribList[temp++] = EGL_TEXTURE_TARGET;
-//    surfaceAttribList[temp++] = EGL_TEXTURE_2D;
-
-//    surfaceAttribList[temp++] = EGL_NONE;
-
-
-//    m_windowSurface = eglCreatePbufferSurface(m_display, m_config, surfaceAttribList);
-//    qt_checkAndWarnAboutEGLError("QEglFSScreen::createAndSetPlatformContext()", "eglCreatePbufferSurface(m_display, m_config, surfaceAttribList).    (Note: a known error on a lot of devices is:  EGL_BAD_PARAMETER (0x300C / 12300))");
-//    if (m_windowSurface == EGL_NO_SURFACE) {
-//        qWarning("Could not create the egl surface: error = 0x%x\n", eglGetError());
-//        eglTerminate(m_display);
-//        qFatal("EGL error");
-//    }
-    EGLint attribList[32];
-    temp = 0;
-
-    attribList[temp++] = EGL_CONTEXT_CLIENT_VERSION;
-    attribList[temp++] = 2; // GLES version 2
-    attribList[temp++] = EGL_NONE;
-
-
     createWindowSurface();
 
-    QAndroidEglFSPlatformContext *platformContext = new QAndroidEglFSPlatformContext(m_display,m_config,attribList,m_windowSurface,EGL_OPENGL_ES_API);
+    Q_ASSERT(m_platformContext == 0);
+    m_platformContext = new QAndroidEglFSPlatformContext(m_display, m_config, m_windowSurface, EGL_OPENGL_ES_API);
+
 #warning FIXME
-    platformContext->makeDefaultSharedContext(); // This is deprecated ... only working with reverting f7c8ac6e59906ab9fda9bbe1420e7b9a0ebb153d
-    EGLint w,h;                    // screen size detection
-    eglQuerySurface(m_display, m_windowSurface, EGL_WIDTH, &w);
-    eglQuerySurface(m_display, m_windowSurface, EGL_HEIGHT, &h);
-#ifdef QEGL_EXTRA_DEBUG
-    qDebug() << "eglQuerySurface(m_display, mPBSurface,...) returned:" << w << "for EGL_WIDTH and" << h << "for EGL_HEIGHT";
-#endif
-    if(w <= 0 || h <= 0)
-        qFatal("PBufferSurface has invalid size!!!");
-    mPbufferSize = QSize(w,h);
-    mGeometry.setSize(mPbufferSize);
-
-    platformContext->makeCurrent();              // Is this necessary?
-
-    m_platformContext = platformContext;
+    m_platformContext->makeDefaultSharedContext(); // This is deprecated ... only working with reverting f7c8ac6e59906ab9fda9bbe1420e7b9a0ebb153d
+    m_platformContext->makeCurrent();              // Is this necessary?
 }
 
 
 QRect QAndroidEglFSScreen::geometry() const
 {
-    while(mGeometry.isNull()) {
-        qWarning() << "WARNING: The android-gl-thread hasn't setup it's opengl-surface yet. Wait 200ms and check again...";
-        usleep(100 * 1000);
+    if(!mGeometry.isValid()) {
+        createAndSetPlatformContext();
     }
+    Q_ASSERT(mGeometry.isValid());
 
     return mGeometry;
 }
@@ -391,8 +322,7 @@ QImage::Format QAndroidEglFSScreen::format() const
 QAndroidEglFSPlatformContext *QAndroidEglFSScreen::platformContext() const
 {
     if (!m_platformContext) {
-        QAndroidEglFSScreen *that = const_cast<QAndroidEglFSScreen *>(this);
-        that->createAndSetPlatformContext();
+        createAndSetPlatformContext();
     }
     return m_platformContext;
 }
@@ -401,109 +331,10 @@ void QAndroidEglFSScreen::surfaceChanged()
 {
     createWindowSurface();
     platformContext()->setSurface(m_windowSurface);
-}
 
 
-#include "gl_code.h"
-
-static const char gVertexShader[] =
-    "attribute vec4 a_PositionVector;           \n"
-    "attribute vec2 a_TexCoordVector;           \n"
-    "varying vec2 v_TexCoordVector;             \n"
-    "void main()                                \n"
-    "{                                          \n"
-    "   gl_Position = a_PositionVector;         \n"
-    "   v_TexCoordVector = a_TexCoordVector;    \n"
-    "}                                          \n";
-
-static const char gFragmentShader[] =
-    "precision mediump float;                                           \n"
-    "varying vec2 v_TexCoordVector;                                     \n"
-    "uniform sampler2D s_TextureUnit;                                   \n"
-    "void main()                                                        \n"
-    "{                                                                  \n"
-    "  gl_FragColor = texture2D( s_TextureUnit, v_TexCoordVector );     \n"
-    "}                                                                  \n";
-
-bool QAndroidEglFSScreen::setupGraphics(int w, int h)
-{
-
-    mGeometry.setRect(0,0,w,h);
-
-    mGLSLProgram = createProgram(gVertexShader, gFragmentShader);
-    if (!mGLSLProgram) {
-        qWarning() << "Could not create program for Android-On-Screen-Blitting.";
-        return false;
-    }
-
-    // ...just error-check the first gl-primitiv-function ... if this one is working the rest should as well...
-    mPositionVertexAttrib = glGetAttribLocation(mGLSLProgram, "a_PositionVector");
-    qt_checkAndWarnAboutGLError("QEglFSScreen::setupGraphics()", "glGetAttribLocation(mGLSLProgram, \"a_PositionVector\")");
-
-    mTexCoordAttrib = glGetAttribLocation(mGLSLProgram, "a_TexCoordVector");
-
-    mTextureUnitUniform = glGetUniformLocation(mGLSLProgram, "s_TextureUnit");
-
-    glViewport(0, 0, w, h);
-
-    glGenTextures ( 1, &mPBTextureID );
-    glBindTexture ( GL_TEXTURE_2D, mPBTextureID );
-    glTexParameteri ( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
-    glTexParameteri ( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
-
-    return true;
-}
-
-void QAndroidEglFSScreen::renderFrame()
-{
-    if (m_platformContext == 0) {           // no context -> no surface -> nothing to blit -> just clean colorbuffer
-        glClearColor ( 0.35f, 0.66f, 0.21f, 1.0f ); // Qt-green .. i think :)
-        glClear ( GL_COLOR_BUFFER_BIT );
-
-        return;
-    }
-
-    GLfloat minX = 0.0f;
-    GLfloat maxX =        ((GLfloat)mGeometry.width()  / (GLfloat)mPbufferSize.width() );  /*Q_ASSERT(maxX <= 1.0);  */// Q_ASSERT fails if pbuffer can't be as big as geomety ... this would be a strange gfx-driver!!
-    GLfloat minY = 1.0f - ((GLfloat)mGeometry.height() / (GLfloat)mPbufferSize.height());  /*Q_ASSERT(minY <= 1.0);*/  // Q_ASSERT fails if pbuffer can't be as big as geomety ... this would be a strange gfx-driver!!
-    GLfloat maxY = 1.0f;
-
-    GLfloat vVertices[] = { -1.0f,  1.0f, 0.0f,  /*Position 0*/
-                            -1.0f, -1.0f, 0.0f,  /*Position 1*/
-                             1.0f, -1.0f, 0.0f,  /*Position 2*/
-                             1.0f,  1.0f, 0.0f,  /*Position 3*/ };
-
-    GLfloat vTexCoord[] = {  minX,  minY,        /*TexCoord 0*/
-                             minX,  maxY,        /*TexCoord 1*/
-                             maxX,  maxY,        /*TexCoord 2*/
-                             maxX,  minY         /*TexCoord 3*/ };
-
-    GLushort indices[] = { 0, 1, 2, 0, 2, 3 };
-
-    glUseProgram(mGLSLProgram);
-    qt_checkAndWarnAboutGLError("QEglFSScreen::renderFrame()", "glUseProgram( mGLSLProgram )");
-
-    glVertexAttribPointer(mPositionVertexAttrib, 3, GL_FLOAT, GL_FALSE, 0, vVertices);
-    glEnableVertexAttribArray(mPositionVertexAttrib );
-
-    glVertexAttribPointer(mTexCoordAttrib, 2, GL_FLOAT, GL_FALSE, 0, vTexCoord);
-    glEnableVertexAttribArray(mTexCoordAttrib);
-
-    // Bind the texture
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, mPBTextureID);
-    glUniform1i(mTextureUnitUniform, 0);
-
-
-    eglBindTexImage(m_display, m_windowSurface, EGL_BACK_BUFFER);
-    qt_checkAndWarnAboutEGLError("QEglFSScreen::renderFrame()", "eglBindTexImage(m_display, mPBSurface, EGL_BACK_BUFFER)");
-
-    glDrawElements ( GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, indices );
-    qt_checkAndWarnAboutGLError("QEglFSScreen::renderFrame()", "glDrawElements ( GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, indices );");
-
-    eglReleaseTexImage(m_display, m_windowSurface, EGL_BACK_BUFFER);
-    qt_checkAndWarnAboutEGLError("QEglFSScreen::renderFrame()", "eglReleaseTexImage(m_display, mPBSurface, EGL_BACK_BUFFER);");
-
+    QWindowSystemInterface::handleScreenAvailableGeometryChange(0);
+    QWindowSystemInterface::handleScreenGeometryChange(0);
 }
 
 QT_END_NAMESPACE

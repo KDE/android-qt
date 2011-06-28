@@ -49,7 +49,7 @@
 #include "qeglconvenience.h"
 
 
-QAndroidEglFSPlatformContext::QAndroidEglFSPlatformContext(EGLDisplay display, EGLConfig config, EGLint contextAttrs[], EGLSurface surface, EGLenum eglApi)
+QAndroidEglFSPlatformContext::QAndroidEglFSPlatformContext(EGLDisplay display, EGLConfig config, EGLSurface surface, EGLenum eglApi)
     : QPlatformGLContext()
     , m_eglDisplay(display)
     , m_eglSurface(surface)
@@ -60,7 +60,14 @@ QAndroidEglFSPlatformContext::QAndroidEglFSPlatformContext(EGLDisplay display, E
     }
 
     eglBindAPI(m_eglApi);
-    m_eglContext = eglCreateContext(m_eglDisplay,config, EGL_NO_CONTEXT, contextAttrs);
+
+    EGLint attribList[3];
+    attribList[0] = EGL_CONTEXT_CLIENT_VERSION;
+    attribList[1] = 2;
+    attribList[2] = EGL_NONE;
+
+
+    m_eglContext = eglCreateContext(m_eglDisplay,config, EGL_NO_CONTEXT, attribList);
     qt_checkAndWarnAboutEGLError("QEGLPlatformContext::QEGLPlatformContext(...)", "eglCreateContext(m_eglDisplay,config, EGL_NO_CONTEXT, contextAttrs)");
     if (m_eglContext == EGL_NO_CONTEXT) {
         EGLint foo = eglGetError();
@@ -78,12 +85,6 @@ QAndroidEglFSPlatformContext::~QAndroidEglFSPlatformContext()
 #ifdef QEGL_EXTRA_DEBUG
     qWarning("QEglContext::~QEglContext(): %p\n",this);
 #endif
-    if (m_eglSurface != EGL_NO_SURFACE) {
-        doneCurrent();
-        eglDestroySurface(m_eglDisplay, m_eglSurface);
-        m_eglSurface = EGL_NO_SURFACE;
-    }
-
     if (m_eglContext != EGL_NO_CONTEXT) {
         eglDestroyContext(m_eglDisplay, m_eglContext);
         m_eglContext = EGL_NO_CONTEXT;

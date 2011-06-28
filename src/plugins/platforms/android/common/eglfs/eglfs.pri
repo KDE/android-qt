@@ -21,7 +21,7 @@ SOURCES +=  $$PWD/main.cpp \
             $$PWD/qandroideglfswindowsurface.cpp \
             $$PWD/qandroideglfsscreen.cpp \
             $$PWD/androidjnimain.cpp \
-    ../../common/eglfs/qandroideglfspaintdevice.cpp
+            $$PWD/qandroideglfspaintdevice.cpp
 
 HEADERS +=  $$PWD/qandroideglfsintegration.h \
             $$PWD/qeglconvenience.h \
@@ -30,7 +30,6 @@ HEADERS +=  $$PWD/qandroideglfsintegration.h \
             $$PWD/qandroideglfswindowsurface.h \
             $$PWD/qandroideglfsscreen.h \
             $$PWD/androidjnimain.h \
-            $$PWD/gl_code.h \
-    ../../common/eglfs/qandroideglfspaintdevice.h
+            $$PWD/qandroideglfspaintdevice.h
 
 target.path += $$[QT_INSTALL_PLUGINS]/platforms/android
