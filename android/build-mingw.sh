@@ -152,19 +152,19 @@ else
 fi
 
 # Makes {shared}*{debug,release}*{exceptions,noexceptions}, all armv7-a, and no thumb.
-#`dirname $0`/androidconfigbuild.sh -l 1 -q 1 -n $NDKDIR -o $NDKHOST -f arm-linux-androideabi -v 4.4.3 -a armeabi-v7a \
+#`dirname $0`/android/androidconfigbuild.sh -l 1 -q 1 -n $NDKDIR -o $NDKHOST -f arm-linux-androideabi -v 4.4.3 -a armeabi-v7a \
 #         -h 1 -x 1 -d 0 -r 1 -m 1 -i $DEST_DIR_QT
-#`dirname $0`/androidconfigbuild.sh -l 1 -q 1 -n $NDKDIR -o $NDKHOST -f arm-linux-androideabi -v 4.4.3 -a armeabi-v7a \
+#`dirname $0`/android/androidconfigbuild.sh -l 1 -q 1 -n $NDKDIR -o $NDKHOST -f arm-linux-androideabi -v 4.4.3 -a armeabi-v7a \
 #         -h 1 -x 1 -d 1 -r 0 -m 1 -i $DEST_DIR_QT
 #Without exceptions get: QtXmlPatterns was requested, but it can't be built due to exceptions being disabled.
-#`dirname $0`/androidconfigbuild.sh -l 1 -q 1 -n $NDKDIR -o $NDKHOST -f arm-linux-androideabi -v 4.4.3 -a armeabi-v7a \
+#`dirname $0`/android/androidconfigbuild.sh -l 1 -q 1 -n $NDKDIR -o $NDKHOST -f arm-linux-androideabi -v 4.4.3 -a armeabi-v7a \
 #         -h 1 -x 0 -d 0 -r 1 -m 1 -i $DEST_DIR_QT
-#`dirname $0`/androidconfigbuild.sh -l 1 -q 1 -n $NDKDIR -o $NDKHOST -f arm-linux-androideabi -v 4.4.3 -a armeabi-v7a \
+#`dirname $0`/android/androidconfigbuild.sh -l 1 -q 1 -n $NDKDIR -o $NDKHOST -f arm-linux-androideabi -v 4.4.3 -a armeabi-v7a \
 #         -h 1 -x 0 -d 1 -r 0 -m 1 -i $DEST_DIR_QT
 
 if [ "$BUILD_QT"="0" ]; then
 	INSTALL_QT=0
 fi
 
-`dirname $0`/androidconfigbuild.sh -c $CLEAN_QT -q $CONFIGURE_QT -b $BUILD_QT -k $INSTALL_QT -c $INSTALL_QT -n $NDKDIR -o $NDKHOST -f arm-linux-androideabi -v 4.4.3 -a $TARGET_ARCH \
+`dirname $0`/android/androidconfigbuild.sh -c $CLEAN_QT -q $CONFIGURE_QT -b $BUILD_QT -k $INSTALL_QT -c $INSTALL_QT -n $NDKDIR -o $NDKHOST -f arm-linux-androideabi -v 4.4.3 -a $TARGET_ARCH \
          -h 1 -x 1 -d $DEBUG_QT -r $RELEASE_QT -m $MODIFY_DEST_DIR_QT -i $DEST_DIR_QT

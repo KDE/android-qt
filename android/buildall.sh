@@ -8,6 +8,6 @@ for architecture in "armeabi" "armeabi-v7a"
 do
 	mkdir $architecture
 	pushd $architecture
-	$QT_SRC_DIR/androidconfigbuild.sh -d 0 -c 0 -q 1 -a $architecture || exit 0
+	$QT_SRC_DIR/android/androidconfigbuild.sh -d 0 -c 0 -q 1 -a $architecture || exit 0
 	popd
 done

@@ -24,6 +24,8 @@ SRC_DIR_QT=`dirname $0`
 pushd .
 SRC_DIR_QT=`(cd "$SRC_DIR_QT"; /bin/pwd)`
 popd
+SRC_DIR_QT=$SRC_DIR_QT/..
+echo $SRC_DIR_QT
 
 #openssl vars
 OPENSSL_PACKAGE="openssl-1.0.0d.tar.gz"
