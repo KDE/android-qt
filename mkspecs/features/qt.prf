@@ -190,8 +190,8 @@ for(QTLIB, $$list($$lower($$unique(QT)))) {
             QMAKE_LFLAGS += -Wl,--no-undefined -Wl,-z,noexecstack -shared
         }
 
-       CONFIG(armeabi-v7a) : target.path=/android/libs/armeabi-v7a/
-                      else : target.path=/android/libs/armeabi/
+       CONFIG(armeabi-v7a) : target.path=/libs/armeabi-v7a/
+                      else : target.path=/libs/armeabi/
 
        INSTALLS *= target
    }

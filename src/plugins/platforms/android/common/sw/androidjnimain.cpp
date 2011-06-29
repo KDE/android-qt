@@ -224,15 +224,17 @@ namespace QtAndroid
         return m_javaVM;
     }
 
+    AAssetManager * assetManager()
+    {
+        return m_assetManager;
+    }
+
     jclass applicationClass()
     {
         return m_applicationClass;
     }
 
-    AAssetManager* assetManager()
-    {
-        return m_assetManager;
-    }
+
 
 }
 
@@ -679,13 +681,16 @@ static int registerNativeMethods(JNIEnv* env, const char* className,
     m_redrawSurfaceMethodID = env->GetStaticMethodID(m_applicationClass, "redrawSurface", "(IIII)V");
     m_showSoftwareKeyboardMethodID = env->GetStaticMethodID(m_applicationClass, "showSoftwareKeyboard", "()V");
     m_hideSoftwareKeyboardMethodID = env->GetStaticMethodID(m_applicationClass, "hideSoftwareKeyboard", "()V");
+    m_setFullScreenMethodID = env->GetStaticMethodID(m_applicationClass, "setFullScreen", "(Z)V");
 
     jmethodID methodID=env->GetStaticMethodID(m_applicationClass, "mainActivity", "()Leu/licentia/necessitas/industrius/QtActivity;");
     jobject activityObject=env->CallStaticObjectMethod(m_applicationClass, methodID);
+
     clazz=env->FindClass(ContextWrapperClassPathName);
     methodID=env->GetMethodID(clazz, "getAssets", "()Landroid/content/res/AssetManager;");
     m_assetManager=AAssetManager_fromJava(env, env->CallObjectMethod(activityObject, methodID));
-    m_setFullScreenMethodID = env->GetStaticMethodID(m_applicationClass, "setFullScreen", "(Z)V");
+
+
     return JNI_TRUE;
 }
 

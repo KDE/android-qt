@@ -50,8 +50,7 @@ namespace QtAndroid
     // Software keyboard support
 
     JavaVM * javaVM();
-    AAssetManager* assetManager();
-
+    AAssetManager * assetManager();
     jclass applicationClass();
 }
 #endif // ANDROID_APP_H

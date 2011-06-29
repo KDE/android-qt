@@ -62,7 +62,7 @@ public:
                    qPrintable(fontpath));
         }
 
-        QDir dir(fontpath, QLatin1String("Droid*.ttf"));
+        QDir dir(fontpath, QLatin1String("*.ttf"));
         for (int i = 0; i < int(dir.count()); ++i) {
             const QByteArray file = QFile::encodeName(dir.absoluteFilePath(dir[i]));
             addTTFile(QByteArray(), file);
