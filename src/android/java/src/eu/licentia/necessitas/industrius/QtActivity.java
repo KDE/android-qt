@@ -220,7 +220,7 @@ public class QtActivity extends Activity {
 
                 String[] libs=new String[libraryList.size()];
                 libs=libraryList.toArray(libs);
-                m_ministroCallback.libs(libs,"QT_IMPORT_PATH=/data/local/qt/imports\tQT_PLUGIN_PATH=/data/local/qt/plugins", "-platform\tandroid", 0,null);
+                m_ministroCallback.libs(libs,"QML_IMPORT_PATH=/data/local/qt/imports\tQT_PLUGIN_PATH=/data/local/qt/plugins", "-platform\tandroid", 0,null);
                 return;
             }
 

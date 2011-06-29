@@ -685,15 +685,6 @@ static int registerNativeMethods(JNIEnv* env, const char* className,
     clazz=env->FindClass(ContextWrapperClassPathName);
     methodID=env->GetMethodID(clazz, "getAssets", "()Landroid/content/res/AssetManager;");
     m_assetManager=AAssetManager_fromJava(env, env->CallObjectMethod(activityObject, methodID));
-    qDebug()<<m_assetManager;
-    qputenv("QML_IMPORT_PATH","arc:");
-    AAssetDir* dir=AAssetManager_openDir(m_assetManager,"qml/untitled_qml");
-    const char * fileName;
-    while((fileName=AAssetDir_getNextFileName(dir)))
-    {
-        qDebug()<<fileName;
-    }
-    AAssetDir_close(dir);
     m_setFullScreenMethodID = env->GetStaticMethodID(m_applicationClass, "setFullScreen", "(Z)V");
     return JNI_TRUE;
 }

@@ -189,9 +189,11 @@ for(QTLIB, $$list($$lower($$unique(QT)))) {
         }else {
             QMAKE_LFLAGS += -Wl,--no-undefined -Wl,-z,noexecstack -shared
         }
-        CONFIG(armeabi-v7a) : target.path = /libs/armeabi-v7a
-                        else : target.path = /libs/armeabi
-        INSTALLS *= target
+
+       CONFIG(armeabi-v7a) : target.path=/android/libs/armeabi-v7a/
+                      else : target.path=/android/libs/armeabi/
+
+       INSTALLS *= target
    }
    else:message("Unknown QT: $$QTLIB"):qlib =
    !isEmpty(qlib) {
