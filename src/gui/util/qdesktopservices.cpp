@@ -45,7 +45,9 @@
 
 #include <qdebug.h>
 
-#if defined(Q_WS_QWS) || defined(Q_WS_QPA)
+#if defined(Q_WS_QPA)
+#include "qdesktopservices_qpa.cpp"
+#elif defined(Q_WS_QWS)
 #include "qdesktopservices_qws.cpp"
 #elif defined(Q_WS_X11)
 #include "qdesktopservices_x11.cpp"
@@ -194,13 +196,17 @@ bool QDesktopServices::openUrl(const QUrl &url)
             return result; // ### support bool slot return type
         }
     }
-
     bool result;
+#if defined(Q_WS_QPA)
+    qDebug()<<"#if defined(Q_WS_QPA)";
+    result = QApplicationPrivate::platformIntegration()->platformDesktopService()->openUrl(url);
+#else
+    qDebug()<<"#else defined(Q_WS_QPA)";
     if (url.scheme() == QLatin1String("file"))
         result = openDocument(url);
     else
         result = launchWebBrowser(url);
-
+#endif
     return result;
 }
 

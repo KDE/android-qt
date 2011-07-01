@@ -177,18 +177,23 @@ for(QTLIB, $$list($$lower($$unique(QT)))) {
    else:isEqual(QTLIB, multimedia):qlib = QtMultimedia
    else:isEqual(QTLIB, meegographicssystemhelper):qlib = QtMeeGoGraphicsSystemHelper
    else:isEqual(QTLIB, android) {
-       contains(TEMPLATE, ".*app") {
-           CONFIG(android_app) {
+        contains(TEMPLATE, ".*app") {
+            CONFIG(android_app) {
                QMAKE_LFLAGS += $$ANDROID_PLATFORM_PATH/lib/crtbegin_dynamic.o
                QMAKE_LIBS = $$ANDROID_PLATFORM_PATH/lib/crtend_android.o $$QMAKE_LIBS
-           } else {
+            } else {
                !contains(TARGET, ".so"): TARGET = lib$${TARGET}.so
                CONFIG(android_qtmain): SOURCES += $$[QT_INSTALL_PREFIX]/src/android/cpp/qtmain_android.cpp
                QMAKE_LFLAGS += -Wl,--no-undefined -Wl,-z,noexecstack -shared -Wl,-soname,$$TARGET
-           }
-       }else {
+            }
+        }else {
             QMAKE_LFLAGS += -Wl,--no-undefined -Wl,-z,noexecstack -shared
-       }
+        }
+
+       CONFIG(armeabi-v7a) : target.path=/libs/armeabi-v7a/
+                      else : target.path=/libs/armeabi/
+
+       INSTALLS *= target
    }
    else:message("Unknown QT: $$QTLIB"):qlib =
    !isEmpty(qlib) {
@@ -201,8 +206,7 @@ for(QTLIB, $$list($$lower($$unique(QT)))) {
          isEqual(QTLIB, qt3support):DEFINES *= QT3_SUPPORT
          isEqual(QTLIB, testlib):CONFIG += console
          isEqual(QTLIB, dbus):CONFIG += dbusadaptors dbusinterfaces
-
-     qtAddLibrary($$qlib)
+         qtAddLibrary($$qlib)
       }
    }
 }

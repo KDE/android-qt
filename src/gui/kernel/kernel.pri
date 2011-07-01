@@ -7,7 +7,7 @@ PRECOMPILED_HEADER = kernel/qt_gui_pch.h
 KERNEL_P= kernel
 HEADERS += \
 	kernel/qaction.h \
-    kernel/qaction_p.h \
+        kernel/qaction_p.h \
 	kernel/qactiongroup.h \
 	kernel/qapplication.h \
 	kernel/qapplication_p.h \
@@ -35,8 +35,8 @@ HEADERS += \
 	kernel/qstackedlayout.h \
 	kernel/qtooltip.h \
 	kernel/qwhatsthis.h \
-    kernel/qwidget.h \
-    kernel/qwidget_p.h \
+        kernel/qwidget.h \
+        kernel/qwidget_p.h \
 	kernel/qwidgetaction.h \
 	kernel/qwidgetaction_p.h \
 	kernel/qwindowdefs.h \
@@ -47,7 +47,7 @@ HEADERS += \
 	kernel/qgesturerecognizer.h \
 	kernel/qgesturemanager_p.h \
 	kernel/qsoftkeymanager_p.h \
-    kernel/qsoftkeymanager_common_p.h \
+        kernel/qsoftkeymanager_common_p.h \
 	kernel/qguiplatformplugin_p.h \
 
 SOURCES += \
@@ -82,7 +82,7 @@ SOURCES += \
 	kernel/qgesturerecognizer.cpp \
 	kernel/qgesturemanager.cpp \
 	kernel/qsoftkeymanager.cpp \
-    kernel/qdesktopwidget.cpp \
+        kernel/qdesktopwidget.cpp \
 	kernel/qguiplatformplugin.cpp
 
 win32 {
@@ -101,8 +101,8 @@ win32 {
 		kernel/qsound_win.cpp \
 		kernel/qwidget_win.cpp \
 		kernel/qole_win.cpp \
-        kernel/qkeymapper_win.cpp \
-        kernel/qwinnativepangesturerecognizer_win.cpp
+                kernel/qkeymapper_win.cpp \
+                kernel/qwinnativepangesturerecognizer_win.cpp
 
     !contains(DEFINES, QT_NO_DIRECTDRAW):LIBS += ddraw.lib
 }
@@ -215,6 +215,7 @@ qpa {
                 kernel/qeventdispatcher_qpa_p.h \
                 kernel/qwindowsysteminterface_qpa.h \
                 kernel/qwindowsysteminterface_qpa_p.h \
+                kernel/qplatformdesktopservice_qpa.h \
                 kernel/qplatformintegration_qpa.h \
                 kernel/qplatformscreen_qpa.h \
                 kernel/qplatformintegrationfactory_qpa_p.h \
@@ -240,6 +241,7 @@ qpa {
                 kernel/qwidget_qpa.cpp \
                 kernel/qeventdispatcher_qpa.cpp \
                 kernel/qwindowsysteminterface_qpa.cpp \
+                kernel/qplatformdesktopservice_qpa.cpp \
                 kernel/qplatformintegration_qpa.cpp \
                 kernel/qplatformscreen_qpa.cpp \
                 kernel/qplatformintegrationfactory_qpa.cpp \
