@@ -42,7 +42,7 @@
 #ifndef QEGLWINDOW_H
 #define QEGLWINDOW_H
 
-#include "qandroideglfsintegration.h"
+#include "qandroidplatformintegration.h"
 #include "qandroideglfsscreen.h"
 
 #include <QPlatformWindow>

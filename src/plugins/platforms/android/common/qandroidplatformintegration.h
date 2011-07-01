@@ -28,27 +28,14 @@
 #ifndef QGRAPHICSSYSTEM_MINIMAL_H
 #define QGRAPHICSSYSTEM_MINIMAL_H
 
-#include <QPlatformDesktopService>
 #include <QPlatformIntegration>
 #include <QPlatformNativeInterface>
-#include "../../fb_base/fb_base.h"
 #include <jni.h>
 
 QT_BEGIN_NAMESPACE
 
 class QDesktopWidget;
 class QAndroidPlatformDesktopService;
-
-class QAndroidPlatformScreen : public QFbScreen
-{
-    Q_OBJECT
-public:
-    QAndroidPlatformScreen();
-
-public slots:
-    QRegion doRedraw();
-
-};
 
 class QAndroidPlatformNativeInterface : public QPlatformNativeInterface
 {
@@ -58,6 +45,8 @@ public:
 
 class QAndroidPlatformIntegration : public QPlatformIntegration
 {
+    friend class QAndroidPlatformScreen;
+
 public:
     QAndroidPlatformIntegration();
     ~QAndroidPlatformIntegration();
@@ -68,7 +57,7 @@ public:
 
     QList<QPlatformScreen *> screens() const { return m_screens; }
 
-    QAndroidPlatformScreen * getPrimaryScreen(){return m_primaryScreen;}
+    QPlatformScreen * getPrimaryScreen(){return m_primaryScreen;}
     bool isVirtualDesktop() { return true; }
     virtual void setDesktopSize(int width, int height);
     virtual void setDisplayMetrics(int width, int height);
@@ -82,16 +71,30 @@ public:
     static void setDefaultDesktopSize(int gw, int gh);
 
 private:
+    void initialize();
+
+
     QThread * m_mainThread;
-    QAndroidPlatformScreen *m_primaryScreen;
+    QPlatformScreen *m_primaryScreen;
     QList<QPlatformScreen *> m_screens;
     static int m_defaultGeometryWidth,m_defaultGeometryHeight,m_defaultPhysicalSizeWidth,m_defaultPhysicalSizeHeight;
-    friend class QAndroidPlatformScreen;
     QPlatformFontDatabase *m_androidFDB;
     QImage * mFbScreenImage;
     QPainter *compositePainter;
     QAndroidPlatformNativeInterface * m_androidPlatformNativeInterface;
-    QAndroidPlatformDesktopService * m_androidPlatformDesktopService;
+    QAndroidPlatformDesktopService * m_androidPlatformDesktopService;    
+
+
+
+#ifdef QT_OPENGL_LIB
+public:
+    QAndroidPlatformIntegration(bool enableOpenGL);
+    void surfaceChanged();// TODO MERGE: maybe #ifdef QT_OPENGL_LIB around it?
+
+private:
+    bool useOpenGL;
+#endif
+
 };
 
 QT_END_NAMESPACE

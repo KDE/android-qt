@@ -28,9 +28,13 @@
 #ifndef ANDROID_APP_H
 #define ANDROID_APP_H
 
-#define QT_OPENGL_LIB
-
+#ifdef QT_OPENGL_LIB
 #include <EGL/eglplatform.h>
+#endif
+
+#include <jni.h>
+#include "native/include/android/asset_manager.h"
+
 
 class QImage;
 class QRect;
@@ -50,10 +54,14 @@ namespace QtAndroid
     void hideSoftwareKeyboard();
     // Software keyboard support
 
-#ifndef QT_OPENGL_LIB
+
     void flushImage(const QPoint & pos, const QImage & image, const QRect & rect);
-#else
+#ifdef QT_OPENGL_LIB
     EGLNativeWindowType getNativeWindow(bool waitToCreate=true);
 #endif
+
+    JavaVM * javaVM();
+    AAssetManager * assetManager();
+    jclass applicationClass();
 }
 #endif // ANDROID_APP_H

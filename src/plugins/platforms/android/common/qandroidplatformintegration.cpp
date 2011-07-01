@@ -38,6 +38,14 @@
 #include <QApplication>
 #include "qdesktopwidget.h"
 #include "qandroidplatformdesktopservice.h"
+#include "sw/qandroidplatformscreen.h"
+
+
+#ifdef QT_OPENGL_LIB
+#include <private/qpixmapdata_gl_p.h>
+#include "qandroideglfsscreen.h"
+#include "qandroideglfswindowsurface.h"
+#endif
 
 QT_BEGIN_NAMESPACE
 
@@ -78,31 +86,6 @@ public:
     }
 };
 
-QAndroidPlatformScreen::QAndroidPlatformScreen():QFbScreen()
-{
-    mGeometry = QRect(0, 0, QAndroidPlatformIntegration::m_defaultGeometryWidth, QAndroidPlatformIntegration::m_defaultGeometryHeight);
-    mFormat = QImage::Format_RGB16;
-    mDepth = 16;
-    setPhysicalSize(QSize(QAndroidPlatformIntegration::m_defaultPhysicalSizeWidth,
-                          QAndroidPlatformIntegration::m_defaultPhysicalSizeHeight));
-    setGeometry(QRect(0,0,QAndroidPlatformIntegration::m_defaultGeometryWidth
-                      ,QAndroidPlatformIntegration::m_defaultGeometryHeight));
-    setFormat(mFormat);
-    qDebug()<<"QAndroidPlatformScreen::QAndroidPlatformScreen():QFbScreen()";
-}
-
-QRegion QAndroidPlatformScreen::doRedraw()
-{
-    QRegion touched;
-    touched = QFbScreen::doRedraw();
-    if (touched.isEmpty())
-        return touched;
-//    QVector<QRect> rects = touched.rects();
-//    for (int i = 0; i < rects.size(); i++)
-    QtAndroid::flushImage(mGeometry.topLeft(), *mScreenImage, touched.boundingRect());
-    return touched;
-}
-
 void *QAndroidPlatformNativeInterface::nativeResourceForWidget(const QByteArray &resource, QWidget *widget)
 {
     if (!widget && resource=="JavaVM")
@@ -110,17 +93,46 @@ void *QAndroidPlatformNativeInterface::nativeResourceForWidget(const QByteArray 
     return 0;
 };
 
+
+#ifdef QT_OPENGL_LIB
+QAndroidPlatformIntegration::QAndroidPlatformIntegration(bool enableOpenGL)
+{
+    enableOpenGL = true;
+    initialize();
+}
+#endif
+
 QAndroidPlatformIntegration::QAndroidPlatformIntegration()
 {
+    initialize();
+}
+
+
+void QAndroidPlatformIntegration::initialize()
+{
     m_androidPlatformNativeInterface =  new QAndroidPlatformNativeInterface();
+
+
+    // TODO MERGE: opengl vs. raster
+#ifdef QT_OPENGL_LIB
+    if(useOpenGL)
+        m_primaryScreen = new QAndroidEglFSScreen(EGL_DEFAULT_DISPLAY);
+    else
+        m_primaryScreen = new QAndroidPlatformScreen();
+#else
     m_primaryScreen = new QAndroidPlatformScreen();
+#endif
+
     m_screens.append(m_primaryScreen);
+
+
     m_mainThread=QThread::currentThread();
     QtAndroid::setAndroidPlatformIntegration(this);
     qApp->setInputContext( new QAndroidInputContext() );
     m_androidFDB = new QAndroidPlatformFontDatabase();
     m_androidPlatformDesktopService = new QAndroidPlatformDesktopService();
 }
+
 
 QAndroidPlatformIntegration::~QAndroidPlatformIntegration()
 {
@@ -160,18 +172,53 @@ void QAndroidPlatformIntegration::setDefaultDesktopSize(int gw, int gh)
 
 QPixmapData *QAndroidPlatformIntegration::createPixmapData(QPixmapData::PixelType type) const
 {
-     return new QRasterPixmapData(type);
+#ifdef QT_OPENGL_LIB
+    if(useOpenGL) {
+        QGLPixmapData* result = new QGLPixmapData(type);
+#ifdef QEGL_EXTRA_DEBUG
+        qWarning("QEglIntegration::createPixmapData %d    ... returning: %p\n", type, result);
+#endif
+        return result;
+    }
+#endif
+
+    return new QRasterPixmapData(type);
 }
 
 QWindowSurface *QAndroidPlatformIntegration::createWindowSurface(QWidget *widget, WId /*winId*/) const
 {
-    return new QFbWindowSurface(m_primaryScreen, widget);
+#ifdef QT_OPENGL_LIB
+    if(useOpenGL) {
+        Q_ASSERT(dynamic_cast<QAndroidEglFSScreen*>(m_primaryScreen) != 0);
+        QAndroidEglFSWindowSurface* result = new QAndroidEglFSWindowSurface(dynamic_cast<QAndroidEglFSScreen*>(m_primaryScreen), widget);
+
+#ifdef QEGL_EXTRA_DEBUG
+        qWarning("QEglIntegration::createWindowSurface %p   ... returning: %p\n", widget, result);
+#endif
+        return result;
+    }
+#endif
+
+    return new QFbWindowSurface(dynamic_cast<QFbScreen*>(m_primaryScreen), widget);
 }
 
 QPlatformWindow *QAndroidPlatformIntegration::createPlatformWindow(QWidget *widget, WId /*winId*/) const
 {
+#ifdef QT_OPENGL_LIB
+    if(useOpenGL) {
+        Q_ASSERT(dynamic_cast<QAndroidEglFSScreen*>(m_primaryScreen) != 0);
+        QAndroidEglFSWindow* result = new QAndroidEglFSWindow(widget, dynamic_cast<QAndroidEglFSScreen*>(m_primaryScreen));
+
+#ifdef QEGL_EXTRA_DEBUG
+        qWarning("QEglIntegration::createPlatformWindow %p   ... returning: %p\n", widget, result);
+#endif
+        return result;
+    }
+#endif
+
+
     QFbWindow *w = new QFbWindow(widget);
-    m_primaryScreen->addWindow(w);
+    dynamic_cast<QFbScreen*>(m_primaryScreen)->addWindow(w);
     qDebug()<<"createPlatformWindow"<<widget->isFullScreen();
     if (widget->isFullScreen())
         QtAndroid::setFullScreen(true);
@@ -207,4 +254,13 @@ void QAndroidPlatformIntegration::resumeApp()
     if (QAbstractEventDispatcher::instance(m_mainThread))
         QAbstractEventDispatcher::instance(m_mainThread)->wakeUp();
 }
+
+#ifdef QT_OPENGL_LIB
+void QAndroidPlatformIntegration::surfaceChanged()
+{
+    if (m_primaryScreen)
+        QMetaObject::invokeMethod(m_primaryScreen, "surfaceChanged", Qt::AutoConnection);
+}
+#endif
+
 QT_END_NAMESPACE

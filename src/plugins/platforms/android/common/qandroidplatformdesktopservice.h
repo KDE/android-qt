@@ -25,35 +25,23 @@
     SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <QPlatformIntegrationPlugin>
-#include <QDebug>
-#include "qandroidplatformintegration.h"
+#ifndef ANDROIDPLATFORMDESKTOPSERVICE_H
+#define ANDROIDPLATFORMDESKTOPSERVICE_H
 
-QT_BEGIN_NAMESPACE
+#include <QPlatformDesktopService>
+#include "androidjnimain.h"
+#include <jni.h>
 
-class QAndroidPlatformIntegrationPlugin : public QPlatformIntegrationPlugin
+class QAndroidPlatformDesktopService: public QPlatformDesktopService
 {
 public:
-    QStringList keys() const;
-    QPlatformIntegration *create(const QString &key, const QStringList &paramList);
+    QAndroidPlatformDesktopService();
+    virtual QString displayName ( QDesktopServices::StandardLocation type );
+    virtual bool openUrl ( const QUrl & url );
+    virtual QString storageLocation ( QDesktopServices::StandardLocation type );
+private:
+    jmethodID m_openURIMethodID;
+
 };
 
-QStringList QAndroidPlatformIntegrationPlugin::keys() const
-{
-    QStringList list;
-    list << "android";
-    return list;
-}
-
-QPlatformIntegration* QAndroidPlatformIntegrationPlugin::create(const QString &key, const QStringList &paramList)
-{
-    Q_UNUSED(paramList);
-    qDebug()<<"QAndroidPlatformIntegrationPlugin::create"<<key;
-    if (key.toLower() == "android")
-        return new QAndroidPlatformIntegration;
-    return 0;
-}
-
-Q_EXPORT_PLUGIN2(QtAndroid, QAndroidPlatformIntegrationPlugin)
-
-QT_END_NAMESPACE
+#endif // ANDROIDPLATFORMDESKTOPSERVICE_H

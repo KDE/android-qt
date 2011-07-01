@@ -38,7 +38,7 @@
 #include <jni.h>
 
 #include "androidjnimain.h"
-#include "qandroideglfsintegration.h"
+#include "qandroidplatformintegration.h"
 #include <QWindowSystemInterface>
 #include <QApplication>
 #include <QTouchEvent>
@@ -46,6 +46,8 @@
 #include <qabstracteventdispatcher.h>
 
 #include <android/bitmap.h>
+#include <android/asset_manager_jni.h>
+#include "qandroidassetsfileenginehandler.h"   ... #FIXME PRE_EGLFS-SW-MERGE
 #include <android/api-level.h>
 
 #if __ANDROID_API__ > 8
@@ -58,12 +60,12 @@ Q_IMPORT_PLUGIN (QtAndroid)
 
 static JavaVM *m_javaVM = NULL;
 static jclass m_applicationClass  = NULL;
-#ifndef QT_OPENGL_LIB
+static AAssetManager* m_assetManager = NULL;
+
 
 static jobject m_surface = NULL;
 
-#else
-
+#ifdef QT_OPENGL_LIB
 #if __ANDROID_API__ < 9
 # define ANDROID_VIEW_SURFACE_JNI_ID "mSurface"
 #else
@@ -88,6 +90,8 @@ static QMutex m_pauseApplicationMutex;
 static QAndroidPlatformIntegration * m_androidGraphicsSystem=0;
 static int m_desktopWidthPixels=0, m_desktopHeightPixels=0;
 static const char * const QtApplicationClassPathName = "eu/licentia/necessitas/industrius/QtApplication";
+static const char * const ContextWrapperClassPathName = "android/content/ContextWrapper";
+
 
 static volatile bool m_pauseApplication;
 
@@ -97,6 +101,8 @@ static jmethodID m_hideSoftwareKeyboardMethodID=0;
 // Software keyboard support
 
 static jmethodID m_setFullScreenMethodID=0;
+
+static AndroidAssetsFileEngineHandler * m_androidAssetsFileEngineHandler = 0;
 
 static inline void checkPauseApplication()
 {
@@ -118,7 +124,6 @@ static inline void checkPauseApplication()
 
 namespace QtAndroid
 {
-#ifndef QT_OPENGL_LIB
     void flushImage(const QPoint & pos, const QImage & image, const QRect & destinationRect)
     {
         checkPauseApplication();
@@ -190,7 +195,8 @@ namespace QtAndroid
 #warning FIXME dirty hack, figure out why it needs to add 1 to right and bottom !!!!
         m_javaVM->DetachCurrentThread();
     }
-#else
+
+#ifdef QT_OPENGL_LIB
     EGLNativeWindowType getNativeWindow(bool waitForWindow)
     {
         m_surfaceMutex.lock();
@@ -253,22 +259,35 @@ namespace QtAndroid
         m_javaVM->DetachCurrentThread();
     }
 
-    void * javaVM()
+    JavaVM * javaVM()
     {
         return m_javaVM;
     }
 
+    AAssetManager * assetManager()
+    {
+        return m_assetManager;
+    }
+
+    jclass applicationClass()
+    {
+        return m_applicationClass;
+    }
+
 }
 
-static void startQtAndroidPlugin(JNIEnv* /*env*/, jobject /*object*/)
+static void startQtAndroidPlugin(JNIEnv* env, jobject /*object*//*, jobject applicationAssetManager*/)
 {
-#ifndef QT_OPENGL_LIB
+
     m_surface = 0;
-#else
+#ifdef QT_OPENGL_LIB
     m_nativeWindow=0;
     m_waitForWindow=false;
 #endif
     m_androidGraphicsSystem=0;
+
+//    m_assetManager = AAssetManager_fromJava(env, applicationAssetManager);
+    m_androidAssetsFileEngineHandler = new AndroidAssetsFileEngineHandler();
 }
 
 static void pauseQtApp(JNIEnv */*env*/, jobject /*thiz*/)
@@ -298,6 +317,7 @@ static void resumeQtApp(JNIEnv */*env*/, jobject /*thiz*/)
 
 static void quitQtAndroidPlugin(JNIEnv* env, jclass /*clazz*/)
 {
+    // TODO MERGE ... replace with env-variable or something
 #ifndef QT_OPENGL_LIB
     if (m_surface)
     {
@@ -306,6 +326,8 @@ static void quitQtAndroidPlugin(JNIEnv* env, jclass /*clazz*/)
     }
 #endif
     m_androidGraphicsSystem=0;
+
+    delete m_androidAssetsFileEngineHandler;
 }
 
 static void terminateQt(JNIEnv* env, jclass /*clazz*/)
@@ -315,6 +337,7 @@ static void terminateQt(JNIEnv* env, jclass /*clazz*/)
 
 static void setSurface(JNIEnv *env, jobject /*thiz*/, jobject jSurface)
 {
+// TODO MERGE ... replace with env-variable or something
 #ifndef QT_OPENGL_LIB
     if (m_surface)
         env->DeleteGlobalRef(m_surface);
@@ -342,6 +365,7 @@ static void setSurface(JNIEnv *env, jobject /*thiz*/, jobject jSurface)
 
 static void destroySurface(JNIEnv *env, jobject /*thiz*/)
 {
+// TODO MERGE ... replace with env-variable or something
 #ifndef QT_OPENGL_LIB
     env->DeleteGlobalRef(m_surface);
     m_surface = 0;
@@ -387,7 +411,7 @@ static void mouseUp(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/, jint x, j
 static void mouseMove(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/, jint x, jint y)
 {
     QWindowSystemInterface::handleMouseEvent(0,
-                                             QEvent::MouseButtonPress,QPoint(x,y),QPoint(x,y),
+                                             QEvent::MouseMove,QPoint(x,y),QPoint(x,y),
                                              Qt::MouseButtons(Qt::LeftButton));
 }
 
@@ -740,6 +764,15 @@ static int registerNativeMethods(JNIEnv* env, const char* className,
     }
     m_surfaceFieldID = env->GetFieldID(clazz, ANDROID_VIEW_SURFACE_JNI_ID, "I");
 #endif
+
+    jmethodID methodID=env->GetStaticMethodID(m_applicationClass, "mainActivity", "()Leu/licentia/necessitas/industrius/QtActivity;");
+    jobject activityObject=env->CallStaticObjectMethod(m_applicationClass, methodID);
+
+    clazz=env->FindClass(ContextWrapperClassPathName);
+    methodID=env->GetMethodID(clazz, "getAssets", "()Landroid/content/res/AssetManager;");
+    m_assetManager=AAssetManager_fromJava(env, env->CallObjectMethod(activityObject, methodID));
+
+
     return JNI_TRUE;
 }
 

@@ -4,19 +4,19 @@ NDK_TOOLCHAIN_PREFIX=arm-linux-androideabi
 NDK_TOOLCHAIN_VERSION=4.4.3
 
 #defaults:
-CLEAN_QT=1
-CONFIGURE_QT=1
+CLEAN_QT=0
+CONFIGURE_QT=0
 BUILD_QT=1
-INSTALL_QT=0
+INSTALL_QT=1
 SHARED_QT=1
 EXCEPTIONS_QT=1
-DEBUG_QT=0
+DEBUG_QT=1
 MODIFY_DEST_DIR_QT=0
 DOWNLOAD_OPENSSL=1
-NDK_PLATFORM=4
-DEST_DIR_QT=$PWD
+NDK_PLATFORM=9
+DEST_DIR_QT=/usr/local/Trolltech/Qt48Android
 PLATFORM="-platform linux-g++"
-NDK_ROOT=/usr/local/android-ndk-r5b
+NDK_ROOT=/home/tsenyk/projects/android/android-ndk-r5b
 NDK_HOST=linux-x86
 TARGET_ARCH=armeabi-v7a
 

@@ -25,23 +25,36 @@
     SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef ANDROIDPLATFORMDESKTOPSERVICE_H
-#define ANDROIDPLATFORMDESKTOPSERVICE_H
+#include <QPlatformIntegrationPlugin>
+#include <QDebug>
+#include "qandroidplatformintegration.h"
 
-#include <QPlatformDesktopService>
-#include <androidjnimain.h>
-#include <jni.h>
+QT_BEGIN_NAMESPACE
 
-class QAndroidPlatformDesktopService: public QPlatformDesktopService
+class QAndroidPlatformIntegrationPlugin : public QPlatformIntegrationPlugin
 {
 public:
-    QAndroidPlatformDesktopService();
-    virtual QString displayName ( QDesktopServices::StandardLocation type );
-    virtual bool openUrl ( const QUrl & url );
-    virtual QString storageLocation ( QDesktopServices::StandardLocation type );
-private:
-    jmethodID m_openURIMethodID;
-
+    QStringList keys() const;
+    QPlatformIntegration *create(const QString &key, const QStringList &paramList);
 };
 
-#endif // ANDROIDPLATFORMDESKTOPSERVICE_H
+QStringList QAndroidPlatformIntegrationPlugin::keys() const
+{
+    QStringList list;
+    list << "android" << "androidGL";
+    return list;
+}
+
+QPlatformIntegration* QAndroidPlatformIntegrationPlugin::create(const QString &key, const QStringList &paramList)
+{
+    // TODO MERGE: opengl vs. raster
+    Q_UNUSED(paramList);
+    qDebug()<<"QAndroidPlatformIntegrationPlugin::create"<<key;
+    if (key.toLower() == "android")
+        return new QAndroidPlatformIntegration();
+    return 0;
+}
+
+Q_EXPORT_PLUGIN2(QtAndroid, QAndroidPlatformIntegrationPlugin)
+
+QT_END_NAMESPACE

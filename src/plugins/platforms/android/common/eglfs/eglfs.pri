@@ -1,35 +1,20 @@
-include($$QT_BUILD_TREE/src/plugins/qpluginbase.pri)
-
-include($$QT_BUILD_TREE/src/plugins/platforms/fontdatabases/basicunix/basicunix.pri)
-#include(../../../fontdatabases/genericunix/genericunix.pri)
-
-QTDIR_build:DESTDIR = $$QT_BUILD_TREE/plugins/platforms/android
-
 QT += opengl
-
-DEFINES += QEGL_EXTRA_DEBUG
-
 LIBS += -lEGL
 
 INCLUDEPATH += $$PWD $$PWD/..
 
-SOURCES +=  $$PWD/main.cpp \
-            $$PWD/qandroideglfsintegration.cpp \
+SOURCES +=  \
             $$PWD/qeglconvenience.cpp \
             $$PWD/qandroideglplatformcontext.cpp \
             $$PWD/qandroideglfswindow.cpp \
             $$PWD/qandroideglfswindowsurface.cpp \
             $$PWD/qandroideglfsscreen.cpp \
-            $$PWD/androidjnimain.cpp \
             $$PWD/qandroideglfspaintdevice.cpp
 
-HEADERS +=  $$PWD/qandroideglfsintegration.h \
+HEADERS +=  \
             $$PWD/qeglconvenience.h \
             $$PWD/qandroideglplatformcontext.h \
             $$PWD/qandroideglfswindow.h \
             $$PWD/qandroideglfswindowsurface.h \
             $$PWD/qandroideglfsscreen.h \
-            $$PWD/androidjnimain.h \
             $$PWD/qandroideglfspaintdevice.h
-
-target.path += $$[QT_INSTALL_PLUGINS]/platforms/android
