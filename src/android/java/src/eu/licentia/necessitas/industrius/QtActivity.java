@@ -123,11 +123,13 @@ public class QtActivity extends Activity {
                 params += ai.metaData.getString("android.app.application_startup_params");
             }
 
-            final String homePath="HOME="+getFilesDir().getAbsolutePath()+"\tTMPDIR="+getFilesDir().getAbsolutePath();
+            final String envPaths="HOME="+getFilesDir().getAbsolutePath()+
+                                "\tTMPDIR="+getFilesDir().getAbsolutePath()+
+                                "\tCACHE_PATH="+getCacheDir().getAbsolutePath();
             if (environment != null && environment.length()>0)
-                environment=homePath+"\t"+environment;
+                environment=envPaths+"\t"+environment;
             else
-                environment=homePath;
+                environment=envPaths;
 
             QtApplication.startApplication(params, environment);
             m_surface.applicationStared();
@@ -218,7 +220,7 @@ public class QtActivity extends Activity {
 
                 String[] libs=new String[libraryList.size()];
                 libs=libraryList.toArray(libs);
-                m_ministroCallback.libs(libs,"QT_IMPORT_PATH=/data/local/qt/imports\tQT_PLUGIN_PATH=/data/local/qt/plugins", "-platform\tandroid", 0,null);
+                m_ministroCallback.libs(libs,"QML_IMPORT_PATH=/data/local/qt/imports\tQT_PLUGIN_PATH=/data/local/qt/plugins", "-platform\tandroid", 0,null);
                 return;
             }
 

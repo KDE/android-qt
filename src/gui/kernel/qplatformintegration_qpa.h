@@ -61,6 +61,7 @@ class QPlatformEventLoopIntegration;
 class QPlatformFontDatabase;
 class QPlatformClipboard;
 class QPlatformNativeInterface;
+class QPlatformDesktopService;
 
 class Q_GUI_EXPORT QPlatformIntegration
 {
@@ -98,6 +99,10 @@ public:
 
 // Access native handles. The window handle is already available from Wid;
     virtual QPlatformNativeInterface *nativeInterface() const;
+
+// System hooks
+    virtual QPlatformDesktopService * platformDesktopService();
+
 };
 
 QT_END_NAMESPACE

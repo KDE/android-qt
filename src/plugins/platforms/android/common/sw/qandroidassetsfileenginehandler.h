@@ -25,32 +25,21 @@
     SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef ANDROID_APP_H
-#define ANDROID_APP_H
+#ifndef QANDROIDASSETSFILEENGINEHANDLER_H
+#define QANDROIDASSETSFILEENGINEHANDLER_H
 
-#include <jni.h>
+#include <QAbstractFileEngineHandler>
 #include <android/asset_manager.h>
 
-class QImage;
-class QRect;
-class QPoint;
-class QThread;
-class QAndroidPlatformIntegration;
-
-namespace QtAndroid
+class AndroidAssetsFileEngineHandler: public QAbstractFileEngineHandler
 {
-    void flushImage(const QPoint & pos, const QImage & image, const QRect & rect);
-    void setAndroidPlatformIntegration(QAndroidPlatformIntegration * androidGraphicsSystem);
+public:
+    AndroidAssetsFileEngineHandler();
+    virtual ~AndroidAssetsFileEngineHandler();
+    QAbstractFileEngine * create ( const QString & fileName ) const;
 
-    void setFullScreen(bool fullScreen);
+private:
+    AAssetManager * m_assetManager;
+};
 
-    // Software keyboard support
-    void showSoftwareKeyboard();
-    void hideSoftwareKeyboard();
-    // Software keyboard support
-
-    JavaVM * javaVM();
-    AAssetManager * assetManager();
-    jclass applicationClass();
-}
-#endif // ANDROID_APP_H
+#endif // QANDROIDASSETSFILEENGINEHANDLER_H

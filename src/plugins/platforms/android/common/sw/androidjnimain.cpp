@@ -46,11 +46,16 @@
 #include <qabstracteventdispatcher.h>
 
 #include <android/bitmap.h>
+#include <android/asset_manager_jni.h>
+#include "qandroidassetsfileenginehandler.h"
+
 static jmethodID m_redrawSurfaceMethodID=0;
 
 Q_IMPORT_PLUGIN (QtAndroid)
 
 static JavaVM *m_javaVM = NULL;
+static AAssetManager* m_assetManager = NULL;
+
 static jclass m_applicationClass  = NULL;
 static jobject m_surface = NULL;
 static QList<QWindowSystemInterface::TouchPoint> m_touchPoints;
@@ -60,9 +65,10 @@ static QMutex m_surfaceMutex;
 static QSemaphore m_pauseApplicationSemaphore;
 static QMutex m_pauseApplicationMutex;
 
-static QAndroidPlatformIntegration * mAndroidGraphicsSystem=0;
+static QAndroidPlatformIntegration * m_androidGraphicsSystem=0;
 static int m_desktopWidthPixels=0, m_desktopHeightPixels=0;
 static const char * const QtApplicationClassPathName = "eu/licentia/necessitas/industrius/QtApplication";
+static const char * const ContextWrapperClassPathName = "android/content/ContextWrapper";
 
 static volatile bool m_pauseApplication;
 
@@ -72,6 +78,8 @@ static jmethodID m_hideSoftwareKeyboardMethodID=0;
 // Software keyboard support
 
 static jmethodID m_setFullScreenMethodID=0;
+
+static AndroidAssetsFileEngineHandler * m_androidAssetsFileEngineHandler = 0;
 
 static inline void checkPauseApplication()
 {
@@ -168,7 +176,7 @@ namespace QtAndroid
     void setAndroidPlatformIntegration(QAndroidPlatformIntegration * androidGraphicsSystem)
     {
         m_surfaceMutex.lock();
-        mAndroidGraphicsSystem=androidGraphicsSystem;
+        m_androidGraphicsSystem=androidGraphicsSystem;
         m_surfaceMutex.unlock();
     }
 
@@ -211,25 +219,39 @@ namespace QtAndroid
         m_javaVM->DetachCurrentThread();
     }
 
-    void * javaVM()
+    JavaVM * javaVM()
     {
         return m_javaVM;
     }
 
+    AAssetManager * assetManager()
+    {
+        return m_assetManager;
+    }
+
+    jclass applicationClass()
+    {
+        return m_applicationClass;
+    }
+
+
+
 }
 
-static void startQtAndroidPlugin(JNIEnv* /*env*/, jobject /*object*/)
+static void startQtAndroidPlugin(JNIEnv* env, jobject /*object*//*, jobject applicationAssetManager*/)
 {
     m_surface=0;
-    mAndroidGraphicsSystem=0;
+    m_androidGraphicsSystem=0;
+//    m_assetManager = AAssetManager_fromJava(env, applicationAssetManager);
+    m_androidAssetsFileEngineHandler = new AndroidAssetsFileEngineHandler();
 }
 
 static void pauseQtApp(JNIEnv */*env*/, jobject /*thiz*/)
 {
     m_surfaceMutex.lock();
     m_pauseApplicationMutex.lock();
-    if (mAndroidGraphicsSystem)
-        mAndroidGraphicsSystem->pauseApp();
+    if (m_androidGraphicsSystem)
+        m_androidGraphicsSystem->pauseApp();
     m_pauseApplication=true;
     m_pauseApplicationMutex.unlock();
     m_surfaceMutex.unlock();
@@ -239,8 +261,8 @@ static void resumeQtApp(JNIEnv */*env*/, jobject /*thiz*/)
 {
     m_surfaceMutex.lock();
     m_pauseApplicationMutex.lock();
-    if (mAndroidGraphicsSystem)
-        mAndroidGraphicsSystem->resumeApp();
+    if (m_androidGraphicsSystem)
+        m_androidGraphicsSystem->resumeApp();
 
     if (m_pauseApplication)
         m_pauseApplicationSemaphore.release();
@@ -256,7 +278,8 @@ static void quitQtAndroidPlugin(JNIEnv* env, jclass /*clazz*/)
         env->DeleteGlobalRef(m_surface);
         m_surface=0;
     }
-    mAndroidGraphicsSystem=0;
+    m_androidGraphicsSystem=0;
+    delete m_androidAssetsFileEngineHandler;
 }
 
 static void terminateQt(JNIEnv* env, jclass /*clazz*/)
@@ -285,15 +308,15 @@ static void setDisplayMetrics(JNIEnv* /*env*/, jclass /*clazz*/,
     m_desktopWidthPixels=desktopWidthPixels;
     m_desktopHeightPixels=desktopHeightPixels;
 
-    if (!mAndroidGraphicsSystem)
+    if (!m_androidGraphicsSystem)
         QAndroidPlatformIntegration::setDefaultDisplayMetrics(desktopWidthPixels,desktopHeightPixels,
                                                      qRound((double)widthPixels   / xdpi * 100 / 2.54 ),
                                                      qRound((double)heightPixels / ydpi *100  / 2.54 ));
     else
     {
-        mAndroidGraphicsSystem->setDisplayMetrics(qRound((double)widthPixels   / xdpi * 100 / 2.54 ),
+        m_androidGraphicsSystem->setDisplayMetrics(qRound((double)widthPixels   / xdpi * 100 / 2.54 ),
                                                   qRound((double)heightPixels / ydpi *100  / 2.54 ));
-        mAndroidGraphicsSystem->setDesktopSize(desktopWidthPixels,desktopHeightPixels);
+        m_androidGraphicsSystem->setDesktopSize(desktopWidthPixels,desktopHeightPixels);
     }
 }
 
@@ -314,7 +337,7 @@ static void mouseUp(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/, jint x, j
 static void mouseMove(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/, jint x, jint y)
 {
     QWindowSystemInterface::handleMouseEvent(0,
-                                             QEvent::MouseButtonPress,QPoint(x,y),QPoint(x,y),
+                                             QEvent::MouseMove,QPoint(x,y),QPoint(x,y),
                                              Qt::MouseButtons(Qt::LeftButton));
 }
 
@@ -579,15 +602,15 @@ static void keyUp(JNIEnv */*env*/, jobject /*thiz*/, jint key, jint unicode, jin
     int mappedKey=mapAndroidKey(key);
     if (mappedKey==Qt::Key_Close)
     {
-        if(!mAndroidGraphicsSystem || !qApp)
+        if(!m_androidGraphicsSystem || !qApp)
             return;
 
-        qDebug()<<"handleCloseEvent"<<mAndroidGraphicsSystem->getPrimaryScreen()->topWindow()<<qApp->activeWindow();
+        qDebug()<<"handleCloseEvent"<<m_androidGraphicsSystem->getPrimaryScreen()->topWindow()<<qApp->activeWindow();
 #warning FIXME
         // sometimes qApp->activeWindow() is null, it should never be null when you have at least one widget visible, report this issue to nokia !!!
         // how to reproduce it ?
         // create a dialog, create another dialog form previous dialog, close the last dialog.
-        QWindowSystemInterface::handleCloseEvent(qApp->activeWindow()?qApp->activeWindow():mAndroidGraphicsSystem->getPrimaryScreen()->topWindow());
+        QWindowSystemInterface::handleCloseEvent(qApp->activeWindow()?qApp->activeWindow():m_androidGraphicsSystem->getPrimaryScreen()->topWindow());
     }
     else
         // sometimes this method doesn't wakeup the loop, report this issue to nokia !!!
@@ -606,12 +629,14 @@ static void unlockSurface(JNIEnv */*env*/, jobject /*thiz*/)
 
 static void updateWindow(JNIEnv */*env*/, jobject /*thiz*/)
 {
-    if(!mAndroidGraphicsSystem ||  !qApp)
+    if(!m_androidGraphicsSystem ||  !qApp)
         return;
 
     foreach(QWidget * w, qApp->topLevelWidgets())
         w->update();
 }
+
+//     {"startQtAndroidPlugin", "(Ljava/lang/Object;)V", (void *)startQtAndroidPlugin},
 
 static JNINativeMethod methods[] = {
     {"startQtAndroidPlugin", "()V", (void *)startQtAndroidPlugin},
@@ -657,6 +682,15 @@ static int registerNativeMethods(JNIEnv* env, const char* className,
     m_showSoftwareKeyboardMethodID = env->GetStaticMethodID(m_applicationClass, "showSoftwareKeyboard", "()V");
     m_hideSoftwareKeyboardMethodID = env->GetStaticMethodID(m_applicationClass, "hideSoftwareKeyboard", "()V");
     m_setFullScreenMethodID = env->GetStaticMethodID(m_applicationClass, "setFullScreen", "(Z)V");
+
+    jmethodID methodID=env->GetStaticMethodID(m_applicationClass, "mainActivity", "()Leu/licentia/necessitas/industrius/QtActivity;");
+    jobject activityObject=env->CallStaticObjectMethod(m_applicationClass, methodID);
+
+    clazz=env->FindClass(ContextWrapperClassPathName);
+    methodID=env->GetMethodID(clazz, "getAssets", "()Landroid/content/res/AssetManager;");
+    m_assetManager=AAssetManager_fromJava(env, env->CallObjectMethod(activityObject, methodID));
+
+
     return JNI_TRUE;
 }
 

@@ -28,6 +28,7 @@
 #ifndef QGRAPHICSSYSTEM_MINIMAL_H
 #define QGRAPHICSSYSTEM_MINIMAL_H
 
+#include <QPlatformDesktopService>
 #include <QPlatformIntegration>
 #include <QPlatformNativeInterface>
 #include "../../fb_base/fb_base.h"
@@ -36,6 +37,7 @@
 QT_BEGIN_NAMESPACE
 
 class QDesktopWidget;
+class QAndroidPlatformDesktopService;
 
 class QAndroidPlatformScreen : public QFbScreen
 {
@@ -64,14 +66,15 @@ public:
     QWindowSurface *createWindowSurface(QWidget *widget, WId winId) const;
     QPlatformWindow *createPlatformWindow(QWidget *widget, WId winId = 0) const;
 
-    QList<QPlatformScreen *> screens() const { return mScreens; }
+    QList<QPlatformScreen *> screens() const { return m_screens; }
 
-    QAndroidPlatformScreen * getPrimaryScreen(){return mPrimaryScreen;}
+    QAndroidPlatformScreen * getPrimaryScreen(){return m_primaryScreen;}
     bool isVirtualDesktop() { return true; }
     virtual void setDesktopSize(int width, int height);
     virtual void setDisplayMetrics(int width, int height);
     QPlatformFontDatabase *fontDatabase() const;
     virtual QPlatformNativeInterface *nativeInterface() const;
+    virtual QPlatformDesktopService * platformDesktopService();
 
     void pauseApp();
     void resumeApp();
@@ -80,14 +83,15 @@ public:
 
 private:
     QThread * m_mainThread;
-    QAndroidPlatformScreen *mPrimaryScreen;
-    QList<QPlatformScreen *> mScreens;
-    static int mDefaultGeometryWidth,mDefaultGeometryHeight,mDefaultPhysicalSizeWidth,mDefaultPhysicalSizeHeight;
+    QAndroidPlatformScreen *m_primaryScreen;
+    QList<QPlatformScreen *> m_screens;
+    static int m_defaultGeometryWidth,m_defaultGeometryHeight,m_defaultPhysicalSizeWidth,m_defaultPhysicalSizeHeight;
     friend class QAndroidPlatformScreen;
-    QPlatformFontDatabase *mAndroidFDB;
+    QPlatformFontDatabase *m_androidFDB;
     QImage * mFbScreenImage;
     QPainter *compositePainter;
     QAndroidPlatformNativeInterface * m_androidPlatformNativeInterface;
+    QAndroidPlatformDesktopService * m_androidPlatformDesktopService;
 };
 
 QT_END_NAMESPACE
