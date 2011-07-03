@@ -1,3 +1,3 @@
 TEMPLATE = subdirs
 
-SUBDIRS += sw
+SUBDIRS += raster opengl

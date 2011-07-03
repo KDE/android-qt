@@ -113,10 +113,10 @@ QPixmapData *QAndroidPlatformIntegration::createPixmapData(QPixmapData::PixelTyp
 {
     QPixmapData * pq;
 #ifndef QT_NO_OPENGL
-    if (m_useGL)
-        pq = new QGLPixmapData(type);
-#endif
+     pq = new QGLPixmapData(type);
+#else
      pq = new QRasterPixmapData(type);
+#endif
      return pq;
 }
 
