@@ -25,8 +25,8 @@
     SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef QGRAPHICSSYSTEM_MINIMAL_H
-#define QGRAPHICSSYSTEM_MINIMAL_H
+#ifndef QANDROIDPLATFORMINTERATION_H
+#define QANDROIDPLATFORMINTERATION_H
 
 #include <QPlatformIntegration>
 #include <QPlatformNativeInterface>
@@ -72,9 +72,6 @@ public:
     static void setDefaultDesktopSize(int gw, int gh);
 
 private:
-    void initialize();
-
-
     QThread * m_mainThread;
     QPlatformScreen *m_primaryScreen;
     QList<QPlatformScreen *> m_screens;
@@ -89,11 +86,7 @@ private:
 
 #ifdef QT_OPENGL_LIB
 public:
-    QAndroidPlatformIntegration(bool enableOpenGL);
     void surfaceChanged();// TODO MERGE: maybe #ifdef QT_OPENGL_LIB around it?
-
-private:
-    bool useOpenGL;
 #endif
 
 };

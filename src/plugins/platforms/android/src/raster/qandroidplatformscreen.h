@@ -25,10 +25,10 @@
     SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef QGRAPHICSSYSTEM_MINIMAL_H
-#define QGRAPHICSSYSTEM_MINIMAL_H
+#ifndef QANDROIDPLATFORMSCREEN_H
+#define QANDROIDPLATFORMSCREEN_H
 
-#include "../../fb_base/fb_base.h"
+#include "fb_base.h"
 
 class QAndroidPlatformScreen : public QFbScreen
 {

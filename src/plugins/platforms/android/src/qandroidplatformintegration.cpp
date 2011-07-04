@@ -94,17 +94,26 @@ void *QAndroidPlatformNativeInterface::nativeResourceForWidget(const QByteArray 
 };
 
 
-#ifdef QT_OPENGL_LIB
-QAndroidPlatformIntegration::QAndroidPlatformIntegration(bool enableOpenGL)
-{
-    enableOpenGL = true;
-    initialize();
-}
-#endif
-
 QAndroidPlatformIntegration::QAndroidPlatformIntegration()
 {
-    initialize();
+    m_androidPlatformNativeInterface =  new QAndroidPlatformNativeInterface();
+
+#ifdef QT_OPENGL_LIB
+    qDebug() << "QAndroidPlatformIntegration::QAndroidPlatformIntegration():  creating QAndroidEglFSScreen => Using OpenGL painting";
+    m_primaryScreen = new QAndroidEglFSScreen(EGL_DEFAULT_DISPLAY);
+#else
+    qDebug() << "QAndroidPlatformIntegration::QAndroidPlatformIntegration():  creating QAndroidPlatformScreen => Using Raster (Software) for painting";
+    m_primaryScreen = new QAndroidPlatformScreen();
+#endif
+
+    m_screens.append(m_primaryScreen);
+
+    m_mainThread=QThread::currentThread();
+    QtAndroid::setAndroidPlatformIntegration(this);
+    qApp->setInputContext( new QAndroidInputContext() );
+    m_androidFDB = new QAndroidPlatformFontDatabase();
+    m_androidPlatformDesktopService = new QAndroidPlatformDesktopService();
+
 }
 
 bool QAndroidPlatformIntegration::hasCapability(Capability cap) const
@@ -114,31 +123,8 @@ bool QAndroidPlatformIntegration::hasCapability(Capability cap) const
 #else
     return cap==ThreadedPixmaps;
 #endif
-return false;
+    return false;
 }
-
-void QAndroidPlatformIntegration::initialize()
-{
-    m_androidPlatformNativeInterface =  new QAndroidPlatformNativeInterface();
-
-
-    // TODO MERGE: opengl vs. raster
-#ifdef QT_OPENGL_LIB
-    m_primaryScreen = new QAndroidEglFSScreen(EGL_DEFAULT_DISPLAY);
-#else
-    m_primaryScreen = new QAndroidPlatformScreen();
-#endif
-
-    m_screens.append(m_primaryScreen);
-
-
-    m_mainThread=QThread::currentThread();
-    QtAndroid::setAndroidPlatformIntegration(this);
-    qApp->setInputContext( new QAndroidInputContext() );
-    m_androidFDB = new QAndroidPlatformFontDatabase();
-    m_androidPlatformDesktopService = new QAndroidPlatformDesktopService();
-}
-
 
 QAndroidPlatformIntegration::~QAndroidPlatformIntegration()
 {
@@ -179,50 +165,28 @@ void QAndroidPlatformIntegration::setDefaultDesktopSize(int gw, int gh)
 QPixmapData *QAndroidPlatformIntegration::createPixmapData(QPixmapData::PixelType type) const
 {
 #ifdef QT_OPENGL_LIB
-    if(useOpenGL) {
-        QGLPixmapData* result = new QGLPixmapData(type);
-#ifdef QEGL_EXTRA_DEBUG
-        qWarning("QEglIntegration::createPixmapData %d    ... returning: %p\n", type, result);
-#endif
-        return result;
-    }
-#endif
-
+    return new QGLPixmapData(type);
+#else
     return new QRasterPixmapData(type);
+#endif
 }
 
 QWindowSurface *QAndroidPlatformIntegration::createWindowSurface(QWidget *widget, WId /*winId*/) const
 {
 #ifdef QT_OPENGL_LIB
-    if(useOpenGL) {
         Q_ASSERT(dynamic_cast<QAndroidEglFSScreen*>(m_primaryScreen) != 0);
-        QAndroidEglFSWindowSurface* result = new QAndroidEglFSWindowSurface(dynamic_cast<QAndroidEglFSScreen*>(m_primaryScreen), widget);
-
-#ifdef QEGL_EXTRA_DEBUG
-        qWarning("QEglIntegration::createWindowSurface %p   ... returning: %p\n", widget, result);
-#endif
-        return result;
-    }
-#endif
-
+        return new QAndroidEglFSWindowSurface(dynamic_cast<QAndroidEglFSScreen*>(m_primaryScreen), widget);
+#else
     return new QFbWindowSurface(dynamic_cast<QFbScreen*>(m_primaryScreen), widget);
+#endif
 }
 
 QPlatformWindow *QAndroidPlatformIntegration::createPlatformWindow(QWidget *widget, WId /*winId*/) const
 {
 #ifdef QT_OPENGL_LIB
-    if(useOpenGL) {
         Q_ASSERT(dynamic_cast<QAndroidEglFSScreen*>(m_primaryScreen) != 0);
-        QAndroidEglFSWindow* result = new QAndroidEglFSWindow(widget, dynamic_cast<QAndroidEglFSScreen*>(m_primaryScreen));
-
-#ifdef QEGL_EXTRA_DEBUG
-        qWarning("QEglIntegration::createPlatformWindow %p   ... returning: %p\n", widget, result);
-#endif
-        return result;
-    }
-#endif
-
-
+        return  new QAndroidEglFSWindow(widget, dynamic_cast<QAndroidEglFSScreen*>(m_primaryScreen));
+#else
     QFbWindow *w = new QFbWindow(widget);
     dynamic_cast<QFbScreen*>(m_primaryScreen)->addWindow(w);
     qDebug()<<"createPlatformWindow"<<widget->isFullScreen();
@@ -231,6 +195,7 @@ QPlatformWindow *QAndroidPlatformIntegration::createPlatformWindow(QWidget *widg
     else
         QtAndroid::setFullScreen(false);
     return w;
+#endif
 }
 
 void QAndroidPlatformIntegration::setDesktopSize(int width, int height)

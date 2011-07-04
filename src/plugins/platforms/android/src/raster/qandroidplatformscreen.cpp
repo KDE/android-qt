@@ -26,6 +26,10 @@
 */
 
 #include "qandroidplatformscreen.h"
+#include "qandroidplatformintegration.h"
+#include "androidjnimain.h"
+
+#include <QDebug>
 
 QAndroidPlatformScreen::QAndroidPlatformScreen():QFbScreen()
 {
