@@ -121,6 +121,9 @@ AndroidAssetsFileEngineHandler::~AndroidAssetsFileEngineHandler()
 
 QAbstractFileEngine * AndroidAssetsFileEngineHandler::create ( const QString & fileName ) const
 {
+    if(fileName.isEmpty())
+        return 0;
+
     AAsset* asset;
     if (fileName[0]==QChar(QLatin1Char('/')))
         asset=AAssetManager_open(m_assetManager, fileName.toUtf8().constData()+1, AASSET_MODE_BUFFER);
