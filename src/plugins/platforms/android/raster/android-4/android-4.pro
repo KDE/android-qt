@@ -15,6 +15,7 @@ INCLUDEPATH += $$QT_SOURCE_TREE/src/3rdparty/android/precompiled/android-4/arch-
 
 LIBS += -L$$QT_SOURCE_TREE/src/3rdparty/android/precompiled/android-4/arch-arm/lib -landroid_runtime -lsgl  -lutils
 
+include($$QT_SOURCE_TREE/src/plugins/platforms/android/src/raster/raster.pri)
 include($$QT_SOURCE_TREE/src/plugins/platforms/android/src/src.pri)
 
 INSTALLS += target
