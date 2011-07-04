@@ -16,7 +16,7 @@ DOWNLOAD_OPENSSL=1
 NDK_PLATFORM=9
 DEST_DIR_QT=/usr/local/Trolltech/Qt48Android
 PLATFORM="-platform linux-g++"
-NDK_ROOT=/home/tsenyk/projects/android/android-ndk-r5b
+NDK_ROOT=~/NecessitasQtSDK/android-ndk-r5c
 NDK_HOST=linux-x86
 TARGET_ARCH=armeabi-v7a
 
