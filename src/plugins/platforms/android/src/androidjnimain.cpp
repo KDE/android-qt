@@ -47,7 +47,7 @@
 
 #include <android/bitmap.h>
 #include <android/asset_manager_jni.h>
-#include "qandroidassetsfileenginehandler.h"   ... #FIXME PRE_EGLFS-SW-MERGE
+#include "qandroidassetsfileenginehandler.h"
 #include <android/api-level.h>
 
 #if __ANDROID_API__ > 8
@@ -63,9 +63,11 @@ static jclass m_applicationClass  = NULL;
 static AAssetManager* m_assetManager = NULL;
 
 
+#ifndef QT_OPENGL_LIB
 static jobject m_surface = NULL;
 
-#ifdef QT_OPENGL_LIB
+#else
+
 #if __ANDROID_API__ < 9
 # define ANDROID_VIEW_SURFACE_JNI_ID "mSurface"
 #else
@@ -124,6 +126,7 @@ static inline void checkPauseApplication()
 
 namespace QtAndroid
 {
+#ifndef QT_OPENGL_LIB
     void flushImage(const QPoint & pos, const QImage & image, const QRect & destinationRect)
     {
         checkPauseApplication();
@@ -196,7 +199,7 @@ namespace QtAndroid
         m_javaVM->DetachCurrentThread();
     }
 
-#ifdef QT_OPENGL_LIB
+#else // for #ifndef QT_OPENGL_LIB
     EGLNativeWindowType getNativeWindow(bool waitForWindow)
     {
         m_surfaceMutex.lock();
@@ -279,11 +282,13 @@ namespace QtAndroid
 static void startQtAndroidPlugin(JNIEnv* env, jobject /*object*//*, jobject applicationAssetManager*/)
 {
 
+#ifndef QT_OPENGL_LIB
     m_surface = 0;
-#ifdef QT_OPENGL_LIB
+#else
     m_nativeWindow=0;
     m_waitForWindow=false;
 #endif
+
     m_androidGraphicsSystem=0;
 
 //    m_assetManager = AAssetManager_fromJava(env, applicationAssetManager);
@@ -337,19 +342,22 @@ static void terminateQt(JNIEnv* env, jclass /*clazz*/)
 
 static void setSurface(JNIEnv *env, jobject /*thiz*/, jobject jSurface)
 {
-// TODO MERGE ... replace with env-variable or something
 #ifndef QT_OPENGL_LIB
     if (m_surface)
         env->DeleteGlobalRef(m_surface);
     m_surface = env->NewGlobalRef(jSurface);
-#else
+
+#else   // for #ifndef QT_OPENGL_LIB
     m_surfaceMutex.lock();
+
+
 #if __ANDROID_API__ < 9
     m_nativeWindow=(EGLNativeWindowType)env->GetIntField(jSurface, m_surfaceFieldID);
 #else
     m_nativeWindow = ANativeWindow_fromSurface(env, jSurface);
     qDebug()<<"setSurface"<<ANativeWindow_fromSurface(env, jSurface)<<(EGLNativeWindowType)env->GetIntField(jSurface, m_surfaceFieldID);
 #endif
+
     qDebug()<<"setSurface"<<m_nativeWindow;
     if (m_waitForWindow)
         m_waitForWindowSemaphore.release();
@@ -360,12 +368,11 @@ static void setSurface(JNIEnv *env, jobject /*thiz*/, jobject jSurface)
     }
     else
         m_surfaceMutex.unlock();
-#endif
+#endif  // for #ifndef QT_OPENGL_LIB
 }
 
 static void destroySurface(JNIEnv *env, jobject /*thiz*/)
 {
-// TODO MERGE ... replace with env-variable or something
 #ifndef QT_OPENGL_LIB
     env->DeleteGlobalRef(m_surface);
     m_surface = 0;

@@ -212,8 +212,8 @@ EGLConfig q_configFromQPlatformWindowFormat(EGLDisplay display, const QPlatformW
 {
     EGLConfig cfg = 0;
     QVector<EGLint> configureAttributes = q_createConfigAttributesFromFormat(format);
-    configureAttributes.append(EGL_SURFACE_TYPE); //we only support eglconfigs for pbuffer for now
-    configureAttributes.append(EGL_PBUFFER_BIT);
+    configureAttributes.append(EGL_SURFACE_TYPE);
+    configureAttributes.append(EGL_WINDOW_BIT);
 
     configureAttributes.append(EGL_RENDERABLE_TYPE);
     if (format.windowApi() == QPlatformWindowFormat::OpenVG) {

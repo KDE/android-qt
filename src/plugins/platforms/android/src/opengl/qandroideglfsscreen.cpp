@@ -193,6 +193,11 @@ static void checkBadMatch(EGLDisplay dpy, EGLConfig config,
     }
     int32_t depthFormat;
     int32_t pixelFormat;
+
+#ifdef QEGL_EXTRA_DEBUG
+    qDebug() << "eglGetConfigAttrib: " << "configID:" << configID << ", pixelFormat:" << pixelFormat << ", depthFormat:" << depthFormat;
+#endif
+
     if (getConfigFormatInfo(configID, pixelFormat, depthFormat) != NO_ERROR) {
         qDebug()<<"getConfigFormatInfo(configID, pixelFormat, depthFormat) != NO_ERROR";
         return;

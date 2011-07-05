@@ -55,8 +55,9 @@ namespace QtAndroid
     // Software keyboard support
 
 
+#ifndef QT_OPENGL_LIB
     void flushImage(const QPoint & pos, const QImage & image, const QRect & rect);
-#ifdef QT_OPENGL_LIB
+#else
     EGLNativeWindowType getNativeWindow(bool waitToCreate=true);
 #endif
 
