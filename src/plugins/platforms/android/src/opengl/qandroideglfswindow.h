@@ -39,8 +39,8 @@
 **
 ****************************************************************************/
 
-#ifndef QEGLWINDOW_H
-#define QEGLWINDOW_H
+#ifndef QANDROIDEGLWINDOW_H
+#define QANDROIDEGLWINDOW_H
 
 #include "qandroidplatformintegration.h"
 #include "qandroideglfsscreen.h"
@@ -64,4 +64,4 @@ private:
     WId m_winid;
 };
 QT_END_NAMESPACE
-#endif // QEGLWINDOW_H
+#endif // QANDROIDEGLWINDOW_H

@@ -39,12 +39,11 @@
 **
 ****************************************************************************/
 
-#ifndef QOPENKODEGLINTEGRATION_H
-#define QOPENKODEGLINTEGRATION_H
+#ifndef QANDROIDEGLFSPLATFORMCONTEXT
+#define QANDROIDEGLFSPLATFORMCONTEXT
 
 #include <QtGui/QPlatformGLContext>
 #include <EGL/egl.h>
-#include <QMutex>
 
 class QAndroidEglFSPlatformContext : public QPlatformGLContext
 {
@@ -70,8 +69,6 @@ public:
     EGLenum m_eglApi;
 
     QPlatformWindowFormat m_windowFormat;
-
-//    QMutex eglMutex;
 };
 
-#endif //QOPENKODEGLINTEGRATION_H
+#endif //QANDROIDEGLFSPLATFORMCONTEXT

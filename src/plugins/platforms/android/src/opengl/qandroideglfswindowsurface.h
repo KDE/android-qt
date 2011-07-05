@@ -39,8 +39,8 @@
 **
 ****************************************************************************/
 
-#ifndef QEGLWINDOWSURFACE_H
-#define QEGLWINDOWSURFACE_H
+#ifndef QANDROIDEGLWINDOWSURFACE_H
+#define QANDROIDEGLWINDOWSURFACE_H
 
 #include "qandroideglfswindow.h"
 
@@ -64,4 +64,4 @@ private:
 
 QT_END_NAMESPACE
 
-#endif // QEGLWINDOWSURFACE_H
+#endif // QANDROIDEGLWINDOWSURFACE_H

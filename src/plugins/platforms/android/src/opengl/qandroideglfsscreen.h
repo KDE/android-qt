@@ -39,8 +39,8 @@
 **
 ****************************************************************************/
 
-#ifndef QEGLSCREEN_H
-#define QEGLSCREEN_H
+#ifndef QANDROIDEGLSCREEN_H
+#define QANDROIDEGLSCREEN_H
 
 #include <QPlatformScreen>
 
@@ -86,4 +86,4 @@ private:
 };
 
 QT_END_NAMESPACE
-#endif // QEGLSCREEN_H
+#endif // QANDROIDEGLSCREEN_H

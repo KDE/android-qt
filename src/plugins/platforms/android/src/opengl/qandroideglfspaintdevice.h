@@ -43,9 +43,8 @@
 #define QANDROIDEGLFSPAINTDEVICE_H
 
 #include <private/qglpaintdevice_p.h>
-#include <QDebug>
-
 #include "qandroideglfsscreen.h"
+
 
 class QAndroidEglFSPaintDevice : public QGLPaintDevice
 {
@@ -56,11 +55,6 @@ public:
     QGLContext* context() const { return QGLContext::fromPlatformGLContext(m_screen->platformContext());}
 
     QPaintEngine *paintEngine() const;
-
-    virtual void endPaint() {
-        QGLPaintDevice::endPaint();
-//        qDebug() << "virtual void QAndroidEglFSPaintDevice::endPaint()  ... This function is not called because of a unknown bug ... if you see this message in a running application please send a email to thomas.senyk@nokia.com";
-    }
 
 private:
     QAndroidEglFSScreen *m_screen;
