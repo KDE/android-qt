@@ -40,9 +40,9 @@
 #include "qandroidplatformdesktopservice.h"
 
 #ifdef QT_OPENGL_LIB
-#include <private/qpixmapdata_gl_p.h>
 #include "qandroideglfsscreen.h"
 #include "qandroideglfswindowsurface.h"
+#include <private/qpixmapdata_gl_p.h>
 #else
 #include "qandroidplatformscreen.h"
 #endif
