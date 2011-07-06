@@ -7,29 +7,29 @@
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
-**
 ** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL included in the
-** packaging of this file.  Please review the following information to
-** ensure the GNU Lesser General Public License version 2.1 requirements
-** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** This file may be used under the terms of the GNU Lesser General Public
+** License version 2.1 as published by the Free Software Foundation and
+** appearing in the file LICENSE.LGPL included in the packaging of this
+** file. Please review the following information to ensure the GNU Lesser
+** General Public License version 2.1 requirements will be met:
+** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
 **
 ** In addition, as a special exception, Nokia gives you certain additional
-** rights.  These rights are described in the Nokia Qt LGPL Exception
+** rights. These rights are described in the Nokia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
-** If you have questions regarding the use of this file, please contact
-** Nokia at qt-info@nokia.com.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU General
+** Public License version 3.0 as published by the Free Software Foundation
+** and appearing in the file LICENSE.GPL included in the packaging of this
+** file. Please review the following information to ensure the GNU General
+** Public License version 3.0 requirements will be met:
+** http://www.gnu.org/copyleft/gpl.html.
 **
-**
-**
+** Other Usage
+** Alternatively, this file may be used in accordance with the terms and
+** conditions contained in a signed written agreement between you and Nokia.
 **
 **
 **
@@ -1348,6 +1348,26 @@ void QAbstractItemModelPrivate::columnsRemoved(const QModelIndex &parent,
 */
 
 /*!
+    \since 4.8
+
+    This slot is called just after the internal data of a model is cleared
+    while it is being reset.
+
+    This slot is provided the convenience of subclasses of concrete proxy
+    models, such as subclasses of QSortFilterProxyModel which maintain extra
+    data.
+
+    \snippet doc/src/snippets/code/src_corelib_kernel_qabstractitemmodel.cpp 10
+
+    \sa modelAboutToBeReset(), modelReset()
+*/
+void QAbstractItemModel::resetInternalData()
+{
+
+}
+
+
+/*!
     Constructs an abstract item model with the given \a parent.
 */
 QAbstractItemModel::QAbstractItemModel(QObject *parent)
@@ -1747,18 +1767,19 @@ QMimeData *QAbstractItemModel::mimeData(const QModelIndexList &indexes) const
     Returns true if the data and action can be handled by the model; otherwise
     returns false.
 
-    Although the specified \a row, \a column and \a parent indicate the
-    location of an item in the model where the operation ended, it is the
-    responsibility of the view to provide a suitable location for where the
-    data should be inserted.
+    The specified \a row, \a column and \a parent indicate the location of an
+    item in the model where the operation ended. It is the responsibility of
+    the model to complete the action at the correct location.
 
     For instance, a drop action on an item in a QTreeView can result in new
     items either being inserted as children of the item specified by \a row,
     \a column, and \a parent, or as siblings of the item.
 
-    When row and column are -1 it means that it is up to the model to decide
-    where to place the data. This can occur in a tree when data is dropped on
-    a parent. Models will usually append the data to the parent in this case.
+    When \a row and \a column are -1 it means that the dropped data should be
+    considered as dropped directly on \a parent. Usually this will mean
+    appending the data as child items of \a parent. If \a row and column are
+    greater than or equal zero, it means that the drop occurred just before the
+    specified \a row and \a column in the specified \a parent.
 
     \sa supportedDropActions(), {Using drag and drop with item views}
 */
@@ -2888,6 +2909,7 @@ void QAbstractItemModel::reset()
     Q_D(QAbstractItemModel);
     emit modelAboutToBeReset();
     d->invalidatePersistentIndexes();
+    QMetaObject::invokeMethod(this, "resetInternalData");
     emit modelReset();
 }
 
@@ -2930,6 +2952,7 @@ void QAbstractItemModel::endResetModel()
 {
     Q_D(QAbstractItemModel);
     d->invalidatePersistentIndexes();
+    QMetaObject::invokeMethod(this, "resetInternalData");
     emit modelReset();
 }
 

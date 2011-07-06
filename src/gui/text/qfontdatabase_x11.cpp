@@ -7,29 +7,29 @@
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
-**
 ** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL included in the
-** packaging of this file.  Please review the following information to
-** ensure the GNU Lesser General Public License version 2.1 requirements
-** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** This file may be used under the terms of the GNU Lesser General Public
+** License version 2.1 as published by the Free Software Foundation and
+** appearing in the file LICENSE.LGPL included in the packaging of this
+** file. Please review the following information to ensure the GNU Lesser
+** General Public License version 2.1 requirements will be met:
+** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
 **
 ** In addition, as a special exception, Nokia gives you certain additional
-** rights.  These rights are described in the Nokia Qt LGPL Exception
+** rights. These rights are described in the Nokia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
-** If you have questions regarding the use of this file, please contact
-** Nokia at qt-info@nokia.com.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU General
+** Public License version 3.0 as published by the Free Software Foundation
+** and appearing in the file LICENSE.GPL included in the packaging of this
+** file. Please review the following information to ensure the GNU General
+** Public License version 3.0 requirements will be met:
+** http://www.gnu.org/copyleft/gpl.html.
 **
-**
-**
+** Other Usage
+** Alternatively, this file may be used in accordance with the terms and
+** conditions contained in a signed written agreement between you and Nokia.
 **
 **
 **
@@ -1452,6 +1452,35 @@ static const char *styleHint(const QFontDef &request)
 
 void qt_addPatternProps(FcPattern *pattern, int screen, int script, const QFontDef &request)
 {
+    double size_value = qMax(qreal(1.), request.pixelSize);
+    FcPatternDel(pattern, FC_PIXEL_SIZE);
+    FcPatternAddDouble(pattern, FC_PIXEL_SIZE, size_value);
+
+    if (X11->display && QX11Info::appDepth(screen) <= 8) {
+        FcPatternDel(pattern, FC_ANTIALIAS);
+        // can't do antialiasing on 8bpp
+        FcPatternAddBool(pattern, FC_ANTIALIAS, false);
+    } else if (request.styleStrategy & (QFont::PreferAntialias|QFont::NoAntialias)) {
+        FcPatternDel(pattern, FC_ANTIALIAS);
+        FcPatternAddBool(pattern, FC_ANTIALIAS,
+                         !(request.styleStrategy & QFont::NoAntialias));
+    }
+
+    if (script != QUnicodeTables::Common && *specialLanguages[script] != '\0') {
+        Q_ASSERT(script < QUnicodeTables::ScriptCount);
+        FcLangSet *ls = FcLangSetCreate();
+        FcLangSetAdd(ls, (const FcChar8*)specialLanguages[script]);
+        FcPatternDel(pattern, FC_LANG);
+        FcPatternAddLangSet(pattern, FC_LANG, ls);
+        FcLangSetDestroy(ls);
+    }
+
+    if (!request.styleName.isEmpty()) {
+        QByteArray cs = request.styleName.toUtf8();
+        FcPatternAddString(pattern, FC_STYLE, (const FcChar8 *) cs.constData());
+        return;
+    }
+
     int weight_value = FC_WEIGHT_BLACK;
     if (request.weight == 0)
         weight_value = FC_WEIGHT_MEDIUM;
@@ -1474,34 +1503,11 @@ void qt_addPatternProps(FcPattern *pattern, int screen, int script, const QFontD
     FcPatternDel(pattern, FC_SLANT);
     FcPatternAddInteger(pattern, FC_SLANT, slant_value);
 
-    double size_value = qMax(qreal(1.), request.pixelSize);
-    FcPatternDel(pattern, FC_PIXEL_SIZE);
-    FcPatternAddDouble(pattern, FC_PIXEL_SIZE, size_value);
-
     int stretch = request.stretch;
     if (!stretch)
         stretch = 100;
     FcPatternDel(pattern, FC_WIDTH);
     FcPatternAddInteger(pattern, FC_WIDTH, stretch);
-
-    if (X11->display && QX11Info::appDepth(screen) <= 8) {
-        FcPatternDel(pattern, FC_ANTIALIAS);
-        // can't do antialiasing on 8bpp
-        FcPatternAddBool(pattern, FC_ANTIALIAS, false);
-    } else if (request.styleStrategy & (QFont::PreferAntialias|QFont::NoAntialias)) {
-        FcPatternDel(pattern, FC_ANTIALIAS);
-        FcPatternAddBool(pattern, FC_ANTIALIAS,
-                         !(request.styleStrategy & QFont::NoAntialias));
-    }
-
-    if (script != QUnicodeTables::Common && *specialLanguages[script] != '\0') {
-        Q_ASSERT(script < QUnicodeTables::ScriptCount);
-        FcLangSet *ls = FcLangSetCreate();
-        FcLangSetAdd(ls, (const FcChar8*)specialLanguages[script]);
-        FcPatternDel(pattern, FC_LANG);
-        FcPatternAddLangSet(pattern, FC_LANG, ls);
-        FcLangSetDestroy(ls);
-    }
 }
 
 static bool preferScalable(const QFontDef &request)
@@ -1560,9 +1566,8 @@ static FcPattern *getFcPattern(const QFontPrivate *fp, int script, const QFontDe
 
     qt_addPatternProps(pattern, fp->screen, script, request);
 
-    FcDefaultSubstitute(pattern);
     FcConfigSubstitute(0, pattern, FcMatchPattern);
-    FcConfigSubstitute(0, pattern, FcMatchFont);
+    FcDefaultSubstitute(pattern);
 
     // these should only get added to the pattern _after_ substitution
     // append the default fallback font for the specified script
@@ -1600,34 +1605,19 @@ static void FcFontSetRemove(FcFontSet *fs, int at)
         memmove(fs->fonts + at, fs->fonts + at + 1, len);
 }
 
-static QFontEngine *tryPatternLoad(FcPattern *p, int screen,
-                                   const QFontDef &request, int script, FcPattern **matchedPattern = 0)
+static QFontEngine *tryPatternLoad(FcPattern *match, int screen,
+                                   const QFontDef &request, int script)
 {
 #ifdef FONT_MATCH_DEBUG
     FcChar8 *fam;
-    FcPatternGetString(p, FC_FAMILY, 0, &fam);
+    FcPatternGetString(match, FC_FAMILY, 0, &fam);
     FM_DEBUG("==== trying %s\n", fam);
 #endif
     FM_DEBUG("passes charset test\n");
-    FcPattern *pattern = FcPatternDuplicate(p);
-    // add properties back in as the font selected from the
-    // list doesn't contain them.
-    qt_addPatternProps(pattern, screen, script, request);
-
-    FcConfigSubstitute(0, pattern, FcMatchPattern);
-    FcDefaultSubstitute(pattern);
-    FcResult res;
-    FcPattern *match = FcFontMatch(0, pattern, &res);
-
-    if (matchedPattern)
-	*matchedPattern = 0;
 
     QFontEngineX11FT *engine = 0;
     if (!match) // probably no fonts available.
         goto done;
-
-    if (matchedPattern)
-	*matchedPattern = FcPatternDuplicate(match);
 
     if (script != QUnicodeTables::Common) {
         // skip font if it doesn't support the language we want
@@ -1667,11 +1657,6 @@ static QFontEngine *tryPatternLoad(FcPattern *p, int screen,
         }
     }
 done:
-    FcPatternDestroy(pattern);
-    if (!engine && matchedPattern && *matchedPattern) {
-        FcPatternDestroy(*matchedPattern);
-        *matchedPattern = 0;
-    }
     return engine;
 }
 
@@ -1720,14 +1705,26 @@ static QFontEngine *loadFc(const QFontPrivate *fp, int script, const QFontDef &r
 #endif
 
     QFontEngine *fe = 0;
-    FcPattern *matchedPattern = 0;
-    fe = tryPatternLoad(pattern, fp->screen, request, script, &matchedPattern);
+    FcResult res;
+    FcPattern *match = FcFontMatch(0, pattern, &res);
+    fe = tryPatternLoad(match, fp->screen, request, script);
     if (!fe) {
         FcFontSet *fs = qt_fontSetForPattern(pattern, request);
 
+        if (match) {
+            FcPatternDestroy(match);
+            match = 0;
+        }
+
         if (fs) {
-            for (int i = 0; !fe && i < fs->nfont; ++i)
-                fe = tryPatternLoad(fs->fonts[i], fp->screen, request, script, &matchedPattern);
+            for (int i = 0; !fe && i < fs->nfont; ++i) {
+                match = FcFontRenderPrepare(NULL, pattern, fs->fonts[i]);
+                fe = tryPatternLoad(match, fp->screen, request, script);
+                if (fe)
+                    break;
+                FcPatternDestroy(match);
+                match = 0;
+            }
             FcFontSetDestroy(fs);
         }
         FM_DEBUG("engine for script %d is %s\n", script, fe ? fe->fontDef.family.toLatin1().data(): "(null)");
@@ -1735,11 +1732,11 @@ static QFontEngine *loadFc(const QFontPrivate *fp, int script, const QFontDef &r
     if (fe
         && script == QUnicodeTables::Common
         && !(request.styleStrategy & QFont::NoFontMerging) && !fe->symbol) {
-        fe = new QFontEngineMultiFT(fe, matchedPattern, pattern, fp->screen, request);
+        fe = new QFontEngineMultiFT(fe, match, pattern, fp->screen, request);
     } else {
         FcPatternDestroy(pattern);
-        if (matchedPattern)
-            FcPatternDestroy(matchedPattern);
+        if (match)
+            FcPatternDestroy(match);
     }
     return fe;
 }
@@ -1996,6 +1993,11 @@ void QFontDatabase::load(const QFontPrivate *d, int script)
     QFontCache::instance()->insertEngine(key, fe);
 }
 
+// Needed for fontconfig version < 2.2.97
+#ifndef FC_FAMILYLANG
+#define FC_FAMILYLANG "familylang"
+#endif
+
 static void registerFont(QFontDatabasePrivate::ApplicationFont *fnt)
 {
 #if defined(QT_NO_FONTCONFIG)
@@ -2044,7 +2046,8 @@ static void registerFont(QFontDatabasePrivate::ApplicationFont *fnt)
             return;
 
         FcPatternDel(pattern, FC_FILE);
-        FcPatternAddString(pattern, FC_FILE, (const FcChar8 *)fnt->fileName.toUtf8().constData());
+        QByteArray cs = fnt->fileName.toUtf8();
+        FcPatternAddString(pattern, FC_FILE, (const FcChar8 *) cs.constData());
 
         FcChar8 *fam = 0, *familylang = 0;
         int i, n = 0;
@@ -2130,7 +2133,8 @@ QString QFontDatabase::resolveFontFamilyAlias(const QString &family)
     if (!pattern)
         return family;
 
-    FcPatternAddString(pattern, FC_FAMILY, (const FcChar8 *) family.toUtf8().data());
+    QByteArray cs = family.toUtf8();
+    FcPatternAddString(pattern, FC_FAMILY, (const FcChar8 *) cs.constData());
     FcConfigSubstitute(0, pattern, FcMatchPattern);
     FcDefaultSubstitute(pattern);
 

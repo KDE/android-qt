@@ -7,29 +7,29 @@
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
-**
 ** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL included in the
-** packaging of this file.  Please review the following information to
-** ensure the GNU Lesser General Public License version 2.1 requirements
-** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** This file may be used under the terms of the GNU Lesser General Public
+** License version 2.1 as published by the Free Software Foundation and
+** appearing in the file LICENSE.LGPL included in the packaging of this
+** file. Please review the following information to ensure the GNU Lesser
+** General Public License version 2.1 requirements will be met:
+** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
 **
 ** In addition, as a special exception, Nokia gives you certain additional
-** rights.  These rights are described in the Nokia Qt LGPL Exception
+** rights. These rights are described in the Nokia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
-** If you have questions regarding the use of this file, please contact
-** Nokia at qt-info@nokia.com.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU General
+** Public License version 3.0 as published by the Free Software Foundation
+** and appearing in the file LICENSE.GPL included in the packaging of this
+** file. Please review the following information to ensure the GNU General
+** Public License version 3.0 requirements will be met:
+** http://www.gnu.org/copyleft/gpl.html.
 **
-**
-**
+** Other Usage
+** Alternatively, this file may be used in accordance with the terms and
+** conditions contained in a signed written agreement between you and Nokia.
 **
 **
 **
@@ -54,6 +54,7 @@
 
 #include <fepitfr.h>
 #include <hal.h>
+#include <e32property.h>
 
 #include <limits.h>
 // You only find these enumerations on SDK 5 onwards, so we need to provide our own
@@ -72,6 +73,10 @@
 // EAknEditorFlagEnablePartialScreen is only valid from Sym^3 onwards.
 #define QT_EAknEditorFlagEnablePartialScreen 0x200000
 
+// Properties to detect VKB status from AknFepInternalPSKeys.h
+#define QT_EPSUidAknFep 0x100056de
+#define QT_EAknFepTouchInputActive 0x00000004
+
 QT_BEGIN_NAMESPACE
 
 Q_GUI_EXPORT void qt_s60_setPartialScreenInputMode(bool enable)
@@ -86,6 +91,11 @@ Q_GUI_EXPORT void qt_s60_setPartialScreenInputMode(bool enable)
     }
     if (ic)
         ic->update();
+}
+
+Q_GUI_EXPORT void qt_s60_setPartialScreenAutomaticTranslation(bool enable)
+{
+    S60->partial_keyboardAutoTranslation = enable;
 }
 
 QCoeFepInputContext::QCoeFepInputContext(QObject *parent)
@@ -136,6 +146,16 @@ QCoeFepInputContext::~QCoeFepInputContext()
 
 void QCoeFepInputContext::reset()
 {
+    Qt::InputMethodHints currentHints = Qt::ImhNone;
+    if (focusWidget()) {
+        QWidget *proxy = focusWidget()->focusProxy();
+        currentHints = proxy ? proxy->inputMethodHints() : focusWidget()->inputMethodHints();
+    }
+    // Store a copy of preedit text, if prediction is active and input context is reseted.
+    // This is to ensure that we can replace preedit string after losing focus to FEP manager's
+    // internal sub-windows.
+    if (m_cachedPreeditString.isEmpty() && !(currentHints & Qt::ImhNoPredictiveText))
+        m_cachedPreeditString = m_preeditString;
     commitCurrentString(true);
 }
 
@@ -170,6 +190,8 @@ void QCoeFepInputContext::setFocusWidget(QWidget *w)
 
 void QCoeFepInputContext::widgetDestroyed(QWidget *w)
 {
+    m_cachedPreeditString.clear();
+
     // Make sure that the input capabilities of whatever new widget got focused are queried.
     CCoeControl *ctrl = w->effectiveWinId();
     if (ctrl->IsFocused()) {
@@ -235,21 +257,6 @@ bool QCoeFepInputContext::filterEvent(const QEvent *event)
         return false;
 
     switch (event->type()) {
-    case QEvent::MouseButtonPress:
-        // Alphanumeric keypad doesn't like it when we click and text is still getting displayed
-        // It ignores the mouse event, so we need to commit and send a selection event (which will get triggered
-        // after the commit)
-        if (!m_preeditString.isEmpty()) {
-            commitCurrentString(true);
-
-            int pos = focusWidget()->inputMethodQuery(Qt::ImCursorPosition).toInt();
-
-            QList<QInputMethodEvent::Attribute> selectAttributes;
-            selectAttributes << QInputMethodEvent::Attribute(QInputMethodEvent::Selection, pos, 0, QVariant());
-            QInputMethodEvent selectEvent(QLatin1String(""), selectAttributes);
-            sendEvent(selectEvent);
-    }
-        break;
     case QEvent::KeyPress:
         commitTemporaryPreeditString();
         // fall through intended
@@ -310,25 +317,46 @@ bool QCoeFepInputContext::filterEvent(const QEvent *event)
         return false;
 
     if (event->type() == QEvent::RequestSoftwareInputPanel) {
-        // Notify S60 that we want the virtual keyboard to show up.
-        QSymbianControl *sControl;
-        sControl = focusWidget()->effectiveWinId()->MopGetObject(sControl);
-        Q_ASSERT(sControl);
+        // Only request virtual keyboard if it is not yet active or if this is the first time
+        // panel is requested for this application.
+        static bool firstTime = true;
+        int vkbActive = 0;
 
-        // The FEP UI temporarily steals focus when it shows up the first time, causing
-        // all sorts of weird effects on the focused widgets. Since it will immediately give
-        // back focus to us, we temporarily disable focus handling until the job's done.
-        if (sControl) {
-            sControl->setIgnoreFocusChanged(true);
+        if (firstTime) {
+            // Sometimes the global QT_EAknFepTouchInputActive value can be left incorrect at
+            // application exit if the application is exited when input panel is active.
+            // Therefore we always want to open the panel the first time application requests it.
+            firstTime = false;
+        } else {
+            const TUid KPSUidAknFep = {QT_EPSUidAknFep};
+            // No need to check for return value, as vkbActive stays zero in that case
+            RProperty::Get(KPSUidAknFep, QT_EAknFepTouchInputActive, vkbActive);
         }
 
-        ensureInputCapabilitiesChanged();
-        m_fepState->ReportAknEdStateEventL(MAknEdStateObserver::QT_EAknActivatePenInputRequest);
+        if (!vkbActive) {
+            // Notify S60 that we want the virtual keyboard to show up.
+            QSymbianControl *sControl;
+            sControl = focusWidget()->effectiveWinId()->MopGetObject(sControl);
+            Q_ASSERT(sControl);
 
-        if (sControl) {
-            sControl->setIgnoreFocusChanged(false);
+            // The FEP UI temporarily steals focus when it shows up the first time, causing
+            // all sorts of weird effects on the focused widgets. Since it will immediately give
+            // back focus to us, we temporarily disable focus handling until the job's done.
+            if (sControl) {
+                sControl->setIgnoreFocusChanged(true);
+            }
+
+            ensureInputCapabilitiesChanged();
+            m_fepState->ReportAknEdStateEventL(MAknEdStateObserver::QT_EAknActivatePenInputRequest);
+
+            if (sControl) {
+                sControl->setIgnoreFocusChanged(false);
+            }
+            //If m_pointerHandler has already been set, it means that fep inline editing is in progress.
+            //When this is happening, do not filter out pointer events.
+            if (!m_pointerHandler)
+                return true;
         }
-        return true;
     }
 
     return false;
@@ -360,6 +388,12 @@ bool QCoeFepInputContext::symbianFilterEvent(QWidget *keyWidget, const QSymbianE
         }
     }
 
+    if (event->type() == QSymbianEvent::ResourceChangeEvent
+         && (event->resourceChangeType() == KEikMessageFadeAllWindows
+         || event->resourceChangeType() == KEikDynamicLayoutVariantSwitch)) {
+        reset();
+    }
+
     return false;
 }
 
@@ -380,18 +414,31 @@ void QCoeFepInputContext::commitTemporaryPreeditString()
     commitCurrentString(false);
 }
 
-void QCoeFepInputContext::mouseHandler( int x, QMouseEvent *event)
+void QCoeFepInputContext::mouseHandler(int x, QMouseEvent *event)
 {
     Q_ASSERT(focusWidget());
 
     if (event->type() == QEvent::MouseButtonPress && event->button() == Qt::LeftButton) {
-        commitCurrentString(true);
-        int pos = focusWidget()->inputMethodQuery(Qt::ImCursorPosition).toInt();
+        QWidget *proxy = focusWidget()->focusProxy();
+        Qt::InputMethodHints currentHints = proxy ? proxy->inputMethodHints() : focusWidget()->inputMethodHints();
 
-        QList<QInputMethodEvent::Attribute> attributes;
-        attributes << QInputMethodEvent::Attribute(QInputMethodEvent::Selection, pos + x, 0, QVariant());
-        QInputMethodEvent event(QLatin1String(""), attributes);
-        sendEvent(event);
+        //If splitview is open and T9 word is tapped, pass the pointer event to pointer handler.
+        //This will open the "suggested words" list. Pass pointer position always as zero, to make
+        //full word replacement in case user makes a selection.
+        if (S60->partial_keyboard && S60->partialKeyboardOpen
+            && m_pointerHandler
+            && !(currentHints & Qt::ImhNoPredictiveText)
+            && (x > 0 && x < m_preeditString.length())) {
+            m_pointerHandler->HandlePointerEventInInlineTextL(TPointerEvent::EButton1Up, 0, 0);
+        } else {
+            commitCurrentString(true);
+            int pos = focusWidget()->inputMethodQuery(Qt::ImCursorPosition).toInt();
+
+            QList<QInputMethodEvent::Attribute> attributes;
+            attributes << QInputMethodEvent::Attribute(QInputMethodEvent::Selection, pos + x, 0, QVariant());
+            QInputMethodEvent event(QLatin1String(""), attributes);
+            sendEvent(event);
+        }
     }
 }
 
@@ -444,7 +491,10 @@ void QCoeFepInputContext::resetSplitViewWidget(bool keepInputWidget)
         }
     } else {
         if (m_splitViewResizeBy)
-            gv->resize(gv->rect().width(), m_splitViewResizeBy);
+            if (m_splitViewPreviousWindowStates & Qt::WindowFullScreen)
+                gv->resize(gv->rect().width(), qApp->desktop()->height());
+            else
+                gv->resize(gv->rect().width(), m_splitViewResizeBy);
     }
     // Resizing might have led to widget losing its original windowstate.
     // Restore previous window state.
@@ -559,12 +609,13 @@ void QCoeFepInputContext::ensureFocusWidgetVisible(QWidget *widget)
             widget->resize(widget->width(), splitViewRect.height() - windowTop);
         }
 
-        if (gv->scene()) {
+        if (gv->scene() && S60->partial_keyboardAutoTranslation) {
             const QRectF microFocusRect = gv->scene()->inputMethodQuery(Qt::ImMicroFocus).toRectF();
             gv->ensureVisible(microFocusRect);
         }
     } else {
-        translateInputWidget();
+        if (S60->partial_keyboardAutoTranslation)
+            translateInputWidget();
     }
 
     if (alwaysResize)
@@ -622,6 +673,7 @@ void QCoeFepInputContext::applyHints(Qt::InputMethodHints hints)
 {
     using namespace Qt;
 
+    reset();
     commitTemporaryPreeditString();
 
     const bool anynumbermodes = hints & (ImhDigitsOnly | ImhFormattedNumbersOnly | ImhDialableCharactersOnly);
@@ -674,11 +726,6 @@ void QCoeFepInputContext::applyHints(Qt::InputMethodHints hints)
     }
     else if (anynumbermodes) {
         flags |= EAknEditorNumericInputMode;
-        if (QSysInfo::s60Version() > QSysInfo::SV_S60_5_0
-            && ((hints & ImhFormattedNumbersOnly) || (hints & ImhDialableCharactersOnly))) {
-            //workaround - the * key does not launch the symbols menu, making it impossible to use these modes unless text mode is enabled.
-            flags |= EAknEditorTextInputMode;
-        }
     }
     else if (anytextmodes) {
         flags |= EAknEditorTextInputMode;
@@ -759,8 +806,6 @@ void QCoeFepInputContext::applyHints(Qt::InputMethodHints hints)
         m_fepState->SetSpecialCharacterTableResourceId(R_AVKON_EMAIL_ADDR_SPECIAL_CHARACTER_TABLE_DIALOG);
     } else if (needsCharMap) {
         m_fepState->SetSpecialCharacterTableResourceId(R_AVKON_SPECIAL_CHARACTER_TABLE_DIALOG);
-    } else if ((hints & ImhFormattedNumbersOnly) || (hints & ImhDialableCharactersOnly)) {
-        m_fepState->SetSpecialCharacterTableResourceId(R_AVKON_SPECIAL_CHARACTER_TABLE_DIALOG);
     } else {
         m_fepState->SetSpecialCharacterTableResourceId(0);
     }
@@ -819,13 +864,6 @@ void QCoeFepInputContext::applyFormat(QList<QInputMethodEvent::Attribute> *attri
         }
     }
 
-    if (attributes->size() == oldSize) {
-        // S60 didn't provide any format, so let's give our own instead.
-        attributes->append(QInputMethodEvent::Attribute(QInputMethodEvent::TextFormat,
-                                                        0,
-                                                        m_preeditString.size(),
-                                                        standardFormat(PreeditFormat)));
-    }
 }
 
 void QCoeFepInputContext::queueInputCapabilitiesChanged()
@@ -855,6 +893,8 @@ void QCoeFepInputContext::ensureInputCapabilitiesChanged()
 void QCoeFepInputContext::translateInputWidget()
 {
     QGraphicsView *gv = qobject_cast<QGraphicsView *>(S60->splitViewLastWidget);
+    if (!gv)
+        return;
     QRect splitViewRect = qt_TRect2QRect(static_cast<CEikAppUi*>(S60->appUi())->ClientRect());
 
     QRectF cursor = gv->scene()->inputMethodQuery(Qt::ImMicroFocus).toRectF();
@@ -876,19 +916,40 @@ void QCoeFepInputContext::translateInputWidget()
 
     m_transformation = (rootItem->transform().isTranslating()) ? QRectF(0,0, gv->width(), rootItem->transform().dy()) : QRectF();
 
-    // Do nothing if the cursor is visible in the splitview area.
-    if (splitViewRect.contains(cursorP.boundingRect()))
+    // Adjust cursor bounding rect to be lower, so that view translates if the cursor gets near
+    // the splitview border.
+    QRect cursorRect = cursorP.boundingRect().adjusted(0, cursor.height(), 0, cursor.height());
+    if (splitViewRect.contains(cursorRect))
         return;
 
-    // New Y position should be ideally at the center of the splitview area.
-    // If that would expose unpainted canvas, limit the tranformation to the visible scene bottom.
+    // New Y position should be ideally just above the keyboard.
+    // If that would expose unpainted canvas, limit the tranformation to the visible scene rect or
+    // to the focus item's shape/clip path.
 
-    const qreal maxY = gv->sceneRect().bottom() - splitViewRect.bottom() + m_transformation.height();
-    qreal dy = -(qMin(maxY, (cursor.bottom() - vkbRect.top() / 2)));
+    const QPainterPath path = gv->scene()->focusItem()->isClipped() ?
+        gv->scene()->focusItem()->clipPath() : gv->scene()->focusItem()->shape();
+    const qreal itemHeight = path.boundingRect().height();
 
-    // Do not allow transform above screen top.
-    if (m_transformation.height() + dy > 0)
+    // Limit the maximum translation so that underlaying window content is not exposed.
+    qreal maxY = gv->sceneRect().bottom() - splitViewRect.bottom();
+    maxY = m_transformation.height() ? (qMin(itemHeight, maxY) + m_transformation.height()) : maxY;
+    if (maxY < 0)
+        maxY = 0;
+
+    // Translation should happen row-by-row, but initially it needs to ensure that cursor is visible.
+    const qreal translation = m_transformation.height() ?
+        cursor.height() : (cursorRect.bottom() - vkbRect.top());
+    const qreal dy = -(qMin(maxY, translation));
+
+    // Do not allow transform above screen top, nor beyond scenerect
+    if (m_transformation.height() + dy > 0 || gv->sceneRect().bottom() + m_transformation.height() < 0) {
+        // If we already have some transformation, remove it.
+        if (m_transformation.height() < 0 || gv->sceneRect().bottom() + m_transformation.height() < 0) {
+            rootItem->resetTransform();
+            translateInputWidget();
+        }
         return;
+    }
 
     rootItem->setTransform(QTransform::fromTranslate(0, dy), true);
 }
@@ -901,6 +962,8 @@ void QCoeFepInputContext::StartFepInlineEditL(const TDesC& aInitialInlineText,
     QWidget *w = focusWidget();
     if (!w)
         return;
+
+    m_cachedPreeditString.clear();
 
     commitTemporaryPreeditString();
 
@@ -958,7 +1021,10 @@ void QCoeFepInputContext::UpdateFepInlineTextL(const TDesC& aNewInlineText,
                                                    QVariant()));
     QString newPreeditString = qt_TDesC2QString(aNewInlineText);
     QInputMethodEvent event(newPreeditString, attributes);
-    if (newPreeditString.isEmpty() && m_preeditString.isEmpty()) {
+    if (!m_cachedPreeditString.isEmpty()) {
+        event.setCommitString(QLatin1String(""), -m_cachedPreeditString.length(), m_cachedPreeditString.length());
+        m_cachedPreeditString.clear();
+    } else if (newPreeditString.isEmpty() && m_preeditString.isEmpty()) {
         // In Symbian world this means "erase last character".
         event.setCommitString(QLatin1String(""), -1, 1);
     }
@@ -1148,7 +1214,18 @@ void QCoeFepInputContext::commitCurrentString(bool cancelFepTransaction)
 
     m_hasTempPreeditString = false;
 
-    if (cancelFepTransaction) {
+    //Only cancel FEP transactions with prediction, when there is still active window.
+    Qt::InputMethodHints currentHints = Qt::ImhNone;
+    if (focusWidget()) {
+        if (focusWidget()->focusProxy())
+            currentHints = focusWidget()->focusProxy()->inputMethodHints();
+        else
+            currentHints = focusWidget()->inputMethodHints();
+    }
+    bool predictive = !(currentHints & Qt::ImhNoPredictiveText);
+    bool widgetAndWindowAvailable = QApplication::activeWindow() && focusWidget();
+
+    if (cancelFepTransaction && ((predictive && widgetAndWindowAvailable) || !predictive)) {
         CCoeFep* fep = CCoeEnv::Static()->Fep();
         if (fep)
             fep->CancelTransaction();

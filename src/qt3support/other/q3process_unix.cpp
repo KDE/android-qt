@@ -7,29 +7,29 @@
 ** This file is part of the Qt3Support module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
-**
 ** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL included in the
-** packaging of this file.  Please review the following information to
-** ensure the GNU Lesser General Public License version 2.1 requirements
-** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** This file may be used under the terms of the GNU Lesser General Public
+** License version 2.1 as published by the Free Software Foundation and
+** appearing in the file LICENSE.LGPL included in the packaging of this
+** file. Please review the following information to ensure the GNU Lesser
+** General Public License version 2.1 requirements will be met:
+** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
 **
 ** In addition, as a special exception, Nokia gives you certain additional
-** rights.  These rights are described in the Nokia Qt LGPL Exception
+** rights. These rights are described in the Nokia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
-** If you have questions regarding the use of this file, please contact
-** Nokia at qt-info@nokia.com.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU General
+** Public License version 3.0 as published by the Free Software Foundation
+** and appearing in the file LICENSE.GPL included in the packaging of this
+** file. Please review the following information to ensure the GNU General
+** Public License version 3.0 requirements will be met:
+** http://www.gnu.org/copyleft/gpl.html.
 **
-**
-**
+** Other Usage
+** Alternatively, this file may be used in accordance with the terms and
+** conditions contained in a signed written agreement between you and Nokia.
 **
 **
 **
@@ -213,7 +213,7 @@ static void q3process_cleanup()
     Q3ProcessPrivate::procManager = 0;
 }
 
-#ifdef Q_OS_QNX6
+#ifdef Q_OS_QNX
 #define BAILOUT qt_safe_close(tmpSocket);qt_safe_close(socketFD[1]);return -1;
 int qnx6SocketPairReplacement (int socketFD[2]) {
     int tmpSocket;
@@ -270,7 +270,7 @@ Q3ProcessManager::Q3ProcessManager() : sn(0)
     // The SIGCHLD handler writes to a socket to tell the manager that
     // something happened. This is done to get the processing in sync with the
     // event reporting.
-#ifndef Q_OS_QNX6
+#ifndef Q_OS_QNX
     if ( ::socketpair( AF_UNIX, SOCK_STREAM, 0, sigchldFd ) ) {
 #else
     if ( qnx6SocketPairReplacement (sigchldFd) ) {
@@ -670,14 +670,14 @@ bool Q3Process::start( QStringList *env )
     int sStderr[2];
 
     // open sockets for piping
-#ifndef Q_OS_QNX6
+#ifndef Q_OS_QNX
     if ( (comms & Stdin) && ::socketpair( AF_UNIX, SOCK_STREAM, 0, sStdin ) == -1 ) {
 #else
     if ( (comms & Stdin) && qnx6SocketPairReplacement(sStdin) == -1 ) {
 #endif
 	return false;
     }
-#ifndef Q_OS_QNX6
+#ifndef Q_OS_QNX
     if ( (comms & Stderr) && ::socketpair( AF_UNIX, SOCK_STREAM, 0, sStderr ) == -1 ) {
 #else
     if ( (comms & Stderr) && qnx6SocketPairReplacement(sStderr) == -1 ) {
@@ -688,7 +688,7 @@ bool Q3Process::start( QStringList *env )
 	}
 	return false;
     }
-#ifndef Q_OS_QNX6
+#ifndef Q_OS_QNX
     if ( (comms & Stdout) && ::socketpair( AF_UNIX, SOCK_STREAM, 0, sStdout ) == -1 ) {
 #else
     if ( (comms & Stdout) && qnx6SocketPairReplacement(sStdout) == -1 ) {
@@ -782,11 +782,7 @@ bool Q3Process::start( QStringList *env )
 	    ::fcntl( fd[1], F_SETFD, FD_CLOEXEC ); // close on exec shows success
 
 	if ( env == 0 ) { // inherit environment and start process
-#ifndef Q_OS_QNX4
 	    ::execvp( arglist[0], (char*const*)arglist ); // ### cast not nice
-#else
-	    ::execvp( arglist[0], (char const*const*)arglist ); // ### cast not nice
-#endif
 	} else { // start process with environment settins as specified in env
 	    // construct the environment for exec
 	    int numEntries = env->count();
@@ -843,11 +839,7 @@ bool Q3Process::start( QStringList *env )
 		    }
 		}
 	    }
-#ifndef Q_OS_QNX4
 	    ::execve( arglist[0], (char*const*)arglist, (char*const*)envlist ); // ### casts not nice
-#else
-	    ::execve( arglist[0], (char const*const*)arglist,(char const*const*)envlist ); // ### casts not nice
-#endif
 	}
 	if ( fd[1] ) {
 	    char buf = 0;

@@ -7,29 +7,29 @@
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
-**
 ** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL included in the
-** packaging of this file.  Please review the following information to
-** ensure the GNU Lesser General Public License version 2.1 requirements
-** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** This file may be used under the terms of the GNU Lesser General Public
+** License version 2.1 as published by the Free Software Foundation and
+** appearing in the file LICENSE.LGPL included in the packaging of this
+** file. Please review the following information to ensure the GNU Lesser
+** General Public License version 2.1 requirements will be met:
+** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
 **
 ** In addition, as a special exception, Nokia gives you certain additional
-** rights.  These rights are described in the Nokia Qt LGPL Exception
+** rights. These rights are described in the Nokia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
-** If you have questions regarding the use of this file, please contact
-** Nokia at qt-info@nokia.com.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU General
+** Public License version 3.0 as published by the Free Software Foundation
+** and appearing in the file LICENSE.GPL included in the packaging of this
+** file. Please review the following information to ensure the GNU General
+** Public License version 3.0 requirements will be met:
+** http://www.gnu.org/copyleft/gpl.html.
 **
-**
-**
+** Other Usage
+** Alternatively, this file may be used in accordance with the terms and
+** conditions contained in a signed written agreement between you and Nokia.
 **
 **
 **
@@ -98,6 +98,12 @@
 #  include <taskLib.h>
 #endif
 
+#ifdef Q_OS_QNX
+#  include <sys/neutrino.h>
+#  include <pthread.h>
+#  include <sched.h>
+#endif
+
 QT_BEGIN_NAMESPACE
 
 class QMutexUnlocker
@@ -116,8 +122,6 @@ private:
 };
 
 #ifdef Q_OS_SYMBIAN
-typedef TDriveNumber (*SystemDriveFunc)(RFs&);
-static SystemDriveFunc PtrGetSystemDrive = 0;
 static CApaCommandLine* apaCommandLine = 0;
 static char *apaTail = 0;
 static QVector<char *> *apaArgv = 0;
@@ -353,6 +357,22 @@ QCoreApplicationPrivate::QCoreApplicationPrivate(int &aargc, char **aargv, uint 
 
 #ifdef Q_OS_UNIX
     qt_application_thread_id = QThread::currentThreadId();
+#endif
+
+#ifdef Q_OS_QNX
+    // make the kernel attempt to emulate an instruction with a misaligned access
+    // if the attempt fails, it faults with a SIGBUS
+    int tv = -1;
+    ThreadCtl(_NTO_TCTL_ALIGN_FAULT, &tv);
+
+    // without Round Robin drawn intensive apps will hog the cpu
+    // and make the system appear frozen
+    int sched_policy;
+    sched_param param;
+    if (pthread_getschedparam(0, &sched_policy, &param) == 0 && sched_policy != SCHED_RR) {
+        sched_policy = SCHED_RR;
+        pthread_setschedparam(0, sched_policy, &param);
+    }
 #endif
 
     // note: this call to QThread::currentThread() may end up setting theMainThread!
@@ -1268,20 +1288,7 @@ void QCoreApplication::postEvent(QObject *receiver, QEvent *event, int priority)
     // delete the event on exceptions to protect against memory leaks till the event is
     // properly owned in the postEventList
     QScopedPointer<QEvent> eventDeleter(event);
-    if (data->postEventList.isEmpty() || data->postEventList.last().priority >= priority) {
-        // optimization: we can simply append if the last event in
-        // the queue has higher or equal priority
-        data->postEventList.append(QPostEvent(receiver, event, priority));
-    } else {
-        // insert event in descending priority order, using upper
-        // bound for a given priority (to ensure proper ordering
-        // of events with the same priority)
-        QPostEventList::iterator begin = data->postEventList.begin()
-                                         + data->postEventList.insertionOffset,
-                                   end = data->postEventList.end();
-        QPostEventList::iterator at = qUpperBound(begin, end, priority);
-        data->postEventList.insert(at, QPostEvent(receiver, event, priority));
-    }
+    data->postEventList.addEvent(QPostEvent(receiver, event, priority));
     eventDeleter.take();
     event->posted = true;
     ++receiver->d_func()->postedEvents;
@@ -1441,7 +1448,7 @@ void QCoreApplicationPrivate::sendPostedEvents(QObject *receiver, int event_type
                 // cannot send deferred delete
                 if (!event_type && !receiver) {
                     // don't lose the event
-                    data->postEventList.append(pe);
+                    data->postEventList.addEvent(pe);
                     const_cast<QPostEvent &>(pe).event = 0;
                 }
                 continue;
@@ -1950,10 +1957,7 @@ QString QCoreApplication::applicationDirPath()
         }
         if (err != KErrNone || (driveInfo.iDriveAtt & KDriveAttRom) || (driveInfo.iMediaAtt
             & KMediaAttWriteProtected)) {
-            if(!PtrGetSystemDrive)
-                PtrGetSystemDrive = reinterpret_cast<SystemDriveFunc>(qt_resolveS60PluginFunc(S60Plugin_GetSystemDrive));
-            Q_ASSERT(PtrGetSystemDrive);
-            drive = PtrGetSystemDrive(fs);
+            drive = fs.GetSystemDrive();
             fs.DriveToChar(drive, driveChar);
         }
 

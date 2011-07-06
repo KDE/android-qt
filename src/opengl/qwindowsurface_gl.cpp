@@ -7,29 +7,29 @@
 ** This file is part of the QtOpenGL module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
-**
 ** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL included in the
-** packaging of this file.  Please review the following information to
-** ensure the GNU Lesser General Public License version 2.1 requirements
-** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** This file may be used under the terms of the GNU Lesser General Public
+** License version 2.1 as published by the Free Software Foundation and
+** appearing in the file LICENSE.LGPL included in the packaging of this
+** file. Please review the following information to ensure the GNU Lesser
+** General Public License version 2.1 requirements will be met:
+** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
 **
 ** In addition, as a special exception, Nokia gives you certain additional
-** rights.  These rights are described in the Nokia Qt LGPL Exception
+** rights. These rights are described in the Nokia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
-** If you have questions regarding the use of this file, please contact
-** Nokia at qt-info@nokia.com.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU General
+** Public License version 3.0 as published by the Free Software Foundation
+** and appearing in the file LICENSE.GPL included in the packaging of this
+** file. Please review the following information to ensure the GNU General
+** Public License version 3.0 requirements will be met:
+** http://www.gnu.org/copyleft/gpl.html.
 **
-**
-**
+** Other Usage
+** Alternatively, this file may be used in accordance with the terms and
+** conditions contained in a signed written agreement between you and Nokia.
 **
 **
 **
@@ -186,7 +186,9 @@ QGLGraphicsSystem::QGLGraphicsSystem(bool useX11GL)
 class QGLGlobalShareWidget
 {
 public:
-    QGLGlobalShareWidget() : firstPixmap(0), widgetRefCount(0), widget(0), initializing(false) {}
+    QGLGlobalShareWidget() : widget(0), initializing(false) {
+        created = true;
+    }
 
     QGLWidget *shareWidget() {
         if (!initializing && !widget && !cleanedUp) {
@@ -225,9 +227,7 @@ public:
     }
 
     static bool cleanedUp;
-
-    QGLPixmapData *firstPixmap;
-    int widgetRefCount;
+    static bool created;
 
 private:
     QGLWidget *widget;
@@ -235,6 +235,7 @@ private:
 };
 
 bool QGLGlobalShareWidget::cleanedUp = false;
+bool QGLGlobalShareWidget::created = false;
 
 static void qt_cleanup_gl_share_widget();
 Q_GLOBAL_STATIC_WITH_INITIALIZER(QGLGlobalShareWidget, _qt_gl_share_widget,
@@ -244,7 +245,8 @@ Q_GLOBAL_STATIC_WITH_INITIALIZER(QGLGlobalShareWidget, _qt_gl_share_widget,
 
 static void qt_cleanup_gl_share_widget()
 {
-    _qt_gl_share_widget()->cleanup();
+    if (QGLGlobalShareWidget::created)
+        _qt_gl_share_widget()->cleanup();
 }
 
 QGLWidget* qt_gl_share_widget()
@@ -256,7 +258,8 @@ QGLWidget* qt_gl_share_widget()
 
 void qt_destroy_gl_share_widget()
 {
-    _qt_gl_share_widget()->destroy();
+    if (QGLGlobalShareWidget::created)
+        _qt_gl_share_widget()->destroy();
 }
 
 const QGLContext *qt_gl_share_context()
@@ -266,43 +269,6 @@ const QGLContext *qt_gl_share_context()
         return widget->context();
     return 0;
 }
-
-#ifdef QGL_USE_TEXTURE_POOL
-void qt_gl_register_pixmap(QGLPixmapData *pd)
-{
-    QGLGlobalShareWidget *shared = _qt_gl_share_widget();
-    pd->next = shared->firstPixmap;
-    pd->prev = 0;
-    if (shared->firstPixmap)
-        shared->firstPixmap->prev = pd;
-    shared->firstPixmap = pd;
-}
-
-void qt_gl_unregister_pixmap(QGLPixmapData *pd)
-{
-    if (pd->next)
-        pd->next->prev = pd->prev;
-    if (pd->prev) {
-        pd->prev->next = pd->next;
-    } else {
-        QGLGlobalShareWidget *shared = _qt_gl_share_widget();
-        if (shared)
-           shared->firstPixmap = pd->next;
-    }
-}
-
-void qt_gl_hibernate_pixmaps()
-{
-    QGLGlobalShareWidget *shared = _qt_gl_share_widget();
-
-    // Scan all QGLPixmapData objects in the system and hibernate them.
-    QGLPixmapData *pd = shared->firstPixmap;
-    while (pd != 0) {
-        pd->hibernate();
-        pd = pd->next;
-    }
-}
-#endif
 
 struct QGLWindowSurfacePrivate
 {
@@ -403,23 +369,11 @@ QGLWindowSurface::~QGLWindowSurface()
     if (QGLGlobalShareWidget::cleanedUp)
         return;
 
-    --(_qt_gl_share_widget()->widgetRefCount);
-
-#ifdef QGL_USE_TEXTURE_POOL
-    if (_qt_gl_share_widget()->widgetRefCount <= 0) {
-        // All of the widget window surfaces have been destroyed
-        // but we still have GL pixmaps active.  Ask them to hibernate
-        // to free up GPU resources until a widget is shown again.
-        // This may eventually cause the EGLContext to be destroyed
-        // because nothing in the system needs a context, which will
-        // free up even more GPU resources.
-        qt_gl_hibernate_pixmaps();
-
-        // Destroy the context if necessary.
-        if (!qt_gl_share_widget()->context()->isSharing())
-            qt_destroy_gl_share_widget();
-    }
-#endif // QGL_USE_TEXTURE_POOL
+#ifdef Q_OS_SYMBIAN
+    // Destroy the context if necessary.
+    if (!qt_gl_share_widget()->context()->isSharing())
+        qt_destroy_gl_share_widget();
+#endif
 }
 
 void QGLWindowSurface::deleted(QObject *object)
@@ -469,9 +423,6 @@ void QGLWindowSurface::hijackWindow(QWidget *widget)
 
     ctx->create(qt_gl_share_context());
 
-    if (widget != qt_gl_share_widget())
-        ++(_qt_gl_share_widget()->widgetRefCount);
-
 #ifndef QT_NO_EGL
     static bool checkedForNOKSwapRegion = false;
     static bool haveNOKSwapRegion = false;
@@ -504,6 +455,7 @@ void QGLWindowSurface::hijackWindow(QWidget *widget)
 
     voidPtrPtr = &widgetPrivate->extraData()->glContext;
     d_ptr->contexts << ctxPtrPtr;
+
 #ifndef Q_OS_SYMBIAN
     qDebug() << "hijackWindow() context created for" << widget << d_ptr->contexts.size();
 #endif
@@ -538,19 +490,27 @@ void QGLWindowSurface::beginPaint(const QRegion &)
     d_ptr->did_paint = true;
     updateGeometry();
 
-    if (!context())
-        return;
-
     int clearFlags = 0;
 
-    if (context()->d_func()->workaround_needsFullClearOnEveryFrame)
+    QGLContext *ctx = reinterpret_cast<QGLContext *>(window()->d_func()->extraData()->glContext);
+
+    if (!ctx)
+        return;
+
+    if (ctx->d_func()->workaround_needsFullClearOnEveryFrame)
         clearFlags = GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT;
-    else if (context()->format().alpha())
+    else if (ctx->format().alpha())
         clearFlags = GL_COLOR_BUFFER_BIT;
 
     if (clearFlags) {
+        if (d_ptr->fbo)
+            d_ptr->fbo->bind();
+
         glClearColor(0.0, 0.0, 0.0, 0.0);
         glClear(clearFlags);
+
+        if (d_ptr->fbo)
+            d_ptr->fbo->release();
     }
 }
 
@@ -779,6 +739,7 @@ void QGLWindowSurface::flush(QWidget *widget, const QRegion &rgn, const QPoint &
 
             glBindFramebuffer(GL_READ_FRAMEBUFFER_EXT, 0);
         } else {
+#ifndef Q_OS_SYMBIAN // We don't have FBO pool on Symbian
             // can't do sub-region blits with multisample FBOs
             QGLFramebufferObject *temp = qgl_fbo_pool()->acquire(d_ptr->fbo->size(), QGLFramebufferObjectFormat());
 
@@ -801,6 +762,7 @@ void QGLWindowSurface::flush(QWidget *widget, const QRegion &rgn, const QPoint &
             glBindFramebuffer(GL_READ_FRAMEBUFFER_EXT, 0);
 
             qgl_fbo_pool()->release(temp);
+#endif // Q_OS_SYMBIAN
         }
 
         ctx->d_ptr->current_fbo = 0;
@@ -890,18 +852,43 @@ void QGLWindowSurface::updateGeometry() {
     if (wd->extraData() && wd->extraData()->glContext) {
 #ifdef Q_OS_SYMBIAN // Symbian needs to recreate the context when native window size changes
         if (d_ptr->size != geometry().size()) {
-            if (window() != qt_gl_share_widget())
-                --(_qt_gl_share_widget()->widgetRefCount);
+            QGLContext *ctx = reinterpret_cast<QGLContext *>(wd->extraData()->glContext);
 
-            delete wd->extraData()->glContext;
-            wd->extraData()->glContext = 0;
-            d_ptr->ctx = 0;
+            if (ctx == QGLContext::currentContext())
+                 ctx->doneCurrent();
+
+            ctx->d_func()->destroyEglSurfaceForDevice();
+
+            // Delete other contexts (shouldn't happen too often, if at all)
+            while (d_ptr->contexts.size()) {
+                QGLContext **ctxPtrPtr = d_ptr->contexts.takeFirst();
+                if ((*ctxPtrPtr) != ctx)
+                    delete *ctxPtrPtr;
+            }
+            union { QGLContext **ctxPtrPtr; void **voidPtrPtr; };
+            voidPtrPtr = &wd->extraData()->glContext;
+            d_ptr->contexts << ctxPtrPtr;
+
+            ctx->d_func()->eglSurface = ctx->d_func()->eglContext->createSurface(window());
+
+            // Swap behaviour has been checked already in previous hijackWindow call.
+            // Reset swap behaviour based on that flag.
+            if (d_ptr->destructive_swap_buffers) {
+                eglSurfaceAttrib(QEgl::display(), ctx->d_func()->eglSurfaceForDevice(),
+                                    EGL_SWAP_BEHAVIOR, EGL_BUFFER_DESTROYED);
+
+                if (eglGetError() != EGL_SUCCESS)
+                    qWarning("QGLWindowSurface::updateGeometry() - could not re-enable destroyed swap behaviour");
+            } else {
+                eglSurfaceAttrib(QEgl::display(), ctx->d_func()->eglSurfaceForDevice(),
+                                    EGL_SWAP_BEHAVIOR, EGL_BUFFER_PRESERVED);
+
+                if (eglGetError() != EGL_SUCCESS)
+                    qWarning("QGLWindowSurface::updateGeometry() - could not re-enable preserved swap behaviour");                
+            }
         }
-        else
 #endif
-        {
-            hijack = false; // we already have gl context for widget
-        }
+        hijack = false; // we already have gl context for widget
     }
 
     if (hijack)

@@ -7,29 +7,29 @@
 ** This file is part of the plugins of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
-**
 ** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL included in the
-** packaging of this file.  Please review the following information to
-** ensure the GNU Lesser General Public License version 2.1 requirements
-** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** This file may be used under the terms of the GNU Lesser General Public
+** License version 2.1 as published by the Free Software Foundation and
+** appearing in the file LICENSE.LGPL included in the packaging of this
+** file. Please review the following information to ensure the GNU Lesser
+** General Public License version 2.1 requirements will be met:
+** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
 **
 ** In addition, as a special exception, Nokia gives you certain additional
-** rights.  These rights are described in the Nokia Qt LGPL Exception
+** rights. These rights are described in the Nokia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
-** If you have questions regarding the use of this file, please contact
-** Nokia at qt-info@nokia.com.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU General
+** Public License version 3.0 as published by the Free Software Foundation
+** and appearing in the file LICENSE.GPL included in the packaging of this
+** file. Please review the following information to ensure the GNU General
+** Public License version 3.0 requirements will be met:
+** http://www.gnu.org/copyleft/gpl.html.
 **
-**
-**
+** Other Usage
+** Alternatively, this file may be used in accordance with the terms and
+** conditions contained in a signed written agreement between you and Nokia.
 **
 **
 **
@@ -44,10 +44,19 @@
 
 #include <QtGui/QPlatformClipboard>
 #include <QtCore/QStringList>
+#include <QtCore/QVariant>
 
 class QWaylandDisplay;
 class QWaylandSelection;
+class QWaylandMimeData;
 struct wl_selection_offer;
+
+class QWaylandClipboardSignalEmitter : public QObject
+{
+    Q_OBJECT
+public slots:
+    void emitChanged();
+};
 
 class QWaylandClipboard : public QPlatformClipboard
 {
@@ -55,13 +64,15 @@ public:
     QWaylandClipboard(QWaylandDisplay *display);
     ~QWaylandClipboard();
 
-    const QMimeData *mimeData(QClipboard::Mode mode = QClipboard::Clipboard) const;
+    QMimeData *mimeData(QClipboard::Mode mode = QClipboard::Clipboard);
     void setMimeData(QMimeData *data, QClipboard::Mode mode = QClipboard::Clipboard);
     bool supportsMode(QClipboard::Mode mode) const;
 
     void unregisterSelection(QWaylandSelection *selection);
 
     void createSelectionOffer(uint32_t id);
+
+    QVariant retrieveData(const QString &mimeType, QVariant::Type type) const;
 
 private:
     static void offer(void *data,
@@ -76,11 +87,11 @@ private:
     static void forceRoundtrip(struct wl_display *display);
 
     QWaylandDisplay *mDisplay;
-    QWaylandSelection *mSelection;
-    mutable QMimeData *mMimeDataIn;
+    QWaylandMimeData *mMimeDataIn;
     QList<QWaylandSelection *> mSelections;
     QStringList mOfferedMimeTypes;
     struct wl_selection_offer *mOffer;
+    QWaylandClipboardSignalEmitter mEmitter;
 };
 
 #endif // QWAYLANDCLIPBOARD_H
