@@ -183,7 +183,6 @@ QGLGraphicsSystem::QGLGraphicsSystem(bool useX11GL)
 //
 // QGLWindowSurface
 //
-#ifndef Q_WS_QPA
 class QGLGlobalShareWidget
 {
 public:
@@ -259,22 +258,13 @@ void qt_destroy_gl_share_widget()
 {
     _qt_gl_share_widget()->destroy();
 }
-#endif//Q_WS_QPA
 
 const QGLContext *qt_gl_share_context()
 {
-#ifdef Q_WS_QPA
-    //make it possible to have an assesor to defaultSharedGLContext.
-    const QPlatformGLContext *platformContext = QPlatformGLContext::defaultSharedContext();
-    if (!platformContext)
-        qDebug() << "Please implement a defaultSharedContext for your platformplugin";
-    return QGLContext::fromPlatformGLContext(const_cast<QPlatformGLContext *>(platformContext));
-#else
     QGLWidget *widget = qt_gl_share_widget();
     if (widget)
         return widget->context();
     return 0;
-#endif
 }
 
 #ifdef QGL_USE_TEXTURE_POOL
@@ -410,7 +400,6 @@ QGLWindowSurface::~QGLWindowSurface()
     delete d_ptr->fbo;
     delete d_ptr;
 
-#ifndef Q_WS_QPA
     if (QGLGlobalShareWidget::cleanedUp)
         return;
 
@@ -431,7 +420,6 @@ QGLWindowSurface::~QGLWindowSurface()
             qt_destroy_gl_share_widget();
     }
 #endif // QGL_USE_TEXTURE_POOL
-#endif // Q_WS_QPA
 }
 
 void QGLWindowSurface::deleted(QObject *object)
@@ -481,10 +469,8 @@ void QGLWindowSurface::hijackWindow(QWidget *widget)
 
     ctx->create(qt_gl_share_context());
 
-#ifndef Q_WS_QPA
     if (widget != qt_gl_share_widget())
         ++(_qt_gl_share_widget()->widgetRefCount);
-#endif
 
 #ifndef QT_NO_EGL
     static bool checkedForNOKSwapRegion = false;
