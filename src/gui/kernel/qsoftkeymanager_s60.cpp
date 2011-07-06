@@ -7,29 +7,29 @@
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
-**
 ** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL included in the
-** packaging of this file.  Please review the following information to
-** ensure the GNU Lesser General Public License version 2.1 requirements
-** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** This file may be used under the terms of the GNU Lesser General Public
+** License version 2.1 as published by the Free Software Foundation and
+** appearing in the file LICENSE.LGPL included in the packaging of this
+** file. Please review the following information to ensure the GNU Lesser
+** General Public License version 2.1 requirements will be met:
+** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
 **
 ** In addition, as a special exception, Nokia gives you certain additional
-** rights.  These rights are described in the Nokia Qt LGPL Exception
+** rights. These rights are described in the Nokia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
-** If you have questions regarding the use of this file, please contact
-** Nokia at qt-info@nokia.com.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU General
+** Public License version 3.0 as published by the Free Software Foundation
+** and appearing in the file LICENSE.GPL included in the packaging of this
+** file. Please review the following information to ensure the GNU General
+** Public License version 3.0 requirements will be met:
+** http://www.gnu.org/copyleft/gpl.html.
 **
-**
-**
+** Other Usage
+** Alternatively, this file may be used in accordance with the terms and
+** conditions contained in a signed written agreement between you and Nokia.
 **
 **
 **
@@ -52,6 +52,10 @@
 #include "private/qobject_p.h"
 #include <eiksoftkeyimage.h>
 #include <eikcmbut.h>
+
+#ifndef QT_NO_STYLE_S60
+#include <qs60style.h>
+#endif
 
 #ifndef QT_NO_SOFTKEYMANAGER
 QT_BEGIN_NAMESPACE
@@ -113,7 +117,7 @@ void QSoftKeyManagerPrivateS60::ensureCbaVisibilityAndResponsiviness(CEikButtonG
 
 void QSoftKeyManagerPrivateS60::clearSoftkeys(CEikButtonGroupContainer &cba)
 {
-#ifdef SYMBIAN_VERSION_SYMBIAN3
+#if defined(Q_WS_S60) && !defined(SYMBIAN_VERSION_9_4)
     QT_TRAP_THROWING(
         //EAknSoftkeyEmpty is used, because using -1 adds softkeys without actions on Symbian3
         cba.SetCommandL(0, EAknSoftkeyEmpty, KNullDesC);
@@ -176,22 +180,27 @@ void QSoftKeyManagerPrivateS60::setNativeSoftkey(CEikButtonGroupContainer &cba,
 QPoint QSoftKeyManagerPrivateS60::softkeyIconPosition(int position, QSize sourceSize, QSize targetSize)
 {
     QPoint iconPosition(0,0);
-    switch( AknLayoutUtils::CbaLocation() )
-        {
-        case AknLayoutUtils::EAknCbaLocationBottom:
-            // RSK must be moved to right, LSK in on correct position by default
-            if (position == RSK_POSITION)
-                iconPosition.setX(targetSize.width() - sourceSize.width());
-            break;
-        case AknLayoutUtils::EAknCbaLocationRight:
-        case AknLayoutUtils::EAknCbaLocationLeft:
-            // Already in correct position
-        default:
-            break;
-        }
 
-    // Align horizontally to center
-    iconPosition.setY((targetSize.height() - sourceSize.height()) >> 1);
+    // Prior to S60 5.3 icons need to be properly positioned to buttons, but starting with 5.3
+    // positioning is done on Avkon side.
+    if (QSysInfo::s60Version() < QSysInfo::SV_S60_5_3) {
+        switch (AknLayoutUtils::CbaLocation())
+            {
+            case AknLayoutUtils::EAknCbaLocationBottom:
+                // RSK must be moved to right, LSK in on correct position by default
+                if (position == RSK_POSITION)
+                    iconPosition.setX(targetSize.width() - sourceSize.width());
+                break;
+            case AknLayoutUtils::EAknCbaLocationRight:
+            case AknLayoutUtils::EAknCbaLocationLeft:
+                // Already in correct position
+            default:
+                break;
+            }
+
+        // Align horizontally to center
+        iconPosition.setY((targetSize.height() - sourceSize.height()) >> 1);
+    }
     return iconPosition;
 }
 
@@ -215,26 +224,42 @@ bool QSoftKeyManagerPrivateS60::isOrientationLandscape()
 
 QSize QSoftKeyManagerPrivateS60::cbaIconSize(CEikButtonGroupContainer *cba, int position)
 {
-
     int index = position;
     index += isOrientationLandscape() ? 0 : 1;
     if(cachedCbaIconSize[index].isNull()) {
-        // Only way I figured out to get CBA icon size without RnD SDK, was
-        // to set some dummy icon to CBA first and then ask CBA button CCoeControl::Size()
-        // The returned value is cached to avoid unnecessary icon setting every time.
-        const bool left = (position == LSK_POSITION);
-        if(position == LSK_POSITION || position == RSK_POSITION) {
-            CEikImage* tmpImage = NULL;
-            QT_TRAP_THROWING(tmpImage = new (ELeave) CEikImage);
-            EikSoftkeyImage::SetImage(cba, *tmpImage, left); // Takes myimage ownership
-            int command = S60_COMMAND_START + position;
-            setNativeSoftkey(*cba, position, command, KNullDesC());
-            cachedCbaIconSize[index] = qt_TSize2QSize(cba->ControlOrNull(command)->Size());
-            EikSoftkeyImage::SetLabel(cba, left);
+        if (QSysInfo::s60Version() >= QSysInfo::SV_S60_5_3) {
+            // S60 5.3 and later have fixed icon size on softkeys, while the button
+            // itself is bigger, so the automatic check doesn't work.
+            // Use custom pixel metrics to deduce the CBA icon size
+            int iconHeight = 30;
+            int iconWidth = 30;
+#ifndef QT_NO_STYLE_S60
+            QS60Style *s60Style = 0;
+            s60Style = qobject_cast<QS60Style *>(QApplication::style());
+            if (s60Style) {
+                iconWidth = s60Style->pixelMetric((QStyle::PixelMetric)PM_CbaIconWidth);
+                iconHeight = s60Style->pixelMetric((QStyle::PixelMetric)PM_CbaIconHeight);
+            }
+#endif
+            cachedCbaIconSize[index] = QSize(iconWidth, iconHeight);
+        } else {
+            // Only way I figured out to get CBA icon size without RnD SDK, was
+            // to set some dummy icon to CBA first and then ask CBA button CCoeControl::Size()
+            // The returned value is cached to avoid unnecessary icon setting every time.
+            const bool left = (position == LSK_POSITION);
+            if (position == LSK_POSITION || position == RSK_POSITION) {
+                CEikImage* tmpImage = NULL;
+                QT_TRAP_THROWING(tmpImage = new (ELeave) CEikImage);
+                EikSoftkeyImage::SetImage(cba, *tmpImage, left); // Takes tmpImage ownership
+                int command = S60_COMMAND_START + position;
+                setNativeSoftkey(*cba, position, command, KNullDesC());
+                cachedCbaIconSize[index] = qt_TSize2QSize(cba->ControlOrNull(command)->Size());
+                EikSoftkeyImage::SetLabel(cba, left);
 
-            if(cachedCbaIconSize[index] == QSize(138,72)) {
-                // Hack for S60 5.0 (5800) landscape orientation, which return wrong icon size
-                cachedCbaIconSize[index] = QSize(60,60);
+                if (cachedCbaIconSize[index] == QSize(138,72)) {
+                    // Hack for S60 5.0 landscape orientation, which return wrong icon size
+                    cachedCbaIconSize[index] = QSize(60,60);
+                }
             }
         }
     }
@@ -278,12 +303,6 @@ bool QSoftKeyManagerPrivateS60::setSoftkeyImage(CEikButtonGroupContainer *cba,
             EikSoftkeyImage::SetImage(cba, *myimage, left); // Takes myimage ownership
             cbaHasImage[position] = true;
             ret = true;
-        } else {
-            // Restore softkey to text based
-            if (cbaHasImage[position]) {
-                EikSoftkeyImage::SetLabel(cba, left);
-                cbaHasImage[position] = false;
-            }
         }
     }
     return ret;
@@ -294,15 +313,20 @@ bool QSoftKeyManagerPrivateS60::setSoftkey(CEikButtonGroupContainer &cba,
 {
     QAction *action = highestPrioritySoftkey(role);
     if (action) {
-        setSoftkeyImage(&cba, *action, position);
+        bool hasImage = setSoftkeyImage(&cba, *action, position);
         QString text = softkeyText(*action);
         TPtrC nativeText = qt_QString2TPtrC(text);
         int command = S60_COMMAND_START + position;
-#ifdef SYMBIAN_VERSION_SYMBIAN3
+#if defined(Q_WS_S60) && !defined(SYMBIAN_VERSION_9_4)
         if (softKeyCommandActions.contains(action))
             command = softKeyCommandActions.value(action);
 #endif
         setNativeSoftkey(cba, position, command, nativeText);
+        if (!hasImage && cbaHasImage[position]) {
+            EikSoftkeyImage::SetLabel(&cba, (position == LSK_POSITION));
+            cbaHasImage[position] = false;
+        }
+
         const bool dimmed = !action->isEnabled() && !QSoftKeyManager::isForceEnabledInSofkeys(action);
         cba.DimCommand(command, dimmed);
         realSoftKeyActions.insert(command, action);
@@ -313,7 +337,18 @@ bool QSoftKeyManagerPrivateS60::setSoftkey(CEikButtonGroupContainer &cba,
 
 bool QSoftKeyManagerPrivateS60::setLeftSoftkey(CEikButtonGroupContainer &cba)
 {
-    return setSoftkey(cba, QAction::PositiveSoftKey, LSK_POSITION);
+    if (!setSoftkey(cba, QAction::PositiveSoftKey, LSK_POSITION)) {
+        if (cbaHasImage[LSK_POSITION]) {
+            // Clear any residual icon if LSK has no action. A real softkey
+            // is needed for SetLabel command to work, so do a temporary dummy
+            setNativeSoftkey(cba, LSK_POSITION, EAknSoftkeyExit, KNullDesC);
+            EikSoftkeyImage::SetLabel(&cba, true);
+            setNativeSoftkey(cba, LSK_POSITION, EAknSoftkeyEmpty, KNullDesC);
+            cbaHasImage[LSK_POSITION] = false;
+        }
+        return false;
+    }
+    return true;
 }
 
 bool QSoftKeyManagerPrivateS60::setMiddleSoftkey(CEikButtonGroupContainer &cba)
@@ -332,16 +367,26 @@ bool QSoftKeyManagerPrivateS60::setRightSoftkey(CEikButtonGroupContainer &cba)
         if (windowType != Qt::Dialog && windowType != Qt::Popup) {
             QString text(QSoftKeyManager::tr("Exit"));
             TPtrC nativeText = qt_QString2TPtrC(text);
+            setNativeSoftkey(cba, RSK_POSITION, EAknSoftkeyExit, nativeText);
             if (cbaHasImage[RSK_POSITION]) {
                 EikSoftkeyImage::SetLabel(&cba, false);
                 cbaHasImage[RSK_POSITION] = false;
             }
-            setNativeSoftkey(cba, RSK_POSITION, EAknSoftkeyExit, nativeText);
             cba.DimCommand(EAknSoftkeyExit, false);
             return true;
+        } else {
+            if (cbaHasImage[RSK_POSITION]) {
+                // Clear any residual icon if RSK has no action. A real softkey
+                // is needed for SetLabel command to work, so do a temporary dummy
+                setNativeSoftkey(cba, RSK_POSITION, EAknSoftkeyExit, KNullDesC);
+                EikSoftkeyImage::SetLabel(&cba, false);
+                setNativeSoftkey(cba, RSK_POSITION, EAknSoftkeyEmpty, KNullDesC);
+                cbaHasImage[RSK_POSITION] = false;
+            }
+            return false;
         }
     }
-    return false;
+    return true;
 }
 
 void QSoftKeyManagerPrivateS60::setSoftkeys(CEikButtonGroupContainer &cba)

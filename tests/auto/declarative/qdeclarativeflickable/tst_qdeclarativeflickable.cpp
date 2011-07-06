@@ -7,29 +7,29 @@
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
-**
 ** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL included in the
-** packaging of this file.  Please review the following information to
-** ensure the GNU Lesser General Public License version 2.1 requirements
-** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** This file may be used under the terms of the GNU Lesser General Public
+** License version 2.1 as published by the Free Software Foundation and
+** appearing in the file LICENSE.LGPL included in the packaging of this
+** file. Please review the following information to ensure the GNU Lesser
+** General Public License version 2.1 requirements will be met:
+** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
 **
 ** In addition, as a special exception, Nokia gives you certain additional
-** rights.  These rights are described in the Nokia Qt LGPL Exception
+** rights. These rights are described in the Nokia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
-** If you have questions regarding the use of this file, please contact
-** Nokia at qt-info@nokia.com.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU General
+** Public License version 3.0 as published by the Free Software Foundation
+** and appearing in the file LICENSE.GPL included in the packaging of this
+** file. Please review the following information to ensure the GNU General
+** Public License version 3.0 requirements will be met:
+** http://www.gnu.org/copyleft/gpl.html.
 **
-**
-**
+** Other Usage
+** Alternatively, this file may be used in accordance with the terms and
+** conditions contained in a signed written agreement between you and Nokia.
 **
 **
 **
@@ -78,10 +78,12 @@ private slots:
     void testQtQuick11Attributes();
     void testQtQuick11Attributes_data();
     void wheel();
+    void flickVelocity();
 
 private:
     QDeclarativeEngine engine;
 
+    void flick(QGraphicsView *canvas, const QPoint &from, const QPoint &to, int duration);
     template<typename T>
     T *findItem(QGraphicsObject *parent, const QString &objectName);
 };
@@ -480,6 +482,51 @@ void tst_qdeclarativeflickable::wheel()
     delete canvas;
 }
 
+void tst_qdeclarativeflickable::flickVelocity()
+{
+#ifdef Q_WS_MAC
+    QSKIP("Producing flicks on Mac CI impossible due to timing problems", SkipAll);
+#endif
+
+    QDeclarativeView *canvas = new QDeclarativeView;
+    canvas->setSource(QUrl::fromLocalFile(SRCDIR "/data/flickable03.qml"));
+    canvas->show();
+    canvas->setFocus();
+    QVERIFY(canvas->rootObject() != 0);
+
+    QDeclarativeFlickable *flickable = qobject_cast<QDeclarativeFlickable*>(canvas->rootObject());
+    QVERIFY(flickable != 0);
+
+    // flick up
+    flick(canvas, QPoint(20,190), QPoint(20, 50), 200);
+    QVERIFY(flickable->verticalVelocity() > 0.0);
+    QTRY_VERIFY(flickable->verticalVelocity() == 0.0);
+
+    // flick down
+    flick(canvas, QPoint(20,10), QPoint(20, 140), 200);
+    QVERIFY(flickable->verticalVelocity() < 0.0);
+    QTRY_VERIFY(flickable->verticalVelocity() == 0.0);
+
+    delete canvas;
+}
+
+void tst_qdeclarativeflickable::flick(QGraphicsView *canvas, const QPoint &from, const QPoint &to, int duration)
+{
+    const int pointCount = 5;
+    QPoint diff = to - from;
+
+    // send press, five equally spaced moves, and release.
+    QTest::mousePress(canvas->viewport(), Qt::LeftButton, 0, canvas->mapFromScene(from));
+
+    for (int i = 0; i < pointCount; ++i) {
+        QMouseEvent mv(QEvent::MouseMove, canvas->mapFromScene(from + (i+1)*diff/pointCount), Qt::LeftButton, Qt::LeftButton,Qt::NoModifier);
+        QApplication::sendEvent(canvas->viewport(), &mv);
+        QTest::qWait(duration/pointCount);
+        QCoreApplication::processEvents();
+    }
+
+    QTest::mouseRelease(canvas->viewport(), Qt::LeftButton, 0, canvas->mapFromScene(to));
+}
 
 template<typename T>
 T *tst_qdeclarativeflickable::findItem(QGraphicsObject *parent, const QString &objectName)

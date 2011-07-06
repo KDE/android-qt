@@ -126,3 +126,7 @@ contains(CONFIG, android){
     SOURCES += tools/android/cpu-features.c
     HEADERS += tools/android/cpu-features.h
 }
+symbian {
+    # QLocale Symbian implementation needs this
+    LIBS += -lnumberconversion
+}

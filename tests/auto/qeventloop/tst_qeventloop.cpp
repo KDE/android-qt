@@ -7,29 +7,29 @@
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
-**
 ** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL included in the
-** packaging of this file.  Please review the following information to
-** ensure the GNU Lesser General Public License version 2.1 requirements
-** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** This file may be used under the terms of the GNU Lesser General Public
+** License version 2.1 as published by the Free Software Foundation and
+** appearing in the file LICENSE.LGPL included in the packaging of this
+** file. Please review the following information to ensure the GNU Lesser
+** General Public License version 2.1 requirements will be met:
+** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
 **
 ** In addition, as a special exception, Nokia gives you certain additional
-** rights.  These rights are described in the Nokia Qt LGPL Exception
+** rights. These rights are described in the Nokia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
-** If you have questions regarding the use of this file, please contact
-** Nokia at qt-info@nokia.com.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU General
+** Public License version 3.0 as published by the Free Software Foundation
+** and appearing in the file LICENSE.GPL included in the packaging of this
+** file. Please review the following information to ensure the GNU General
+** Public License version 3.0 requirements will be met:
+** http://www.gnu.org/copyleft/gpl.html.
 **
-**
-**
+** Other Usage
+** Alternatively, this file may be used in accordance with the terms and
+** conditions contained in a signed written agreement between you and Nokia.
 **
 **
 **
@@ -58,6 +58,8 @@
 #include <e32base.h>
 #include <unistd.h>
 #endif
+
+#include "../../shared/util.h"
 
 //TESTED_CLASS=
 //TESTED_FILES=
@@ -208,6 +210,7 @@ private slots:
     void quit();
     void processEventsExcludeSocket();
     void processEventsExcludeTimers();
+    void deliverInDefinedOrder_QTBUG19637();
 
     // keep this test last:
     void nestedLoops();
@@ -284,7 +287,7 @@ void tst_QEventLoop::onlySymbianActiveScheduler() {
     // In here we try to use timers and sockets exclusively using the Symbian
     // active scheduler and no processEvents().
     // This test should therefore be run first, so that we can verify that
-    // the first occurrence of processEvents does not do any initalization that
+    // the first occurrence of processEvents does not do any initialization that
     // we depend on.
 
     // Open up a pipe so we can test socket notifiers.
@@ -602,10 +605,12 @@ public slots:
         QTcpSocket *serverSocket = server->nextPendingConnection();
         serverSocket->write(data, size);
         serverSocket->flush();
-        QTest::qSleep(200); //allow the TCP/IP stack time to loopback the data, so our socket is ready to read
-        QCoreApplication::processEvents(QEventLoop::ExcludeSocketNotifiers);
+        QEventLoop loop;
+        QTimer::singleShot(200, &loop, SLOT(quit())); //allow the TCP/IP stack time to loopback the data, so our socket is ready to read
+        loop.exec(QEventLoop::ExcludeSocketNotifiers);
         testResult = dataArrived;
-        QCoreApplication::processEvents(); //check the deferred event is processed
+        QTimer::singleShot(200, &loop, SLOT(quit()));
+        loop.exec(); //check the deferred event is processed
         serverSocket->close();
         QThread::currentThread()->exit(0);
     }
@@ -631,6 +636,9 @@ public:
 
 void tst_QEventLoop::processEventsExcludeSocket()
 {
+#if defined(Q_WS_QWS)
+    QSKIP("Socket message seems to be leaking through QEventLoop::exec(ExcludeSocketNotifiers) on qws (QTBUG-19699)", SkipAll);
+#endif
     SocketTestThread thread;
     thread.start();
     QVERIFY(thread.wait());
@@ -836,6 +844,78 @@ void tst_QEventLoop::symbianNestedActiveSchedulerLoop()
     QVERIFY(thread.succeeded);
 #endif
 }
+
+Q_DECLARE_METATYPE(QThread*)
+
+namespace DeliverInDefinedOrder_QTBUG19637 {
+    enum { NbThread = 3,  NbObject = 500, NbEventQueue = 5, NbEvent = 50 };
+
+    struct CustomEvent : public QEvent {
+        CustomEvent(int q, int v) : QEvent(Type(User + q)), value(v) {}
+        int value;
+    };
+
+    struct Object : public QObject {
+        Q_OBJECT
+    public:
+        Object() : count(0) {
+            for (int i = 0; i < NbEventQueue;  i++)
+                lastReceived[i] = -1;
+        }
+        int lastReceived[NbEventQueue];
+        int count;
+        virtual void customEvent(QEvent* e) {
+            QVERIFY(e->type() >= QEvent::User);
+            QVERIFY(e->type() < QEvent::User + 5);
+            uint idx = e->type() - QEvent::User;
+            int value = static_cast<CustomEvent *>(e)->value;
+            QVERIFY(lastReceived[idx] < value);
+            lastReceived[idx] = value;
+            count++;
+        }
+
+    public slots:
+        void moveToThread(QThread *t) {
+            QObject::moveToThread(t);
+        }
+    };
+
+}
+
+void tst_QEventLoop::deliverInDefinedOrder_QTBUG19637()
+{
+    using namespace DeliverInDefinedOrder_QTBUG19637;
+    qMetaTypeId<QThread*>();
+    QThread threads[NbThread];
+    Object objects[NbObject];
+    for (int t = 0; t < NbThread; t++) {
+        threads[t].start();
+    }
+
+    int event = 0;
+
+    for (int o = 0; o < NbObject; o++) {
+        objects[o].moveToThread(&threads[o % NbThread]);
+        for (int e = 0; e < NbEvent; e++) {
+            int q = e % NbEventQueue;
+            QCoreApplication::postEvent(&objects[o], new CustomEvent(q, ++event) , q);
+            if (e % 7)
+                QMetaObject::invokeMethod(&objects[o], "moveToThread", Qt::QueuedConnection, Q_ARG(QThread*, &threads[(e+o)%NbThread]));
+        }
+    }
+
+    QTest::qWait(30);
+    for (int o = 0; o < NbObject; o++) {
+        QTRY_COMPARE(objects[o].count, int(NbEvent));
+    }
+
+    for (int t = 0; t < NbThread; t++) {
+        threads[t].quit();
+        threads[t].wait();
+    }
+
+}
+
 
 QTEST_MAIN(tst_QEventLoop)
 #include "tst_qeventloop.moc"

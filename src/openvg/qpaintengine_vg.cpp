@@ -7,29 +7,29 @@
 ** This file is part of the QtOpenVG module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
-**
 ** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL included in the
-** packaging of this file.  Please review the following information to
-** ensure the GNU Lesser General Public License version 2.1 requirements
-** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** This file may be used under the terms of the GNU Lesser General Public
+** License version 2.1 as published by the Free Software Foundation and
+** appearing in the file LICENSE.LGPL included in the packaging of this
+** file. Please review the following information to ensure the GNU Lesser
+** General Public License version 2.1 requirements will be met:
+** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
 **
 ** In addition, as a special exception, Nokia gives you certain additional
-** rights.  These rights are described in the Nokia Qt LGPL Exception
+** rights. These rights are described in the Nokia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
-** If you have questions regarding the use of this file, please contact
-** Nokia at qt-info@nokia.com.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU General
+** Public License version 3.0 as published by the Free Software Foundation
+** and appearing in the file LICENSE.GPL included in the packaging of this
+** file. Please review the following information to ensure the GNU General
+** Public License version 3.0 requirements will be met:
+** http://www.gnu.org/copyleft/gpl.html.
 **
-**
-**
+** Other Usage
+** Alternatively, this file may be used in accordance with the terms and
+** conditions contained in a signed written agreement between you and Nokia.
 **
 **
 **
@@ -280,7 +280,7 @@ public:
 
     inline bool needsEmulation(const QBrush &brush) const
     {
-        extern bool qt_isExtendedRadialGradient(const QBrush &brush);
+        Q_GUI_EXPORT bool qt_isExtendedRadialGradient(const QBrush &brush);
         return qt_isExtendedRadialGradient(brush);
     }
 
@@ -1579,7 +1579,7 @@ void QVGPaintEngine::draw(const QVectorPath &path)
     vgDestroyPath(vgpath);
 }
 
-extern QPainterPath qt_painterPathFromVectorPath(const QVectorPath &path);
+Q_GUI_EXPORT QPainterPath qt_painterPathFromVectorPath(const QVectorPath &path);
 
 void QVGPaintEngine::fill(const QVectorPath &path, const QBrush &brush)
 {
@@ -3213,7 +3213,7 @@ static void drawImageTiled(QVGPaintEnginePrivate *d,
     VGImage tileWithOpacity = VG_INVALID_HANDLE;
     if (d->opacity != 1) {
         tileWithOpacity = pool->createPermanentImage(VG_sARGB_8888_PRE,
-            tileWidth, tileHeight, VG_IMAGE_QUALITY_FASTER);
+            tileWidth, tileHeight, VG_IMAGE_QUALITY_NONANTIALIASED);
         if (tileWithOpacity == VG_INVALID_HANDLE)
             qWarning("drawImageTiled: Failed to create extra tile, ignoring opacity");
     }
@@ -3226,6 +3226,10 @@ static void drawImageTiled(QVGPaintEnginePrivate *d,
     VGfloat scaleY = r.height() / sourceRect.height();
 
     d->setImageOptions();
+    VGImageQuality oldImageQuality = d->imageQuality;
+    VGRenderingQuality oldRenderingQuality = d->renderingQuality;
+    d->setImageQuality(VG_IMAGE_QUALITY_NONANTIALIASED);
+    d->setRenderingQuality(VG_RENDERING_QUALITY_NONANTIALIASED);
 
     for (int y = sourceRect.y(); y < sourceRect.height(); y += tileHeight) {
         int h = qMin(tileHeight, sourceRect.height() - y);
@@ -3265,6 +3269,9 @@ static void drawImageTiled(QVGPaintEnginePrivate *d,
     vgDestroyImage(tile);
     if (tileWithOpacity != VG_INVALID_HANDLE)
         vgDestroyImage(tileWithOpacity);
+
+    d->setImageQuality(oldImageQuality);
+    d->setRenderingQuality(oldRenderingQuality);
 }
 
 // Used by qpixmapfilter_vg.cpp to draw filtered VGImage's.

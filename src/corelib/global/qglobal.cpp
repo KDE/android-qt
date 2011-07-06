@@ -7,29 +7,29 @@
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
-**
 ** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL included in the
-** packaging of this file.  Please review the following information to
-** ensure the GNU Lesser General Public License version 2.1 requirements
-** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** This file may be used under the terms of the GNU Lesser General Public
+** License version 2.1 as published by the Free Software Foundation and
+** appearing in the file LICENSE.LGPL included in the packaging of this
+** file. Please review the following information to ensure the GNU Lesser
+** General Public License version 2.1 requirements will be met:
+** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
 **
 ** In addition, as a special exception, Nokia gives you certain additional
-** rights.  These rights are described in the Nokia Qt LGPL Exception
+** rights. These rights are described in the Nokia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
-** If you have questions regarding the use of this file, please contact
-** Nokia at qt-info@nokia.com.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU General
+** Public License version 3.0 as published by the Free Software Foundation
+** and appearing in the file LICENSE.GPL included in the packaging of this
+** file. Please review the following information to ensure the GNU General
+** Public License version 3.0 requirements will be met:
+** http://www.gnu.org/copyleft/gpl.html.
 **
-**
-**
+** Other Usage
+** Alternatively, this file may be used in accordance with the terms and
+** conditions contained in a signed written agreement between you and Nokia.
 **
 **
 **
@@ -1652,63 +1652,12 @@ static const unsigned int qt_one = 1;
 const int QSysInfo::ByteOrder = ((*((unsigned char *) &qt_one) == 0) ? BigEndian : LittleEndian);
 #endif
 
-#if !defined(QWS) && !defined(Q_WS_QPA) && defined(Q_OS_MAC)
+#if !defined(QWS) && defined(Q_OS_MAC)
 
 QT_BEGIN_INCLUDE_NAMESPACE
 #include "private/qcore_mac_p.h"
 #include "qnamespace.h"
 QT_END_INCLUDE_NAMESPACE
-
-Q_CORE_EXPORT OSErr qt_mac_create_fsref(const QString &file, FSRef *fsref)
-{
-    return FSPathMakeRef(reinterpret_cast<const UInt8 *>(file.toUtf8().constData()), fsref, 0);
-}
-
-// Don't use this function, it won't work in 10.5 (Leopard) and up
-Q_CORE_EXPORT OSErr qt_mac_create_fsspec(const QString &file, FSSpec *spec)
-{
-    FSRef fsref;
-    OSErr ret = qt_mac_create_fsref(file, &fsref);
-    if (ret == noErr)
-        ret = FSGetCatalogInfo(&fsref, kFSCatInfoNone, 0, 0, spec, 0);
-    return ret;
-}
-
-Q_CORE_EXPORT void qt_mac_to_pascal_string(QString s, Str255 str, TextEncoding encoding=0, int len=-1)
-{
-    if(len == -1)
-        len = s.length();
-#if 0
-    UnicodeMapping mapping;
-    mapping.unicodeEncoding = CreateTextEncoding(kTextEncodingUnicodeDefault,
-                                                 kTextEncodingDefaultVariant,
-                                                 kUnicode16BitFormat);
-    mapping.otherEncoding = (encoding ? encoding : );
-    mapping.mappingVersion = kUnicodeUseLatestMapping;
-
-    UnicodeToTextInfo info;
-    OSStatus err = CreateUnicodeToTextInfo(&mapping, &info);
-    if(err != noErr) {
-        qDebug("Qt: internal: Unable to create pascal string '%s'::%d [%ld]",
-               s.left(len).latin1(), (int)encoding, err);
-        return;
-    }
-    const int unilen = len * 2;
-    const UniChar *unibuf = (UniChar *)s.unicode();
-    ConvertFromUnicodeToPString(info, unilen, unibuf, str);
-    DisposeUnicodeToTextInfo(&info);
-#else
-    Q_UNUSED(encoding);
-    CFStringGetPascalString(QCFString(s), str, 256, CFStringGetSystemEncoding());
-#endif
-}
-
-Q_CORE_EXPORT QString qt_mac_from_pascal_string(const Str255 pstr) {
-    return QCFString(CFStringCreateWithPascalString(0, pstr, CFStringGetSystemEncoding()));
-}
-#endif //!defined(QWS) && !defined(Q_WS_QPA) && defined(Q_OS_MAC)
-
-#if !defined(QWS) && defined(Q_OS_MAC)
 
 static QSysInfo::MacVersion macVersion()
 {
@@ -2109,7 +2058,7 @@ static void mac_default_handler(const char *msg)
 {
     if (qt_is_gui_used) {
         Str255 pmsg;
-        qt_mac_to_pascal_string(msg, pmsg);
+        qt_mac_to_pascal_string(QString::fromAscii(msg), pmsg);
         DebugStr(pmsg);
     } else {
         fprintf(stderr, msg);
@@ -2915,8 +2864,8 @@ int qrand()
     \relates <QtGlobal>
     \since 4.8
 
-    \brief Hints the compiler that the enclosed condition is likely to evaluate
-    to \c true.
+    \brief Hints to the compiler that the enclosed condition, \a expr, is
+    likely to evaluate to \c true.
 
     Use of this macro can help the compiler to optimize the code.
 
@@ -2932,8 +2881,8 @@ int qrand()
     \relates <QtGlobal>
     \since 4.8
 
-    \brief Hints the compiler that the enclosed condition is likely to evaluate
-    to \c false.
+    \brief Hints to the compiler that the enclosed condition, \a expr, is
+    likely to evaluate to \c false.
 
     Use of this macro can help the compiler to optimize the code.
 

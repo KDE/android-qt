@@ -7,20 +7,20 @@
 ** This file is part of the documentation of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:FDL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
-**
 ** GNU Free Documentation License
 ** Alternatively, this file may be used under the terms of the GNU Free
 ** Documentation License version 1.3 as published by the Free Software
-** Foundation and appearing in the file included in the packaging of this
-** file.
+** Foundation and appearing in the file included in the packaging of
+** this file.
 **
-** If you have questions regarding the use of this file, please contact
-** Nokia at qt-info@nokia.com.
+** Other Usage
+** Alternatively, this file may be used in accordance with the terms
+** and conditions contained in a signed written agreement between you
+** and Nokia.
+**
+**
+**
+**
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
@@ -786,6 +786,13 @@
     \row \o \l{webkit/simpleselector}{Simple Selector}\raisedaster
     \o A basic demonstration, showing how to use QWebElement to select elements in a
     Web page.
+    \row \o \l{webkit/simplewebplugin}{Simple Web Plugin}\raisedaster
+    \o Shows how to embed a widget into a Web page displayed using a QWebView
+    widget.
+    \row \o \l{webkit/webftpclient}{Web FTP Client}\raisedaster
+    \o Shows how to add support for a new protocol to QtWebKit-based applications.
+    \row \o \l{webkit/webplugin}{Web Plugin}\raisedaster
+    \o Shows how to communicate with a widget embedded into a Web page.
     \endtable
 
     Examples marked with an asterisk (*) are fully documented.

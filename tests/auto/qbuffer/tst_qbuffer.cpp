@@ -7,29 +7,29 @@
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
-**
 ** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL included in the
-** packaging of this file.  Please review the following information to
-** ensure the GNU Lesser General Public License version 2.1 requirements
-** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** This file may be used under the terms of the GNU Lesser General Public
+** License version 2.1 as published by the Free Software Foundation and
+** appearing in the file LICENSE.LGPL included in the packaging of this
+** file. Please review the following information to ensure the GNU Lesser
+** General Public License version 2.1 requirements will be met:
+** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
 **
 ** In addition, as a special exception, Nokia gives you certain additional
-** rights.  These rights are described in the Nokia Qt LGPL Exception
+** rights. These rights are described in the Nokia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
-** If you have questions regarding the use of this file, please contact
-** Nokia at qt-info@nokia.com.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU General
+** Public License version 3.0 as published by the Free Software Foundation
+** and appearing in the file LICENSE.GPL included in the packaging of this
+** file. Please review the following information to ensure the GNU General
+** Public License version 3.0 requirements will be met:
+** http://www.gnu.org/copyleft/gpl.html.
 **
-**
-**
+** Other Usage
+** Alternatively, this file may be used in accordance with the terms and
+** conditions contained in a signed written agreement between you and Nokia.
 **
 **
 **
@@ -56,6 +56,7 @@ public:
     tst_QBuffer();
 
 private slots:
+    void open();
     void getSetCheck();
     void readBlock();
     void readBlockPastEnd();
@@ -102,6 +103,55 @@ void tst_QBuffer::getSetCheck()
 
 tst_QBuffer::tst_QBuffer()
 {
+}
+
+void tst_QBuffer::open()
+{
+    QByteArray data(10, 'f');
+
+    QBuffer b;
+
+    QTest::ignoreMessage(QtWarningMsg, "QBuffer::open: Buffer access not specified");
+    QVERIFY(!b.open(QIODevice::NotOpen));
+    QVERIFY(!b.isOpen());
+    b.close();
+
+    QTest::ignoreMessage(QtWarningMsg, "QBuffer::open: Buffer access not specified");
+    QVERIFY(!b.open(QIODevice::Text));
+    QVERIFY(!b.isOpen());
+    b.close();
+
+    QTest::ignoreMessage(QtWarningMsg, "QBuffer::open: Buffer access not specified");
+    QVERIFY(!b.open(QIODevice::Unbuffered));
+    QVERIFY(!b.isOpen());
+    b.close();
+
+    QVERIFY(b.open(QIODevice::ReadOnly));
+    QVERIFY(b.isReadable());
+    b.close();
+
+    QVERIFY(b.open(QIODevice::WriteOnly));
+    QVERIFY(b.isWritable());
+    b.close();
+
+    b.setData(data);
+    QVERIFY(b.open(QIODevice::Append));
+    QVERIFY(b.isWritable());
+    QCOMPARE(b.size(), qint64(10));
+    QCOMPARE(b.pos(), b.size());
+    b.close();
+
+    b.setData(data);
+    QVERIFY(b.open(QIODevice::Truncate));
+    QVERIFY(b.isWritable());
+    QCOMPARE(b.size(), qint64(0));
+    QCOMPARE(b.pos(), qint64(0));
+    b.close();
+
+    QVERIFY(b.open(QIODevice::ReadWrite));
+    QVERIFY(b.isReadable());
+    QVERIFY(b.isWritable());
+    b.close();
 }
 
 // some status() tests, too
@@ -309,8 +359,7 @@ void tst_QBuffer::seekTest()
     // (see Task 184730)
     {
         char c;
-        const int offset = 1;
-        Q_ASSERT(offset > 0); // any positive integer will do
+        const int offset = 1; // any positive integer will do
         const qint64 pos = buf.size() + offset;
         QVERIFY(buf.seek(pos));
         QCOMPARE(buf.pos(), pos);

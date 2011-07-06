@@ -7,29 +7,29 @@
 ** This file is part of the tools applications of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
-**
 ** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL included in the
-** packaging of this file.  Please review the following information to
-** ensure the GNU Lesser General Public License version 2.1 requirements
-** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** This file may be used under the terms of the GNU Lesser General Public
+** License version 2.1 as published by the Free Software Foundation and
+** appearing in the file LICENSE.LGPL included in the packaging of this
+** file. Please review the following information to ensure the GNU Lesser
+** General Public License version 2.1 requirements will be met:
+** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
 **
 ** In addition, as a special exception, Nokia gives you certain additional
-** rights.  These rights are described in the Nokia Qt LGPL Exception
+** rights. These rights are described in the Nokia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
-** If you have questions regarding the use of this file, please contact
-** Nokia at qt-info@nokia.com.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU General
+** Public License version 3.0 as published by the Free Software Foundation
+** and appearing in the file LICENSE.GPL included in the packaging of this
+** file. Please review the following information to ensure the GNU General
+** Public License version 3.0 requirements will be met:
+** http://www.gnu.org/copyleft/gpl.html.
 **
-**
-**
+** Other Usage
+** Alternatively, this file may be used in accordance with the terms and
+** conditions contained in a signed written agreement between you and Nokia.
 **
 **
 **
@@ -62,7 +62,7 @@ void printUsage(QTextStream& outstream, QString exeName)
             << "-t, --timeout <milliseconds>             terminate test if timeout occurs" << endl
             << "-v, --verbose                            show debugging output" << endl
             << "-q, --quiet                              hide progress messages" << endl
-            << "-u, --upload <local file>                upload executable file to phone" << endl
+            << "-u, --upload <local file> <remote file>  upload file to phone" << endl
             << "-d, --download <remote file> <local file> copy file from phone to PC after running test" << endl
             << "--nocrashlog                             Don't capture call stack if test crashes" << endl
             << "--crashlogpath <dir>                     Path to save crash logs (default=working dir)" << endl
@@ -86,6 +86,7 @@ int main(int argc, char *argv[])
     QTextStream outstream(stdout);
     QTextStream errstream(stderr);
     QString uploadLocalFile;
+    QString uploadRemoteFile;
     QString downloadRemoteFile;
     QString downloadLocalFile;
     int loglevel=1;
@@ -121,10 +122,8 @@ int main(int argc, char *argv[])
                     errstream << "Executable file (" << uploadLocalFile << ") doesn't exist" << endl;
                     return 1;
                 }
-                if (!(QFileInfo(uploadLocalFile).suffix() == "exe")) {
-                    errstream << "File (" << uploadLocalFile << ") must be an executable" << endl;
-                    return 1;
-                }
+                CHECK_PARAMETER_EXISTS
+                uploadRemoteFile = it.next();
             }
             else if (arg == "--download" || arg == "-d") {
                 CHECK_PARAMETER_EXISTS
@@ -161,7 +160,8 @@ int main(int argc, char *argv[])
         }
     }
 
-    if (exeFile.isEmpty() && sisFile.isEmpty() && uploadLocalFile.isEmpty() &&
+    if (exeFile.isEmpty() && sisFile.isEmpty() &&
+        (uploadLocalFile.isEmpty() || uploadRemoteFile.isEmpty()) &&
         (downloadLocalFile.isEmpty() || downloadRemoteFile.isEmpty())) {
         printUsage(outstream, args[0]);
         return 1;
@@ -211,7 +211,7 @@ int main(int argc, char *argv[])
     }
     else if (!uploadLocalFile.isEmpty() && uploadInfo.exists()) {
         launcher->addStartupActions(trk::Launcher::ActionCopy);
-        launcher->setCopyFileName(uploadLocalFile, QString("c:\\sys\\bin\\") + uploadInfo.fileName());
+        launcher->setCopyFileName(uploadLocalFile, uploadRemoteFile);
     }
     if (!exeFile.isEmpty()) {
         launcher->addStartupActions(trk::Launcher::ActionRun);

@@ -8,29 +8,29 @@
 ## This file is the build configuration utility of the Qt Toolkit.
 ##
 ## $QT_BEGIN_LICENSE:LGPL$
-## No Commercial Usage
-## This file contains pre-release code and may not be distributed.
-## You may use this file in accordance with the terms and conditions
-## contained in the Technology Preview License Agreement accompanying
-## this package.
-##
 ## GNU Lesser General Public License Usage
-## Alternatively, this file may be used under the terms of the GNU Lesser
-## General Public License version 2.1 as published by the Free Software
-## Foundation and appearing in the file LICENSE.LGPL included in the
-## packaging of this file.  Please review the following information to
-## ensure the GNU Lesser General Public License version 2.1 requirements
-## will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+## This file may be used under the terms of the GNU Lesser General Public
+## License version 2.1 as published by the Free Software Foundation and
+## appearing in the file LICENSE.LGPL included in the packaging of this
+## file. Please review the following information to ensure the GNU Lesser
+## General Public License version 2.1 requirements will be met:
+## http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
 ##
 ## In addition, as a special exception, Nokia gives you certain additional
-## rights.  These rights are described in the Nokia Qt LGPL Exception
+## rights. These rights are described in the Nokia Qt LGPL Exception
 ## version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 ##
-## If you have questions regarding the use of this file, please contact
-## Nokia at qt-info@nokia.com.
+## GNU General Public License Usage
+## Alternatively, this file may be used under the terms of the GNU General
+## Public License version 3.0 as published by the Free Software Foundation
+## and appearing in the file LICENSE.GPL included in the packaging of this
+## file. Please review the following information to ensure the GNU General
+## Public License version 3.0 requirements will be met:
+## http://www.gnu.org/copyleft/gpl.html.
 ##
-##
-##
+## Other Usage
+## Alternatively, this file may be used in accordance with the terms and
+## conditions contained in a signed written agreement between you and Nokia.
 ##
 ##
 ##
@@ -3322,14 +3322,14 @@ fi
 # process CFG_MAC_ARCHS
 if [ "$PLATFORM_MAC" = "yes" ]; then
 #   check -arch arguments for validity.
-    ALLOWED="x86 ppc x86_64 ppc64 i386"
+    ALLOWED="x86 ppc x86_64 ppc64 i386 arm armv6 armv7"
     # Save the list so we can re-write it using only valid values
     CFG_MAC_ARCHS_IN="$CFG_MAC_ARCHS"
     CFG_MAC_ARCHS=
     for i in $CFG_MAC_ARCHS_IN
     do
         if echo "$ALLOWED" | grep -w -v "$i" > /dev/null 2>&1; then
-            echo "Unknown architecture: \"$i\". Supported architectures: x86[i386] ppc x86_64 ppc64";
+            echo "Unknown architecture: \"$i\". Supported architectures: x86[i386] ppc x86_64 ppc64 arm armv6 armv7";
             exit 2;
         fi
         if [ "$i" = "i386" -o "$i" = "x86" ]; then
@@ -4972,7 +4972,7 @@ EOF
             done
         fi
         if [ "$BUILD_ON_MAC" = "yes" ]; then
-            echo "export MACOSX_DEPLOYMENT_TARGET = 10.4" >> "$mkfile"
+            echo "export MACOSX_DEPLOYMENT_TARGET = 10.5" >> "$mkfile"
             echo "CARBON_LFLAGS =-framework ApplicationServices" >>"$mkfile"
             echo "CARBON_CFLAGS =-fconstant-cfstrings" >>"$mkfile"
             EXTRA_LFLAGS="$EXTRA_LFLAGS \$(CARBON_LFLAGS)"
@@ -5200,6 +5200,19 @@ if [ "$XPLATFORM_SYMBIAN" = "yes" ]; then
             echo "Testing your compiler failed. Could not compile a simple application."
             echo "Fatal error; Rerun configure with -verbose to get more details."
             exit 1;
+        fi
+    fi
+fi
+
+# check IPC support
+if ! "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/ipc_sysv "ipc_sysv" $L_FLAGS $I_FLAGS $l_FLAGS ; then
+    # SYSV IPC is not supported - check POSIX IPC
+    if "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/ipc_posix "ipc_posix" $L_FLAGS $I_FLAGS $l_FLAGS ; then
+        QCONFIG_FLAGS="$QCONFIG_FLAGS QT_POSIX_IPC"
+    else
+        QCONFIG_FLAGS="$QCONFIG_FLAGS QT_NO_SYSTEMSEMAPHORE QT_NO_SHAREDMEMORY"
+        if [ "$PLATFORM_QWS" = "yes" ]; then
+            QCONFIG_FLAGS="$QCONFIG_FLAGS QT_NO_SEMAPHORE QT_NO_QWS_MULTIPROCESS QT_NO_QWS_SHARE_FONTS"
         fi
     fi
 fi
@@ -5856,7 +5869,7 @@ if [ "$PLATFORM_X11" = "yes" -o "$PLATFORM_QWS" = "yes" -o "$PLATFORM_QPA" = "ye
 fi # X11/QWS/Lighthouse
 
 # X11
-if [ "$PLATFORM_X11" = "yes" ]; then
+if [ "$PLATFORM_X11" = "yes" -a "$CFG_GUI" != "no" ]; then
     x11tests="$relpath/config.tests/x11"
     X11TESTS_FLAGS=
 
@@ -7693,7 +7706,7 @@ fi
 
 if [ "$CFG_WEBKIT" != "no" ]; then
     # This include takes care of adding "webkit" to QT_CONFIG.
-    cp -f "$relpath/src/3rdparty/webkit/WebKit/qt/qt_webkit_version.pri" "$outpath/mkspecs/modules/qt_webkit_version.pri"
+    cp -f "$relpath/src/3rdparty/webkit/Source/WebKit/qt/qt_webkit_version.pri" "$outpath/mkspecs/modules/qt_webkit_version.pri"
     # The reason we set CFG_WEBKIT, is such that the printed overview of what will be enabled, shows correctly.
     if [ "$CFG_WEBKIT" = "debug" ]; then
         QMAKE_CONFIG="$QMAKE_CONFIG webkit-debug"

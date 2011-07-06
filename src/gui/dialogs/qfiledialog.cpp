@@ -7,29 +7,29 @@
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
-**
 ** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL included in the
-** packaging of this file.  Please review the following information to
-** ensure the GNU Lesser General Public License version 2.1 requirements
-** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** This file may be used under the terms of the GNU Lesser General Public
+** License version 2.1 as published by the Free Software Foundation and
+** appearing in the file LICENSE.LGPL included in the packaging of this
+** file. Please review the following information to ensure the GNU Lesser
+** General Public License version 2.1 requirements will be met:
+** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
 **
 ** In addition, as a special exception, Nokia gives you certain additional
-** rights.  These rights are described in the Nokia Qt LGPL Exception
+** rights. These rights are described in the Nokia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
-** If you have questions regarding the use of this file, please contact
-** Nokia at qt-info@nokia.com.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU General
+** Public License version 3.0 as published by the Free Software Foundation
+** and appearing in the file LICENSE.GPL included in the packaging of this
+** file. Please review the following information to ensure the GNU General
+** Public License version 3.0 requirements will be met:
+** http://www.gnu.org/copyleft/gpl.html.
 **
-**
-**
+** Other Usage
+** Alternatively, this file may be used in accordance with the terms and
+** conditions contained in a signed written agreement between you and Nokia.
 **
 **
 **
@@ -65,6 +65,9 @@
 #include "ui_qfiledialog_embedded.h"
 #if defined(Q_OS_WINCE)
 extern bool qt_priv_ptr_valid;
+#endif
+#if defined(Q_OS_UNIX)
+#include <pwd.h>
 #endif
 #endif
 
@@ -858,23 +861,78 @@ void QFileDialog::selectFile(const QString &filename)
         d->lineEdit()->setText(file);
 }
 
+#ifdef Q_OS_UNIX
+Q_AUTOTEST_EXPORT QString qt_tildeExpansion(const QString &path, bool *expanded = 0)
+{
+    if (expanded != 0)
+        *expanded = false;
+    if (!path.startsWith(QLatin1Char('~')))
+        return path;
+    QString ret = path;
+    QStringList tokens = ret.split(QDir::separator());
+    if (tokens.first() == QLatin1String("~")) {
+        ret.replace(0, 1, QDir::homePath());
+    } else {
+        QString userName = tokens.first();
+        userName.remove(0, 1);
+#if defined(_POSIX_THREAD_SAFE_FUNCTIONS) && !defined(Q_OS_OPENBSD)
+        passwd pw;
+        passwd *tmpPw;
+        char buf[200];
+        const int bufSize = sizeof(buf);
+        int err = getpwnam_r(userName.toLocal8Bit().constData(), &pw, buf, bufSize, &tmpPw);
+        if (err || !tmpPw)
+            return ret;
+        const QString homePath = QString::fromLocal8Bit(pw.pw_dir);
+#else
+        passwd *pw = getpwnam(userName.toLocal8Bit().constData());
+        if (!pw)
+            return ret;
+        const QString homePath = QString::fromLocal8Bit(pw->pw_dir);
+#endif
+        ret.replace(0, tokens.first().length(), homePath);
+    }
+    if (expanded != 0)
+        *expanded = true;
+    return ret;
+}
+#endif
+
 /**
     Returns the text in the line edit which can be one or more file names
   */
 QStringList QFileDialogPrivate::typedFiles() const
 {
+    Q_Q(const QFileDialog);
     QStringList files;
     QString editText = lineEdit()->text();
-    if (!editText.contains(QLatin1Char('"')))
+    if (!editText.contains(QLatin1Char('"'))) {
+#ifdef Q_OS_UNIX
+        const QString prefix = q->directory().absolutePath() + QDir::separator();
+        if (QFile::exists(prefix + editText))
+            files << editText;
+        else
+            files << qt_tildeExpansion(editText);
+#else
         files << editText;
-    else {
+#endif
+    } else {
         // " is used to separate files like so: "file1" "file2" "file3" ...
         // ### need escape character for filenames with quotes (")
         QStringList tokens = editText.split(QLatin1Char('\"'));
         for (int i=0; i<tokens.size(); ++i) {
             if ((i % 2) == 0)
                 continue; // Every even token is a separator
+#ifdef Q_OS_UNIX
+            const QString token = tokens.at(i);
+            const QString prefix = q->directory().absolutePath() + QDir::separator();
+            if (QFile::exists(prefix + token))
+                files << token;
+            else
+                files << qt_tildeExpansion(token);
+#else
             files << toInternal(tokens.at(i));
+#endif
         }
     }
     return addDefaultSuffixToFiles(files);
@@ -3338,6 +3396,17 @@ QStringList QFSCompleter::splitPath(const QString &path) const
         pathCopy = pathCopy.mid(2);
     else
         doubleSlash.clear();
+#elif defined(Q_OS_UNIX)
+    bool expanded;
+    pathCopy = qt_tildeExpansion(pathCopy, &expanded);
+    if (expanded) {
+        QFileSystemModel *dirModel;
+        if (proxyModel)
+            dirModel = qobject_cast<QFileSystemModel *>(proxyModel->sourceModel());
+        else
+            dirModel = sourceModel;
+        dirModel->fetchMore(dirModel->index(pathCopy));
+    }
 #endif
 
     QRegExp re(QLatin1Char('[') + QRegExp::escape(sep) + QLatin1Char(']'));
@@ -3354,14 +3423,14 @@ QStringList QFSCompleter::splitPath(const QString &path) const
         parts.append(QString());
 #else
     QStringList parts = pathCopy.split(re);
-    if (path[0] == sep[0]) // read the "/" at the beginning as the split removed it
+    if (pathCopy[0] == sep[0]) // read the "/" at the beginning as the split removed it
         parts[0] = sep[0];
 #endif
 
 #if defined(Q_OS_WIN) || defined(Q_OS_SYMBIAN)
     bool startsFromRoot = !parts.isEmpty() && parts[0].endsWith(QLatin1Char(':'));
 #else
-    bool startsFromRoot = path[0] == sep[0];
+    bool startsFromRoot = pathCopy[0] == sep[0];
 #endif
     if (parts.count() == 1 || (parts.count() > 1 && !startsFromRoot)) {
         const QFileSystemModel *dirModel;

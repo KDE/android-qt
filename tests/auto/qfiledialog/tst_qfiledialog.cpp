@@ -7,29 +7,29 @@
 ** This file is part of the test suite of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
-**
 ** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL included in the
-** packaging of this file.  Please review the following information to
-** ensure the GNU Lesser General Public License version 2.1 requirements
-** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** This file may be used under the terms of the GNU Lesser General Public
+** License version 2.1 as published by the Free Software Foundation and
+** appearing in the file LICENSE.LGPL included in the packaging of this
+** file. Please review the following information to ensure the GNU Lesser
+** General Public License version 2.1 requirements will be met:
+** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
 **
 ** In addition, as a special exception, Nokia gives you certain additional
-** rights.  These rights are described in the Nokia Qt LGPL Exception
+** rights. These rights are described in the Nokia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
-** If you have questions regarding the use of this file, please contact
-** Nokia at qt-info@nokia.com.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU General
+** Public License version 3.0 as published by the Free Software Foundation
+** and appearing in the file LICENSE.GPL included in the packaging of this
+** file. Please review the following information to ensure the GNU General
+** Public License version 3.0 requirements will be met:
+** http://www.gnu.org/copyleft/gpl.html.
 **
-**
-**
+** Other Usage
+** Alternatively, this file may be used in accordance with the terms and
+** conditions contained in a signed written agreement between you and Nokia.
 **
 **
 **
@@ -78,6 +78,10 @@
 # define STRINGIFY(x) #x
 # define TOSTRING(x) STRINGIFY(x)
 # define SRCDIR "C:/Private/" TOSTRING(SYMBIAN_SRCDIR_UID) "/"
+#elif defined(Q_OS_UNIX)
+#ifdef QT_BUILD_INTERNAL
+extern Q_GUI_EXPORT QString qt_tildeExpansion(const QString &path, bool *expanded = 0);
+#endif
 #endif
 
 class QNonNativeFileDialog : public QFileDialog
@@ -144,6 +148,10 @@ private slots:
     void clearLineEdit();
     void enableChooseButton();
     void hooks();
+#ifdef Q_OS_UNIX
+    void tildeExpansion_data();
+    void tildeExpansion();
+#endif
 
 private:
     QByteArray userSettings;
@@ -1322,6 +1330,37 @@ void tst_QFiledialog::hooks()
     QCOMPARE(QFileDialog::getOpenFileNames(), QStringList("openNames"));
     QCOMPARE(QFileDialog::getSaveFileName(), QString("saveName"));
 }
+
+#ifdef Q_OS_UNIX
+void tst_QFiledialog::tildeExpansion_data()
+{
+    QTest::addColumn<QString>("tildePath");
+    QTest::addColumn<QString>("expandedPath");
+
+    QTest::newRow("empty path") << QString() << QString();
+    QTest::newRow("~") << QString::fromLatin1("~") << QDir::homePath();
+    QTest::newRow("~/some/sub/dir/") << QString::fromLatin1("~/some/sub/dir") << QDir::homePath()
+                                        + QString::fromLatin1("/some/sub/dir");
+    QString userHome = QString(qgetenv("USER"));
+    userHome.prepend('~');
+    QTest::newRow("current user (~<user> syntax)") << userHome << QDir::homePath();
+    QString invalid = QString::fromLatin1("~thisIsNotAValidUserName");
+    QTest::newRow("invalid user name") << invalid << invalid;
+}
+
+
+void tst_QFiledialog::tildeExpansion()
+{
+#ifndef QT_BUILD_INTERNAL
+    QSKIP("Test case relies on developer build (AUTOTEST_EXPORT)", SkipAll);
+#else
+    QFETCH(QString, tildePath);
+    QFETCH(QString, expandedPath);
+
+    QCOMPARE(qt_tildeExpansion(tildePath), expandedPath);
+#endif
+}
+#endif
 
 QTEST_MAIN(tst_QFiledialog)
 #include "tst_qfiledialog.moc"

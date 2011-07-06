@@ -7,29 +7,29 @@
 ** This file is part of the tools applications of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
-**
 ** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL included in the
-** packaging of this file.  Please review the following information to
-** ensure the GNU Lesser General Public License version 2.1 requirements
-** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** This file may be used under the terms of the GNU Lesser General Public
+** License version 2.1 as published by the Free Software Foundation and
+** appearing in the file LICENSE.LGPL included in the packaging of this
+** file. Please review the following information to ensure the GNU Lesser
+** General Public License version 2.1 requirements will be met:
+** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
 **
 ** In addition, as a special exception, Nokia gives you certain additional
-** rights.  These rights are described in the Nokia Qt LGPL Exception
+** rights. These rights are described in the Nokia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
-** If you have questions regarding the use of this file, please contact
-** Nokia at qt-info@nokia.com.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU General
+** Public License version 3.0 as published by the Free Software Foundation
+** and appearing in the file LICENSE.GPL included in the packaging of this
+** file. Please review the following information to ensure the GNU General
+** Public License version 3.0 requirements will be met:
+** http://www.gnu.org/copyleft/gpl.html.
 **
-**
-**
+** Other Usage
+** Alternatively, this file may be used in accordance with the terms and
+** conditions contained in a signed written agreement between you and Nokia.
 **
 **
 **
@@ -148,7 +148,8 @@ QList<SerialPortId> enumerateSerialPorts(int loglevel)
                 foreach (int i, usableInterfaces) {
 #ifdef Q_OS_MAC
                     eligibleInterfaces << QString("^cu\\.usbmodem.*%1$")
-                        .arg(QString("%1").arg(descriptor.bInterfaceNumber, 1, 16).toUpper());
+                        .arg(QString("%1").arg(i, 1, 16).toUpper());
+                    eligibleInterfacesInfo << InterfaceInfo(manufacturerString, productString, device->descriptor.idVendor, device->descriptor.idProduct);
 #else
                     // ### manufacturer and product strings are only readable as root :(
                     if (!manufacturerString.isEmpty() && !productString.isEmpty()) {
@@ -161,7 +162,11 @@ QList<SerialPortId> enumerateSerialPorts(int loglevel)
                     }
 #endif
                 }
+#ifndef Q_OS_MAC
+                // On mac, we need a 1-1 mapping between eligibleInterfaces and eligibleInterfacesInfo
+                // in order to find the friendly name for an interface
                 eligibleInterfacesInfo << InterfaceInfo(manufacturerString, productString, device->descriptor.idVendor, device->descriptor.idProduct);
+#endif
             }
         }
     }
@@ -185,7 +190,8 @@ QList<SerialPortId> enumerateSerialPorts(int loglevel)
                     if (loglevel > 1)
                         qDebug() << "      found device file:" << info.fileName() << endl;
 #ifdef Q_OS_MAC
-                    friendlyName = eligibleInterfacesInfo[eligibleInterfaces.indexOf(iface)].product;
+                    InterfaceInfo info = eligibleInterfacesInfo[eligibleInterfaces.indexOf(iface)];
+                    friendlyName = info.manufacturer + " " + info.product;
 #endif
                     usable = true;
                     break;

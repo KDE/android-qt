@@ -7,29 +7,29 @@
 ** This file is part of the QtNetwork module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
-**
 ** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL included in the
-** packaging of this file.  Please review the following information to
-** ensure the GNU Lesser General Public License version 2.1 requirements
-** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** This file may be used under the terms of the GNU Lesser General Public
+** License version 2.1 as published by the Free Software Foundation and
+** appearing in the file LICENSE.LGPL included in the packaging of this
+** file. Please review the following information to ensure the GNU Lesser
+** General Public License version 2.1 requirements will be met:
+** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
 **
 ** In addition, as a special exception, Nokia gives you certain additional
-** rights.  These rights are described in the Nokia Qt LGPL Exception
+** rights. These rights are described in the Nokia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
-** If you have questions regarding the use of this file, please contact
-** Nokia at qt-info@nokia.com.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU General
+** Public License version 3.0 as published by the Free Software Foundation
+** and appearing in the file LICENSE.GPL included in the packaging of this
+** file. Please review the following information to ensure the GNU General
+** Public License version 3.0 requirements will be met:
+** http://www.gnu.org/copyleft/gpl.html.
 **
-**
-**
+** Other Usage
+** Alternatively, this file may be used in accordance with the terms and
+** conditions contained in a signed written agreement between you and Nokia.
 **
 **
 **
@@ -196,8 +196,14 @@ bool QSymbianSocketEnginePrivate::createNewSocket(QAbstractSocket::SocketType so
 #ifdef QNATIVESOCKETENGINE_DEBUG
         qDebug() << "QSymbianSocketEnginePrivate::createNewSocket - _q_networksession was set" << err;
 #endif
-    } else
-        err = nativeSocket.Open(socketServer, family, type, protocol); //TODO: FIXME - deprecated API, make sure we always have a connection instead
+    } else {
+#ifdef QNATIVESOCKETENGINE_DEBUG
+        qDebug() << "QSymbianSocketEnginePrivate::createNewSocket - _q_networksession was not set, using implicit connection";
+#endif
+        // using implicit connection allows localhost connections without starting any RConnection, see QTBUG-16155 and QTBUG-16843
+        // when a remote address is used, socket server will start the system default connection if there is no route.
+        err = nativeSocket.Open(socketServer, family, type, protocol);
+    }
 
     if (err != KErrNone) {
         switch (err) {
@@ -251,7 +257,8 @@ QSymbianSocketEnginePrivate::QSymbianSocketEnginePrivate() :
     readNotificationsEnabled(false),
     writeNotificationsEnabled(false),
     exceptNotificationsEnabled(false),
-    asyncSelect(0)
+    asyncSelect(0),
+    hasReceivedBufferedDatagram(false)
 {
 }
 
@@ -563,12 +570,12 @@ bool QSymbianSocketEngine::connectToHostByName(const QString &name, quint16 port
     If there's a connection activity on the socket, process it. Then
     notify our parent if there really was activity.
 */
-void QSymbianSocketEngine::connectionNotification()
+void QSymbianSocketEngine::connectionComplete()
 {
-    // FIXME check if we really need to do it like that in Symbian
     Q_D(QSymbianSocketEngine);
     Q_ASSERT(state() == QAbstractSocket::ConnectingState);
 
+    // as it was a non blocking connect, call again to find the result.
     connectToHost(d->peerAddress, d->peerPort);
     if (state() != QAbstractSocket::ConnectingState) {
         // we changed states
@@ -781,21 +788,34 @@ qint64 QSymbianSocketEngine::pendingDatagramSize() const
     Q_D(const QSymbianSocketEngine);
     Q_CHECK_VALID_SOCKETLAYER(QSymbianSocketEngine::pendingDatagramSize(), false);
     Q_CHECK_TYPE(QSymbianSocketEngine::hasPendingDatagrams(), QAbstractSocket::UdpSocket, false);
-    int nbytes;
+    //can only buffer one datagram at a time
+    if (d->hasReceivedBufferedDatagram)
+        return d->receivedDataBuffer.size();
+    int nbytes = 0;
     TInt err = d->nativeSocket.GetOpt(KSOReadBytesPending,KSOLSocket, nbytes);
     if (nbytes > 0) {
         //nbytes includes IP header, which is of variable length (IPv4 with or without options, IPv6...)
-        QByteArray next(nbytes,0);
-        TPtr8 buffer((TUint8*)next.data(), next.size());
+        //therefore read the datagram into a buffer to find its true size
+        d->receivedDataBuffer.resize(nbytes);
+        TPtr8 buffer((TUint8*)d->receivedDataBuffer.data(), nbytes);
+        //nbytes = size including IP header, buffer is a pointer descriptor backed by the receivedDataBuffer
         TInetAddr addr;
         TRequestStatus status;
-        //TODO: rather than peek, should we save this for next call to readDatagram?
-        //what if calls don't match though?
-        d->nativeSocket.RecvFrom(buffer, addr, KSockReadPeek, status);
+        //RecvFrom copies only the payload (we don't want the header so don't specify the option to retrieve it)
+        d->nativeSocket.RecvFrom(buffer, addr, 0, status);
         User::WaitForRequest(status);
-        if (status.Int())
+        if (status != KErrNone) {
+            d->receivedDataBuffer.clear();
             return 0;
-        return buffer.Length();
+        }
+        nbytes = buffer.Length();
+        //nbytes = size of payload, resize the receivedDataBuffer to the final size
+        d->receivedDataBuffer.resize(nbytes);
+        d->hasReceivedBufferedDatagram = true;
+        //now receivedDataBuffer contains one datagram, which has been removed from the socket's internal buffer
+#if defined (QNATIVESOCKETENGINE_DEBUG)
+        qDebug() << "QSymbianSocketEngine::pendingDatagramSize buffering" << nbytes << "bytes";
+#endif
     }
     return qint64(nbytes);
 }
@@ -807,6 +827,19 @@ qint64 QSymbianSocketEngine::readDatagram(char *data, qint64 maxSize,
     Q_D(QSymbianSocketEngine);
     Q_CHECK_VALID_SOCKETLAYER(QSymbianSocketEngine::readDatagram(), -1);
     Q_CHECK_TYPE(QSymbianSocketEngine::readDatagram(), QAbstractSocket::UdpSocket, false);
+
+    // if a datagram was buffered in pendingDatagramSize(), return it now
+    if (d->hasReceivedBufferedDatagram) {
+        qint64 size = qMin(maxSize, (qint64)d->receivedDataBuffer.size());
+        memcpy(data, d->receivedDataBuffer.constData(), size);
+        d->receivedDataBuffer.clear();
+        d->hasReceivedBufferedDatagram = false;
+#if defined (QNATIVESOCKETENGINE_DEBUG)
+        qDebug() << "QSymbianSocketEngine::readDatagram returning" << size << "bytes from buffer";
+#endif
+        return size;
+    }
+
     TPtr8 buffer((TUint8*)data, (int)maxSize);
     TInetAddr addr;
     TRequestStatus status;
@@ -879,7 +912,6 @@ qint64 QSymbianSocketEngine::writeDatagram(const char *data, qint64 len,
     return sentBytes();
 }
 
-// FIXME check where the native socket engine called that..
 bool QSymbianSocketEnginePrivate::fetchConnectionParameters()
 {
     localPort = 0;
@@ -963,9 +995,15 @@ void QSymbianSocketEngine::close()
         d->asyncSelect = 0;
     }
 
-    //TODO: call nativeSocket.Shutdown(EImmediate) in some cases?
+    //RSocket::Shutdown(EImmediate) performs a fast disconnect. For TCP,
+    //this would mean sending RST rather than FIN so we don't do that.
+    //Qt's disconnectFromHost() API doesn't expose this choice.
+    //RSocket::Close will internally do a normal shutdown of the socket.
     if (d->socketType == QAbstractSocket::UdpSocket) {
-        //TODO: Close hangs without this, but only for UDP - why?
+        //RSocket::Close has been observed to block for a long time with
+        //UDP sockets. Doing an immediate shutdown first works around this
+        //problem. Since UDP is connectionless, there should be no difference
+        //at the network interface.
         TRequestStatus stat;
         d->nativeSocket.Shutdown(RSocket::EImmediate, stat);
         User::WaitForRequest(stat);
@@ -985,6 +1023,9 @@ void QSymbianSocketEngine::close()
     d->localAddress.clear();
     d->peerPort = 0;
     d->peerAddress.clear();
+
+    d->hasReceivedBufferedDatagram = false;
+    d->receivedDataBuffer.clear();
 }
 
 qint64 QSymbianSocketEngine::write(const char *data, qint64 len)
@@ -996,7 +1037,7 @@ qint64 QSymbianSocketEngine::write(const char *data, qint64 len)
     TSockXfrLength sentBytes = 0;
     TRequestStatus status;
     d->nativeSocket.Send(buffer, 0, status, sentBytes);
-    User::WaitForRequest(status); //TODO: on emulator this blocks for write >16kB (non blocking IO not implemented properly?)
+    User::WaitForRequest(status);
     TInt err = status.Int(); 
 
     if (err) {
@@ -1035,6 +1076,18 @@ qint64 QSymbianSocketEngine::read(char *data, qint64 maxSize)
     Q_D(QSymbianSocketEngine);
     Q_CHECK_VALID_SOCKETLAYER(QSymbianSocketEngine::read(), -1);
     Q_CHECK_STATES(QSymbianSocketEngine::read(), QAbstractSocket::ConnectedState, QAbstractSocket::BoundState, -1);
+
+    // if a datagram was buffered in pendingDatagramSize(), return it now
+    if (d->hasReceivedBufferedDatagram) {
+        qint64 size = qMin(maxSize, (qint64)d->receivedDataBuffer.size());
+        memcpy(data, d->receivedDataBuffer.constData(), size);
+        d->receivedDataBuffer.clear();
+        d->hasReceivedBufferedDatagram = false;
+#if defined (QNATIVESOCKETENGINE_DEBUG)
+        qDebug() << "QSymbianSocketEngine::read returning" << size << "bytes from buffer";
+#endif
+        return size;
+    }
 
     TPtr8 buffer((TUint8*)data, (int)maxSize);
     TSockXfrLength received = 0;
@@ -1147,12 +1200,11 @@ int QSymbianSocketEnginePrivate::nativeSelect(int timeout, bool checkRead, bool 
 #endif
     }
     if (err) {
-        //TODO: avoidable cast?
         //set the error here, because read won't always return the same error again as select.
         const_cast<QSymbianSocketEnginePrivate*>(this)->setError(err);
         //restart asynchronous notifier (only one IOCTL allowed at a time)
         if (asyncSelect)
-            asyncSelect->IssueRequest(); //TODO: in error case should we restart or not?
+            asyncSelect->IssueRequest();
         return err;
     }
     if (checkRead && (selectFlags() & KSockSelectRead)) {
@@ -1223,7 +1275,7 @@ bool QSymbianSocketEnginePrivate::multicastGroupMembershipHelper(const QHostAddr
 
 QNetworkInterface QSymbianSocketEngine::multicastInterface() const
 {
-    //TODO
+    //### symbian 3 has no API equivalent to this
     const Q_D(QSymbianSocketEngine);
     Q_CHECK_VALID_SOCKETLAYER(QSymbianSocketEngine::multicastInterface(), QNetworkInterface());
     Q_CHECK_TYPE(QSymbianSocketEngine::multicastInterface(), QAbstractSocket::UdpSocket, QNetworkInterface());
@@ -1232,7 +1284,8 @@ QNetworkInterface QSymbianSocketEngine::multicastInterface() const
 
 bool QSymbianSocketEngine::setMulticastInterface(const QNetworkInterface &iface)
 {
-    //TODO - this is possibly a unix'ism as the RConnection on which the socket was created is probably controlling this
+    //### symbian 3 has no API equivalent to this
+    //this is possibly a unix'ism as the RConnection on which the socket was created is probably controlling this
     Q_D(QSymbianSocketEngine);
     Q_CHECK_VALID_SOCKETLAYER(QSymbianSocketEngine::setMulticastInterface(), false);
     Q_CHECK_TYPE(QSymbianSocketEngine::setMulticastInterface(), QAbstractSocket::UdpSocket, false);
@@ -1271,7 +1324,7 @@ bool QSymbianSocketEnginePrivate::checkProxy(const QHostAddress &address)
     return true;
 }
 
-// FIXME this is also in QNativeSocketEngine, unify it
+// ### this is also in QNativeSocketEngine, unify it
 /*! \internal
 
     Sets the error and error string if not set already. The only
@@ -1440,6 +1493,7 @@ void QSymbianSocketEngine::startNotifications()
         qDebug() << "QSymbianSocketEngine::startNotifications" << d->readNotificationsEnabled << d->writeNotificationsEnabled << d->exceptNotificationsEnabled;
 #endif
     if (!d->asyncSelect && (d->readNotificationsEnabled || d->writeNotificationsEnabled || d->exceptNotificationsEnabled)) {
+        Q_CHECK_VALID_SOCKETLAYER(QSymbianSocketEngine::startNotifications(), Q_VOID);
         if (d->threadData->eventDispatcher) {
             d->asyncSelect = q_check_ptr(new QAsyncSelect(
                 static_cast<QEventDispatcherSymbian*> (d->threadData->eventDispatcher), d->nativeSocket,
@@ -1456,14 +1510,12 @@ void QSymbianSocketEngine::startNotifications()
 bool QSymbianSocketEngine::isReadNotificationEnabled() const
 {
     Q_D(const QSymbianSocketEngine);
-    Q_CHECK_VALID_SOCKETLAYER(QSymbianSocketEngine::isReadNotificationEnabled(), false);
     return d->readNotificationsEnabled;
 }
 
 void QSymbianSocketEngine::setReadNotificationEnabled(bool enable)
 {
     Q_D(QSymbianSocketEngine);
-    Q_CHECK_VALID_SOCKETLAYER(QSymbianSocketEngine::setReadNotificationEnabled(), Q_VOID);
 #ifdef QNATIVESOCKETENGINE_DEBUG
     qDebug() << "QSymbianSocketEngine::setReadNotificationEnabled" << enable << "socket" << d->socketDescriptor;
 #endif
@@ -1474,14 +1526,12 @@ void QSymbianSocketEngine::setReadNotificationEnabled(bool enable)
 bool QSymbianSocketEngine::isWriteNotificationEnabled() const
 {
     Q_D(const QSymbianSocketEngine);
-    Q_CHECK_VALID_SOCKETLAYER(QSymbianSocketEngine::isWriteNotificationEnabled(), false);
     return d->writeNotificationsEnabled;
 }
 
 void QSymbianSocketEngine::setWriteNotificationEnabled(bool enable)
 {
     Q_D(QSymbianSocketEngine);
-    Q_CHECK_VALID_SOCKETLAYER(QSymbianSocketEngine::setWriteNotificationEnabled(), Q_VOID);
 #ifdef QNATIVESOCKETENGINE_DEBUG
     qDebug() << "QSymbianSocketEngine::setWriteNotificationEnabled" << enable << "socket" << d->socketDescriptor;
 #endif
@@ -1492,7 +1542,6 @@ void QSymbianSocketEngine::setWriteNotificationEnabled(bool enable)
 bool QSymbianSocketEngine::isExceptionNotificationEnabled() const
 {
     Q_D(const QSymbianSocketEngine);
-    Q_CHECK_VALID_SOCKETLAYER(QSymbianSocketEngine::isExceptionNotificationEnabled(), false);
     return d->exceptNotificationsEnabled;
     return false;
 }
@@ -1500,7 +1549,6 @@ bool QSymbianSocketEngine::isExceptionNotificationEnabled() const
 void QSymbianSocketEngine::setExceptionNotificationEnabled(bool enable)
 {
     Q_D(QSymbianSocketEngine);
-    Q_CHECK_VALID_SOCKETLAYER(QSymbianSocketEngine::setExceptionNotificationEnabled(), Q_VOID);
 #ifdef QNATIVESOCKETENGINE_DEBUG
     qDebug() << "QSymbianSocketEngine::setExceptionNotificationEnabled" << enable << "socket" << d->socketDescriptor;
 #endif
@@ -1660,6 +1708,9 @@ void QAsyncSelect::run()
     //when event loop disabled socket events, defer until later
     if (maybeDeferSocketEvent())
         return;
+#if defined (QNATIVESOCKETENGINE_DEBUG)
+    qDebug() << "QAsyncSelect::run" << m_selectBuf() << m_selectFlags;
+#endif
     m_inSocketEvent = true;
     m_selectBuf() &= m_selectFlags; //the select ioctl reports everything, so mask to only what we requested
     //KSockSelectReadContinuation is for reading datagrams in a mode that doesn't discard when the
@@ -1671,7 +1722,7 @@ void QAsyncSelect::run()
     if (engine && engine->isWriteNotificationEnabled()
         && ((m_selectBuf() & KSockSelectWrite) || iStatus != KErrNone)) {
         if (engine->state() == QAbstractSocket::ConnectingState)
-            engine->connectionNotification();
+            engine->connectionComplete();
         else
             engine->writeNotification();
     }

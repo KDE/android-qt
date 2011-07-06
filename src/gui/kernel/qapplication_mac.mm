@@ -7,29 +7,29 @@
 ** This file is part of the QtGui module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
-**
 ** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL included in the
-** packaging of this file.  Please review the following information to
-** ensure the GNU Lesser General Public License version 2.1 requirements
-** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** This file may be used under the terms of the GNU Lesser General Public
+** License version 2.1 as published by the Free Software Foundation and
+** appearing in the file LICENSE.LGPL included in the packaging of this
+** file. Please review the following information to ensure the GNU Lesser
+** General Public License version 2.1 requirements will be met:
+** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
 **
 ** In addition, as a special exception, Nokia gives you certain additional
-** rights.  These rights are described in the Nokia Qt LGPL Exception
+** rights. These rights are described in the Nokia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
-** If you have questions regarding the use of this file, please contact
-** Nokia at qt-info@nokia.com.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU General
+** Public License version 3.0 as published by the Free Software Foundation
+** and appearing in the file LICENSE.GPL included in the packaging of this
+** file. Please review the following information to ensure the GNU General
+** Public License version 3.0 requirements will be met:
+** http://www.gnu.org/copyleft/gpl.html.
 **
-**
-**
+** Other Usage
+** Alternatively, this file may be used in accordance with the terms and
+** conditions contained in a signed written agreement between you and Nokia.
 **
 **
 **
@@ -218,7 +218,6 @@ extern OSWindowRef qt_mac_window_for(const QWidget*); //qwidget_mac.cpp
 extern QWidget *qt_mac_find_window(OSWindowRef); //qwidget_mac.cpp
 extern void qt_mac_set_cursor(const QCursor *); //qcursor_mac.cpp
 extern bool qt_mac_is_macsheet(const QWidget *); //qwidget_mac.cpp
-extern QString qt_mac_from_pascal_string(const Str255); //qglobal.cpp
 extern void qt_mac_command_set_enabled(MenuRef, UInt32, bool); //qmenu_mac.cpp
 extern bool qt_sendSpontaneousEvent(QObject *obj, QEvent *event); // qapplication.cpp
 extern void qt_mac_update_cursor(); // qcursor_mac.mm
@@ -715,6 +714,7 @@ void qt_event_request_showsheet(QWidget *w)
 {
     Q_ASSERT(qt_mac_is_macsheet(w));
 #ifdef QT_MAC_USE_COCOA
+    w->repaint();
     [NSApp beginSheet:qt_mac_window_for(w) modalForWindow:qt_mac_window_for(w->parentWidget())
         modalDelegate:nil didEndSelector:nil contextInfo:0];
 #else
@@ -2623,8 +2623,6 @@ OSStatus QApplicationPrivate::globalAppleEventProcessor(const AppleEvent *ae, Ap
     Return true if you want to stop the event from being processed.
     Return false for normal event dispatching. The default
     implementation returns false.
-
-    \sa macEventFilter(void *nsevent)
 */
 bool QApplication::macEventFilter(EventHandlerCallRef, EventRef)
 {
