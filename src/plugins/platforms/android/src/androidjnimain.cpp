@@ -47,7 +47,7 @@
 
 #include <android/bitmap.h>
 #include <android/asset_manager_jni.h>
-#include "qandroidassetsfileenginehandler.h"   ... #FIXME PRE_EGLFS-SW-MERGE
+#include "qandroidassetsfileenginehandler.h"
 #include <android/api-level.h>
 
 #if __ANDROID_API__ > 8
@@ -335,22 +335,40 @@ static void terminateQt(JNIEnv* env, jclass /*clazz*/)
     env->DeleteGlobalRef(m_applicationClass);
 }
 
+#ifdef QT_OPENGL_LIB
+#if __ANDROID_API__ < 9
+struct FakeNativeWindow
+{
+    long long dummyNativeWindow;// force 64 bits alignment
+};
+
+class FakeSurface: public FakeNativeWindow
+{
+public:
+    virtual void FakeSurfaceMethod()
+    {
+        fakeSurface = 0;
+    }
+    int fakeSurface;
+};
+
+EGLNativeWindowType ANativeWindow_fromSurface(JNIEnv *env, jobject jSurface)
+{
+    FakeSurface * surface=(FakeSurface *)env->GetIntField(jSurface, m_surfaceFieldID);
+    return (EGLNativeWindowType)static_cast<FakeNativeWindow*>(surface);
+}
+#endif // __ANDROID_API__ < 9
+#endif // QT_OPENGL_LIB
+
 static void setSurface(JNIEnv *env, jobject /*thiz*/, jobject jSurface)
 {
-// TODO MERGE ... replace with env-variable or something
-#ifndef QT_OPENGL_LIB
     if (m_surface)
         env->DeleteGlobalRef(m_surface);
     m_surface = env->NewGlobalRef(jSurface);
-#else
+#ifdef QT_OPENGL_LIB
     m_surfaceMutex.lock();
-#if __ANDROID_API__ < 9
-    m_nativeWindow=(EGLNativeWindowType)env->GetIntField(jSurface, m_surfaceFieldID);
-#else
     m_nativeWindow = ANativeWindow_fromSurface(env, jSurface);
     qDebug()<<"setSurface"<<ANativeWindow_fromSurface(env, jSurface)<<(EGLNativeWindowType)env->GetIntField(jSurface, m_surfaceFieldID);
-#endif
-    qDebug()<<"setSurface"<<m_nativeWindow;
     if (m_waitForWindow)
         m_waitForWindowSemaphore.release();
     if (m_androidGraphicsSystem)
@@ -365,11 +383,9 @@ static void setSurface(JNIEnv *env, jobject /*thiz*/, jobject jSurface)
 
 static void destroySurface(JNIEnv *env, jobject /*thiz*/)
 {
-// TODO MERGE ... replace with env-variable or something
-#ifndef QT_OPENGL_LIB
     env->DeleteGlobalRef(m_surface);
     m_surface = 0;
-#else
+#ifdef QT_OPENGL_LIB
     m_nativeWindow = 0;
 #endif
 }
