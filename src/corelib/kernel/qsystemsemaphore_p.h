@@ -90,7 +90,6 @@ public:
 #elif defined(Q_OS_ANDROID)
     void handle(QSystemSemaphore::AccessMode mode = QSystemSemaphore::Open);
     void setErrorString(const QString &function);
-# else
 #elif defined(QT_POSIX_IPC)
     bool handle(QSystemSemaphore::AccessMode mode = QSystemSemaphore::Open);
     void setErrorString(const QString &function);
