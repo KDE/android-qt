@@ -14,7 +14,7 @@
         <lib name="QtGui">
             <depends>
             <!-- %1 will be replaced with device matched api level, e.g. if the device has api level 11 %1 will be replaced with 8 -->
-                <lib file="plugins/platforms/android/libandroid-%1.so"/>
+                <lib file="plugins/platforms/android/libandroidGL-%1.so"/>
             </depends>
         </lib>
 

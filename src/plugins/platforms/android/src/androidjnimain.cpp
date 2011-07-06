@@ -322,7 +322,6 @@ static void resumeQtApp(JNIEnv */*env*/, jobject /*thiz*/)
 
 static void quitQtAndroidPlugin(JNIEnv* env, jclass /*clazz*/)
 {
-    // TODO MERGE ... replace with env-variable or something
 #ifndef QT_OPENGL_LIB
     if (m_surface)
     {
@@ -340,25 +339,41 @@ static void terminateQt(JNIEnv* env, jclass /*clazz*/)
     env->DeleteGlobalRef(m_applicationClass);
 }
 
+#ifdef QT_OPENGL_LIB
+#if __ANDROID_API__ < 9
+struct FakeNativeWindow
+{
+    long long dummyNativeWindow;// force 64 bits alignment
+};
+
+class FakeSurface: public FakeNativeWindow
+{
+public:
+    virtual void FakeSurfaceMethod()
+    {
+        fakeSurface = 0;
+    }
+    int fakeSurface;
+};
+
+EGLNativeWindowType ANativeWindow_fromSurface(JNIEnv *env, jobject jSurface)
+{
+    FakeSurface * surface=(FakeSurface *)env->GetIntField(jSurface, m_surfaceFieldID);
+    return (EGLNativeWindowType)static_cast<FakeNativeWindow*>(surface);
+}
+#endif // __ANDROID_API__ < 9
+#endif // QT_OPENGL_LIB
+
 static void setSurface(JNIEnv *env, jobject /*thiz*/, jobject jSurface)
 {
 #ifndef QT_OPENGL_LIB
     if (m_surface)
         env->DeleteGlobalRef(m_surface);
     m_surface = env->NewGlobalRef(jSurface);
-
-#else   // for #ifndef QT_OPENGL_LIB
-    m_surfaceMutex.lock();
-
-
-#if __ANDROID_API__ < 9
-    m_nativeWindow=(EGLNativeWindowType)env->GetIntField(jSurface, m_surfaceFieldID);
 #else
+    m_surfaceMutex.lock();
     m_nativeWindow = ANativeWindow_fromSurface(env, jSurface);
     qDebug()<<"setSurface"<<ANativeWindow_fromSurface(env, jSurface)<<(EGLNativeWindowType)env->GetIntField(jSurface, m_surfaceFieldID);
-#endif
-
-    qDebug()<<"setSurface"<<m_nativeWindow;
     if (m_waitForWindow)
         m_waitForWindowSemaphore.release();
     if (m_androidGraphicsSystem)
