@@ -418,23 +418,23 @@ static void setDisplayMetrics(JNIEnv* /*env*/, jclass /*clazz*/,
 
 static void mouseDown(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/, jint x, jint y)
 {
-    QWindowSystemInterface::handleMouseEvent(0,
-                                             QEvent::MouseButtonPress,QPoint(x,y),QPoint(x,y),
-                                             Qt::MouseButtons(Qt::LeftButton));
+    QPoint globalPos(x,y);
+    QWindowSystemInterface::handleMouseEvent(m_androidGraphicsSystem->getPrimaryScreen()->topLevelAt(globalPos),
+                                             globalPos, globalPos, Qt::MouseButtons(Qt::LeftButton));
 }
 
 static void mouseUp(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/, jint x, jint y)
 {
-    QWindowSystemInterface::handleMouseEvent(0,
-                                             QEvent::MouseButtonRelease,QPoint(x,y),QPoint(x,y),
-                                             Qt::MouseButtons(Qt::NoButton));
+    QPoint globalPos(x,y);
+    QWindowSystemInterface::handleMouseEvent(m_androidGraphicsSystem->getPrimaryScreen()->topLevelAt(globalPos),
+                                             globalPos,globalPos, Qt::MouseButtons(Qt::NoButton));
 }
 
 static void mouseMove(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/, jint x, jint y)
 {
-    QWindowSystemInterface::handleMouseEvent(0,
-                                             QEvent::MouseMove,QPoint(x,y),QPoint(x,y),
-                                             Qt::MouseButtons(Qt::LeftButton));
+    QPoint globalPos(x,y);
+    QWindowSystemInterface::handleMouseEvent(m_androidGraphicsSystem->getPrimaryScreen()->topLevelAt(globalPos),
+                                             globalPos, globalPos, Qt::MouseButtons(Qt::LeftButton));
 }
 
 static void touchBegin(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/)
@@ -488,6 +488,7 @@ static void touchEnd(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/, jint act
             eventType=QEvent::TouchEnd;
             break;
     }
+
     QWindowSystemInterface::handleTouchEvent(0, eventType, QTouchEvent::TouchScreen, m_touchPoints);
 }
 
