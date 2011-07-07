@@ -294,9 +294,6 @@ void QAndroidEglFSScreen::createAndSetPlatformContext()
 
     Q_ASSERT(m_platformContext == 0);
     m_platformContext = new QAndroidEglFSPlatformContext(m_display, m_config, m_windowSurface, EGL_OPENGL_ES_API);
-
-#warning FIXME
-    m_platformContext->makeDefaultSharedContext(); // This is deprecated ... only working with reverting f7c8ac6e59906ab9fda9bbe1420e7b9a0ebb153d
     m_platformContext->makeCurrent();              // Is this necessary?
 }
 

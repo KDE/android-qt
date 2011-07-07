@@ -158,13 +158,6 @@ void* QAndroidEglFSPlatformContext::getProcAddress(const QString& procName)
     return (void *)eglGetProcAddress(qPrintable(procName));
 }
 
-void QAndroidEglFSPlatformContext::makeDefaultSharedContext()
-{
-#warning FIXME
-    setDefaultSharedContext(this); // This is deprecated ... only working with reverting f7c8ac6e59906ab9fda9bbe1420e7b9a0ebb153d
-    // ... longterm: remove this function  ... if not possible otherwise make it work again...
-}
-
 QPlatformWindowFormat QAndroidEglFSPlatformContext::platformWindowFormat() const
 {
     return m_windowFormat;
