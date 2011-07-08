@@ -181,9 +181,6 @@ for(QTLIB, $$list($$lower($$unique(QT)))) {
             CONFIG(android_app) {
                QMAKE_LFLAGS += $$ANDROID_PLATFORM_PATH/lib/crtbegin_dynamic.o
                QMAKE_LIBS = $$ANDROID_PLATFORM_PATH/lib/crtend_android.o $$QMAKE_LIBS
-
-               CONFIG(armeabi-v7a) : target.path=/libs/armeabi-v7a/
-                              else : target.path=/libs/armeabi/
             } else {
                !contains(TARGET, ".so"): TARGET = lib$${TARGET}.so
                CONFIG(android_qtmain): SOURCES += $$[QT_INSTALL_PREFIX]/src/android/cpp/qtmain_android.cpp
@@ -192,9 +189,9 @@ for(QTLIB, $$list($$lower($$unique(QT)))) {
         }else {
             QMAKE_LFLAGS += -Wl,--no-undefined -Wl,-z,noexecstack -shared
         }
-
-
-       INSTALLS *= target
+        CONFIG(armeabi-v7a) : target.path=/libs/armeabi-v7a/
+                      else : target.path=/libs/armeabi/
+        INSTALLS *= target
    }
    else:message("Unknown QT: $$QTLIB"):qlib =
    !isEmpty(qlib) {
