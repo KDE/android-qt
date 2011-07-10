@@ -1,5 +1,8 @@
 CONFIG 	       += console qtinc
 CONFIG         -= qt
+win32-g++ {
+    CONFIG += static
+}
 build_all:!build_pass {
     CONFIG -= build_all
     CONFIG += release
