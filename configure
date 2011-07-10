@@ -5002,10 +5002,9 @@ EOF
 		EXTRA_LFLAGS="$EXTRA_LFLAGS \$(SDK_LFLAGS)"
             fi
         fi
-	# Not sure is needed -DUNICODE for MSYS but it doesn't hurt.
         if [ "$BUILD_ON_MSYS" = "yes" ]; then
-            EXTRA_CFLAGS="-DUNICODE"
-            EXTRA_CXXFLAGS="-DUNICODE"
+            EXTRA_CFLAGS="-DUNICODE -static-libgcc"
+            EXTRA_CXXFLAGS="-DUNICODE -static-libgcc -static-libstdc++"
         fi
         [ "$CFG_EMBEDDED" != "no" ] && EXTRA_CFLAGS="$EXTRA_CFLAGS -DQWS"
         if [ '!' -z "$D_FLAGS" ]; then

@@ -11,4 +11,8 @@ mac {
     QMAKE_LFLAGS += $$QMAKE_LFLAGS_STATIC_LIB
 }
 
+win32-g++ {
+    contains(TEMPLATE, ".*app") : QMAKE_LFLAGS += -static-libgcc -static-libstdc++
+}
+
 !static_and_shared:fix_output_dirs:fixExclusiveOutputDirs(static, shared)
