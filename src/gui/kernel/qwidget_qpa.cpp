@@ -689,6 +689,7 @@ int QWidget::metric(PaintDeviceMetric m) const
 
 /*!
     \preliminary
+    \since 4.8
 
     Sets the window to be the platform \a window specified.
 
@@ -709,6 +710,7 @@ void QWidget::setPlatformWindow(QPlatformWindow *window)
 
 /*!
     \preliminary
+    \since 4.8
 
     Returns the QPlatformWindow this widget will be drawn into.
 */
@@ -723,6 +725,8 @@ QPlatformWindow *QWidget::platformWindow() const
 }
 
 /*!
+    \since 4.8
+
     Sets the platform window format for the widget to the \a format specified.
 */
 void QWidget::setPlatformWindowFormat(const QPlatformWindowFormat &format)
@@ -742,6 +746,8 @@ void QWidget::setPlatformWindowFormat(const QPlatformWindowFormat &format)
 }
 
 /*!
+    \since 4.8
+
     Returns the platform window format for the widget.
 */
 QPlatformWindowFormat QWidget::platformWindowFormat() const
