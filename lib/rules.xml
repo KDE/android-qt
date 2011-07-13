@@ -10,12 +10,23 @@
         <version value="11" symlink="9"/>
         <version value="12" symlink="9"/>
     </platforms>
-    <dependencies>
+    <dependencies> <!-- The order is very important -->
         <lib name="QtGui">
+            <depends>
+            <!-- %1 will be replaced with device matched api level, e.g. if the device has api level 11 %1 will be replaced with 8 -->
+                <lib file="plugins/platforms/android/libandroid-%1.so"/>
+            </depends>
+        </lib>
+
+        <lib name="QtOpenGL">
             <depends>
             <!-- %1 will be replaced with device matched api level, e.g. if the device has api level 11 %1 will be replaced with 8 -->
                 <lib file="plugins/platforms/android/libandroidGL-%1.so"/>
             </depends>
+            <replaces>
+            <!-- %1 will be replaced with device matched api level, e.g. if the device has api level 11 %1 will be replaced with 8 -->
+                <lib file="plugins/platforms/android/libandroid-%1.so"/>
+            </replaces>
         </lib>
 
         <lib name="QtContacts">

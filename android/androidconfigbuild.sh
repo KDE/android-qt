@@ -16,7 +16,7 @@ DOWNLOAD_OPENSSL=1
 NDK_PLATFORM=5
 DEST_DIR_QT=$PWD
 PLATFORM="-platform linux-g++"
-NDK_ROOT=/usr/local/android-ndk-r5b
+NDK_ROOT=~/NecessitasQtSDK/android-ndk-r5c
 NDK_HOST=linux-x86
 TARGET_ARCH=armeabi
 
