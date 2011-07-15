@@ -255,23 +255,13 @@ void QAndroidEglFSScreen::createAndSetPlatformContext()
 
     platformFormat.setWindowApi(QPlatformWindowFormat::OpenGL);
 
-    QByteArray depthString = qgetenv("QT_QPA_EGLFS_DEPTH");
-    if (true)//depthString.toInt() == 16)
-    {
-        platformFormat.setDepth(16);
-        platformFormat.setRedBufferSize(5);
-        platformFormat.setGreenBufferSize(6);
-        platformFormat.setBlueBufferSize(5);
-        m_depth = 16;
-        m_format = QImage::Format_RGB16;
-    } else {
-        platformFormat.setDepth(32);
-        platformFormat.setRedBufferSize(8);
-        platformFormat.setGreenBufferSize(8);
-        platformFormat.setBlueBufferSize(8);
-        m_depth = 32;
-        m_format = QImage::Format_RGB32;
-    }
+    platformFormat.setDepth(32);
+    platformFormat.setRedBufferSize(8);
+    platformFormat.setGreenBufferSize(8);
+    platformFormat.setBlueBufferSize(8);
+    m_depth = 32;
+    m_format = QImage::Format_RGB32;
+
     if (!qgetenv("QT_QPA_EGLFS_MULTISAMPLE").isEmpty()) {
         platformFormat.setSampleBuffers(true);
     }
