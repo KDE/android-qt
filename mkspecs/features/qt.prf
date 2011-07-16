@@ -195,10 +195,13 @@ for(QTLIB, $$list($$lower($$unique(QT)))) {
         isEmpty( QTBUILDLIBS ): {
             CONFIG(armeabi-v7a) : target.path=/libs/armeabi-v7a/
                            else : target.path=/libs/armeabi/
-        } else {
-            CONFIG(armeabi-v7a) : target.path=$$join(target.path,"1","","/armeabi-v7a/")
-                           else : target.path=$$join(target.path,"1","","/armeabi/")
         }
+# If we want to go for an approach of leaf subdirs for different arm archs (instead of a package per arch)
+# then for the plugins, this separation can be achieved with the following:
+#		else {
+#            CONFIG(armeabi-v7a) : target.path=$$join(target.path,"1","","/armeabi-v7a/")
+#                           else : target.path=$$join(target.path,"1","","/armeabi/")
+#        }
         INSTALLS *= target
    }
    else:message("Unknown QT: $$QTLIB"):qlib =
