@@ -3,7 +3,7 @@ include(../../qpluginbase.pri)
 
 CONFIG	+= warn_on
 QTDIR_build:DESTDIR	 = $$QT_BUILD_TREE/plugins/codecs
-QT = core
+QT += core
 
 HEADERS		= qgb18030codec.h
 
