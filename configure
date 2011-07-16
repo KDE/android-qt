@@ -3374,7 +3374,7 @@ if [ "$XPLATFORM_ANDROID" = "yes" ] ; then
     QMAKE_CONF_COMPILER=$(echo "$QMAKE_CONF_COMPILER" | sed 's:\$\$:\$:g')
 
     eval QMAKE_CONF_COMPILER=$QMAKE_CONF_COMPILER
-    TEST_COMPILER="$CXX"
+    TEST_COMPILER="$QMAKE_CONF_COMPILER --sysroot=$ANDROID_NDK_ROOT/platforms/android-5/arch-arm/"
 fi
 
 [ -z "$TEST_COMPILER" ] && TEST_COMPILER=$QMAKE_CONF_COMPILER
@@ -6912,7 +6912,7 @@ elif [ "$XPLATFORM_SYMBIAN_SBSV2" = "yes" ]; then
     CFG_ALSA=no
 fi
 
-if [ "$CFG_JAVASCRIPTCORE_JIT" = "yes" ] || [ "$CFG_JAVASCRIPTCORE_JIT" = "auto" ]; then
+if [ "$CFG_JAVASCRIPTCORE_JIT" = "yes" -o "$CFG_JAVASCRIPTCORE_JIT" = "auto" ]; then
     if [ "$CFG_ARCH" = "arm" && "$XPLATFORM_ANDROID" != "yes" ]; then
        "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/javascriptcore-jit "javascriptcore-jit" $L_FLAGS $I_FLAGS $l_FLAGS
         if [ $? != "0" ]; then
