@@ -78,7 +78,7 @@ public class QtSurface extends SurfaceView implements SurfaceHolder.Callback
         QtApplication.setApplicationDisplayMetrics(metrics.widthPixels,
             metrics.heightPixels, getWidth(), getHeight(), metrics.xdpi, metrics.ydpi);
 
-        if(m_useGL)
+        if(m_usesGL)
             holder.setFormat(PixelFormat.RGBA_8888);
 
 //        if (!m_started)
