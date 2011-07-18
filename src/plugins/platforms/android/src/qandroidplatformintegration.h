@@ -84,9 +84,9 @@ private:
 
 
 
-#ifdef QT_OPENGL_LIB
+#ifdef ANDROID_PLUGIN_OPENGL
 public:
-    void surfaceChanged();// TODO MERGE: maybe #ifdef QT_OPENGL_LIB around it?
+    void surfaceChanged();
 #endif
 
 };

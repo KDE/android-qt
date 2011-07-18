@@ -39,7 +39,7 @@
 #include "qdesktopwidget.h"
 #include "qandroidplatformdesktopservice.h"
 
-#ifdef QT_OPENGL_LIB
+#ifdef ANDROID_PLUGIN_OPENGL
 #include "qandroideglfsscreen.h"
 #include "qandroideglfswindowsurface.h"
 #include <private/qpixmapdata_gl_p.h>
@@ -98,7 +98,7 @@ QAndroidPlatformIntegration::QAndroidPlatformIntegration()
 {
     m_androidPlatformNativeInterface =  new QAndroidPlatformNativeInterface();
 
-#ifdef QT_OPENGL_LIB
+#ifdef ANDROID_PLUGIN_OPENGL
     qDebug() << "QAndroidPlatformIntegration::QAndroidPlatformIntegration():  creating QAndroidEglFSScreen => Using OpenGL painting";
     m_primaryScreen = new QAndroidEglFSScreen(EGL_DEFAULT_DISPLAY);
 #else
@@ -118,7 +118,7 @@ QAndroidPlatformIntegration::QAndroidPlatformIntegration()
 
 bool QAndroidPlatformIntegration::hasCapability(Capability cap) const
 {
-#ifdef QT_OPENGL_LIB
+#ifdef ANDROID_PLUGIN_OPENGL
     return cap==OpenGL;
 #else
     return cap==ThreadedPixmaps;
@@ -164,7 +164,7 @@ void QAndroidPlatformIntegration::setDefaultDesktopSize(int gw, int gh)
 
 QPixmapData *QAndroidPlatformIntegration::createPixmapData(QPixmapData::PixelType type) const
 {
-#ifdef QT_OPENGL_LIB
+#ifdef ANDROID_PLUGIN_OPENGL
     return new QGLPixmapData(type);
 #else
     return new QRasterPixmapData(type);
@@ -173,7 +173,7 @@ QPixmapData *QAndroidPlatformIntegration::createPixmapData(QPixmapData::PixelTyp
 
 QWindowSurface *QAndroidPlatformIntegration::createWindowSurface(QWidget *widget, WId /*winId*/) const
 {
-#ifdef QT_OPENGL_LIB
+#ifdef ANDROID_PLUGIN_OPENGL
         Q_ASSERT(dynamic_cast<QAndroidEglFSScreen*>(m_primaryScreen) != 0);
         return new QAndroidEglFSWindowSurface(dynamic_cast<QAndroidEglFSScreen*>(m_primaryScreen), widget);
 #else
@@ -183,7 +183,7 @@ QWindowSurface *QAndroidPlatformIntegration::createWindowSurface(QWidget *widget
 
 QPlatformWindow *QAndroidPlatformIntegration::createPlatformWindow(QWidget *widget, WId /*winId*/) const
 {
-#ifdef QT_OPENGL_LIB
+#ifdef ANDROID_PLUGIN_OPENGL
         Q_ASSERT(dynamic_cast<QAndroidEglFSScreen*>(m_primaryScreen) != 0);
         return  new QAndroidEglFSWindow(widget, dynamic_cast<QAndroidEglFSScreen*>(m_primaryScreen));
 #else
@@ -226,7 +226,7 @@ void QAndroidPlatformIntegration::resumeApp()
         QAbstractEventDispatcher::instance(m_mainThread)->wakeUp();
 }
 
-#ifdef QT_OPENGL_LIB
+#ifdef ANDROID_PLUGIN_OPENGL
 void QAndroidPlatformIntegration::surfaceChanged()
 {
     if (m_primaryScreen)

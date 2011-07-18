@@ -63,7 +63,7 @@ static jclass m_applicationClass  = NULL;
 static AAssetManager* m_assetManager = NULL;
 
 
-#ifndef QT_OPENGL_LIB
+#ifndef ANDROID_PLUGIN_OPENGL
 static jobject m_surface = NULL;
 
 #else
@@ -126,7 +126,7 @@ static inline void checkPauseApplication()
 
 namespace QtAndroid
 {
-#ifndef QT_OPENGL_LIB
+#ifndef ANDROID_PLUGIN_OPENGL
     void flushImage(const QPoint & pos, const QImage & image, const QRect & destinationRect)
     {
         checkPauseApplication();
@@ -199,7 +199,7 @@ namespace QtAndroid
         m_javaVM->DetachCurrentThread();
     }
 
-#else // for #ifndef QT_OPENGL_LIB
+#else // for #ifndef ANDROID_PLUGIN_OPENGL
     EGLNativeWindowType getNativeWindow(bool waitForWindow)
     {
         m_surfaceMutex.lock();
@@ -282,7 +282,7 @@ namespace QtAndroid
 static void startQtAndroidPlugin(JNIEnv* env, jobject /*object*//*, jobject applicationAssetManager*/)
 {
 
-#ifndef QT_OPENGL_LIB
+#ifndef ANDROID_PLUGIN_OPENGL
     m_surface = 0;
 #else
     m_nativeWindow=0;
@@ -322,7 +322,7 @@ static void resumeQtApp(JNIEnv */*env*/, jobject /*thiz*/)
 
 static void quitQtAndroidPlugin(JNIEnv* env, jclass /*clazz*/)
 {
-#ifndef QT_OPENGL_LIB
+#ifndef ANDROID_PLUGIN_OPENGL
     if (m_surface)
     {
         env->DeleteGlobalRef(m_surface);
@@ -339,7 +339,7 @@ static void terminateQt(JNIEnv* env, jclass /*clazz*/)
     env->DeleteGlobalRef(m_applicationClass);
 }
 
-#ifdef QT_OPENGL_LIB
+#ifdef ANDROID_PLUGIN_OPENGL
 #if __ANDROID_API__ < 9
 struct FakeNativeWindow
 {
@@ -362,11 +362,11 @@ EGLNativeWindowType ANativeWindow_fromSurface(JNIEnv *env, jobject jSurface)
     return (EGLNativeWindowType)static_cast<FakeNativeWindow*>(surface);
 }
 #endif // __ANDROID_API__ < 9
-#endif // QT_OPENGL_LIB
+#endif // ANDROID_PLUGIN_OPENGL
 
 static void setSurface(JNIEnv *env, jobject /*thiz*/, jobject jSurface)
 {
-#ifndef QT_OPENGL_LIB
+#ifndef ANDROID_PLUGIN_OPENGL
     if (m_surface)
         env->DeleteGlobalRef(m_surface);
     m_surface = env->NewGlobalRef(jSurface);
@@ -383,12 +383,12 @@ static void setSurface(JNIEnv *env, jobject /*thiz*/, jobject jSurface)
     }
     else
         m_surfaceMutex.unlock();
-#endif  // for #ifndef QT_OPENGL_LIB
+#endif  // for #ifndef ANDROID_PLUGIN_OPENGL
 }
 
 static void destroySurface(JNIEnv *env, jobject /*thiz*/)
 {
-#ifndef QT_OPENGL_LIB
+#ifndef ANDROID_PLUGIN_OPENGL
     env->DeleteGlobalRef(m_surface);
     m_surface = 0;
 #else
@@ -778,7 +778,7 @@ static int registerNativeMethods(JNIEnv* env, const char* className,
     m_hideSoftwareKeyboardMethodID = env->GetStaticMethodID(m_applicationClass, "hideSoftwareKeyboard", "()V");
     m_setFullScreenMethodID = env->GetStaticMethodID(m_applicationClass, "setFullScreen", "(Z)V");
 
-#ifdef QT_OPENGL_LIB
+#ifdef ANDROID_PLUGIN_OPENGL
     clazz=env->FindClass(SurfaceClassPathName);
     if (clazz == NULL)
     {

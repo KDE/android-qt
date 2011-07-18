@@ -28,7 +28,7 @@
 #ifndef ANDROID_APP_H
 #define ANDROID_APP_H
 
-#ifdef QT_OPENGL_LIB
+#ifdef ANDROID_PLUGIN_OPENGL
 #include <EGL/eglplatform.h>
 #endif
 
@@ -55,7 +55,7 @@ namespace QtAndroid
     // Software keyboard support
 
 
-#ifndef QT_OPENGL_LIB
+#ifndef ANDROID_PLUGIN_OPENGL
     void flushImage(const QPoint & pos, const QImage & image, const QRect & rect);
 #else
     EGLNativeWindowType getNativeWindow(bool waitToCreate=true);
