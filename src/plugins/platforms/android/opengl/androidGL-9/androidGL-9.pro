@@ -1,8 +1,10 @@
 DEFINES += QT_STATICPLUGIN
 CONFIG += dll
 
-INCLUDEPATH += $$NDK_ROOT/platforms/android-9/arch-arm/usr/include
-LIBS += -L$$NDK_ROOT/platforms/android-9/arch-arm/usr/lib -ljnigraphics -landroid
+!contains(ANDROID_PLATFORM, android-9) {
+    INCLUDEPATH += $$NDK_ROOT/platforms/android-9/arch-$$ANDROID_ARCHITECTURE/usr/include
+    LIBS += -L$$NDK_ROOT/platforms/android-9/arch-$$ANDROID_ARCHITECTURE/usr/lib -ljnigraphics -landroid
+} else : LIBS += -ljnigraphics -landroid
 
 QT += opengl
 

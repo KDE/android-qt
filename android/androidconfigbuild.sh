@@ -1,7 +1,4 @@
-#!/bin/bash
-
-NDK_TOOLCHAIN_PREFIX=arm-linux-androideabi
-NDK_TOOLCHAIN_VERSION=4.4.3
+#!/bin/bash -x
 
 #defaults:
 CLEAN_QT=1
@@ -16,9 +13,13 @@ DOWNLOAD_OPENSSL=1
 NDK_PLATFORM=5
 DEST_DIR_QT=$PWD
 PLATFORM="-platform linux-g++"
-NDK_ROOT=~/NecessitasQtSDK/android-ndk-r5c
+NDK_ROOT=~/NecessitasQtSDK/android-ndk-r6
 NDK_HOST=linux-x86
+NDK_TOOLCHAIN_VERSION=4.4.3
+NDK_TOOLCHAIN_PREFIX=arm-linux-androideabi
+NDK_TOOLS_PREFIX=arm-linux-androideabi
 TARGET_ARCH=armeabi
+ANDROID_ARCHITECTURE=arm
 
 SRC_DIR_QT=`dirname $0`
 pushd .
@@ -71,6 +72,7 @@ OPTIONS:
    -a      Target cpu architecture. Default "$TARGET_ARCH"
                    armeabi     - tune for android arm v5
                    armeabi-v7a - tune for android arm v7
+                   x86         - tune for android x86
                    Optional name suffix: v5/v7
    -l      Android API Level. Default "$NDK_PLATFORM"
    -h      Shared
@@ -169,26 +171,33 @@ case $arg in
 esac
 done
 
+if [ "$TARGET_ARCH" = "x86" ]; then
+	NDK_TOOLCHAIN_PREFIX="x86"
+	NDK_TOOLS_PREFIX="i686-android-linux"
+	ANDROID_ARCHITECTURE="x86"
+        NDK_PLATFORM=9
+fi
+
 if [ "$DOWNLOAD_OPENSSL" -eq "1" ]; then
 	if [ ! -d "$OPENSSL_ROOT" ]; then
-	    echo "Downloading OpenSSL sources from $OPENSSL_URL."
+		echo "Downloading OpenSSL sources from $OPENSSL_URL."
         if [ "$OSTYPE" = "darwin9.0" -o "$OSTYPE" = "darwin10.0" ] ; then
             pushd "$OPENSSL_PREFIX"
             curl --insecure -S -L -O "$OPENSSL_URL"
             popd
         else
-            wget "$OPENSSL_URL" --no-verbose --directory-prefix="$OPENSSL_PREFIX"
+		wget "$OPENSSL_URL" --no-verbose --directory-prefix="$OPENSSL_PREFIX"
         fi
-	    echo "Extracting OpenSSL sources to $OPENSSL_PREFIX."
-	    tar -xzf "$OPENSSL_PREFIX/$OPENSSL_PACKAGE" -C "$OPENSSL_PREFIX"
-	    echo "Cleaning up $OPENSSL_PREFIX/$OPENSSL_PACKAGE."
-	    rm "$OPENSSL_PREFIX/$OPENSSL_PACKAGE"
-	    echo "Patching $OPENSSL_ROOT/crypto/bio/bss_fd.c"
-	    echo "#ifdef INCLUDE_BSS_FILE" >> $OPENSSL_ROOT/crypto/bio/bss_fd.c
-	    echo "#include \"bio/bss_file.c\"" >> $OPENSSL_ROOT/crypto/bio/bss_fd.c
-	    echo "#endif" >> $OPENSSL_ROOT/crypto/bio/bss_fd.c
+		echo "Extracting OpenSSL sources to $OPENSSL_PREFIX."
+		tar -xzf "$OPENSSL_PREFIX/$OPENSSL_PACKAGE" -C "$OPENSSL_PREFIX"
+		echo "Cleaning up $OPENSSL_PREFIX/$OPENSSL_PACKAGE."
+		rm "$OPENSSL_PREFIX/$OPENSSL_PACKAGE"
+		echo "Patching $OPENSSL_ROOT/crypto/bio/bss_fd.c"
+		echo "#ifdef INCLUDE_BSS_FILE" >> $OPENSSL_ROOT/crypto/bio/bss_fd.c
+		echo "#include \"bio/bss_file.c\"" >> $OPENSSL_ROOT/crypto/bio/bss_fd.c
+		echo "#endif" >> $OPENSSL_ROOT/crypto/bio/bss_fd.c
 	else
-	    echo "Found existing OpenSSL sources in $OPENSSL_ROOT."
+		echo "Found existing OpenSSL sources in $OPENSSL_ROOT."
 	fi
 fi
 
@@ -217,6 +226,7 @@ export ANDROID_NDK_ROOT=$NDK_ROOT
 export ANDROID_NDK_HOST=$NDK_HOST
 export ANDROID_NDK_TOOLCHAIN_PREFIX=$NDK_TOOLCHAIN_PREFIX
 export ANDROID_NDK_TOOLCHAIN_VERSION=$NDK_TOOLCHAIN_VERSION
+export ANDROID_NDK_TOOLS_PREFIX=$NDK_TOOLS_PREFIX
 export ANDROID_TARGET_ARCH=$TARGET_ARCH
 export ANDROID_PLATFORM=$NDK_PLATFORM
 export ANDROID_NDK_PLATFORM=android-$NDK_PLATFORM
@@ -268,7 +278,7 @@ then
 		git checkout imports
 	fi
 
-	$SRC_DIR_QT/configure -v -opensource -qpa -arch arm \
+	$SRC_DIR_QT/configure -v -opensource -qpa -arch $ANDROID_ARCHITECTURE \
 		-no-phonon -freetype -fast -xplatform android-g++ \
 		$PLATFORM -host-little-endian \
 		-little-endian -no-qt3support -no-largefile \

@@ -109,9 +109,10 @@ integrity {
 *-g++*:QMAKE_CXXFLAGS -= -std=c++0x -std=gnu++0x
 
 CONFIG(android) {
-    DEFINES += ANDROID_JSC_JIT arm
+    DEFINES += ANDROID_JSC_JIT
+    !CONFIG(x86): DEFINES += arm
     contains(QMAKE_CFLAGS, -mfpu=vfp): DEFINES += HAVE_VFP
-    !CONFIG(armeabi-v7a) {
+    !CONFIG(armeabi-v7a):!CONFIG(x86) {
         QMAKE_CFLAGS_RELEASE -= -mthumb
         QMAKE_CFLAGS_RELEASE += -marm
         QMAKE_CXXFLAGS_RELEASE -= -mthumb

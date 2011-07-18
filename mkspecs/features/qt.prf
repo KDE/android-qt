@@ -189,20 +189,12 @@ for(QTLIB, $$list($$lower($$unique(QT)))) {
         }else {
             QMAKE_LFLAGS += -Wl,--no-undefined -Wl,-z,noexecstack -shared
         }
-        # Special-case detect when target path contained "/files/qt/" and if so join it with just "/armeabi-v7a/"
-        #  this fixes building qt android plugins (and generates separate armeabi-v7a and armeabi versions).
-        QTBUILDLIBS=$$find(target.path, "/files/qt/")
-        isEmpty( QTBUILDLIBS ): {
-            CONFIG(armeabi-v7a) : target.path=/libs/armeabi-v7a/
-                           else : target.path=/libs/armeabi/
+        isEmpty(QT_BUILD_TREE) {
+            contains(ANDROID_TARGET_ARCH, armeabi-v7a) : target.path=/libs/armeabi-v7a/
+            contains(ANDROID_TARGET_ARCH, armeabi)     : target.path=/libs/armeabi/
+            contains(ANDROID_TARGET_ARCH, x86)         : target.path=/libs/x86/
+            INSTALLS *= target
         }
-# If we want to go for an approach of leaf subdirs for different arm archs (instead of a package per arch)
-# then for the plugins, this separation can be achieved with the following:
-#		else {
-#            CONFIG(armeabi-v7a) : target.path=$$join(target.path,"1","","/armeabi-v7a/")
-#                           else : target.path=$$join(target.path,"1","","/armeabi/")
-#        }
-        INSTALLS *= target
    }
    else:message("Unknown QT: $$QTLIB"):qlib =
    !isEmpty(qlib) {
