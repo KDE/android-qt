@@ -172,7 +172,13 @@ done
 if [ "$DOWNLOAD_OPENSSL" -eq "1" ]; then
 	if [ ! -d "$OPENSSL_ROOT" ]; then
 	    echo "Downloading OpenSSL sources from $OPENSSL_URL."
-	    wget "$OPENSSL_URL" --no-verbose --directory-prefix="$OPENSSL_PREFIX"
+        if [ "$OSTYPE" = "darwin9.0" -o "$OSTYPE" = "darwin10.0" ] ; then
+            pushd "$OPENSSL_PREFIX"
+            curl --insecure -S -L -O "$OPENSSL_URL"
+            popd
+        else
+            wget "$OPENSSL_URL" --no-verbose --directory-prefix="$OPENSSL_PREFIX"
+        fi
 	    echo "Extracting OpenSSL sources to $OPENSSL_PREFIX."
 	    tar -xzf "$OPENSSL_PREFIX/$OPENSSL_PACKAGE" -C "$OPENSSL_PREFIX"
 	    echo "Cleaning up $OPENSSL_PREFIX/$OPENSSL_PACKAGE."
