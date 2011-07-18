@@ -5,6 +5,8 @@ QTDIR_build:DESTDIR = $$QT_BUILD_TREE/plugins/platforms/android
 
 INCLUDEPATH += $$PWD
 
+contains(QT, opengl): DEFINES += ANDROID_PLUGIN_OPENGL
+
 SOURCES += $$PWD/androidplatformplugin.cpp \
            $$PWD/androidjnimain.cpp \
            $$PWD/qandroidplatformintegration.cpp \
