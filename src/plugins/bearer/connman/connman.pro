@@ -1,7 +1,7 @@
 TARGET = qconnmanbearer
 include(../../qpluginbase.pri)
 
-QT += core network dbus
+QT = core network dbus
 
 HEADERS += qconnmanservice_linux_p.h \
            qofonoservice_linux_p.h \
@@ -18,3 +18,4 @@ SOURCES += main.cpp \
 QTDIR_build:DESTDIR = $$QT_BUILD_TREE/plugins/bearer
 target.path += $$[QT_INSTALL_PLUGINS]/bearer
 INSTALLS += target
+
