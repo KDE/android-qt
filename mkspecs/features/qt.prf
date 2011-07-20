@@ -185,6 +185,7 @@ for(QTLIB, $$list($$lower($$unique(QT)))) {
                !contains(TARGET, ".so"): TARGET = lib$${TARGET}.so
                CONFIG(android_qtmain): SOURCES += $$[QT_INSTALL_PREFIX]/src/android/cpp/qtmain_android.cpp
                QMAKE_LFLAGS += -Wl,--no-undefined -Wl,-z,noexecstack -shared -Wl,-soname,$$TARGET
+               !contains(ANDROID_PLATFORM, android-4): !contains(ANDROID_PLATFORM, android-5): !contains(ANDROID_PLATFORM, android-8): QMAKE_LFLAGS  += $$ANDROID_PLATFORM_PATH/lib/crtbegin_so.o $$ANDROID_PLATFORM_PATH/lib/crtend_so.o
             }
         }else {
             QMAKE_LFLAGS += -Wl,--no-undefined -Wl,-z,noexecstack -shared
