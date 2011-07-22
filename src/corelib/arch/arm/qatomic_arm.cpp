@@ -69,4 +69,11 @@ Q_CORE_EXPORT void qt_atomic_yield(int *count)
     }
 }
 
+#ifdef Q_OS_ANDROID
+Q_CORE_EXPORT
+int QBasicAtomicInt_fetchAndAddOrdered(volatile int *_q_value, int valueToAdd)
+{
+    return __sync_fetch_and_add(_q_value, valueToAdd);
+}
+#endif
 QT_END_NAMESPACE

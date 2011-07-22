@@ -39,8 +39,10 @@
 **
 ****************************************************************************/
 
-#ifndef QATOMIC_AVR32_H
-#define QATOMIC_AVR32_H
+#ifndef QATOMIC_ANDROID_H
+#define QATOMIC_ANDROID_H
+
+#include <sys/atomics.h>
 
 QT_BEGIN_HEADER
 
@@ -121,19 +123,21 @@ template <typename T>
 Q_INLINE_TEMPLATE bool QBasicAtomicPointer<T>::isFetchAndAddWaitFree()
 { return false; }
 
+Q_CORE_EXPORT int QBasicAtomicInt_fetchAndAddOrdered(volatile int *, int);
+
 inline bool QBasicAtomicInt::ref()
 {
-    return __sync_add_and_fetch(&_q_value, 1);
+    return __atomic_inc(&_q_value) !=-1;
 }
 
 inline bool QBasicAtomicInt::deref()
 {
-    return __sync_sub_and_fetch(&_q_value, 1);
+    return __atomic_dec(&_q_value) != 1;
 }
 
 inline bool QBasicAtomicInt::testAndSetOrdered(int expectedValue, int newValue)
 {
-    return __sync_bool_compare_and_swap(&_q_value, expectedValue, newValue);
+    return 0==__atomic_cmpxchg(expectedValue, newValue, &_q_value);
 }
 
 inline bool QBasicAtomicInt::testAndSetRelaxed(int expectedValue, int newValue)
@@ -153,7 +157,7 @@ inline bool QBasicAtomicInt::testAndSetRelease(int expectedValue, int newValue)
 
 inline int QBasicAtomicInt::fetchAndStoreOrdered(int newValue)
 {
-    return __sync_lock_test_and_set(&_q_value, newValue);
+    return __atomic_swap(newValue, &_q_value);
 }
 
 inline int QBasicAtomicInt::fetchAndStoreRelaxed(int newValue)
@@ -173,7 +177,7 @@ inline int QBasicAtomicInt::fetchAndStoreRelease(int newValue)
 
 inline int QBasicAtomicInt::fetchAndAddOrdered(int valueToAdd)
 {
-    return __sync_fetch_and_add(&_q_value, valueToAdd);
+    return QBasicAtomicInt_fetchAndAddOrdered(&_q_value, valueToAdd);
 }
 
 inline int QBasicAtomicInt::fetchAndAddRelaxed(int valueToAdd)
@@ -194,7 +198,7 @@ inline int QBasicAtomicInt::fetchAndAddRelease(int valueToAdd)
 template <typename T>
 Q_INLINE_TEMPLATE bool QBasicAtomicPointer<T>::testAndSetOrdered(T *expectedValue, T *newValue)
 {
-    return __sync_bool_compare_and_swap(&_q_value, expectedValue, newValue);
+    return 0==__atomic_cmpxchg((int)expectedValue, (int)newValue, (int*)&_q_value);
 }
 
 template <typename T>
@@ -218,7 +222,7 @@ Q_INLINE_TEMPLATE bool QBasicAtomicPointer<T>::testAndSetRelease(T *expectedValu
 template <typename T>
 Q_INLINE_TEMPLATE T *QBasicAtomicPointer<T>::fetchAndStoreOrdered(T *newValue)
 {
-    return __sync_lock_test_and_set(&_q_value, newValue);
+    return (T *)__atomic_swap((int)newValue, (int*)&_q_value);
 }
 
 template <typename T>
@@ -242,7 +246,7 @@ Q_INLINE_TEMPLATE T *QBasicAtomicPointer<T>::fetchAndStoreRelease(T *newValue)
 template <typename T>
 Q_INLINE_TEMPLATE T *QBasicAtomicPointer<T>::fetchAndAddOrdered(qptrdiff valueToAdd)
 {
-    return __sync_fetch_and_add(&_q_value, valueToAdd * sizeof(T));
+    return (T *)QBasicAtomicInt_fetchAndAddOrdered((int*)&_q_value, valueToAdd * sizeof(T));
 }
 
 template <typename T>
@@ -267,4 +271,4 @@ QT_END_NAMESPACE
 
 QT_END_HEADER
 
-#endif // QATOMIC_AVR32_H
+#endif // QATOMIC_ANDROID_H
