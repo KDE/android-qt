@@ -252,6 +252,7 @@ EGLConfig q_configFromQPlatformWindowFormat(EGLDisplay display, const QPlatformW
         EGLint size = matching;
         EGLConfig *configs = new EGLConfig [size];
         eglChooseConfig(display, configureAttributes.constData(), configs, size, &matching);
+        qt_checkAndWarnAboutEGLError(__PRETTY_FUNCTION__, "eglChooseConfig");
         for (EGLint index = 0; index < size; ++index) {
             EGLint red, green, blue, alpha;
             eglGetConfigAttrib(display, configs[index], EGL_RED_SIZE, &red);
@@ -271,6 +272,7 @@ EGLConfig q_configFromQPlatformWindowFormat(EGLDisplay display, const QPlatformW
         delete [] configs;
     } while (q_reduceConfigAttributes(&configureAttributes));
     qWarning("Cant find EGLConfig, returning null config");
+    qt_checkAndWarnAboutEGLError(__PRETTY_FUNCTION__, "eglChooseConfig");
     return 0;
 }
 

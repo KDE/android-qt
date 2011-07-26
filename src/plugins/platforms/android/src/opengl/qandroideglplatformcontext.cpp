@@ -68,7 +68,7 @@ QAndroidEglFSPlatformContext::QAndroidEglFSPlatformContext(EGLDisplay display, E
 
 
     m_eglContext = eglCreateContext(m_eglDisplay,config, EGL_NO_CONTEXT, attribList);
-    qt_checkAndWarnAboutEGLError("QEGLPlatformContext::QEGLPlatformContext(...)", "eglCreateContext(m_eglDisplay,config, EGL_NO_CONTEXT, contextAttrs)");
+    qt_checkAndWarnAboutEGLError(__PRETTY_FUNCTION__, "eglCreateContext(m_eglDisplay,config, EGL_NO_CONTEXT, contextAttrs)");
     if (m_eglContext == EGL_NO_CONTEXT) {
         EGLint foo = eglGetError();
         qWarning("Could not create the egl context  .... error: %x\n", foo);
