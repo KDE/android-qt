@@ -859,6 +859,7 @@ CFG_ICD=auto
 CFG_NOPROCESS=no
 CFG_ICU=auto
 CFG_OPENSSL_SOURCE=
+CFG_MS_BITFIELDS=no
 
 # initalize variables used for installation
 QT_INSTALL_PREFIX=
@@ -1067,7 +1068,7 @@ while [ "$#" -gt 0 ]; do
         VAL=no
         ;;
     #Qt style yes options
-    -incremental|-qvfb|-profile|-shared|-static|-sm|-xinerama|-xshape|-xsync|-xinput|-egl|-reduce-exports|-pch|-separate-debug-info|-stl|-freetype|-xcursor|-xfixes|-xrandr|-xrender|-mitshm|-fontconfig|-xkb|-nis|-qdbus|-dbus|-dbus-linked|-glib|-gstreamer|-gtkstyle|-cups|-iconv|-largefile|-h|-help|-v|-verbose|-debug|-release|-fast|-accessibility|-confirm-license|-gnumake|-framework|-qt3support|-debug-and-release|-exceptions|-cocoa|-carbon|-universal|-harfbuzz|-prefix-install|-silent|-armfpa|-optimized-qmake|-dwarf2|-reduce-relocations|-sse|-openssl|-openssl-linked|-ptmalloc|-xmlpatterns|-phonon|-phonon-backend|-multimedia|-audio-backend|-svg|-declarative|-declarative-debug|-javascript-jit|-script|-scripttools|-rpath|-force-pkg-config|-s60|-usedeffiles|-icu)
+    -incremental|-qvfb|-profile|-shared|-static|-sm|-xinerama|-xshape|-xsync|-xinput|-egl|-reduce-exports|-pch|-separate-debug-info|-stl|-freetype|-xcursor|-xfixes|-xrandr|-xrender|-mitshm|-fontconfig|-xkb|-nis|-qdbus|-dbus|-dbus-linked|-glib|-gstreamer|-gtkstyle|-cups|-iconv|-largefile|-h|-help|-v|-verbose|-debug|-release|-fast|-accessibility|-confirm-license|-gnumake|-framework|-qt3support|-debug-and-release|-exceptions|-cocoa|-carbon|-universal|-harfbuzz|-prefix-install|-silent|-armfpa|-optimized-qmake|-dwarf2|-reduce-relocations|-sse|-openssl|-openssl-linked|-ptmalloc|-xmlpatterns|-phonon|-phonon-backend|-multimedia|-audio-backend|-svg|-declarative|-declarative-debug|-javascript-jit|-script|-scripttools|-rpath|-force-pkg-config|-s60|-usedeffiles|-icu|-ms-bitfields)
         VAR=`echo $1 | sed "s,^-\(.*\),\1,"`
         VAL=yes
         ;;
@@ -2426,6 +2427,13 @@ while [ "$#" -gt 0 ]; do
             UNKNOWN_OPT=yes
         fi
         ;;
+    ms-bitfields)
+        if [ "$VAL" = "yes" ] || [ "$VAL" = "no" ]; then
+            CFG_MS_BITFIELDS="$VAL"
+        else
+            UNKNOWN_OPT=yes
+        fi
+        ;;
     *)
         UNKNOWN_OPT=yes
         ;;
@@ -2548,6 +2556,10 @@ fi
 
 if [ "$CFG_SILENT" = "yes" ]; then
     QMAKE_CONFIG="$QMAKE_CONFIG silent"
+fi
+
+if [ "$PLATFORM" = "win32-g++" ] || [ "$XPLATFORM" = "win32-g++" ] && [ "$CFG_MS_BITFIELDS" = "yes" ]; then
+    QMAKE_CONFIG="$QMAKE_CONFIG ms_bitfields"
 fi
 
 # Without this hack, OpenGLES2 test fails for Android:
@@ -4877,29 +4889,30 @@ if true; then ###[ '!' -f "$outpath/bin/qmake" ];
 
     #mkspecs/default is used as a (gasp!) default mkspec so QMAKESPEC needn't be set once configured
     rm -rf mkspecs/default
-        if [ "$BUILD_ON_MSYS" = "yes" ]; then
-            # For the PC, mkspecs/default/qmake.conf contains a soft-link to the real file.
-            MKSPECSPLATFORM=$XPLATFORM
-            if [ "$MKSPECSPLATFORM" = "" ]; then
-                MKSPECSPLATFORM=$PLATFORM
-            fi
-            MKSPECSPREFIX=$QT_INSTALL_PREFIX
-            if [ $MKSPECSPREFIX = "" ]; then
-                MKSPECSPREFIX=$relpath
-            fi
-            mkdir -p mkspecs/default
-            cat > mkspecs/default/qmake.conf <<EOF
+    if [ "$BUILD_ON_MSYS" = "yes" ]; then
+        # For mingw, mkspecs/default/qmake.conf contains a soft-link to the real file.
+        MKSPECSPLATFORM=$XPLATFORM
+        if [ "$MKSPECSPLATFORM" = "" ]; then
+            MKSPECSPLATFORM=$PLATFORM
+        fi
+        MKSPECSPREFIX=$QT_INSTALL_PREFIX
+        if [ $MKSPECSPREFIX = "" ]; then
+            MKSPECSPREFIX=$relpath
+        fi
+        mkdir -p mkspecs/default
+        cat > mkspecs/default/qmake.conf <<EOF
 QMAKESPEC_ORIGINAL=$MKSPECSPREFIX/mkspecs/$MKSPECSPLATFORM
 
 include(../$MKSPECSPLATFORM/qmake.conf)
 EOF
-            # Make sure that the soft-linked-to-file exists as it's probably needed
-            # during the build process.
-            mkdir -p $MKSPECSPREFIX/mkspecs/$MKSPECSPLATFORM
-            cp -rf mkspecs/$MKSPECSPLATFORM/* $MKSPECSPREFIX/mkspecs/$MKSPECSPLATFORM/
-        else
-            ln -s `echo $XQMAKESPEC | sed "s,^${relpath}/mkspecs/,,"` mkspecs/default
-        fi
+        # Make sure that the soft-linked-to-file exists as it's needed
+        # during the build process.
+        mkdir -p $MKSPECSPREFIX/mkspecs/$MKSPECSPLATFORM
+        cp -rf mkspecs/$MKSPECSPLATFORM/* $MKSPECSPREFIX/mkspecs/$MKSPECSPLATFORM/
+    else
+        ln -s `echo $XQMAKESPEC | sed "s,^${relpath}/mkspecs/,,"` mkspecs/default
+    fi
+
     # fix makefiles
     for mkfile in GNUmakefile Makefile; do
         EXTRA_LFLAGS=
@@ -5209,9 +5222,13 @@ if ! "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relp
     if "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/ipc_posix "ipc_posix" $L_FLAGS $I_FLAGS $l_FLAGS ; then
         QCONFIG_FLAGS="$QCONFIG_FLAGS QT_POSIX_IPC"
     else
-        QCONFIG_FLAGS="$QCONFIG_FLAGS QT_NO_SYSTEMSEMAPHORE QT_NO_SHAREDMEMORY"
-        if [ "$PLATFORM_QWS" = "yes" ]; then
-            QCONFIG_FLAGS="$QCONFIG_FLAGS QT_NO_SEMAPHORE QT_NO_QWS_MULTIPROCESS QT_NO_QWS_SHARE_FONTS"
+        if "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/ipc_android "ipc_android" $L_FLAGS $I_FLAGS $l_FLAGS ; then
+            QT_CONFIG="$QT_CONFIG ashmem"
+        else
+            QCONFIG_FLAGS="$QCONFIG_FLAGS QT_NO_SYSTEMSEMAPHORE QT_NO_SHAREDMEMORY"
+            if [ "$PLATFORM_QWS" = "yes" ]; then
+                QCONFIG_FLAGS="$QCONFIG_FLAGS QT_NO_SEMAPHORE QT_NO_QWS_MULTIPROCESS QT_NO_QWS_SHARE_FONTS"
+            fi
         fi
     fi
 fi
@@ -6913,7 +6930,7 @@ elif [ "$XPLATFORM_SYMBIAN_SBSV2" = "yes" ]; then
 fi
 
 if [ "$CFG_JAVASCRIPTCORE_JIT" = "yes" -o "$CFG_JAVASCRIPTCORE_JIT" = "auto" ]; then
-    if [ "$CFG_ARCH" = "arm" && "$XPLATFORM_ANDROID" != "yes" ]; then
+    if [ "$CFG_ARCH" = "arm" -a "$XPLATFORM_ANDROID" != "yes" ]; then
        "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/javascriptcore-jit "javascriptcore-jit" $L_FLAGS $I_FLAGS $l_FLAGS
         if [ $? != "0" ]; then
            CFG_JAVASCRIPTCORE_JIT=no
@@ -8911,6 +8928,9 @@ if [ "$PLATFORM_MAC" = "yes" ]; then
 fi
 echo "ICD support ............ $CFG_ICD"
 echo "libICU support ......... $CFG_ICU"
+if [ "$PLATFORM" = "win32-g++" ] || [ "$XPLATFORM" = "win32-g++" ]; then
+    echo "ms bitfields ........... $CFG_MS_BITFIELDS"
+fi
 echo
 
 [ "$CFG_PTMALLOC" != "no" ] && echo "Use ptmalloc ........... $CFG_PTMALLOC"
@@ -9116,6 +9136,10 @@ for file in .projects .projects.3; do
             SPEC=$XQMAKESPEC ;;
         *s60main/s60main.pro)
             if [ "$CFG_NOPROCESS" = "yes" ] || [ "$XPLATFORM_SYMBIAN" != "yes" ]; then
+                continue
+            fi;;
+        *activeqt/*)
+            if [ "$PLATFORM" = "win32-g++" ] || [ "$XPLATFORM" = "win32-g++" ]; then
                 continue
             fi;;
         *examples/activeqt/*) continue ;;
