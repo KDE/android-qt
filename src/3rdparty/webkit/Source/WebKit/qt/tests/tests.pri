@@ -17,7 +17,8 @@ contains(MOBILITY_CONFIG, multimedia) {
 SOURCES += $${TARGET}.cpp
 INCLUDEPATH += \
     $$PWD \
-    $$PWD/../Api
+    $$PWD/../Api \
+    $$PWD/hybridPixmap
 
 include(../../../WebKit.pri)
 QT += testlib network
