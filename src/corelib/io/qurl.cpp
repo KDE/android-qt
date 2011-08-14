@@ -4339,23 +4339,37 @@ void QUrl::setUrl(const QString &url, ParsingMode parsingMode)
     tmp.replace(QLatin1String("%20"), QLatin1String(" "));
 
     // Percent-encode unsafe ASCII characters after host part
-    int start = tmp.indexOf(QLatin1String("//"));
+
+    // Fix url handling for local filesystems. 
+    // http://www.cs.tut.fi/~jkorpela/fileurl.html
+    // Look for a lack of host name (i.e. ///)
+    int start = tmp.indexOf(QLatin1String("///"));
     if (start != -1) {
-        // Has host part, find delimiter
-        start += 2; // skip "//"
-        const char delims[] = "/#?";
-        const char *d = delims;
-        int hostEnd = -1;
-        while (*d && (hostEnd = tmp.indexOf(QLatin1Char(*d), start)) == -1)
-            ++d;
-        start = (hostEnd == -1) ? -1 : hostEnd + 1;
-    } else {
-        start = 0; // Has no host part
+        // No host part.
+        start += 3; // skip "///"
+    }
+    else {
+        start = tmp.indexOf(QLatin1String("//"));
+        if (start != -1) {
+            // Has host part, find delimiter
+            start += 2; // skip "//"
+            const char delims[] = "/#?";
+            const char *d = delims;
+            int hostEnd = -1;
+            while (*d && (hostEnd = tmp.indexOf(QLatin1Char(*d), start)) == -1)
+                ++d;
+            start = (hostEnd == -1) ? -1 : hostEnd + 1;
+        } else {
+            start = 0; // Has no host part
+        }
     }
     QByteArray encodedUrl;
     if (start != -1) {
         QString hostPart = tmp.left(start);
         QString otherPart = tmp.mid(start);
+#if defined(Q_OS_WIN)
+        if (otherPart.indexOf(QLatin1Char('|'))==1) otherPart[1] = QLatin1Char(':');
+#endif
         encodedUrl = toPercentEncodingHelper(hostPart, ":/?#[]@!$&'()*+,;=")
                    + toPercentEncodingHelper(otherPart, ":/?#@!$&'()*+,;=");
     } else {
