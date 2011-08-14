@@ -140,13 +140,13 @@ void QSharedMemoryPrivate::setErrorString(const QString &function)
 
 #ifndef QT_NO_SHAREDMEMORY
 
-bool QSharedMemoryPrivate::cleanHandle()
+void QSharedMemoryPrivate::cleanHandle()
 {
     if (ashmem_fd<0)
-	return false;
+        return;
     munmap(memory, size);
     close(ashmem_fd);
-    return true;
+    return;
 }
 
 bool QSharedMemoryPrivate::create(int sz)
