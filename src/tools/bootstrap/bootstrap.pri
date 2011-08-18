@@ -6,6 +6,8 @@ build_all:!build_pass {
 }
 CONFIG     -= app_bundle
 
+win32-g++*:CONFIG += static_gcclibs ms_bitfields
+
 DEFINES	       += \
         QT_BOOTSTRAPPED \
         QT_LITE_UNICODE \
