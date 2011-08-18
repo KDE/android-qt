@@ -832,6 +832,10 @@ QString QDir::fromNativeSeparators(const QString &pathName)
         if (n[i] == QLatin1Char('\\'))
             n[i] = QLatin1Char('/');
     }
+#if defined(__GNUWIN32__)
+    if (n.length() >= 2 && n[1] == QLatin1Char(':'))
+        n[0] = n.at(0).toUpper(); // Force uppercase drive letters.
+#endif
 #endif
     return n;
 }
