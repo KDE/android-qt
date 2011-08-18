@@ -48,7 +48,6 @@
 #include <errno.h>
 #include <locale.h>
 #include <stdio.h>
-#include <dlfcn.h>
 
 // unistd.h is needed for the _XOPEN_UNIX macro
 #include <unistd.h>

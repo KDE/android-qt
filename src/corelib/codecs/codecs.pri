@@ -19,7 +19,7 @@ SOURCES += \
 	codecs/qutfcodec.cpp \
 	codecs/qtextcodecplugin.cpp
 
-unix {
+unix|win32-g++ {
 	SOURCES += codecs/qfontlaocodec.cpp
 
         contains(QT_CONFIG,iconv) {

@@ -55,7 +55,7 @@
 
 #include "qtextcodec.h"
 
-#if defined(Q_OS_UNIX) && !defined(QT_NO_ICONV) && !defined(QT_BOOTSTRAPPED)
+#if (defined(Q_OS_UNIX) || defined(__MINGW32__)) && !defined(QT_NO_ICONV) && !defined(QT_BOOTSTRAPPED)
 
 #ifdef Q_OS_MAC
 typedef void * iconv_t;
