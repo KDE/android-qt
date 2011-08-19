@@ -1622,6 +1622,11 @@ while [ "$#" -gt 0 ]; do
 		CFG_MAC_ARCHS="$CFG_MAC_ARCHS $NATIVE_64_ARCH"
             fi
             ;;
+        win32-g++)
+            PLATFORM=win32-g++
+            PLATFORM_QWS=no
+            PLATFORM_QPA=no
+            ;;
         esac
         ;;
     xplatform)
