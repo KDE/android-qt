@@ -53,5 +53,17 @@
                 <lib file="plugins/mediaservice/libqtmultimediakit_androidcam.so"/>
             </depends>
         </lib>
+
+        <lib name="Qt3D">
+            <depends>
+                <lib file="libs/QtOpenGL.so"/>
+            </depends>
+        </lib>
+        <lib name="Qt3DQuick">
+            <depends>
+                <lib file="libs/libQtOpenGL.so"/>
+                <lib file="libs/libQt3D.so"/>
+            </depends>
+        </lib>
     </dependencies>
 </rules>
