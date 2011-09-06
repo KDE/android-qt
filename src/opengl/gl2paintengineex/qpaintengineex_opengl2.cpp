@@ -2068,6 +2068,7 @@ bool QGL2PaintEngineEx::end()
 {
     Q_D(QGL2PaintEngineEx);
 
+    QGLContext *ctx = d->ctx;
     glUseProgram(0);
     d->transferMode(BrushDrawingMode);
     d->device->endPaint();
@@ -2078,7 +2079,6 @@ bool QGL2PaintEngineEx::end()
     // the pixmap behind the driver's back before it's had a chance to use it. To fix this, we
     // reference all QPixmaps which have been bound to stop them being deleted and only deref
     // them here, after swapBuffers, where they can be safely deleted.
-    QGLContext *ctx = d->ctx;
     ctx->d_func()->boundPixmaps.clear();
 #endif
     d->ctx->d_ptr->active_engine = 0;

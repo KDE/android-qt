@@ -74,6 +74,7 @@ void QMinimalWindowSurface::flush(QWidget *widget, const QRegion &region, const 
     mImage.save(filename);
 }
 
+/*
 void QMinimalWindowSurface::resize(const QSize &size)
 {
     //qDebug() << "QMinimalWindowSurface::setGeometry:" << (long)this << rect;
@@ -82,5 +83,6 @@ void QMinimalWindowSurface::resize(const QSize &size)
     if (mImage.size() != size)
         mImage = QImage(size, format);
 }
+*/
 
 QT_END_NAMESPACE
