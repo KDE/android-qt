@@ -9,4 +9,4 @@ SUBDIRS = \
 
 CONFIG(shared,shared|static):SUBDIRS += plugins
 
-symbian|wince*: SUBDIRS = uitools
+android|symbian|wince*: SUBDIRS = uitools
