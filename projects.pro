@@ -32,8 +32,6 @@ isEmpty(QT_BUILD_PARTS) { #defaults
    }
 }
 
-android: QT_BUILD_PARTS += tools
-
 #process the projects
 for(PROJECT, $$list($$lower($$unique(QT_BUILD_PARTS)))) {
     isEqual(PROJECT, tools) {

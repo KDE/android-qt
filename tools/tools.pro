@@ -4,7 +4,7 @@ TEMPLATE        = subdirs
     no-png {
         message("Some graphics-related tools are unavailable without PNG support")
     } else {
-        symbian|android {
+        symbian {
             SUBDIRS = designer
         } else:wince* {
             SUBDIRS = qtestlib designer
