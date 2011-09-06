@@ -168,3 +168,4 @@ false:macx { #mac install location
     INSTALLS += macdocs
 }
 
+android: SUBDIRS += tools/designer/src/uitools
