@@ -17,7 +17,7 @@
 
 #ifndef ANDROID_ASSET_MANAGER_H
 #define ANDROID_ASSET_MANAGER_H
-
+#include <unistd.h>
 #ifdef __cplusplus
 extern "C" {
 #endif
