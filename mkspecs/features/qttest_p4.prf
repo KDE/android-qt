@@ -2,7 +2,7 @@ isEmpty(TEMPLATE):TEMPLATE=app
 CONFIG += qt warn_on console depend_includepath testcase
 
 # x11 is not defined by configure (the following line is copied from gui.pro)
-!win32:!embedded:!qpa:!mac:!symbian:CONFIG += x11
+!win32:!embedded:!qpa:!mac:!symbian:!android:CONFIG += x11
 
 qtAddLibrary(QtTest)
 
@@ -17,7 +17,8 @@ symbian:{
 !contains(TARGET, ^tst_.*):TARGET = $$join(TARGET,,"tst_")
 
 isEmpty(target.path) {
-    target.path += $$[QT_INSTALL_PREFIX]/tests/qt4/$${TARGET}
+    android: target.path += /
+       else: target.path += $$[QT_INSTALL_PREFIX]/tests/qt4/$${TARGET}
 }
 
 INSTALLS += target
