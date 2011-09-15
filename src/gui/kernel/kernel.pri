@@ -329,3 +329,5 @@ wince*: {
                 ../corelib/kernel/qfunctions_wince.cpp \
                 kernel/qguifunctions_wince.cpp
 }
+
+android: DEFINES += QT_QPA_DEFAULT_PLATFORM_NAME=\\\"android\\\"
