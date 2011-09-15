@@ -45,7 +45,7 @@ public class QtActivity extends Activity {
     private boolean m_fullScreen=false;
     private boolean m_started = false;
     private QtSurface m_surface=null;
-
+    private boolean m_usesGL = false;
     private void loadQtLibs(String [] libs, String environment, String params)
     {
         QtApplication.loadQtLibraries(libs);
@@ -60,16 +60,16 @@ public class QtActivity extends Activity {
             environment=envPaths;
 
         try {
-			Thread.sleep(5000);
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+            Thread.sleep(5000);
+        } catch (InterruptedException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
         QtApplication.startApplication(params, environment);
-        m_surface.applicationStared( true );
+        m_surface.applicationStared( m_usesGL );
         m_started = true;
     }
-    
+
     private boolean m_quitApp = true;
     private Process m_debuggerProcess=null; // debugger process
 
@@ -80,20 +80,30 @@ public class QtActivity extends Activity {
             String qtLibs[]=getResources().getStringArray(R.array.qt_libs);
             ArrayList<String> libraryList= new ArrayList<String>();
             for(int i=0;i<qtLibs.length;i++)
-            {
                 libraryList.add("/data/local/qt/lib/lib"+qtLibs[i]+".so");
-            }
 
             if (getIntent().getExtras() != null)
             {
-            	if (getIntent().getExtras().containsKey("platform_plugin"))
-            		libraryList.add(getIntent().getExtras().getString("platform_plugin"));
-            	if (getIntent().getExtras().containsKey("application"))
-            		libraryList.add(getIntent().getExtras().getString("application"));
+                if (getIntent().getExtras().containsKey("extra_libs"))
+                {
+                    String extra_libs=getIntent().getExtras().getString("extra_libs");
+                    for (String lib : extra_libs.split(":"))
+                        libraryList.add(lib);
+                }
+
+                if (getIntent().getExtras().containsKey("needsOpenGl"))
+                    m_usesGL=getIntent().getExtras().getBoolean("needsOpenGl");
             }
             else
-            	System.exit(0);
-
+            {
+                try {
+                    Thread.sleep(5000);
+                } catch (InterruptedException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
+                System.exit(0);
+            }
             String[] libs=new String[libraryList.size()];
             libs=libraryList.toArray(libs);
             loadQtLibs(libs,"QML_IMPORT_PATH=/data/local/qt/imports\tQT_PLUGIN_PATH=/data/local/qt/plugins", "-xml\t-silent\t-o\toutput.xml");
@@ -108,7 +118,8 @@ public class QtActivity extends Activity {
     public void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
-    	new File(getFilesDir().getAbsolutePath()).mkdirs();
+        new File(getFilesDir().getAbsolutePath()).mkdirs();
+        new File(getCacheDir().getAbsolutePath()).mkdirs();
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         m_quitApp = true;
         QtApplication.setMainActivity(this);
