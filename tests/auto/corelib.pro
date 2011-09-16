@@ -47,7 +47,6 @@ SUBDIRS=\
    qobject \
    qobjectrace \
    qplugin \
-   qpluginloader \
    qpoint \
    qprocessenvironment \
    qqueue \
@@ -111,4 +110,6 @@ symbian:SUBDIRS -= \
    qtconcurrentmap \
    qtconcurrentrun \
    qtconcurrentthreadengine \
+
+!android: SUBDIRS += qpluginloader
 
