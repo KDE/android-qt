@@ -118,8 +118,12 @@ public class QtActivity extends Activity {
     public void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
-        new File(getFilesDir().getAbsolutePath()).mkdirs();
-        new File(getCacheDir().getAbsolutePath()).mkdirs();
+        File f = new File(getFilesDir().getAbsolutePath());
+        f.mkdirs();
+        f.setWritable(true,false);
+        f=new File(getCacheDir().getAbsolutePath());
+        f.mkdirs();
+        f.setWritable(true,false);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         m_quitApp = true;
         QtApplication.setMainActivity(this);
