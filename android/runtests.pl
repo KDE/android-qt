@@ -116,6 +116,37 @@ if ($output =~ m/.*\[ro.build.version.sdk\]: \[(\d+)\]/)
     $sdk_api=9 if ($sdk_api>9);
 }
 
+sub reinstallQuadruplor
+{
+    pushd($quadruplor_dir);
+    system("$android_sdk_dir/tools/android update project -p . -t android-10")==0 or die "Can't update project ...\n";
+    system("$ant_tool uninstall install")==0 or die "Can't install Quadruplor\n";
+    system("$adb_tool $device_serial shell am start -n $intentName"); # create application folders
+    waitForProcess($packageName,1,10);
+    waitForProcess($packageName,0,20);
+    popd();
+}
+sub killProcess
+{
+    reinstallQuadruplor;
+# #### it seems I'm too idiot to use perl regexp
+#     my $process=shift;
+#     my $output = `$adb_tool $device_serial shell ps 2>&1`; # get current processes
+#     $output =~ s/\r//g; # replace all "\r" with ""
+#     chomp($output);
+#     print $output;
+#     if ($output =~ m/^.*_\d+\s+(\d+).*S $process/) # check the procress
+#     {
+#         print("Killing $process PID:$1\n");
+#         system("$adb_tool $device_serial shell kill $1");
+#         waitForProcess($process,0,20);
+#     }
+#     else
+#     {
+#         print("Can't kill the process $process\n");
+#     }
+}
+
 
 sub startTest
 {
@@ -125,7 +156,11 @@ sub startTest
     #wait to start
     return 0 unless(waitForProcess($packageName,1,10));
     #wait to stop
-    return 0 unless(waitForProcess($packageName,0,200,5));
+    unless(waitForProcess($packageName,0,200,5))
+    {
+        killProcess($packageName);
+        return 1;
+    }
     my $output_file = shift;
     system("$adb_tool $device_serial pull /data/data/$packageName/files/output.xml $output_dir/$output_file");
     return 1;
@@ -163,14 +198,7 @@ if ($deploy_qt)
 }
 
 ########### build & install quadruplor ###########
-pushd($quadruplor_dir);
-system("$android_sdk_dir/tools/android update project -p . -t android-10")==0 or die "Can't update project ...\n";
-system("$ant_tool uninstall install")==0 or die "Can't install Quadruplor\n";
-system("$adb_tool $device_serial shell am start -n $intentName"); # create application folders
-waitForProcess($packageName,1,10);
-waitForProcess($packageName,0,20);
-popd();
-
+reinstallQuadruplor;
 
 ########### build qt tests and benchmarks ###########
 pushd($tests_dir);
