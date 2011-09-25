@@ -206,6 +206,9 @@ SUBDIRS=\
     qwswindowsystem \
     qx11info \
 
+android:SUBDIRS -= qfile \
+                   qtipc
+
 win32:SUBDIRS -= qtextpiecetable
 
 !contains(QT_CONFIG, private_tests): SUBDIRS -= \

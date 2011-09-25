@@ -44,6 +44,9 @@ SUBDIRS=\
     qudpsocket \
 #    qnetworkproxyfactory \ # Uses a hardcoded proxy configuration
 
+android: SUBDIRS -= qhostaddress \
+                    qtcpserver
+
 !contains(QT_CONFIG, private_tests): SUBDIRS -= \
     qauthenticator \
     qhttpnetworkconnection \

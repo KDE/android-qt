@@ -19,7 +19,8 @@ my $man = 0;
 my $help = 0;
 my $make_clean = 0;
 my $deploy_qt = 0;
-my $android_sdk_dir = "$ENV{'HOME'}/NecessitasQtSDK/android-sdk-linux";
+my $time_out=400;
+my $android_sdk_dir = "$ENV{'HOME'}/NecessitasQtSDK/android-sdk-linux_x86";
 my $ant_tool = `which ant`;
 chomp $ant_tool;
 my $strip_tool="";
@@ -156,7 +157,7 @@ sub startTest
     #wait to start
     return 0 unless(waitForProcess($packageName,1,10));
     #wait to stop
-    unless(waitForProcess($packageName,0,200,5))
+    unless(waitForProcess($packageName,0,$time_out,5))
     {
         killProcess($packageName);
         return 1;
@@ -219,7 +220,12 @@ foreach(split("\n",$testsFiles))
     $output_name =~ s/\///;   # remove first "/" character
     $output_name =~ s/\//_/g; # replace all "/" with "_"
     $output_name=$application unless($output_name);
-    $application = "bench_$application" if (-e "$temp_dir/libtst_bench_$application.so");
+    $time_out=5*60/5; # 5 minutes time out for a normal test
+    if (-e "$temp_dir/libtst_bench_$application.so")
+    {
+        $time_out=10*60/5; # 10 minutes for a benchmark
+        $application = "bench_$application";
+    }
 
     if (-e "$temp_dir/libtst_$application.so")
     {
@@ -235,8 +241,8 @@ foreach(split("\n",$testsFiles))
         }
     }
     else
-    {   #ups this test application doesn't respect name conversion
-        warn "$application test application doesn't respect name conversion please fix it !\n";
+    {   #ups this test application doesn't respect name convention
+        warn "$application test application doesn't respect name convention please fix it !\n";
     }
     popd();
     remove_tree( $temp_dir, {keep_root => 1} );

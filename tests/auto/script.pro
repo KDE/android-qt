@@ -14,5 +14,6 @@ SUBDIRS=\
            qscriptv8testsuite \
            qscriptvalue \
            qscriptvaluegenerated \
-           qscriptvalueiterator \
+           qscriptvalueiterator
 
+android: SUBDIRS -= qscriptcontext

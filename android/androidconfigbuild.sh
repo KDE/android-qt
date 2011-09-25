@@ -205,7 +205,7 @@ if [ "$DEBUG_QT" -eq "1" ]; then
 	CFGOPTIONS="${CFGOPTIONS} -debug "
 	INSTSUFFIX="${INSTSUFFIX}D"
 else
-	CFGOPTIONS="${CFGOPTIONS} -release "
+	CFGOPTIONS="${CFGOPTIONS} -release -reduce-relocations -reduce-exports "
 	INSTSUFFIX="${INSTSUFFIX}R"
 fi
 
@@ -282,7 +282,7 @@ then
 		-no-phonon -freetype -fast -xplatform android-g++ \
 		$PLATFORM -host-little-endian \
 		-little-endian -no-qt3support -no-largefile \
-		-openssl -pch -reduce-relocations -reduce-exports \
+		-openssl -pch \
 		-nomake demos -no-multimedia -nomake examples -confirm-license \
 		$CFGOPTIONS -prefix $DEST_DIR_QT \
 		-openssl-source $OPENSSL_ROOT \

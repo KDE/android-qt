@@ -7,3 +7,6 @@ SUBDIRS = \
         qiodevice \
         qtemporaryfile
 
+android: SUBDIRS -= qfileinfo
+
+

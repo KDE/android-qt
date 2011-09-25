@@ -9,3 +9,6 @@ SUBDIRS = \
         qstringbuilder \
         qstringlist \
         qvector
+
+android: SUBDIRS -= qregexp \
+                    qstringlist
