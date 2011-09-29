@@ -63,12 +63,18 @@ public:
 
     QRect geometry() const;
     int depth() const;
+    QSize physicalSize() const;
     QImage::Format format() const;
 
     QAndroidEglFSPlatformContext *platformContext() const;
 
 public slots:
     void surfaceChanged();
+    void updateTLWindows();
+    virtual void setGeometry(QRect rect);
+    virtual void setPhysicalSize(QSize size);
+
+protected:
 
 private:
     void createWindowSurface();
@@ -76,6 +82,7 @@ private:
     void createAndSetPlatformContext();
 
     QRect mGeometry;
+    QSize mPhysicalSize;
 
     int m_depth;
     QImage::Format m_format;

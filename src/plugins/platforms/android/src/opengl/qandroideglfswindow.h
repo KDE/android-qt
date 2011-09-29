@@ -56,12 +56,14 @@ public:
 
     void setGeometry(const QRect &);
     WId winId() const;
-
+    virtual Qt::WindowFlags setWindowFlags(Qt::WindowFlags type);
+    virtual Qt::WindowFlags windowFlags() const;
     QPlatformGLContext *glContext() const;
 
 private:
     QAndroidEglFSScreen *m_screen;
     WId m_winid;
+    Qt::WindowFlags flags;
 };
 QT_END_NAMESPACE
 #endif // QANDROIDEGLWINDOW_H

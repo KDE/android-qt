@@ -73,7 +73,18 @@ WId QAndroidEglFSWindow::winId() const
     return m_winid;
 }
 
+Qt::WindowFlags QAndroidEglFSWindow::setWindowFlags(Qt::WindowFlags type)
+{
+    flags = type;
+    if (!widget()->isFullScreen() && flags != Qt::Popup && flags != Qt::Tool && flags != Qt::ToolTip && flags != Qt::SplashScreen)
+         widget()->setWindowState(widget()->windowState() | Qt::WindowMaximized);
+    return flags;
+}
 
+Qt::WindowFlags QAndroidEglFSWindow::windowFlags() const
+{
+    return flags;
+}
 
 QPlatformGLContext *QAndroidEglFSWindow::glContext() const
 {

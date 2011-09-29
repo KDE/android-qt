@@ -40,6 +40,7 @@
 ****************************************************************************/
 
 #include "qandroideglfsscreen.h"
+#include "qandroidplatformintegration.h"
 
 #include "qeglconvenience.h"
 #include "qandroideglplatformcontext.h"
@@ -54,6 +55,8 @@
 #endif
 
 #include <QWindowSystemInterface>
+#include <QApplication>
+#include <QTimer>
 #include <QThread>
 #include <QDebug>
 
@@ -101,6 +104,12 @@ QAndroidEglFSScreen::QAndroidEglFSScreen(EGLNativeDisplayType display)
     , m_platformContext(0)
     , m_windowSurface(EGL_NO_SURFACE)
 {
+    mPhysicalSize = QSize(QAndroidPlatformIntegration::m_defaultPhysicalSizeWidth,
+                            QAndroidPlatformIntegration::m_defaultPhysicalSizeHeight);
+
+    mGeometry = QRect(0, 0, QAndroidPlatformIntegration::m_defaultGeometryWidth,
+                            QAndroidPlatformIntegration::m_defaultGeometryHeight);
+
 #ifdef QEGL_EXTRA_DEBUG
     qWarning("QEglScreen %p\n", this);
 #endif
@@ -220,6 +229,23 @@ void QAndroidEglFSScreen::createAndSetPlatformContext()
     m_platformContext->makeCurrent();              // Is this necessary?
 }
 
+void QAndroidEglFSScreen::setGeometry(QRect rect)
+{
+    qDebug()<<"QAndroidEglFSScreen::setGeometry"<<rect;
+    mGeometry = rect;
+}
+
+void QAndroidEglFSScreen::setPhysicalSize(QSize size)
+{
+    qDebug()<<"QAndroidEglFSScreen::setPhysicalSize"<<size;
+    mPhysicalSize = size;
+}
+
+void QAndroidEglFSScreen::updateTLWindows()
+{
+    foreach(QWidget * w, qApp->topLevelWidgets())
+        w->update();
+}
 
 QRect QAndroidEglFSScreen::geometry() const
 {
@@ -229,6 +255,11 @@ QRect QAndroidEglFSScreen::geometry() const
     Q_ASSERT(mGeometry.isValid());
 
     return mGeometry;
+}
+
+QSize QAndroidEglFSScreen::physicalSize() const
+{
+    return mPhysicalSize;
 }
 
 int QAndroidEglFSScreen::depth() const
@@ -260,6 +291,7 @@ void QAndroidEglFSScreen::surfaceChanged()
 
     QWindowSystemInterface::handleScreenAvailableGeometryChange(0);
     QWindowSystemInterface::handleScreenGeometryChange(0);
+    QTimer::singleShot(50, this, SLOT(updateTLWindows()));
     qDebug()<<"QAndroidEglFSScreen::surfaceChanged()";
 }
 

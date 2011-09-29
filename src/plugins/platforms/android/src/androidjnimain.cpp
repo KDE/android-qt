@@ -406,12 +406,12 @@ static void setDisplayMetrics(JNIEnv* /*env*/, jclass /*clazz*/,
 
     if (!m_androidGraphicsSystem)
         QAndroidPlatformIntegration::setDefaultDisplayMetrics(desktopWidthPixels,desktopHeightPixels,
-                                                     qRound((double)widthPixels   / xdpi * 100 / 2.54 ),
-                                                     qRound((double)heightPixels / ydpi *100  / 2.54 ));
+                                                                qRound((double)desktopWidthPixels  / xdpi * 25.4 ),
+                                                                qRound((double)desktopHeightPixels / ydpi * 25.4 ));
     else
     {
-        m_androidGraphicsSystem->setDisplayMetrics(qRound((double)widthPixels   / xdpi * 100 / 2.54 ),
-                                                  qRound((double)heightPixels / ydpi *100  / 2.54 ));
+        m_androidGraphicsSystem->setDisplayMetrics(qRound((double)desktopWidthPixels  / xdpi * 25.4 ),
+                                                   qRound((double)desktopHeightPixels / ydpi * 25.4 ));
         m_androidGraphicsSystem->setDesktopSize(desktopWidthPixels,desktopHeightPixels);
     }
 }

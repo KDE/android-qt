@@ -46,6 +46,7 @@ public:
 class QAndroidPlatformIntegration : public QPlatformIntegration
 {
     friend class QAndroidPlatformScreen;
+    friend class QAndroidEglFSScreen;
 
 public:
     QAndroidPlatformIntegration();
