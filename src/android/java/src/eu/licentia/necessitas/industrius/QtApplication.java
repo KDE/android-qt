@@ -158,14 +158,14 @@ public class QtApplication extends Application
         }
     }
 
-    public static void startApplication(String params, String environment)
+    public static boolean startApplication(String params, String environment)
     {
         if (params == null)
             params = "-platform\tandroid";
-
+        boolean res=false;
         synchronized (m_mainActivityMutex)
         {
-            startQtAndroidPlugin();
+            res=startQtAndroidPlugin();
             setDisplayMetrics(m_displayMetricsScreenWidthPixels,
                             m_displayMetricsScreenHeightPixels,
                             m_displayMetricsDesktopWidthPixels,
@@ -177,6 +177,7 @@ public class QtApplication extends Application
             startQtApp("QtApp"+params, environment);
             m_started=true;
         }
+        return res;
     }
 
     public static void setApplicationDisplayMetrics(int screenWidthPixels,
@@ -229,7 +230,7 @@ public class QtApplication extends Application
     public static native void startQtApp(String params,String env);
     public static native void pauseQtApp();
     public static native void resumeQtApp();
-    public static native void startQtAndroidPlugin();
+    public static native boolean startQtAndroidPlugin();
     public static native void quitQtAndroidPlugin();
     public static native void terminateQt();
     // application methods

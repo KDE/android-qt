@@ -100,7 +100,7 @@ public class QtSurface extends SurfaceView implements SurfaceHolder.Callback
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height)
     {
-        Log.i(QtApplication.QtTAG,"surfaceChanged: "+width+","+height);
+        Log.i(QtApplication.QtTAG,"surfaceChanged: "+width+","+height+","+getWidth()+","+getHeight());
         if (width<1 || height<1)
                 return;
 

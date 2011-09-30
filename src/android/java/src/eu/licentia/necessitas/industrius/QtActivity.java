@@ -131,8 +131,7 @@ public class QtActivity extends Activity {
             else
                 environment=envPaths;
 
-            QtApplication.startApplication(params, environment);
-            m_surface.applicationStared( true );
+            m_surface.applicationStared( QtApplication.startApplication(params, environment) );
             m_started = true;
         }
         catch (NameNotFoundException e)

@@ -182,9 +182,6 @@ void QAndroidEglFSScreen::createWindowSurface()
 
     if(w <= 0 || h <= 0)
         qFatal("EGL-WindowSurface has invalid size!");
-
-    mGeometry.setWidth(w);
-    mGeometry.setHeight(h);
 }
 
 void QAndroidEglFSScreen::createAndSetPlatformContext() const {
@@ -285,9 +282,12 @@ QAndroidEglFSPlatformContext *QAndroidEglFSScreen::platformContext() const
 
 void QAndroidEglFSScreen::surfaceChanged()
 {
-    createWindowSurface();
-    platformContext()->setSurface(m_windowSurface);
+    if (!m_platformContext)
+        createAndSetPlatformContext();
+    else
+        createWindowSurface();
 
+    platformContext()->setSurface(m_windowSurface);
 
     QWindowSystemInterface::handleScreenAvailableGeometryChange(0);
     QWindowSystemInterface::handleScreenGeometryChange(0);

@@ -279,9 +279,8 @@ namespace QtAndroid
 
 }
 
-static void startQtAndroidPlugin(JNIEnv* env, jobject /*object*//*, jobject applicationAssetManager*/)
+static jboolean startQtAndroidPlugin(JNIEnv* env, jobject /*object*//*, jobject applicationAssetManager*/)
 {
-
 #ifndef ANDROID_PLUGIN_OPENGL
     m_surface = 0;
 #else
@@ -290,9 +289,13 @@ static void startQtAndroidPlugin(JNIEnv* env, jobject /*object*//*, jobject appl
 #endif
 
     m_androidGraphicsSystem=0;
-
-//    m_assetManager = AAssetManager_fromJava(env, applicationAssetManager);
     m_androidAssetsFileEngineHandler = new AndroidAssetsFileEngineHandler();
+
+#ifdef ANDROID_PLUGIN_OPENGL
+    return true;
+#else
+    return false;
+#endif
 }
 
 static void pauseQtApp(JNIEnv */*env*/, jobject /*thiz*/)
@@ -412,7 +415,7 @@ static void setDisplayMetrics(JNIEnv* /*env*/, jclass /*clazz*/,
     {
         m_androidGraphicsSystem->setDisplayMetrics(qRound((double)desktopWidthPixels  / xdpi * 25.4 ),
                                                    qRound((double)desktopHeightPixels / ydpi * 25.4 ));
-        m_androidGraphicsSystem->setDesktopSize(desktopWidthPixels,desktopHeightPixels);
+        m_androidGraphicsSystem->setDesktopSize(desktopWidthPixels, desktopHeightPixels);
     }
 }
 
@@ -734,7 +737,7 @@ static void updateWindow(JNIEnv */*env*/, jobject /*thiz*/)
 }
 
 static JNINativeMethod methods[] = {
-    {"startQtAndroidPlugin", "()V", (void *)startQtAndroidPlugin},
+    {"startQtAndroidPlugin", "()Z", (void *)startQtAndroidPlugin},
     {"pauseQtApp", "()V", (void *)pauseQtApp},
     {"resumeQtApp", "()V", (void *)resumeQtApp},
     {"quitQtAndroidPlugin", "()V", (void *)quitQtAndroidPlugin},
