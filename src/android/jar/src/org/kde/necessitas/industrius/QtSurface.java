@@ -25,7 +25,7 @@
     SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-package eu.licentia.necessitas.industrius;
+package org.kde.necessitas.industrius;
 
 import android.app.Activity;
 import android.content.Context;

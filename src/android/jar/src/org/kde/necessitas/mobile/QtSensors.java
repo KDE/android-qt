@@ -27,10 +27,12 @@ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-package eu.licentia.necessitas.mobile;
+package org.kde.necessitas.mobile;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import org.kde.necessitas.industrius.QtApplication;
 
 import android.app.Activity;
 import android.hardware.Sensor;
@@ -38,7 +40,6 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.util.Log;
-import eu.licentia.necessitas.industrius.QtApplication;
 
 public class QtSensors implements SensorEventListener
 {

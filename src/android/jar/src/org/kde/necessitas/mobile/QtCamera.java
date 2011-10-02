@@ -11,11 +11,14 @@ met:
 THIS SOFTWARE IS PROVIDED BY Elektrobit (EB) ''AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Elektrobit (EB) BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package eu.licentia.necessitas.mobile;
+package org.kde.necessitas.mobile;
 
 //@ANDROID-8
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+
+import org.kde.necessitas.industrius.QtApplication;
+import org.kde.necessitas.industrius.QtLayout;
 
 import android.app.Activity;
 import android.content.BroadcastReceiver;
@@ -39,8 +42,6 @@ import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceHolder.Callback;
 import android.view.SurfaceView;
-import eu.licentia.necessitas.industrius.QtApplication;
-import eu.licentia.necessitas.industrius.QtLayout;
 
 public class QtCamera implements PreviewCallback, Callback{
     private static Camera m_camera;

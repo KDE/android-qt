@@ -28,12 +28,14 @@ OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-package eu.licentia.necessitas.mobile;
+package org.kde.necessitas.mobile;
 
 import java.io.File;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+
+import org.kde.necessitas.industrius.QtApplication;
 
 import android.app.KeyguardManager;
 //@ANDROID-5
@@ -73,7 +75,6 @@ import android.view.Display;
 //@ANDROID-5
 import android.view.Surface;
 //@ANDROID-5
-import eu.licentia.necessitas.industrius.QtApplication;
 
 
 class BatteryInfo

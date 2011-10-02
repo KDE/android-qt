@@ -28,13 +28,15 @@ OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-package eu.licentia.necessitas.mobile;
+package org.kde.necessitas.mobile;
 //@ANDROID-5
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
+
+import org.kde.necessitas.industrius.QtApplication;
 
 import android.content.ContentResolver;
 import android.content.ContentUris;
@@ -54,7 +56,6 @@ import android.provider.ContactsContract.CommonDataKinds.Website;
 import android.provider.ContactsContract.Contacts.Data;
 import android.provider.ContactsContract.RawContacts;
 import android.util.Log;
-import eu.licentia.necessitas.industrius.QtApplication;
 public class QtAndroidContacts
 {
     private static AndroidContacts m_androidContacts;
