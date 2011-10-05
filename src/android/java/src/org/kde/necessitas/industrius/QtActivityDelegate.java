@@ -19,7 +19,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager.LayoutParams;
 
-public interface QtActivityListener
+public interface QtActivityDelegate
 {
 	void onActivityResult(int requestCode, int resultCode, Intent data);
 	void onApplyThemeResource(Theme theme, int resid, boolean first);
@@ -70,6 +70,7 @@ public interface QtActivityListener
     void onStop();
     void onTerminate();
     void onTitleChanged(CharSequence title, int color);
+    boolean onTouchEvent(MotionEvent event);
     boolean onTrackballEvent(MotionEvent event);
     void onUserInteraction();
     void onUserLeaveHint();

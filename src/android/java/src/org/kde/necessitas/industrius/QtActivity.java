@@ -25,15 +25,17 @@
     SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-package eu.licentia.necessitas.industrius;
+package org.kde.necessitas.industrius;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Iterator;
+import java.util.Arrays;
+
+import org.kde.necessitas.ministro.IMinistro;
+import org.kde.necessitas.ministro.IMinistroCallback;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.Dialog;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -43,142 +45,134 @@ import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.res.Configuration;
-import android.graphics.Rect;
+import android.content.res.Resources.Theme;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.RemoteException;
-import android.text.method.MetaKeyKeyListener;
-import android.util.DisplayMetrics;
+import android.util.AttributeSet;
 import android.util.Log;
-import android.view.KeyCharacterMap;
+import android.view.ContextMenu;
+import android.view.ContextMenu.ContextMenuInfo;
 import android.view.KeyEvent;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.MotionEvent;
+import android.view.View;
 import android.view.Window;
-import android.view.WindowManager;
-import android.view.inputmethod.InputMethodManager;
-import eu.licentia.necessitas.ministro.IMinistro;
-import eu.licentia.necessitas.ministro.IMinistroCallback;
+import android.view.WindowManager.LayoutParams;
+import dalvik.system.DexClassLoader;
 
-public class QtActivity extends Activity {
-
-    private final static int MINISTRO_INSTALL_REQUEST_CODE = 0xf3ee;
+public class QtActivity extends Activity implements QtActivityInterface
+{
+    private final static int MINISTRO_INSTALL_REQUEST_CODE = 0xf3ee; // request code used to know when Ministro instalation is finished
     private static final int MINISTRO_API_LEVEL=1; // Ministro api level (check IMinistro.aidl file)
-    private static final int NECESSITAS_API_LEVEL=1; // Necessitas api level.
+    private static final int QT_API_LEVEL=4; // Necessitas api level.
 
-    private String m_qtLibs[]=null;
-    private int m_id=-1;
-    private boolean softwareKeyboardIsVisible=false;
-    private long m_metaState;
-    private int m_lastChar=0;
-    private boolean m_fullScreen=false;
-    private boolean m_started = false;
-    private QtSurface m_surface=null;
-    private QtLayout m_layout=null;
+    private ActivityInfo m_activityInfo = null; // activity info object, used to access the libs and the strings
+	private DexClassLoader m_classLoader = null; // loader object
+    private String[] m_qtLibs = null; // required qt libs
 
-    private void startApplication(String [] libs, String environment, String params)
-    {
-        QtApplication.loadQtLibraries(libs);
-        try
-        {
-            ActivityInfo ai=getPackageManager().getActivityInfo(getComponentName(), PackageManager.GET_META_DATA);
-            if (ai.metaData.containsKey("android.app.bundled_libs_resource_id"))
-            {
-                // Load bundle libs
-                int resourceId = ai.metaData.getInt("android.app.bundled_libs_resource_id");
-                QtApplication.loadBundledLibraries(getResources().getStringArray(resourceId));
-            }
+	// this function is used to load and start the loader
+	private void loadApplication(Bundle loaderParams)
+	{ 
+		try
+		{
+			if (loaderParams.getInt("error.code") != 0)
+			{ // fatal error, show the error and quit
+		        AlertDialog errorDialog = new AlertDialog.Builder(QtActivity.this).create();
+		        errorDialog.setMessage(loaderParams.getString("error.message"));
+		        errorDialog.setButton(getResources().getString(android.R.string.ok), new DialogInterface.OnClickListener() {
+		            public void onClick(DialogInterface dialog, int which) {
+		                finish();
+		            }
+		        });
+		        errorDialog.show();
+		        return;
+			}
 
-            if (ai.metaData.containsKey("android.app.lib_name")) // Load application
-                QtApplication.loadBundledLibraries(new String[]{ai.metaData.getString("android.app.lib_name")});
+			// add all bundled libs to loader params
+			ArrayList<String> libs = new ArrayList<String>();
+			if ( m_activityInfo.metaData.containsKey("android.app.bundled_libs_resource_id") )
+				libs.addAll(Arrays.asList(getResources().getStringArray(m_activityInfo.metaData.getInt("android.app.bundled_libs_resource_id"))));
 
-            // if the applications is debuggable and it has a native debug request
-            if ( /*(ai.flags&ApplicationInfo.FLAG_DEBUGGABLE) != 0
-                    &&*/ getIntent().getExtras() != null
-                    && getIntent().getExtras().containsKey("native_debug")
-                    && getIntent().getExtras().getString("native_debug").equals("true"))
-            {
-                try
-                {
-                    String packagePath=getPackageManager().getApplicationInfo(getPackageName(), PackageManager.GET_CONFIGURATIONS).dataDir+"/";
-                    String gdbserverPath=getIntent().getExtras().containsKey("gdbserver_path")?getIntent().getExtras().getString("gdbserver_path"):packagePath+"lib/gdbserver ";
-                    String socket=getIntent().getExtras().containsKey("gdbserver_socket")?getIntent().getExtras().getString("gdbserver_socket"):"+debug-socket";
-                    // start debugger
-                    m_debuggerProcess =Runtime.getRuntime().exec(gdbserverPath+socket+" --attach "+android.os.Process.myPid(),null, new File(packagePath));
-                }
-                catch (IOException ioe)
-                {
-                        Log.e(QtApplication.QtTAG,"Can't start debugging"+ioe.getMessage());
-                }
-                catch (SecurityException se)
-                {
-                        Log.e(QtApplication.QtTAG,"Can't start debugging"+se.getMessage());
-                }
-            }
-            // start application
+			if ( m_activityInfo.metaData.containsKey("android.app.lib_name") )
+				libs.add(m_activityInfo.metaData.getString("lib_name"));
+			loaderParams.putStringArrayList("bundled.libs", libs);
 
-            if (ai.metaData.containsKey("android.app.application_startup_params"))
-            {
-                if (params.length()>0)
-                    params+="\t";
-                params += ai.metaData.getString("android.app.application_startup_params");
-            }
+			// load and start QtLoader class
+			m_classLoader = new DexClassLoader(loaderParams.getString("dex.path") // .jar/.apk files 
+											, getDir("outdex", Context.MODE_PRIVATE).getAbsolutePath() // directory where optimized DEX files should be written. 
+											, loaderParams.containsKey("lib.path")?loaderParams.getString("lib.path"):null // libs folder (if exists)
+											, getClassLoader()); // parent loader
 
-            final String envPaths="HOME="+getFilesDir().getAbsolutePath()+
-                                "\tTMPDIR="+getFilesDir().getAbsolutePath()+
-                                "\tCACHE_PATH="+getCacheDir().getAbsolutePath();
-            if (environment != null && environment.length()>0)
-                environment=envPaths+"\t"+environment;
-            else
-                environment=envPaths;
+			@SuppressWarnings("rawtypes")
+			Class loaderClass = m_classLoader.loadClass("loader.class.name"); // load QtLoader class 
+			QtLoaderInterface qtLoader=(QtLoaderInterface)loaderClass.newInstance(); // create an instance
+			if (!qtLoader.loadApplication(this, loaderParams))
+				throw new Exception("");
 
-            m_surface.applicationStared( QtApplication.startApplication(params, environment) );
-            m_started = true;
-        }
-        catch (NameNotFoundException e)
-        {
-            Log.e(QtApplication.QtTAG, "Can't package metadata", e);
-        }
-    }
-
+			if (!qtLoader.statApplication())
+				throw new Exception("");
+			
+		} catch (Exception e) {
+	        AlertDialog errorDialog = new AlertDialog.Builder(QtActivity.this).create();
+	        if (m_activityInfo != null && m_activityInfo.metaData.containsKey("android.app.fatal_error_msg"))
+				errorDialog.setMessage(m_activityInfo.metaData.getString("android.app.fatal_error_msg"));
+			else
+				errorDialog.setMessage("Fatal error, your application can't be started.");
+	        errorDialog.setButton(getResources().getString(android.R.string.ok), new DialogInterface.OnClickListener() {
+	            public void onClick(DialogInterface dialog, int which) {
+	                finish();
+	            }
+	        });
+	        errorDialog.show();
+		}
+	}
+	
     private IMinistroCallback m_ministroCallback = new IMinistroCallback.Stub() {
-        @Override
-        public void libs(final String[] libs, final String evnVars, final String params,
-                         int errorCode, String errorMessage) throws RemoteException {
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    startApplication(libs, evnVars, params);
-                }
-            });
-        }
+    	// this function is called back by Ministro.
+		@Override
+		public void loaderReady(Bundle loaderParams) throws RemoteException
+		{
+			loadApplication(loaderParams);
+		}
     };
 
     private ServiceConnection m_ministroConnection=new ServiceConnection() {
         private IMinistro m_service = null;
+
         @Override
-        public void onServiceConnected(ComponentName name, IBinder service) {
+        public void onServiceConnected(ComponentName name, IBinder service)
+        {
             m_service = IMinistro.Stub.asInterface(service);
             try {
-                    if (m_service!=null)
-                            m_service.checkModules(m_ministroCallback, m_qtLibs, (String) QtActivity.this.getTitle(), MINISTRO_API_LEVEL, NECESSITAS_API_LEVEL);
+	            if (m_service!=null)
+	                    m_service.checkModules(m_ministroCallback, m_qtLibs, (String) QtActivity.this.getTitle(), MINISTRO_API_LEVEL, QT_API_LEVEL);
             } catch (RemoteException e) {
                     e.printStackTrace();
             }
         }
 
         @Override
-        public void onServiceDisconnected(ComponentName name) {
+        public void onServiceDisconnected(ComponentName name)
+        {
             m_service = null;
         }
     };
 
-    private boolean m_quitApp = true;
-    private Process m_debuggerProcess=null; // debugger process
-    private void exitApplication()
+    private void ministroNotFound()
     {
         AlertDialog errorDialog = new AlertDialog.Builder(QtActivity.this).create();
-        errorDialog.setMessage("Can't find Ministro service.\nThe application can't start.");
-        errorDialog.setButton("OK", new DialogInterface.OnClickListener() {
+
+        if (m_activityInfo != null && m_activityInfo.metaData.containsKey("android.app.ministro_not_found_msg"))
+			errorDialog.setMessage(m_activityInfo.metaData.getString("android.app.ministro_not_found_msg"));
+		else
+			errorDialog.setMessage("Can't find Ministro service.\nThe application can't start.");
+
+        errorDialog.setButton(getResources().getString(android.R.string.ok), new DialogInterface.OnClickListener() {
             public void onClick(DialogInterface dialog, int which) {
                 finish();
             }
@@ -191,24 +185,22 @@ public class QtActivity extends Activity {
         try
         {
             ActivityInfo ai=getPackageManager().getActivityInfo(getComponentName(), PackageManager.GET_META_DATA);
-            if (!ai.metaData.containsKey("android.app.qt_libs_resource_id"))
+            if (ai.metaData.containsKey("android.app.qt_libs_resource_id"))
             {
-                // No required qt libs ?
-                // Probably this application was compiled using static qt libs
-                // or all qt libs are prebundled into the package
-                m_ministroCallback.libs(null, null, null, 0, null);
-                return;
+                int resourceId = ai.metaData.getInt("android.app.qt_libs_resource_id");
+                m_qtLibs=getResources().getStringArray(resourceId);
             }
-            int resourceId = ai.metaData.getInt("android.app.qt_libs_resource_id");
-            m_qtLibs=getResources().getStringArray(resourceId);
+
             if (getIntent().getExtras()!= null && getIntent().getExtras().containsKey("use_local_qt_libs")
                     && getIntent().getExtras().getString("use_local_qt_libs").equals("true"))
             {
                 ArrayList<String> libraryList= new ArrayList<String>();
-                for(int i=0;i<m_qtLibs.length;i++)
-                {
-                    libraryList.add("/data/local/qt/lib/lib"+m_qtLibs[i]+".so");
-                }
+
+                if (m_qtLibs != null)
+	                for(int i=0;i<m_qtLibs.length;i++)
+	                {
+	                    libraryList.add("/data/local/qt/lib/lib"+m_qtLibs[i]+".so");
+	                }
 
                 if (getIntent().getExtras().containsKey("load_local_libs"))
                 {
@@ -219,19 +211,20 @@ public class QtActivity extends Activity {
 
                 String[] libs=new String[libraryList.size()];
                 libs=libraryList.toArray(libs);
-                m_ministroCallback.libs(libs,"QML_IMPORT_PATH=/data/local/qt/imports\tQT_PLUGIN_PATH=/data/local/qt/plugins", "-platform\tandroid", 0,null);
+//                m_ministroCallback.libs(libs,"QML_IMPORT_PATH=/data/local/qt/imports\tQT_PLUGIN_PATH=/data/local/qt/plugins", "-platform\tandroid", 0,null);
                 return;
             }
 
             try {
-                if (!bindService(new Intent(eu.licentia.necessitas.ministro.IMinistro.class.getCanonicalName()), m_ministroConnection, Context.BIND_AUTO_CREATE))
+                if (!bindService(new Intent(org.kde.necessitas.ministro.IMinistro.class.getCanonicalName()), m_ministroConnection, Context.BIND_AUTO_CREATE))
                     throw new SecurityException("");
             } catch (SecurityException e) {
                 if (firstStart)
                 {
                     AlertDialog.Builder downloadDialog = new AlertDialog.Builder(this);
-                    downloadDialog.setMessage("This application requires Ministro, Qt libaries for Android. Would you like to install it?");
-                    downloadDialog.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                    if (m_activityInfo != null && m_activityInfo.metaData.containsKey("android.app.android.app.ministro_needed_msg"))
+                    	downloadDialog.setMessage(m_activityInfo.metaData.getString("android.app.android.app.ministro_needed_msg"));
+                    downloadDialog.setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
                         public void onClick(DialogInterface dialogInterface, int i) {
                             try
                             {
@@ -241,12 +234,12 @@ public class QtActivity extends Activity {
                             }
                             catch (Exception e) {
                                 e.printStackTrace();
-                                exitApplication();
+                                ministroNotFound();
                             }
                         }
                     });
 
-                    downloadDialog.setNegativeButton("No", new DialogInterface.OnClickListener() {
+                    downloadDialog.setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
                         public void onClick(DialogInterface dialogInterface, int i) {
                             QtActivity.this.finish();
                         }
@@ -255,7 +248,7 @@ public class QtActivity extends Activity {
                 }
                 else
                 {
-                    exitApplication();
+                    ministroNotFound();
                 }
             }
         }
@@ -265,184 +258,846 @@ public class QtActivity extends Activity {
         }
     }
 
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data)
-    {
-        if (requestCode == MINISTRO_INSTALL_REQUEST_CODE)
-                startApp(false);
-        super.onActivityResult(requestCode, resultCode, data);
-    }
+	@Override
+	public void setQtActivityListener(QtActivityDelegate listener)
+	{
+		QtApplication.m_activityListener = listener;
+	}
 
-    @Override
-    public void onCreate(Bundle savedInstanceState)
-    {
-        super.onCreate(savedInstanceState);
-        requestWindowFeature(Window.FEATURE_NO_TITLE);
-        m_quitApp = true;
-        QtApplication.setMainActivity(this);
-        if (null == getLastNonConfigurationInstance())
-        {
-            DisplayMetrics metrics = new DisplayMetrics();
-            getWindowManager().getDefaultDisplay().getMetrics(metrics);
-            QtApplication.setApplicationDisplayMetrics(metrics.widthPixels, metrics.heightPixels,
-                            metrics.widthPixels, metrics.heightPixels,
-                            metrics.xdpi, metrics.ydpi);
-        }
-        // requestWindowFeature(Window.FEATURE_NO_TITLE);
-        m_layout=new QtLayout(this);
-        m_surface = new QtSurface(this, m_id);
-        m_layout.addView(m_surface,0);
-        setContentView(m_layout);
-        m_layout.bringChildToFront(m_surface);
-        if (null == getLastNonConfigurationInstance())
-            startApp(true);
-    }
+	@Override
+	public Activity getActivity()
+	{
+		return this;
+	}
 
-    public QtLayout getQtLayout()
-    {
-        return m_layout;
-    }
+	/////////////////////////// forward all notifications ////////////////////////////
+	@Override
+	protected void onActivityResult(int requestCode, int resultCode, Intent data)
+	{
+		if (QtApplication.m_activityListener != null)
+		{
+			QtApplication.m_activityListener.onActivityResult(requestCode, resultCode, data);
+			return;
+		}
+	    if (requestCode == MINISTRO_INSTALL_REQUEST_CODE)
+	            startApp(false);
+	    super.onActivityResult(requestCode, resultCode, data);
+	}
 
-    public QtSurface getQtSurface()
-    {
-        return m_surface;
-    }
+	@Override
+	protected void onApplyThemeResource(Theme theme, int resid, boolean first)
+	{
+		if (QtApplication.m_activityListener != null)
+			QtApplication.m_activityListener.onApplyThemeResource(theme, resid, first);
+		else
+			super.onApplyThemeResource(theme, resid, first);
+	}
+	
+	@Override
+	public void onAttachedToWindow()
+	{
+		if (QtApplication.m_activityListener != null)
+			QtApplication.m_activityListener.onAttachedToWindow();
+		else
+			super.onAttachedToWindow();
+	}
+	
+	@Override
+	public void onBackPressed()
+	{
+		if (QtApplication.m_activityListener != null)
+			QtApplication.m_activityListener.onBackPressed();
+		else
+			super.onBackPressed();
+	}
+	
+	@Override
+	protected void onChildTitleChanged(Activity childActivity, CharSequence title)
+	{
+		if (QtApplication.m_activityListener != null)
+			QtApplication.m_activityListener.onChildTitleChanged(childActivity, title);
+		else
+			super.onChildTitleChanged(childActivity, title);
+	}
+	
+	public void onConfigurationChanged(Configuration newConfig)
+	{
+		if (QtApplication.m_activityListener != null)
+			QtApplication.m_activityListener.onDestroy();
+		else
+			super.onConfigurationChanged(newConfig);
+	}
+	
+	@Override
+	public void onContentChanged()
+	{
+		if (QtApplication.m_activityListener != null)
+			QtApplication.m_activityListener.onContentChanged();
+		else
+			super.onContentChanged();
+	}
+	
+	@Override
+	public boolean onContextItemSelected(MenuItem item)
+	{
+		if (QtApplication.m_activityListener != null)
+			return QtApplication.m_activityListener.onContextItemSelected(item);
+		else
+			return super.onContextItemSelected(item);
+	}
+	
+	@Override
+	public void onContextMenuClosed(Menu menu)
+	{
+		if (QtApplication.m_activityListener != null)
+			QtApplication.m_activityListener.onContextMenuClosed(menu);
+		else
+			super.onContextMenuClosed(menu);
+	}
+	
+	@Override
+	public void onCreate(Bundle savedInstanceState)
+	{
+		if (QtApplication.m_activityListener != null)
+		{
+			QtApplication.m_activityListener.onCreate(savedInstanceState);
+			return;
+		}
+	    super.onCreate(savedInstanceState);
+	    requestWindowFeature(Window.FEATURE_NO_TITLE);
+	    try {
+			m_activityInfo = getPackageManager().getActivityInfo(getComponentName(), PackageManager.GET_META_DATA);
+		} catch (NameNotFoundException e) {
+			e.printStackTrace();
+			finish();
+			return;
+		} 
+	    if (null == getLastNonConfigurationInstance())
+	        startApp(true);
+	}
+	
+	@Override
+	public void onCreateContextMenu(ContextMenu menu, View v, ContextMenuInfo menuInfo)
+	{
+		if (QtApplication.m_activityListener != null)
+			QtApplication.m_activityListener.onCreateContextMenu(menu, v, menuInfo);
+		else
+			super.onCreateContextMenu(menu, v, menuInfo);
+	}
+	
+	@Override
+	public CharSequence onCreateDescription()
+	{
+		if (QtApplication.m_activityListener != null)
+			return QtApplication.m_activityListener.onCreateDescription();
+		else
+			return super.onCreateDescription();
+	}
+	
+	@Override
+	protected Dialog onCreateDialog(int id)
+	{
+		if (QtApplication.m_activityListener != null)
+			return QtApplication.m_activityListener.onCreateDialog(id);
+		else
+			return super.onCreateDialog(id);
+	}
+	
+	@Override
+	protected Dialog onCreateDialog(int id, Bundle args)
+	{
+		if (QtApplication.m_activityListener != null)
+			return QtApplication.m_activityListener.onCreateDialog(id, args);
+		else
+			return super.onCreateDialog(id, args);
+	}
 
-    @Override
-    public Object onRetainNonConfigurationInstance()
-    {
-        super.onRetainNonConfigurationInstance();
-        m_quitApp = false;
-        return true;
-    }
+	@Override
+	public boolean onCreateOptionsMenu(Menu menu)
+	{
+		if (QtApplication.m_activityListener != null)
+			return QtApplication.m_activityListener.onCreateOptionsMenu(menu);
+		else
+			return super.onCreateOptionsMenu(menu);
+	}
+	
+	@Override
+	public boolean onCreatePanelMenu(int featureId, Menu menu)
+	{
+		if (QtApplication.m_activityListener != null)
+			return QtApplication.m_activityListener.onCreatePanelMenu(featureId, menu);
+		else
+			return super.onCreatePanelMenu(featureId, menu);
+	}
+	
+	@Override
+	public View onCreatePanelView(int featureId)
+	{
+		if (QtApplication.m_activityListener != null)
+			return QtApplication.m_activityListener.onCreatePanelView(featureId);
+		else
+			return super.onCreatePanelView(featureId);
+	}
+	
+	@Override
+	public boolean onCreateThumbnail(Bitmap outBitmap, Canvas canvas)
+	{
+		if (QtApplication.m_activityListener != null)
+			return QtApplication.m_activityListener.onCreateThumbnail(outBitmap, canvas);
+		else
+			return super.onCreateThumbnail(outBitmap, canvas);
+	}
+	
+	@Override
+	public View onCreateView(String name, Context context, AttributeSet attrs)
+	{
+		if (QtApplication.m_activityListener != null)
+			return QtApplication.m_activityListener.onCreateView(name, context, attrs);
+		else
+			return super.onCreateView(name, context, attrs);
+	}
+	
+	@Override
+	protected void onDestroy()
+	{
+		if (QtApplication.m_activityListener != null)
+			QtApplication.m_activityListener.onDestroy();
+		else
+			super.onDestroy();
+	}
+	
+	@Override
+	public void onDetachedFromWindow()
+	{
+		if (QtApplication.m_activityListener != null)
+			QtApplication.m_activityListener.onDetachedFromWindow();
+		else
+			super.onDetachedFromWindow();
+	}
+	
+	@Override
+	public boolean onKeyDown(int keyCode, KeyEvent event)
+	{
+		if (QtApplication.m_activityListener != null)
+			return QtApplication.m_activityListener.onKeyDown(keyCode, event);
+		else
+			return super.onKeyDown(keyCode, event);
+	}
+	
+	@Override
+	public boolean onKeyLongPress(int keyCode, KeyEvent event)
+	{
+		if (QtApplication.m_activityListener != null)
+			return QtApplication.m_activityListener.onKeyLongPress(keyCode, event);
+		else
+			return super.onKeyLongPress(keyCode, event);
+	}
+	
+	@Override
+	public boolean onKeyMultiple(int keyCode, int repeatCount, KeyEvent event)
+	{
+		if (QtApplication.m_activityListener != null)
+			return QtApplication.m_activityListener.onKeyMultiple(keyCode, repeatCount, event);
+		else
+			return super.onKeyMultiple(keyCode, repeatCount, event);
+	}
+	
+	@Override
+	public boolean onKeyUp(int keyCode, KeyEvent event)
+	{
+		if (QtApplication.m_activityListener != null)
+			return QtApplication.m_activityListener.onKeyUp(keyCode, event);
+		else
+			return super.onKeyUp(keyCode, event);
+	}
+	
+	@Override
+	public void onLowMemory()
+	{
+		if (QtApplication.m_activityListener != null)
+			QtApplication.m_activityListener.onLowMemory();
+		else
+			super.onLowMemory();
+	}
+	
+	@Override
+	public boolean onMenuItemSelected(int featureId, MenuItem item)
+	{
+		if (QtApplication.m_activityListener != null)
+			return QtApplication.m_activityListener.onMenuItemSelected(featureId, item);
+		else
+			return super.onMenuItemSelected(featureId, item);
+	}
+	
+	@Override
+	public boolean onMenuOpened(int featureId, Menu menu)
+	{
+		if (QtApplication.m_activityListener != null)
+			return QtApplication.m_activityListener.onMenuOpened(featureId, menu);
+		else
+			return super.onMenuOpened(featureId, menu);
+	}
+	
+	@Override
+	protected void onNewIntent(Intent intent)
+	{
+		if (QtApplication.m_activityListener != null)
+			QtApplication.m_activityListener.onNewIntent(intent);
+		else
+			super.onNewIntent(intent);
+	}
+	
+	@Override
+	public boolean onOptionsItemSelected(MenuItem item)
+	{
+		if (QtApplication.m_activityListener != null)
+			return QtApplication.m_activityListener.onOptionsItemSelected(item);
+		else
+			return super.onOptionsItemSelected(item);
+	}
+	
+	@Override
+	public void onOptionsMenuClosed(Menu menu)
+	{
+		if (QtApplication.m_activityListener != null)
+			QtApplication.m_activityListener.onOptionsMenuClosed(menu);
+		else
+			super.onOptionsMenuClosed(menu);
+	}
+	
+	@Override
+	public void onPanelClosed(int featureId, Menu menu)
+	{
+		if (QtApplication.m_activityListener != null)
+			QtApplication.m_activityListener.onPanelClosed(featureId, menu);
+		else
+			super.onPanelClosed(featureId, menu);
+	}
+	
+	@Override
+	protected void onPause()
+	{
+		if (QtApplication.m_activityListener != null)
+			QtApplication.m_activityListener.onPause();
+		else
+			super.onPause();
+	}
+	
+	@Override
+	protected void onPostCreate(Bundle savedInstanceState)
+	{
+		if (QtApplication.m_activityListener != null)
+			QtApplication.m_activityListener.onPostCreate(savedInstanceState);
+		else
+			super.onPostCreate(savedInstanceState);
+	}
+	
+	@Override
+	protected void onPostResume()
+	{
+		if (QtApplication.m_activityListener != null)
+			QtApplication.m_activityListener.onPostResume();
+		else
+			super.onPostResume();
+	}
+	
+	@Override
+	protected void onPrepareDialog(int id, Dialog dialog)
+	{
+		if (QtApplication.m_activityListener != null)
+			QtApplication.m_activityListener.onPrepareDialog(id, dialog);
+		else
+			super.onPrepareDialog(id, dialog);
+	}
+	
+	@Override
+	protected void onPrepareDialog(int id, Dialog dialog, Bundle args)
+	{
+		if (QtApplication.m_activityListener != null)
+			QtApplication.m_activityListener.onPrepareDialog(id, dialog, args);
+		else
+			super.onPrepareDialog(id, dialog, args);
+	}
+	
+	@Override
+	public boolean onPrepareOptionsMenu(Menu menu)
+	{
+		if (QtApplication.m_activityListener != null)
+			return QtApplication.m_activityListener.onPrepareOptionsMenu(menu);
+		else
+			return super.onPrepareOptionsMenu(menu);
+	}
+	
+	@Override
+	public boolean onPreparePanel(int featureId, View view, Menu menu)
+	{
+		if (QtApplication.m_activityListener != null)
+			return QtApplication.m_activityListener.onPreparePanel(featureId, view, menu);
+		else
+			return super.onPreparePanel(featureId, view, menu);
+	}
+	
+	@Override
+	protected void onRestart()
+	{
+		if (QtApplication.m_activityListener != null)
+			QtApplication.m_activityListener.onRestart();
+		else
+			super.onRestart();
+	}
+	
+	@Override
+	protected void onRestoreInstanceState(Bundle savedInstanceState)
+	{
+		if (QtApplication.m_activityListener != null)
+			QtApplication.m_activityListener.onRestoreInstanceState(savedInstanceState);
+		else
+			super.onRestoreInstanceState(savedInstanceState);
+	}
+	
+	@Override
+	protected void onResume()
+	{
+		if (QtApplication.m_activityListener != null)
+			QtApplication.m_activityListener.onResume();
+		else
+			super.onResume();
+	}
+	
+	@Override
+	public Object onRetainNonConfigurationInstance()
+	{
+		if (QtApplication.m_activityListener != null)
+			return QtApplication.m_activityListener.onRetainNonConfigurationInstance();
+		else
+			return super.onRetainNonConfigurationInstance();
+	}
+	
+	@Override
+	protected void onSaveInstanceState(Bundle outState)
+	{
+		if (QtApplication.m_activityListener != null)
+			QtApplication.m_activityListener.onSaveInstanceState(outState);
+		else
+			super.onSaveInstanceState(outState);
+	}
+	
+	@Override
+	public boolean onSearchRequested()
+	{
+		if (QtApplication.m_activityListener != null)
+			return QtApplication.m_activityListener.onSearchRequested();
+		else
+			return super.onSearchRequested();
+	}
+	
+	@Override
+	protected void onStart()
+	{
+		if (QtApplication.m_activityListener != null)
+			QtApplication.m_activityListener.onStart();
+		else
+			super.onStart();
+	}
+	
+	@Override
+	protected void onStop()
+	{
+		if (QtApplication.m_activityListener != null)
+			QtApplication.m_activityListener.onStop();
+		else
+			super.onStop();
+	}
+	
+	@Override
+	protected void onTitleChanged(CharSequence title, int color)
+	{
+		if (QtApplication.m_activityListener != null)
+			QtApplication.m_activityListener.onTitleChanged(title, color);
+		else
+			super.onTitleChanged(title, color);
+	}
+	
+	@Override
+	public boolean onTouchEvent(MotionEvent event)
+	{
+		if (QtApplication.m_activityListener != null)
+			return QtApplication.m_activityListener.onTouchEvent(event);
+		else
+			return super.onTouchEvent(event);
+	}
+	
+	@Override
+	public boolean onTrackballEvent(MotionEvent event)
+	{
+		if (QtApplication.m_activityListener != null)
+			return QtApplication.m_activityListener.onTrackballEvent(event);
+		else
+			return super.onTrackballEvent(event);
+	}
+	
+	@Override
+	public void onUserInteraction()
+	{
+		if (QtApplication.m_activityListener != null)
+			QtApplication.m_activityListener.onUserInteraction();
+		else
+			super.onUserInteraction();
+	}
+	
+	@Override
+	protected void onUserLeaveHint()
+	{
+		if (QtApplication.m_activityListener != null)
+			QtApplication.m_activityListener.onUserLeaveHint();
+		else
+			super.onUserLeaveHint();
+	}
+	
+	@Override
+	public void onWindowAttributesChanged(LayoutParams params)
+	{
+		if (QtApplication.m_activityListener != null)
+			QtApplication.m_activityListener.onWindowAttributesChanged(params);
+		else
+			super.onWindowAttributesChanged(params);
+	}
+	
+	@Override
+	public void onWindowFocusChanged(boolean hasFocus)
+	{
+		if (QtApplication.m_activityListener != null)
+			QtApplication.m_activityListener.onWindowFocusChanged(hasFocus);
+		else
+			super.onWindowFocusChanged(hasFocus);
+	}
+	/////////////////////////// forward all notifications ////////////////////////////
 
-    @Override
-    protected void onDestroy()
-    {
-        QtApplication.setMainActivity(null);
-        super.onDestroy();
-        if (m_quitApp)
-        {
-            Log.i(QtApplication.QtTAG, "onDestroy");
-            if (m_debuggerProcess != null)
-                m_debuggerProcess.destroy();
-            System.exit(0);// FIXME remove it or find a better way
-        }
-        QtApplication.setMainActivity(null);
-    }
 
-    @Override
-    protected void onResume()
-    {
-        // fire all lostActions
-        synchronized (QtApplication.m_mainActivityMutex)
-        {
-            Iterator<Runnable> itr=QtApplication.getLostActions().iterator();
-            while(itr.hasNext())
-                runOnUiThread(itr.next());
-            if (m_started)
-            {
-                QtApplication.clearLostActions();
-                QtApplication.updateWindow();
-            }
-        }
-        super.onResume();
-    }
+	/////////////////////////// Super class calls ////////////////////////////
+	@Override
+	public void super_onActivityResult(int requestCode, int resultCode, Intent data)
+	{
+		super.onActivityResult(requestCode, resultCode, data);
+	}
 
-    public void redrawWindow(int left, int top, int right, int bottom) {
-        m_surface.drawBitmap(new Rect(left, top, right, bottom));
-    }
+	@Override
+	public void super_onApplyThemeResource(Theme theme, int resid, boolean first)
+	{
+		super.onApplyThemeResource(theme, resid, first);
+	}
 
-    public void setFullScreen(boolean enterFullScreen)
-    {
-        if (m_fullScreen == enterFullScreen)
-            return;
-        if (m_fullScreen = enterFullScreen)
-            getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
-        else
-            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
-    }
+	@Override
+	public void super_onAttachedToWindow()
+	{
+		super.onAttachedToWindow();
+	}
 
-    @Override
-    protected void onSaveInstanceState(Bundle outState) {
-        super.onSaveInstanceState(outState);
-        outState.putBoolean("FullScreen",m_fullScreen);
-        outState.putBoolean("Started", m_started);
-    }
+	@Override
+	public void super_onBackPressed()
+	{
+		super.onBackPressed();
+	}
 
-    @Override
-    protected void onRestoreInstanceState(Bundle savedInstanceState) {
-        super.onRestoreInstanceState(savedInstanceState);
-        setFullScreen(savedInstanceState.getBoolean("FullScreen"));
-        m_started = savedInstanceState.getBoolean("Started");
-        if (m_started)
-            m_surface.applicationStared( true );
-    }
+	@Override
+	public void super_onChildTitleChanged(Activity childActivity, CharSequence title)
+	{
+		super.onChildTitleChanged(childActivity, title);
+	}
 
-    public void showSoftwareKeyboard()
-    {
-        softwareKeyboardIsVisible = true;
-        InputMethodManager imm = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
-        imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, InputMethodManager.HIDE_IMPLICIT_ONLY );
-    }
+	@Override
+	public void super_onConfigurationChanged(Configuration newConfig)
+	{
+		super.onConfigurationChanged(newConfig);
+	}
 
-    public void hideSoftwareKeyboard()
-    {
-        if (softwareKeyboardIsVisible)
-        {
-            InputMethodManager imm = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
-            imm.toggleSoftInput(0, 0);
-        }
-        softwareKeyboardIsVisible = false;
-    }
+	@Override
+	public void super_onContentChanged()
+	{
+		super.onContentChanged();
+	}
 
-    @Override
-    public boolean dispatchKeyEvent(KeyEvent event) {
-        if (m_started && event.getAction() == KeyEvent.ACTION_MULTIPLE &&
-            event.getCharacters() != null &&
-            event.getCharacters().length() == 1 &&
-            event.getKeyCode() == 0) {
-            Log.i(QtApplication.QtTAG, "dispatchKeyEvent at MULTIPLE with one character: "+event.getCharacters());
-            QtApplication.keyDown(0, event.getCharacters().charAt(0), event.getMetaState());
-            QtApplication.keyUp(0, event.getCharacters().charAt(0), event.getMetaState());
-        }
+	@Override
+	public boolean super_onContextItemSelected(MenuItem item)
+	{
+		return super.onContextItemSelected(item);
+	}
 
-        return super.dispatchKeyEvent(event);
-    }
+	@Override
+	public void super_onContextMenuClosed(Menu menu)
+	{
+		super.onContextMenuClosed(menu);
+	}
 
-    @Override
-    public boolean onKeyDown(int keyCode, KeyEvent event)
-    {
-        if (!m_started)
-            return false;
-        m_metaState = MetaKeyKeyListener.handleKeyDown(m_metaState, keyCode, event);
-        int c = event.getUnicodeChar(MetaKeyKeyListener.getMetaState(m_metaState));
-        int lc=c;
-        m_metaState = MetaKeyKeyListener.adjustMetaAfterKeypress(m_metaState);
+	@Override
+	public void super_onCreate(Bundle savedInstanceState)
+	{
+		super.onCreate(savedInstanceState);
+	}
 
-        if ((c & KeyCharacterMap.COMBINING_ACCENT) != 0)
-        {
-            c = c & KeyCharacterMap.COMBINING_ACCENT_MASK;
-            int composed = KeyEvent.getDeadChar(m_lastChar, c);
-            c = composed;
-        }
-        m_lastChar = lc;
-        if (keyCode != KeyEvent.KEYCODE_BACK)
-                QtApplication.keyDown(keyCode, c, event.getMetaState());
-        return true;
-    }
+	@Override
+	public void super_onCreateContextMenu(ContextMenu menu, View v, ContextMenuInfo menuInfo)
+	{
+		super.onCreateContextMenu(menu, v, menuInfo);
+	}
 
-    @Override
-    public boolean onKeyUp(int keyCode, KeyEvent event)
-    {
-        if (!m_started)
-            return false;
-        m_metaState = MetaKeyKeyListener.handleKeyUp(m_metaState, keyCode, event);
-        QtApplication.keyUp(keyCode, event.getUnicodeChar(), event.getMetaState());
-        return true;
-    }
+	@Override
+	public CharSequence super_onCreateDescription()
+	{
+		return super.onCreateDescription();
+	}
 
-    public void onConfigurationChanged(Configuration newConfig) {
-        super.onConfigurationChanged(newConfig);
-    }
+	@Override
+	public Dialog super_onCreateDialog(int id)
+	{
+		return super.onCreateDialog(id);
+	}
+
+	@Override
+	public Dialog super_onCreateDialog(int id, Bundle args)
+	{
+		return super.onCreateDialog(id, args);
+	}
+
+	@Override
+	public boolean super_onCreateOptionsMenu(Menu menu)
+	{
+		return super.onCreateOptionsMenu(menu);
+	}
+
+	@Override
+	public boolean super_onCreatePanelMenu(int featureId, Menu menu)
+	{
+		return super.onCreatePanelMenu(featureId, menu);
+	}
+
+	@Override
+	public View super_onCreatePanelView(int featureId)
+	{
+		return super.onCreatePanelView(featureId);
+	}
+
+	@Override
+	public boolean super_onCreateThumbnail(Bitmap outBitmap, Canvas canvas)
+	{
+		return super.onCreateThumbnail(outBitmap, canvas);
+	}
+
+	@Override
+	public View super_onCreateView(String name, Context context, AttributeSet attrs)
+	{
+		return super.onCreateView(name, context, attrs);
+	}
+
+	@Override
+	public void super_onDestroy()
+	{
+		super.onDestroy();
+	}
+
+	@Override
+	public void super_onDetachedFromWindow()
+	{
+		super.onDetachedFromWindow();
+	}
+
+	@Override
+	public boolean super_onKeyDown(int keyCode, KeyEvent event)
+	{
+		return super.onKeyDown(keyCode, event);
+	}
+
+	@Override
+	public boolean super_onKeyLongPress(int keyCode, KeyEvent event)
+	{
+		return super.onKeyLongPress(keyCode, event);
+	}
+
+	@Override
+	public boolean super_onKeyMultiple(int keyCode, int repeatCount, KeyEvent event)
+	{
+		return super.onKeyMultiple(keyCode, repeatCount, event);
+	}
+
+	@Override
+	public boolean super_onKeyUp(int keyCode, KeyEvent event)
+	{
+		return super.onKeyUp(keyCode, event);
+	}
+
+	@Override
+	public void super_onLowMemory()
+	{
+		super.onLowMemory();
+	}
+
+	@Override
+	public boolean super_onMenuItemSelected(int featureId, MenuItem item)
+	{
+		return super.onMenuItemSelected(featureId, item);
+	}
+
+	@Override
+	public boolean super_onMenuOpened(int featureId, Menu menu)
+	{
+		return super.onMenuOpened(featureId, menu);
+	}
+
+	@Override
+	public void super_onNewIntent(Intent intent)
+	{
+		super.onNewIntent(intent);
+	}
+
+	@Override
+	public boolean super_onOptionsItemSelected(MenuItem item)
+	{
+		return super.onOptionsItemSelected(item);
+	}
+
+	@Override
+	public void super_onOptionsMenuClosed(Menu menu)
+	{
+		super.onOptionsMenuClosed(menu);
+	}
+
+	@Override
+	public void super_onPanelClosed(int featureId, Menu menu)
+	{
+		super.onPanelClosed(featureId, menu);
+	}
+
+	@Override
+	public void super_onPause()
+	{
+		super.onPause();
+	}
+
+	@Override
+	public void super_onPostCreate(Bundle savedInstanceState)
+	{
+		super.onPostCreate(savedInstanceState);
+	}
+
+	@Override
+	public void super_onPostResume()
+	{
+		super.onPostResume();
+	}
+
+	@Override
+	public void super_onPrepareDialog(int id, Dialog dialog)
+	{
+		super.onPrepareDialog(id, dialog);
+	}
+
+	@Override
+	public void super_onPrepareDialog(int id, Dialog dialog, Bundle args)
+	{
+		super.onPrepareDialog(id, dialog, args);
+	}
+
+	@Override
+	public boolean super_onPrepareOptionsMenu(Menu menu)
+	{
+		return super.onPrepareOptionsMenu(menu);
+	}
+
+	@Override
+	public boolean super_onPreparePanel(int featureId, View view, Menu menu)
+	{
+		return super.onPreparePanel(featureId, view, menu);
+	}
+
+	@Override
+	public void super_onRestart()
+	{		
+		super.onRestart();
+	}
+
+	@Override
+	public void super_onRestoreInstanceState(Bundle savedInstanceState)
+	{
+		super.onRestoreInstanceState(savedInstanceState);
+	}
+
+	@Override
+	public void super_onResume()
+	{
+		super.onResume();
+	}
+
+	@Override
+	public Object super_onRetainNonConfigurationInstance()
+	{
+		return super.onRetainNonConfigurationInstance();
+	}
+
+	@Override
+	public void super_onSaveInstanceState(Bundle outState)
+	{
+		super.onSaveInstanceState(outState);
+		
+	}
+
+	@Override
+	public boolean super_onSearchRequested()
+	{
+		return super.onSearchRequested();
+	}
+
+	@Override
+	public void super_onStart()
+	{
+		super.onStart();
+	}
+
+	@Override
+	public void super_onStop()
+	{
+		super.onStop();
+	}
+
+	@Override
+	public void super_onTitleChanged(CharSequence title, int color)
+	{
+		super.onTitleChanged(title, color);
+	}
+
+	@Override
+	public boolean super_onTouchEvent(MotionEvent event)
+	{
+		return super.onTouchEvent(event);
+	}
+
+	@Override
+	public boolean super_onTrackballEvent(MotionEvent event)
+	{
+		return super.onTrackballEvent(event);
+	}
+
+	@Override
+	public void super_onUserInteraction()
+	{
+		super.onUserInteraction();
+	}
+
+	@Override
+	public void super_onUserLeaveHint()
+	{
+		super.onUserLeaveHint();
+	}
+
+	@Override
+	public void super_onWindowAttributesChanged(LayoutParams params)
+	{
+		super.onWindowAttributesChanged(params);
+	}
+
+	@Override
+	public void super_onWindowFocusChanged(boolean hasFocus)
+	{
+		super.onWindowFocusChanged(hasFocus);
+	}
+	/////////////////////////// Super class calls ////////////////////////////
 }
