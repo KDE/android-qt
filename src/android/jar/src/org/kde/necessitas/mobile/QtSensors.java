@@ -32,7 +32,7 @@ package org.kde.necessitas.mobile;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.kde.necessitas.industrius.QtApplication;
+import org.kde.necessitas.industrius.QtNative;
 
 import android.app.Activity;
 import android.hardware.Sensor;
@@ -67,7 +67,7 @@ public class QtSensors implements SensorEventListener
 
     private static void registerSensors ()
     {
-        m_SensorManager = (SensorManager)QtApplication.mainActivity().getSystemService(Activity.SENSOR_SERVICE);
+        m_SensorManager = (SensorManager)QtNative.mainActivity().getSystemService(Activity.SENSOR_SERVICE);
     }
 
     private void start (int datarate)

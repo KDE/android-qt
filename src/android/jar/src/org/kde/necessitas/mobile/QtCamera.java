@@ -17,7 +17,7 @@ package org.kde.necessitas.mobile;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
-import org.kde.necessitas.industrius.QtApplication;
+import org.kde.necessitas.industrius.QtNative;
 import org.kde.necessitas.industrius.QtLayout;
 
 import android.app.Activity;
@@ -83,12 +83,12 @@ public class QtCamera implements PreviewCallback, Callback{
         m_videoPreviewParams = new int[4];
         IntentFilter filter = new IntentFilter(Intent.ACTION_SCREEN_OFF);
         BroadcastReceiver mReceiver = new ScreenReceiver();
-        QtApplication.mainActivity().registerReceiver(mReceiver, filter);
-        m_surfaceView = new SurfaceView(QtApplication.mainActivity());
+        QtNative.mainActivity().registerReceiver(mReceiver, filter);
+        m_surfaceView = new SurfaceView(QtNative.mainActivity());
         m_surfaceView.getHolder().setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
         m_surfaceView.getHolder().addCallback(this);
         m_surfaceView.setFocusable(true);
-        QtApplication.mainActivity().getQtLayout().addView(m_surfaceView,1,new QtLayout.LayoutParams(0,0,1,1));
+        QtNative.mainActivity().getQtLayout().addView(m_surfaceView,1,new QtLayout.LayoutParams(0,0,1,1));
     }
 
     public static Camera getCamera()
@@ -139,7 +139,7 @@ public class QtCamera implements PreviewCallback, Callback{
         m_activity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                QtApplication.mainActivity().getQtLayout().updateViewLayout(m_surfaceView, new QtLayout.LayoutParams(m_videoPreviewParams[0],m_videoPreviewParams[1],m_videoPreviewParams[2],m_videoPreviewParams[3]));
+                QtNative.mainActivity().getQtLayout().updateViewLayout(m_surfaceView, new QtLayout.LayoutParams(m_videoPreviewParams[0],m_videoPreviewParams[1],m_videoPreviewParams[2],m_videoPreviewParams[3]));
             }
         });
         m_camera.stopPreview();
@@ -233,7 +233,7 @@ public class QtCamera implements PreviewCallback, Callback{
         }
         m_activity.runOnUiThread(new Runnable() {
             public void run() {
-                QtApplication.mainActivity().getQtLayout().updateViewLayout(m_surfaceView, new QtLayout.LayoutParams(0,0,1,1));
+                QtNative.mainActivity().getQtLayout().updateViewLayout(m_surfaceView, new QtLayout.LayoutParams(0,0,1,1));
             }
         });
 
@@ -257,7 +257,7 @@ public class QtCamera implements PreviewCallback, Callback{
 
     public static void setActivity()
     {
-        m_activity = QtApplication.mainActivity();
+        m_activity = QtNative.mainActivity();
     }
 
     public void setCameraState(int state)
@@ -532,7 +532,7 @@ public class QtCamera implements PreviewCallback, Callback{
                     stopRecord();
                 }
                 m_screenOff = true;
-                QtApplication.mainActivity().unregisterReceiver(this);
+                QtNative.mainActivity().unregisterReceiver(this);
             }
         }
     }

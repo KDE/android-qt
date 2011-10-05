@@ -32,11 +32,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 
-import org.kde.necessitas.ministro.IMinistro;
-import org.kde.necessitas.ministro.IMinistroCallback;
-
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.Dialog;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -46,21 +44,34 @@ import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.res.Configuration;
+import android.content.res.Resources.Theme;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.graphics.Rect;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.RemoteException;
 import android.text.method.MetaKeyKeyListener;
+import android.util.AttributeSet;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.view.ContextMenu;
+import android.view.ContextMenu.ContextMenuInfo;
 import android.view.KeyCharacterMap;
 import android.view.KeyEvent;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.MotionEvent;
+import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
+import android.view.WindowManager.LayoutParams;
 import android.view.inputmethod.InputMethodManager;
 
-public class QtActivity extends Activity {
+public class QtActivityDelegate implements QtLoaderInterface, QtActivityDelegateInterface
+{
+	private QtActivityInterface m_activityInterface=null;
 
     private final static int MINISTRO_INSTALL_REQUEST_CODE = 0xf3ee;
     private static final int MINISTRO_API_LEVEL=1; // Ministro api level (check IMinistro.aidl file)
@@ -78,7 +89,7 @@ public class QtActivity extends Activity {
 
     private void startApplication(String [] libs, String environment, String params)
     {
-        QtApplication.loadQtLibraries(libs);
+        QtNative.loadQtLibraries(libs);
         try
         {
             ActivityInfo ai=getPackageManager().getActivityInfo(getComponentName(), PackageManager.GET_META_DATA);
@@ -86,11 +97,11 @@ public class QtActivity extends Activity {
             {
                 // Load bundle libs
                 int resourceId = ai.metaData.getInt("android.app.bundled_libs_resource_id");
-                QtApplication.loadBundledLibraries(getResources().getStringArray(resourceId));
+                QtNative.loadBundledLibraries(getResources().getStringArray(resourceId));
             }
 
             if (ai.metaData.containsKey("android.app.lib_name")) // Load application
-                QtApplication.loadBundledLibraries(new String[]{ai.metaData.getString("android.app.lib_name")});
+                QtNative.loadBundledLibraries(new String[]{ai.metaData.getString("android.app.lib_name")});
 
             // if the applications is debuggable and it has a native debug request
             if ( /*(ai.flags&ApplicationInfo.FLAG_DEBUGGABLE) != 0
@@ -108,11 +119,11 @@ public class QtActivity extends Activity {
                 }
                 catch (IOException ioe)
                 {
-                        Log.e(QtApplication.QtTAG,"Can't start debugging"+ioe.getMessage());
+                        Log.e(QtNative.QtTAG,"Can't start debugging"+ioe.getMessage());
                 }
                 catch (SecurityException se)
                 {
-                        Log.e(QtApplication.QtTAG,"Can't start debugging"+se.getMessage());
+                        Log.e(QtNative.QtTAG,"Can't start debugging"+se.getMessage());
                 }
             }
             // start application
@@ -132,12 +143,12 @@ public class QtActivity extends Activity {
             else
                 environment=envPaths;
 
-            m_surface.applicationStared( QtApplication.startApplication(params, environment) );
+            m_surface.applicationStared( QtNative.startApplication(params, environment) );
             m_started = true;
         }
         catch (NameNotFoundException e)
         {
-            Log.e(QtApplication.QtTAG, "Can't package metadata", e);
+            Log.e(QtNative.QtTAG, "Can't package metadata", e);
         }
     }
 
@@ -267,7 +278,7 @@ public class QtActivity extends Activity {
         }
         catch (Exception e)
         {
-            Log.e(QtApplication.QtTAG, "Can't create main activity", e);
+            Log.e(QtNative.QtTAG, "Can't create main activity", e);
         }
     }
 
@@ -276,7 +287,7 @@ public class QtActivity extends Activity {
     {
         if (requestCode == MINISTRO_INSTALL_REQUEST_CODE)
                 startApp(false);
-        super.onActivityResult(requestCode, resultCode, data);
+        m_activityInterface.super_onActivityResult(requestCode, resultCode, data);
     }
 
     @Override
@@ -285,12 +296,12 @@ public class QtActivity extends Activity {
         super.onCreate(savedInstanceState);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         m_quitApp = true;
-        QtApplication.setMainActivity(this);
+        QtNative.setMainActivity(this);
         if (null == getLastNonConfigurationInstance())
         {
             DisplayMetrics metrics = new DisplayMetrics();
             getWindowManager().getDefaultDisplay().getMetrics(metrics);
-            QtApplication.setApplicationDisplayMetrics(metrics.widthPixels, metrics.heightPixels,
+            QtNative.setApplicationDisplayMetrics(metrics.widthPixels, metrics.heightPixels,
                             metrics.widthPixels, metrics.heightPixels,
                             metrics.xdpi, metrics.ydpi);
         }
@@ -325,31 +336,31 @@ public class QtActivity extends Activity {
     @Override
     protected void onDestroy()
     {
-        QtApplication.setMainActivity(null);
+        QtNative.setMainActivity(null);
         super.onDestroy();
         if (m_quitApp)
         {
-            Log.i(QtApplication.QtTAG, "onDestroy");
+            Log.i(QtNative.QtTAG, "onDestroy");
             if (m_debuggerProcess != null)
                 m_debuggerProcess.destroy();
             System.exit(0);// FIXME remove it or find a better way
         }
-        QtApplication.setMainActivity(null);
+        QtNative.setMainActivity(null);
     }
 
     @Override
     protected void onResume()
     {
         // fire all lostActions
-        synchronized (QtApplication.m_mainActivityMutex)
+        synchronized (QtNative.m_mainActivityMutex)
         {
-            Iterator<Runnable> itr=QtApplication.getLostActions().iterator();
+            Iterator<Runnable> itr=QtNative.getLostActions().iterator();
             while(itr.hasNext())
                 runOnUiThread(itr.next());
             if (m_started)
             {
-                QtApplication.clearLostActions();
-                QtApplication.updateWindow();
+                QtNative.clearLostActions();
+                QtNative.updateWindow();
             }
         }
         super.onResume();
@@ -408,9 +419,9 @@ public class QtActivity extends Activity {
             event.getCharacters() != null &&
             event.getCharacters().length() == 1 &&
             event.getKeyCode() == 0) {
-            Log.i(QtApplication.QtTAG, "dispatchKeyEvent at MULTIPLE with one character: "+event.getCharacters());
-            QtApplication.keyDown(0, event.getCharacters().charAt(0), event.getMetaState());
-            QtApplication.keyUp(0, event.getCharacters().charAt(0), event.getMetaState());
+            Log.i(QtNative.QtTAG, "dispatchKeyEvent at MULTIPLE with one character: "+event.getCharacters());
+            QtNative.keyDown(0, event.getCharacters().charAt(0), event.getMetaState());
+            QtNative.keyUp(0, event.getCharacters().charAt(0), event.getMetaState());
         }
 
         return super.dispatchKeyEvent(event);
@@ -434,7 +445,7 @@ public class QtActivity extends Activity {
         }
         m_lastChar = lc;
         if (keyCode != KeyEvent.KEYCODE_BACK)
-                QtApplication.keyDown(keyCode, c, event.getMetaState());
+                QtNative.keyDown(keyCode, c, event.getMetaState());
         return true;
     }
 
@@ -444,11 +455,291 @@ public class QtActivity extends Activity {
         if (!m_started)
             return false;
         m_metaState = MetaKeyKeyListener.handleKeyUp(m_metaState, keyCode, event);
-        QtApplication.keyUp(keyCode, event.getUnicodeChar(), event.getMetaState());
+        QtNative.keyUp(keyCode, event.getUnicodeChar(), event.getMetaState());
         return true;
     }
 
+	@Override
+	public boolean startApplication(QtActivityInterface activityInterface, Bundle loaderParams)
+	{
+		// TODO Continue with loader implementation
+		m_activityInterface = activityInterface;
+		
+		return true;
+	}
+
+	@Override
+	public void onApplyThemeResource(Theme theme, int resid, boolean first)
+	{
+		m_activityInterface.super_onApplyThemeResource(theme, resid, first);
+	}
+
+	@Override
+	public void onAttachedToWindow()
+	{
+		m_activityInterface.super_onAttachedToWindow();
+	}
+
+	@Override
+	public void onBackPressed()
+	{
+		m_activityInterface.super_onBackPressed();
+	}
+
+	@Override
+	public void onChildTitleChanged(Activity childActivity, CharSequence title)
+	{
+		m_activityInterface.super_onChildTitleChanged(childActivity, title);
+	}
+
+	@Override
+	public void onContentChanged()
+	{
+		m_activityInterface.super_onContentChanged();
+	}
+
+	@Override
+	public boolean onContextItemSelected(MenuItem item)
+	{
+		return m_activityInterface.super_onContextItemSelected(item);
+	}
+
+	@Override
+	public void onContextMenuClosed(Menu menu)
+	{
+		m_activityInterface.super_onContextMenuClosed(menu);
+	}
+
+	@Override
+	public void onCreateContextMenu(ContextMenu menu, View v, ContextMenuInfo menuInfo)
+	{
+		m_activityInterface.super_onCreateContextMenu(menu, v, menuInfo);
+	}
+
+	@Override
+	public CharSequence onCreateDescription()
+	{
+		return m_activityInterface.super_onCreateDescription();
+	}
+
+	@Override
+	public Dialog onCreateDialog(int id)
+	{
+		return m_activityInterface.super_onCreateDialog(id);
+	}
+
+	@Override
+	public Dialog onCreateDialog(int id, Bundle args)
+	{
+		return m_activityInterface.super_onCreateDialog(id, args);
+	}
+
+	@Override
+	public boolean onCreateOptionsMenu(Menu menu)
+	{
+		return m_activityInterface.super_onCreateOptionsMenu(menu);
+	}
+
+	@Override
+	public boolean onCreatePanelMenu(int featureId, Menu menu)
+	{
+		return m_activityInterface.super_onCreatePanelMenu(featureId, menu);
+	}
+
+	@Override
+	public View onCreatePanelView(int featureId)
+	{
+		return m_activityInterface.super_onCreatePanelView(featureId);
+	}
+
+	@Override
+	public boolean onCreateThumbnail(Bitmap outBitmap, Canvas canvas)
+	{
+		return m_activityInterface.super_onCreateThumbnail(outBitmap, canvas);
+	}
+
+	@Override
+	public View onCreateView(String name, Context context, AttributeSet attrs)
+	{
+		return m_activityInterface.super_onCreateView(name, context, attrs);
+	}
+
+	@Override
     public void onConfigurationChanged(Configuration newConfig) {
-        super.onConfigurationChanged(newConfig);
+    	m_activityInterface.super_onConfigurationChanged(newConfig);
     }
+
+	@Override
+	public void onDetachedFromWindow()
+	{
+		m_activityInterface.super_onDetachedFromWindow();
+	}
+
+	@Override
+	public boolean onKeyLongPress(int keyCode, KeyEvent event)
+	{
+		return m_activityInterface.super_onKeyLongPress(keyCode, event);
+	}
+
+	@Override
+	public boolean onKeyMultiple(int keyCode, int repeatCount, KeyEvent event)
+	{
+		return m_activityInterface.super_onKeyMultiple(keyCode, repeatCount, event);
+	}
+
+	@Override
+	public void onLowMemory()
+	{
+		m_activityInterface.super_onLowMemory();
+	}
+
+	@Override
+	public boolean onMenuItemSelected(int featureId, MenuItem item)
+	{
+		return m_activityInterface.super_onMenuItemSelected(featureId, item);
+	}
+
+	@Override
+	public boolean onMenuOpened(int featureId, Menu menu)
+	{
+		return m_activityInterface.super_onMenuOpened(featureId, menu);
+	}
+
+	@Override
+	public void onNewIntent(Intent intent)
+	{
+		m_activityInterface.super_onNewIntent(intent);
+	}
+
+	@Override
+	public boolean onOptionsItemSelected(MenuItem item)
+	{
+		return m_activityInterface.super_onOptionsItemSelected(item);
+	}
+
+	@Override
+	public void onOptionsMenuClosed(Menu menu)
+	{
+		m_activityInterface.super_onOptionsMenuClosed(menu);
+	}
+
+	@Override
+	public void onPanelClosed(int featureId, Menu menu)
+	{
+		m_activityInterface.super_onPanelClosed(featureId, menu);
+	}
+
+	@Override
+	public void onPause()
+	{
+		m_activityInterface.super_onPause();		
+	}
+
+	@Override
+	public void onPostCreate(Bundle savedInstanceState)
+	{
+		m_activityInterface.super_onPostCreate(savedInstanceState);		
+	}
+
+	@Override
+	public void onPostResume()
+	{
+		m_activityInterface.super_onPostResume();			
+	}
+
+	@Override
+	public void onPrepareDialog(int id, Dialog dialog)
+	{
+		m_activityInterface.super_onPrepareDialog(id, dialog);			
+	}
+
+	@Override
+	public void onPrepareDialog(int id, Dialog dialog, Bundle args)
+	{
+		m_activityInterface.super_onPrepareDialog(id, dialog, args);			
+	}
+
+	@Override
+	public boolean onPrepareOptionsMenu(Menu menu)
+	{
+		return m_activityInterface.super_onPrepareOptionsMenu(menu);			
+	}
+
+	@Override
+	public boolean onPreparePanel(int featureId, View view, Menu menu)
+	{
+		return m_activityInterface.super_onPreparePanel(featureId, view, menu);
+	}
+
+	@Override
+	public void onRestart()
+	{
+		m_activityInterface.super_onRestart();
+	}
+
+	@Override
+	public boolean onSearchRequested()
+	{
+		return m_activityInterface.super_onSearchRequested();
+	}
+
+	@Override
+	public void onStart()
+	{
+		m_activityInterface.super_onStart();
+	}
+
+	@Override
+	public void onStop()
+	{
+		m_activityInterface.super_onStop();
+	}
+
+	@Override
+	public void onTerminate()
+	{
+		QtNative.terminateQt();
+	}
+
+	@Override
+	public void onTitleChanged(CharSequence title, int color)
+	{
+		m_activityInterface.super_onTitleChanged(title, color);
+	}
+
+	@Override
+	public boolean onTouchEvent(MotionEvent event)
+	{
+		return m_activityInterface.super_onTouchEvent(event);
+	}
+
+	@Override
+	public boolean onTrackballEvent(MotionEvent event)
+	{
+		return m_activityInterface.super_onTrackballEvent(event);
+	}
+
+	@Override
+	public void onUserInteraction()
+	{
+		m_activityInterface.super_onUserInteraction();
+	}
+
+	@Override
+	public void onUserLeaveHint()
+	{
+		m_activityInterface.super_onUserLeaveHint();
+	}
+
+	@Override
+	public void onWindowAttributesChanged(LayoutParams params)
+	{
+		m_activityInterface.super_onWindowAttributesChanged(params);
+	}
+
+	@Override
+	public void onWindowFocusChanged(boolean hasFocus)
+	{
+		m_activityInterface.super_onWindowFocusChanged(hasFocus);
+	}
 }

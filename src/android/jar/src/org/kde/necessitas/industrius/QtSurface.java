@@ -60,14 +60,14 @@ public class QtSurface extends SurfaceView implements SurfaceHolder.Callback
         if (getWidth() < 1 ||  getHeight() < 1)
             return;
         if (m_usesGL)
-            QtApplication.setSurface(getHolder().getSurface());
+            QtNative.setSurface(getHolder().getSurface());
         else
         {
-            QtApplication.lockSurface();
-            QtApplication.setSurface(null);
+            QtNative.lockSurface();
+            QtNative.setSurface(null);
             m_bitmap=Bitmap.createBitmap(getWidth(), getHeight(), Bitmap.Config.RGB_565);
-            QtApplication.setSurface(m_bitmap);
-            QtApplication.unlockSurface();
+            QtNative.setSurface(m_bitmap);
+            QtNative.unlockSurface();
         }
     }
 
@@ -76,7 +76,7 @@ public class QtSurface extends SurfaceView implements SurfaceHolder.Callback
     {
         DisplayMetrics metrics = new DisplayMetrics();
         ((Activity) getContext()).getWindowManager().getDefaultDisplay().getMetrics(metrics);
-        QtApplication.setApplicationDisplayMetrics(metrics.widthPixels,
+        QtNative.setApplicationDisplayMetrics(metrics.widthPixels,
             metrics.heightPixels, getWidth(), getHeight(), metrics.xdpi, metrics.ydpi);
 
         if(m_usesGL)
@@ -100,45 +100,45 @@ public class QtSurface extends SurfaceView implements SurfaceHolder.Callback
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height)
     {
-        Log.i(QtApplication.QtTAG,"surfaceChanged: "+width+","+height+","+getWidth()+","+getHeight());
+        Log.i(QtNative.QtTAG,"surfaceChanged: "+width+","+height+","+getWidth()+","+getHeight());
         if (width<1 || height<1)
                 return;
 
         DisplayMetrics metrics = new DisplayMetrics();
         ((Activity) getContext()).getWindowManager().getDefaultDisplay().getMetrics(metrics);
-        QtApplication.setApplicationDisplayMetrics(metrics.widthPixels,
+        QtNative.setApplicationDisplayMetrics(metrics.widthPixels,
             metrics.heightPixels, width, height, metrics.xdpi, metrics.ydpi);
 
         if (!m_started)
             return;
 
         if (m_usesGL)
-            QtApplication.setSurface(holder.getSurface());
+            QtNative.setSurface(holder.getSurface());
         else
         {
-            QtApplication.lockSurface();
-            QtApplication.setSurface(null);
+            QtNative.lockSurface();
+            QtNative.setSurface(null);
             m_bitmap=Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565);
-            QtApplication.setSurface(m_bitmap);
-            QtApplication.unlockSurface();
-            QtApplication.updateWindow();
+            QtNative.setSurface(m_bitmap);
+            QtNative.unlockSurface();
+            QtNative.updateWindow();
         }
     }
 
     @Override
     public void surfaceDestroyed(SurfaceHolder holder)
     {
-        Log.i(QtApplication.QtTAG,"surfaceDestroyed ");
+        Log.i(QtNative.QtTAG,"surfaceDestroyed ");
         if (m_usesGL)
-            QtApplication.destroySurface();
+            QtNative.destroySurface();
         else
         {
             if (!m_started)
                 return;
 
-            QtApplication.lockSurface();
-            QtApplication.setSurface(null);
-            QtApplication.unlockSurface();
+            QtNative.lockSurface();
+            QtNative.setSurface(null);
+            QtNative.unlockSurface();
         }
     }
 
@@ -146,7 +146,7 @@ public class QtSurface extends SurfaceView implements SurfaceHolder.Callback
     {
         if (!m_started)
             return;
-        QtApplication.lockSurface();
+        QtNative.lockSurface();
         if (null!=m_bitmap)
         {
             try
@@ -157,10 +157,10 @@ public class QtSurface extends SurfaceView implements SurfaceHolder.Callback
             }
             catch (Exception e)
             {
-                Log.e(QtApplication.QtTAG, "Can't create main activity", e);
+                Log.e(QtNative.QtTAG, "Can't create main activity", e);
             }
         }
-        QtApplication.unlockSurface();
+        QtNative.unlockSurface();
     }
 
     @Override
@@ -168,7 +168,7 @@ public class QtSurface extends SurfaceView implements SurfaceHolder.Callback
     {
         if (!m_started)
             return false;
-        QtApplication.sendTouchEvent(event, getId());
+        QtNative.sendTouchEvent(event, getId());
         return true;
     }
 
@@ -177,7 +177,7 @@ public class QtSurface extends SurfaceView implements SurfaceHolder.Callback
     {
         if (!m_started)
             return false;
-        QtApplication.sendTrackballEvent(event, getId());
+        QtNative.sendTrackballEvent(event, getId());
         return true;
     }
 }

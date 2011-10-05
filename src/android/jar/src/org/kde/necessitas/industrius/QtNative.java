@@ -30,13 +30,12 @@ package org.kde.necessitas.industrius;
 import java.io.File;
 import java.util.ArrayList;
 
-import android.app.Application;
 import android.content.Intent;
 import android.net.Uri;
 import android.util.Log;
 import android.view.MotionEvent;
 
-public class QtApplication extends Application
+public class QtNative
 {
     private static QtActivity m_mainActivity = null;
     private static QtSurface m_mainView = null;

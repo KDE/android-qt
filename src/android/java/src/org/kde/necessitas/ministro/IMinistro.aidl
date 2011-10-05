@@ -30,17 +30,18 @@ import org.kde.necessitas.ministro.IMinistroCallback;
 
 interface IMinistro
 {
-    /**
-    * Check/download required libs to run the application
-    *
-    * param callback              - interface used by the service to notify the client when it has the libs
-    * param modules               - Qt modules you want to check
-    * param appName               - Application name, used to show more informations to user
-    * param ministroApiLevel      - Ministro api level, used to check ministro service compatibility.
-    *                               Current API Level is 1 !!!
-    * param qtApiLevel            - Necessitas api level, used to download the right platform plugin.
-    *                               Current API Level is 4 !!!
-    */
-
-    void checkModules(in IMinistroCallback callback, in String[] modules, in String appName, in int ministroApiLevel, in int qtApiLevel);
+/**
+* Check/download required libs to run the application
+*
+* param callback  - interface used by Minsitro service to notify the client when the loader is ready
+* param parameters
+*            parameters fields:
+*                 * Key Name                   Key type         Explanations
+*                   "required.modules"         StringArray      Required modules by your application
+*                   "application.title"        String           Application name, used to show more informations to user
+*                   "qt.provider"              String           Qt libs provider, currently only "necessitas" is supported.
+*                   "minimum.ministro.api"     Integer          Minimum Ministro API level, used to check if Ministro service compatible with your application. Current API Level is 1 !
+*                   "minimum.qt.api"           Integer          Qt Major api level. Current API Level is 4 !
+*/
+    void requestLoader(in IMinistroCallback callback, in Bundle parameters);
 }

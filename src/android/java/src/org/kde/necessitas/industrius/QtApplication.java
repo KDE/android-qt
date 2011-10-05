@@ -31,12 +31,12 @@ import android.app.Application;
 
 public class QtApplication extends Application
 {
-	public final static String QtTAG="Qt";
-	public static QtActivityDelegate m_activityListener = null;
+    public final static String QtTAG="Qt";
+    public static QtActivityDelegateInterface m_activityListener = null;
     @Override
     public void onTerminate() {
-    	if (m_activityListener != null)
-    		m_activityListener.onTerminate();
+        if (m_activityListener != null)
+            m_activityListener.onTerminate();
         super.onTerminate();
     }
 }

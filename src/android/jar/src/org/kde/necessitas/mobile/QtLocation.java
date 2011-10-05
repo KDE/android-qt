@@ -17,7 +17,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-import org.kde.necessitas.industrius.QtApplication;
+import org.kde.necessitas.industrius.QtNative;
 
 
 import android.app.Activity;
@@ -64,7 +64,7 @@ public class QtLocation implements LocationListener ,GpsStatus.Listener
     public QtLocation ()
     {
         // Get the location manager
-        m_locationManager = (LocationManager) QtApplication.mainActivity().getSystemService(Activity.LOCATION_SERVICE);
+        m_locationManager = (LocationManager) QtNative.mainActivity().getSystemService(Activity.LOCATION_SERVICE);
         m_status = m_locationManager.getGpsStatus(null);
         m_providerChossenList.add(GPS);
         m_providerChossenList.add(NETWORK);
@@ -143,7 +143,7 @@ public class QtLocation implements LocationListener ,GpsStatus.Listener
     public void requestUpdates(long minTime)
     {
         m_getMinTime=minTime;
-        QtApplication.mainActivity().runOnUiThread(new Runnable() {
+        QtNative.mainActivity().runOnUiThread(new Runnable() {
 
             public void run() {
                 // TODO Auto-generated method stub
@@ -156,7 +156,7 @@ public class QtLocation implements LocationListener ,GpsStatus.Listener
 
     public void requestSatelliteUpdates()
     {
-        QtApplication.mainActivity().runOnUiThread(new Runnable() {
+        QtNative.mainActivity().runOnUiThread(new Runnable() {
 
             public void run() {
                 // TODO Auto-generated method stub

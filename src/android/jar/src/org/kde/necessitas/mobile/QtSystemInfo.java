@@ -35,7 +35,7 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
-import org.kde.necessitas.industrius.QtApplication;
+import org.kde.necessitas.industrius.QtNative;
 
 import android.app.KeyguardManager;
 //@ANDROID-5
@@ -146,7 +146,7 @@ public class QtSystemInfo
     private BroadcastReceiver m_generalSystemInfo;
     QtSystemInfo ()
     {
-        QtApplication.mainActivity().runOnUiThread(new Runnable() {
+        QtNative.mainActivity().runOnUiThread(new Runnable() {
 
             public void run() {
 //@ANDROID-5
@@ -154,8 +154,8 @@ public class QtSystemInfo
 //@ANDROID-5
             }
         });
-        m_powerManager = (PowerManager)QtApplication.mainActivity().getSystemService(Context.POWER_SERVICE);
-        m_telephonyManager= (TelephonyManager) QtApplication.mainActivity().getSystemService(Context.TELEPHONY_SERVICE);
+        m_powerManager = (PowerManager)QtNative.mainActivity().getSystemService(Context.POWER_SERVICE);
+        m_telephonyManager= (TelephonyManager) QtNative.mainActivity().getSystemService(Context.TELEPHONY_SERVICE);
         disableLock();
     }
 
@@ -166,7 +166,7 @@ public class QtSystemInfo
 
     private void disableLock ()
     {
-        m_keyguardManager=(KeyguardManager)QtApplication.mainActivity().getSystemService(Context.KEYGUARD_SERVICE);
+        m_keyguardManager=(KeyguardManager)QtNative.mainActivity().getSystemService(Context.KEYGUARD_SERVICE);
         m_keygaurdLock=m_keyguardManager.newKeyguardLock("QSystemScreenSaver");
         m_keygaurdLock.disableKeyguard();
     }
@@ -202,13 +202,13 @@ public class QtSystemInfo
         m_batteryIntentFilter=new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
         m_batteryIntentFilter.addAction(Intent.ACTION_POWER_CONNECTED);
         m_batteryIntentFilter.addAction(Intent.ACTION_POWER_DISCONNECTED);
-        QtApplication.mainActivity().registerReceiver(m_batteryInfoBroadcastReceiver,m_batteryIntentFilter);
+        QtNative.mainActivity().registerReceiver(m_batteryInfoBroadcastReceiver,m_batteryIntentFilter);
         //end of battery
     }
 
     public void exitBattery ()
     {
-        QtApplication.mainActivity().unregisterReceiver(m_batteryInfoBroadcastReceiver);
+        QtNative.mainActivity().unregisterReceiver(m_batteryInfoBroadcastReceiver);
     }
 
     private void createBatteryBroadcastReceiver ()
@@ -275,12 +275,12 @@ public class QtSystemInfo
     public void initDevice ()
     {
         createDeviceInfoBroadcastReceiver ();
-        QtApplication.mainActivity().registerReceiver(m_deviceInfoBroadcastReceiver,new IntentFilter(AudioManager.RINGER_MODE_CHANGED_ACTION));
+        QtNative.mainActivity().registerReceiver(m_deviceInfoBroadcastReceiver,new IntentFilter(AudioManager.RINGER_MODE_CHANGED_ACTION));
 //@ANDROID-5
-        QtApplication.mainActivity().registerReceiver(m_deviceInfoBroadcastReceiver,new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED));
+        QtNative.mainActivity().registerReceiver(m_deviceInfoBroadcastReceiver,new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED));
 //@ANDROID-5
-        QtApplication.mainActivity().registerReceiver(m_deviceInfoBroadcastReceiver,new IntentFilter(Intent.ACTION_SCREEN_OFF));
-        QtApplication.mainActivity().registerReceiver(m_deviceInfoBroadcastReceiver,new IntentFilter(Intent.ACTION_SCREEN_ON));
+        QtNative.mainActivity().registerReceiver(m_deviceInfoBroadcastReceiver,new IntentFilter(Intent.ACTION_SCREEN_OFF));
+        QtNative.mainActivity().registerReceiver(m_deviceInfoBroadcastReceiver,new IntentFilter(Intent.ACTION_SCREEN_ON));
 
     }
 
@@ -288,7 +288,7 @@ public class QtSystemInfo
     {
         try
         {
-            QtApplication.mainActivity().unregisterReceiver(m_deviceInfoBroadcastReceiver);
+            QtNative.mainActivity().unregisterReceiver(m_deviceInfoBroadcastReceiver);
         }
         catch(Exception e)
         {
@@ -431,7 +431,7 @@ public class QtSystemInfo
         Configuration configuration=new Configuration();
         int inputMethod=0x0000001;//by default the keys will have a key and buttons
 //@ANDROID-8
-    PackageManager pm=QtApplication.mainActivity().getPackageManager();
+    PackageManager pm=QtNative.mainActivity().getPackageManager();
         if(pm.hasSystemFeature(PackageManager.FEATURE_TOUCHSCREEN))
         {
             inputMethod|=0x0000008;
@@ -512,15 +512,15 @@ public class QtSystemInfo
     public void initDisplay ()
     {
         createDisplayInfoBroadcastReceiver ();
-        m_display=QtApplication.mainActivity().getWindowManager().getDefaultDisplay();
+        m_display=QtNative.mainActivity().getWindowManager().getDefaultDisplay();
         m_displaymatrics=new DisplayMetrics();
-        QtApplication.mainActivity().getWindowManager().getDefaultDisplay().getMetrics(m_displaymatrics);
-        QtApplication.mainActivity().registerReceiver(m_displayInfoBroadcastReceiver,new IntentFilter(Intent.ACTION_CONFIGURATION_CHANGED));
+        QtNative.mainActivity().getWindowManager().getDefaultDisplay().getMetrics(m_displaymatrics);
+        QtNative.mainActivity().registerReceiver(m_displayInfoBroadcastReceiver,new IntentFilter(Intent.ACTION_CONFIGURATION_CHANGED));
     }
 
     public void exitDisplay ()
     {
-        QtApplication.mainActivity().unregisterReceiver(m_displayInfoBroadcastReceiver);
+        QtNative.mainActivity().unregisterReceiver(m_displayInfoBroadcastReceiver);
     }
 
     private void createDisplayInfoBroadcastReceiver ()
@@ -605,7 +605,7 @@ public class QtSystemInfo
     {
         int backLight=0;
         try {
-            backLight = Settings.System.getInt(QtApplication.mainActivity().getContentResolver(),Settings.System.SCREEN_BRIGHTNESS);
+            backLight = Settings.System.getInt(QtNative.mainActivity().getContentResolver(),Settings.System.SCREEN_BRIGHTNESS);
         } catch (SettingNotFoundException e) {
             e.printStackTrace();
         }
@@ -632,7 +632,7 @@ public class QtSystemInfo
     {
         int backLight=0;
         try {
-            backLight = Settings.System.getInt(QtApplication.mainActivity().getContentResolver(),Settings.System.SCREEN_BRIGHTNESS);
+            backLight = Settings.System.getInt(QtNative.mainActivity().getContentResolver(),Settings.System.SCREEN_BRIGHTNESS);
         } catch (SettingNotFoundException e) {
             e.printStackTrace();
         }
@@ -649,7 +649,7 @@ public class QtSystemInfo
     {
         createGeneralSystemInfo ();
 //@ANDROID-5
-        QtApplication.mainActivity().registerReceiver(m_generalSystemInfo,new IntentFilter(Intent.ACTION_LOCALE_CHANGED));
+        QtNative.mainActivity().registerReceiver(m_generalSystemInfo,new IntentFilter(Intent.ACTION_LOCALE_CHANGED));
 //@ANDROID-5
     }
 
@@ -657,7 +657,7 @@ public class QtSystemInfo
     {
         try
         {
-            QtApplication.mainActivity().unregisterReceiver(m_generalSystemInfo);
+            QtNative.mainActivity().unregisterReceiver(m_generalSystemInfo);
         }
         catch(Exception e)
         {
@@ -703,7 +703,7 @@ public class QtSystemInfo
     {
         int[] features=new int[14];
 //@ANDROID-5
-        PackageManager pm=QtApplication.mainActivity().getPackageManager();
+        PackageManager pm=QtNative.mainActivity().getPackageManager();
         if(pm.hasSystemFeature(PackageManager.FEATURE_CAMERA))
         {
             features[1]=1;
@@ -802,8 +802,8 @@ public class QtSystemInfo
     public void initStorage ()
     {
         createStorageInfoBroadcastReceiver ();
-        QtApplication.mainActivity().registerReceiver(m_storageInfoBroadcastReceiver,new IntentFilter(Intent.ACTION_DEVICE_STORAGE_LOW));
-        QtApplication.mainActivity().registerReceiver(m_storageInfoBroadcastReceiver,new IntentFilter(Intent.ACTION_DEVICE_STORAGE_OK));
+        QtNative.mainActivity().registerReceiver(m_storageInfoBroadcastReceiver,new IntentFilter(Intent.ACTION_DEVICE_STORAGE_LOW));
+        QtNative.mainActivity().registerReceiver(m_storageInfoBroadcastReceiver,new IntentFilter(Intent.ACTION_DEVICE_STORAGE_OK));
         IntentFilter mediaFilter=new IntentFilter(Intent.ACTION_MEDIA_SHARED);
         mediaFilter.addAction(Intent.ACTION_MEDIA_EJECT);
         mediaFilter.addAction(Intent.ACTION_MEDIA_MOUNTED);
@@ -811,14 +811,14 @@ public class QtSystemInfo
         mediaFilter.addAction(Intent.ACTION_MEDIA_REMOVED);
         mediaFilter.addAction(Intent.ACTION_MEDIA_UNMOUNTABLE);
         mediaFilter.addAction(Intent.ACTION_MEDIA_UNMOUNTED);
-        QtApplication.mainActivity().registerReceiver(m_storageInfoBroadcastReceiver,mediaFilter);
+        QtNative.mainActivity().registerReceiver(m_storageInfoBroadcastReceiver,mediaFilter);
     }
 
     public void exitStorage ()
     {
         try
         {
-            QtApplication.mainActivity().unregisterReceiver(m_storageInfoBroadcastReceiver);
+            QtNative.mainActivity().unregisterReceiver(m_storageInfoBroadcastReceiver);
         }
         catch(Exception e)
         {
@@ -862,11 +862,11 @@ public class QtSystemInfo
     //network
     public void initNetwork ()
     {
-        m_connectivityManager=(ConnectivityManager)QtApplication.mainActivity().
+        m_connectivityManager=(ConnectivityManager)QtNative.mainActivity().
                                                             getSystemService(Context.CONNECTIVITY_SERVICE);
-        m_wifiManager=(WifiManager)QtApplication.mainActivity().getSystemService(Context.WIFI_SERVICE);
+        m_wifiManager=(WifiManager)QtNative.mainActivity().getSystemService(Context.WIFI_SERVICE);
 
-        QtApplication.mainActivity().runOnUiThread(new Runnable() {
+        QtNative.mainActivity().runOnUiThread(new Runnable() {
 
             public void run()
             {
@@ -985,9 +985,9 @@ public class QtSystemInfo
             }
         });
         createWifiBroadcastReceiver();
-        QtApplication.mainActivity().registerReceiver(m_networkBroadcastReceiver,new IntentFilter(WifiManager.RSSI_CHANGED_ACTION));
-        QtApplication.mainActivity().registerReceiver(m_networkBroadcastReceiver,new IntentFilter(WifiManager.NETWORK_STATE_CHANGED_ACTION));
-        QtApplication.mainActivity().registerReceiver(m_networkBroadcastReceiver,new IntentFilter(WifiManager.WIFI_STATE_CHANGED_ACTION));
+        QtNative.mainActivity().registerReceiver(m_networkBroadcastReceiver,new IntentFilter(WifiManager.RSSI_CHANGED_ACTION));
+        QtNative.mainActivity().registerReceiver(m_networkBroadcastReceiver,new IntentFilter(WifiManager.NETWORK_STATE_CHANGED_ACTION));
+        QtNative.mainActivity().registerReceiver(m_networkBroadcastReceiver,new IntentFilter(WifiManager.WIFI_STATE_CHANGED_ACTION));
         int events=
 //@ANDROID-5
             PhoneStateListener.LISTEN_SIGNAL_STRENGTHS|
@@ -1000,7 +1000,7 @@ public class QtSystemInfo
 
     public void exitNetwork ()
     {
-        QtApplication.mainActivity().unregisterReceiver(m_networkBroadcastReceiver);
+        QtNative.mainActivity().unregisterReceiver(m_networkBroadcastReceiver);
         m_telephonyManager.listen(m_phoneStateListener, 0);
     }
 
@@ -1218,7 +1218,7 @@ public class QtSystemInfo
     public int currentMode ()
     {
 //@ANDROID-5
-    PackageManager pm=QtApplication.mainActivity().getPackageManager();
+    PackageManager pm=QtNative.mainActivity().getPackageManager();
 //@ANDROID-5
         if(m_telephonyManager.getPhoneType()==TelephonyManager.PHONE_TYPE_GSM)
         {

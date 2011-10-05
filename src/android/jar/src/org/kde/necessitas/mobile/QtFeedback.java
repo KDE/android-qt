@@ -15,7 +15,7 @@ package org.kde.necessitas.mobile;
 
 import java.io.IOException;
 
-import org.kde.necessitas.industrius.QtApplication;
+import org.kde.necessitas.industrius.QtNative;
 
 import android.app.Activity;
 import android.app.AlarmManager;
@@ -42,12 +42,12 @@ public class QtFeedback extends BroadcastReceiver{
     private PendingIntent m_pendingIntent=null;
 
     public QtFeedback() {
-        m_alarmManager = (AlarmManager) QtApplication.mainActivity().getSystemService(Activity.ALARM_SERVICE);
+        m_alarmManager = (AlarmManager) QtNative.mainActivity().getSystemService(Activity.ALARM_SERVICE);
         m_mediaPlayer= new MediaPlayer();
         m_mediaPlayer.setLooping(false);
-        m_vibrator =(Vibrator) QtApplication.mainActivity().getSystemService(Activity.VIBRATOR_SERVICE);
-        m_audioManager = (AudioManager)QtApplication.mainActivity().getSystemService(Activity.AUDIO_SERVICE);
-        m_view = QtApplication.mainView();
+        m_vibrator =(Vibrator) QtNative.mainActivity().getSystemService(Activity.VIBRATOR_SERVICE);
+        m_audioManager = (AudioManager)QtNative.mainActivity().getSystemService(Activity.AUDIO_SERVICE);
+        m_view = QtNative.mainView();
     }
 
 
@@ -129,7 +129,7 @@ public class QtFeedback extends BroadcastReceiver{
         case 0:
         case 1:
                 m_vibrator.cancel();
-                QtApplication.mainActivity().unregisterReceiver(this);
+                QtNative.mainActivity().unregisterReceiver(this);
                 break;
         case 2:
         case 3:
@@ -163,23 +163,23 @@ public class QtFeedback extends BroadcastReceiver{
     public void registerReciever()
     {
         IntentFilter filter = new IntentFilter("Alarm");
-        QtApplication.mainActivity().registerReceiver(this , filter);
+        QtNative.mainActivity().registerReceiver(this , filter);
         Intent intent = new Intent("Alarm");
-        m_pendingIntent = PendingIntent.getBroadcast(QtApplication.mainActivity(), 0, intent, 0);
+        m_pendingIntent = PendingIntent.getBroadcast(QtNative.mainActivity(), 0, intent, 0);
     }
 
     @Override
     public void onReceive(Context context, Intent intent)
     {
         m_vibrator.cancel();
-        QtApplication.mainActivity().unregisterReceiver(this);
+        QtNative.mainActivity().unregisterReceiver(this);
     }
 
     public void setHapticFeedback(boolean enabled)
     {
 
         final boolean enable = enabled;
-        QtApplication.mainActivity().runOnUiThread(new Runnable() {
+        QtNative.mainActivity().runOnUiThread(new Runnable() {
             public void run() {
                 m_view.setHapticFeedbackEnabled(enable);
             }
@@ -189,7 +189,7 @@ public class QtFeedback extends BroadcastReceiver{
 
     public void performHapticFeedback()
     {
-        QtApplication.mainActivity().runOnUiThread(new Runnable() {
+        QtNative.mainActivity().runOnUiThread(new Runnable() {
             public void run() {
                 m_view.performHapticFeedback(m_hapticConstant);
             }
