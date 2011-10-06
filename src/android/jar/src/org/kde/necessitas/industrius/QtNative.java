@@ -30,6 +30,7 @@ package org.kde.necessitas.industrius;
 import java.io.File;
 import java.util.ArrayList;
 
+import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
 import android.util.Log;
@@ -37,8 +38,8 @@ import android.view.MotionEvent;
 
 public class QtNative
 {
-    private static QtActivity m_mainActivity = null;
-    private static QtSurface m_mainView = null;
+    private static Activity m_activity = null;
+    private static QtActivityDelegate m_activityDelegate=null;
     public static Object m_mainActivityMutex = new Object(); // mutex used to synchronize runnable operations
 
     public static final String QtTAG = "Qt JAVA"; // string used for Log.x
@@ -54,84 +55,85 @@ public class QtNative
     private static final int m_moveThreshold = 0;
 
 
-    public static QtActivity mainActivity()
+    public static Activity activity()
     {
-        return m_mainActivity;
+        synchronized (m_mainActivityMutex) {
+            return m_activity;
+        }
     }
 
-    public static QtSurface mainView()
+    public static QtActivityDelegate activityDelegate()
     {
-        return m_mainView;
+        synchronized (m_mainActivityMutex) {
+            return m_activityDelegate;
+        }
     }
 
     public static void openURL(String url)
     {
         Uri uri = Uri.parse(url);
         Intent intent = new Intent(Intent.ACTION_VIEW, uri);
-        mainActivity().startActivity(intent);
+        activity().startActivity(intent);
     }
 
     // this method loads full path libs
-    public static void loadQtLibraries(String[] libraries)
+    public static void loadQtLibraries(ArrayList<String> libraries)
     {
         if (libraries == null)
             return;
 
-        for (int i = 0; i < libraries.length; i++)
+        for (String libName:libraries)
         {
             try
             {
-                File f = new File(libraries[i]);
+                File f = new File(libName);
                 if (f.exists())
-                    System.load(libraries[i]);
+                    System.load(libName);
             }
             catch (SecurityException e)
             {
-                Log.i(QtTAG, "Can't load '" + libraries[i] + "'", e);
+                Log.i(QtTAG, "Can't load '" + libName + "'", e);
             }
             catch (Exception e)
             {
-                Log.i(QtTAG, "Can't load '" + libraries[i] + "'", e);
+                Log.i(QtTAG, "Can't load '" + libName + "'", e);
             }
         }
     }
 
         // this method loads bundled libs by name.
-    public static void loadBundledLibraries(String[] libraries)
+    public static void loadBundledLibraries(ArrayList<String> libraries)
     {
-        for (int i = 0; i < libraries.length; i++)
+        if (libraries == null)
+            return;
+
+        for (String libName:libraries)
         {
             try
             {
-                System.loadLibrary(libraries[i]);
+                System.loadLibrary(libName);
             }
             catch (UnsatisfiedLinkError e)
             {
-                Log.i(QtTAG, "Can't load '" + libraries[i] + "'", e);
+                Log.i(QtTAG, "Can't load '" + libName + "'", e);
             }
             catch (SecurityException e)
             {
-                Log.i(QtTAG, "Can't load '" + libraries[i] + "'", e);
+                Log.i(QtTAG, "Can't load '" + libName + "'", e);
             }
             catch (Exception e)
             {
-                Log.i(QtTAG, "Can't load '" + libraries[i] + "'", e);
+                Log.i(QtTAG, "Can't load '" + libName + "'", e);
             }
         }
     }
 
-    public static void setMainActivity(QtActivity qtMainActivity)
+    public static void setActivity(Activity qtMainActivity, QtActivityDelegate qtActivityDelegate)
     {
         synchronized (m_mainActivityMutex)
         {
-            m_mainActivity = qtMainActivity;
-        }
-    }
-    public static void setMainView(QtSurface qtSurface)
-    {
-        synchronized (m_mainActivityMutex)
-        {
-            m_mainView = qtSurface;
+            m_activity = qtMainActivity;
+            m_activityDelegate = qtActivityDelegate;
         }
     }
 
@@ -149,11 +151,11 @@ public class QtNative
     {
         synchronized (m_mainActivityMutex)
         {
-            if (m_mainActivity == null)
+            if (m_activity == null)
                 m_lostActions.add(action);
             else
-                m_mainActivity.runOnUiThread(action);
-            return m_mainActivity != null;
+                m_activity.runOnUiThread(action);
+            return m_activity != null;
         }
     }
 
@@ -236,7 +238,7 @@ public class QtNative
 
     private static void quitApp()
     {
-        m_mainActivity.finish();
+        m_activity.finish();
     }
 
     private static void redrawSurface(final int left, final int top, final int right, final int bottom )
@@ -244,18 +246,10 @@ public class QtNative
         runAction(new Runnable() {
             @Override
             public void run() {
-                m_mainActivity.redrawWindow(left, top, right, bottom);
+                m_activityDelegate.redrawWindow(left, top, right, bottom);
             }
         });
     }
-
-    @Override
-    public void onTerminate() {
-        if (m_started)
-            terminateQt();
-        super.onTerminate();
-    }
-
 
     //@ANDROID-5
     static private int getAction(int index, MotionEvent event)
@@ -390,7 +384,7 @@ public class QtNative
         runAction(new Runnable() {
             @Override
             public void run() {
-                m_mainActivity.showSoftwareKeyboard();
+                m_activityDelegate.showSoftwareKeyboard();
             }
         });
     }
@@ -400,7 +394,7 @@ public class QtNative
         runAction(new Runnable() {
             @Override
             public void run() {
-                m_mainActivity.hideSoftwareKeyboard();
+                m_activityDelegate.hideSoftwareKeyboard();
             }
         });
     }
@@ -410,7 +404,7 @@ public class QtNative
         runAction(new Runnable() {
             @Override
             public void run() {
-                m_mainActivity.setFullScreen(fullScreen);
+                m_activityDelegate.setFullScreen(fullScreen);
                 updateWindow();
             }
         });

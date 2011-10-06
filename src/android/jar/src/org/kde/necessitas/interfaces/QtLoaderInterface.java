@@ -25,7 +25,7 @@
     SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-package org.kde.necessitas.industrius;
+package org.kde.necessitas.interfaces;
 
 import android.os.Bundle;
 

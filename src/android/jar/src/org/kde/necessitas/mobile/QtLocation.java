@@ -64,7 +64,7 @@ public class QtLocation implements LocationListener ,GpsStatus.Listener
     public QtLocation ()
     {
         // Get the location manager
-        m_locationManager = (LocationManager) QtNative.mainActivity().getSystemService(Activity.LOCATION_SERVICE);
+        m_locationManager = (LocationManager) QtNative.activity().getSystemService(Activity.LOCATION_SERVICE);
         m_status = m_locationManager.getGpsStatus(null);
         m_providerChossenList.add(GPS);
         m_providerChossenList.add(NETWORK);
@@ -143,7 +143,7 @@ public class QtLocation implements LocationListener ,GpsStatus.Listener
     public void requestUpdates(long minTime)
     {
         m_getMinTime=minTime;
-        QtNative.mainActivity().runOnUiThread(new Runnable() {
+        QtNative.activity().runOnUiThread(new Runnable() {
 
             public void run() {
                 // TODO Auto-generated method stub
@@ -156,7 +156,7 @@ public class QtLocation implements LocationListener ,GpsStatus.Listener
 
     public void requestSatelliteUpdates()
     {
-        QtNative.mainActivity().runOnUiThread(new Runnable() {
+        QtNative.activity().runOnUiThread(new Runnable() {
 
             public void run() {
                 // TODO Auto-generated method stub

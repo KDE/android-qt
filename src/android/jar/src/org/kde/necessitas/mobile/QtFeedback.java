@@ -42,12 +42,12 @@ public class QtFeedback extends BroadcastReceiver{
     private PendingIntent m_pendingIntent=null;
 
     public QtFeedback() {
-        m_alarmManager = (AlarmManager) QtNative.mainActivity().getSystemService(Activity.ALARM_SERVICE);
+        m_alarmManager = (AlarmManager) QtNative.activity().getSystemService(Activity.ALARM_SERVICE);
         m_mediaPlayer= new MediaPlayer();
         m_mediaPlayer.setLooping(false);
-        m_vibrator =(Vibrator) QtNative.mainActivity().getSystemService(Activity.VIBRATOR_SERVICE);
-        m_audioManager = (AudioManager)QtNative.mainActivity().getSystemService(Activity.AUDIO_SERVICE);
-        m_view = QtNative.mainView();
+        m_vibrator =(Vibrator) QtNative.activity().getSystemService(Activity.VIBRATOR_SERVICE);
+        m_audioManager = (AudioManager)QtNative.activity().getSystemService(Activity.AUDIO_SERVICE);
+        m_view = QtNative.activityDelegate().getQtSurface();
     }
 
 
@@ -129,7 +129,7 @@ public class QtFeedback extends BroadcastReceiver{
         case 0:
         case 1:
                 m_vibrator.cancel();
-                QtNative.mainActivity().unregisterReceiver(this);
+                QtNative.activity().unregisterReceiver(this);
                 break;
         case 2:
         case 3:
@@ -163,23 +163,23 @@ public class QtFeedback extends BroadcastReceiver{
     public void registerReciever()
     {
         IntentFilter filter = new IntentFilter("Alarm");
-        QtNative.mainActivity().registerReceiver(this , filter);
+        QtNative.activity().registerReceiver(this , filter);
         Intent intent = new Intent("Alarm");
-        m_pendingIntent = PendingIntent.getBroadcast(QtNative.mainActivity(), 0, intent, 0);
+        m_pendingIntent = PendingIntent.getBroadcast(QtNative.activity(), 0, intent, 0);
     }
 
     @Override
     public void onReceive(Context context, Intent intent)
     {
         m_vibrator.cancel();
-        QtNative.mainActivity().unregisterReceiver(this);
+        QtNative.activity().unregisterReceiver(this);
     }
 
     public void setHapticFeedback(boolean enabled)
     {
 
         final boolean enable = enabled;
-        QtNative.mainActivity().runOnUiThread(new Runnable() {
+        QtNative.activity().runOnUiThread(new Runnable() {
             public void run() {
                 m_view.setHapticFeedbackEnabled(enable);
             }
@@ -189,7 +189,7 @@ public class QtFeedback extends BroadcastReceiver{
 
     public void performHapticFeedback()
     {
-        QtNative.mainActivity().runOnUiThread(new Runnable() {
+        QtNative.activity().runOnUiThread(new Runnable() {
             public void run() {
                 m_view.performHapticFeedback(m_hapticConstant);
             }

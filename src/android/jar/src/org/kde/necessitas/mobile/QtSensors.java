@@ -67,7 +67,7 @@ public class QtSensors implements SensorEventListener
 
     private static void registerSensors ()
     {
-        m_SensorManager = (SensorManager)QtNative.mainActivity().getSystemService(Activity.SENSOR_SERVICE);
+        m_SensorManager = (SensorManager)QtNative.activity().getSystemService(Activity.SENSOR_SERVICE);
     }
 
     private void start (int datarate)

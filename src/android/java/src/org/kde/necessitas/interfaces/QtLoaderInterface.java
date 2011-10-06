@@ -25,18 +25,11 @@
     SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-package org.kde.necessitas.industrius;
+package org.kde.necessitas.interfaces;
 
-import android.app.Application;
+import android.os.Bundle;
 
-public class QtApplication extends Application
+public interface QtLoaderInterface
 {
-    public final static String QtTAG="Qt";
-    public static QtActivityDelegateInterface m_activityListener = null;
-    @Override
-    public void onTerminate() {
-        if (m_activityListener != null)
-            m_activityListener.onTerminate();
-        super.onTerminate();
-    }
+    boolean startApplication(QtActivityInterface activityInterface, Bundle loaderParams);
 }

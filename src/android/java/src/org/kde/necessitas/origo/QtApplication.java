@@ -25,11 +25,28 @@
     SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-package org.kde.necessitas.industrius;
+package org.kde.necessitas.origo;
 
-import android.os.Bundle;
+import org.kde.necessitas.interfaces.QtActivityDelegateInterface11;
+import org.kde.necessitas.interfaces.QtActivityDelegateInterface12;
+import org.kde.necessitas.interfaces.QtActivityDelegateInterface4;
+import org.kde.necessitas.interfaces.QtActivityDelegateInterface5;
+import org.kde.necessitas.interfaces.QtActivityDelegateInterface8;
 
-public interface QtLoaderInterface
+import android.app.Application;
+
+public class QtApplication extends Application
 {
-    boolean startApplication(QtActivityInterface activityInterface, Bundle loaderParams);
+    public final static String QtTAG="Qt";
+    public static QtActivityDelegateInterface4 m_activityListener4 = null;
+    public static QtActivityDelegateInterface5 m_activityListener5 = null;
+    public static QtActivityDelegateInterface8 m_activityListener8 = null;
+    public static QtActivityDelegateInterface11 m_activityListener11 = null;
+    public static QtActivityDelegateInterface12 m_activityListener12 = null;
+    @Override
+    public void onTerminate() {
+        if (m_activityListener4 != null)
+            m_activityListener4.onTerminate();
+        super.onTerminate();
+    }
 }

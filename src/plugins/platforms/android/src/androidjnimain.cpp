@@ -91,7 +91,7 @@ static QMutex m_pauseApplicationMutex;
 
 static QAndroidPlatformIntegration * m_androidGraphicsSystem=0;
 static int m_desktopWidthPixels=0, m_desktopHeightPixels=0;
-static const char * const QtApplicationClassPathName = "eu/licentia/necessitas/industrius/QtApplication";
+static const char * const QtNativeClassPathName = "org/kde/necessitas/industrius/QtNative";
 static const char * const ContextWrapperClassPathName = "android/content/ContextWrapper";
 
 
@@ -807,7 +807,7 @@ static int registerNativeMethods(JNIEnv* env, const char* className,
  */
 static int registerNatives(JNIEnv* env)
 {
-    if (!registerNativeMethods(env, QtApplicationClassPathName, methods, sizeof(methods) / sizeof(methods[0])))
+    if (!registerNativeMethods(env, QtNativeClassPathName, methods, sizeof(methods) / sizeof(methods[0])))
         return JNI_FALSE;
 
     return JNI_TRUE;
