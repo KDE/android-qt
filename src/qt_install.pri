@@ -39,15 +39,18 @@ qt_install_headers {
 }
 
 embedded|qpa: equals(TARGET, QtGui) {
-    # install fonts for embedded
-    INSTALLS += fonts
-    fonts.path = $$[QT_INSTALL_LIBS]/fonts
-    fonts.files = $$QT_SOURCE_TREE/lib/fonts/*
     CONFIG(android) {
-        INSTALLS += android_cpp android_java
-        android_java.path = $$[QT_INSTALL_PREFIX]/src/android/java
+        INSTALLS += android_cpp android_java android_jar
+        android_java.path  = $$[QT_INSTALL_PREFIX]/src/android/java
         android_java.files = $$QT_SOURCE_TREE/src/android/java/*
-        android_cpp.path = $$[QT_INSTALL_PREFIX]/src/android/cpp
-        android_cpp.files = $$QT_SOURCE_TREE/src/android/cpp/*.cpp
+        android_cpp.path   = $$[QT_INSTALL_PREFIX]/src/android/cpp
+        android_cpp.files  = $$QT_SOURCE_TREE/src/android/cpp/*.cpp
+        android_jar.path   = $$[QT_INSTALL_PREFIX]/jar
+        android_jar.files  = $$QT_BUILD_TREE/jar/*
+    } else {
+        # install fonts for embedded
+        INSTALLS += fonts
+        fonts.path = $$[QT_INSTALL_LIBS]/fonts
+        fonts.files = $$QT_SOURCE_TREE/lib/fonts/*
     }
 }
