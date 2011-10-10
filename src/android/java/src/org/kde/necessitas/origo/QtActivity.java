@@ -28,21 +28,10 @@
 package org.kde.necessitas.origo;
 
 import java.io.File;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import org.kde.necessitas.interfaces.QtActivityDelegateInterface11;
-import org.kde.necessitas.interfaces.QtActivityDelegateInterface12;
-import org.kde.necessitas.interfaces.QtActivityDelegateInterface4;
-import org.kde.necessitas.interfaces.QtActivityDelegateInterface5;
-import org.kde.necessitas.interfaces.QtActivityDelegateInterface8;
-import org.kde.necessitas.interfaces.QtActivityInterface;
-import org.kde.necessitas.interfaces.QtActivitySuperInterface11;
-import org.kde.necessitas.interfaces.QtActivitySuperInterface12;
-import org.kde.necessitas.interfaces.QtActivitySuperInterface4;
-import org.kde.necessitas.interfaces.QtActivitySuperInterface5;
-import org.kde.necessitas.interfaces.QtActivitySuperInterface8;
-import org.kde.necessitas.interfaces.QtLoaderInterface;
 import org.kde.necessitas.ministro.IMinistro;
 import org.kde.necessitas.ministro.IMinistroCallback;
 
@@ -85,20 +74,7 @@ import android.view.ActionMode;
 import android.view.ActionMode.Callback;
 //@ANDROID-11
 
-public class QtActivity extends Activity implements QtActivityInterface
-                                                , QtActivitySuperInterface4
-//@ANDROID-5
-                                                , QtActivitySuperInterface5
-//@ANDROID-5
-//@ANDROID-8
-                                                , QtActivitySuperInterface8
-//@ANDROID-8
-//@ANDROID-11
-                                                , QtActivitySuperInterface11
-//@ANDROID-11
-//@ANDROID-12
-                                                , QtActivitySuperInterface12
-//@ANDROID-12
+public class QtActivity extends Activity
 {
     private final static int MINISTRO_INSTALL_REQUEST_CODE = 0xf3ee; // request code used to know when Ministro instalation is finished
     private static final int MINISTRO_API_LEVEL=1; // Ministro api level (check IMinistro.aidl file)
@@ -154,9 +130,17 @@ public class QtActivity extends Activity implements QtActivityInterface
 
             @SuppressWarnings("rawtypes")
             Class loaderClass = m_classLoader.loadClass(loaderParams.getString(LOADER_CLASS_NAME_KEY)); // load QtLoader class
-            QtLoaderInterface qtLoader=(QtLoaderInterface)loaderClass.newInstance(); // create an instance
-            if (!qtLoader.startApplication(this, loaderParams))
-                throw new Exception("");
+            Object qtLoader = loaderClass.newInstance(); // create an instance
+            Method perpareAppMethod=qtLoader.getClass().getMethod("prepareApplication", Object.class, Bundle.class);
+            if (!(Boolean)perpareAppMethod.invoke(qtLoader, this, loaderParams))
+				throw new Exception("");
+
+            QtApplication.setQtActivityDelegate(qtLoader);
+
+            Method startAppMethod=qtLoader.getClass().getMethod("startApplication");
+            if (!(Boolean)startAppMethod.invoke(qtLoader))
+				throw new Exception("");
+
         } catch (Exception e) {
             AlertDialog errorDialog = new AlertDialog.Builder(QtActivity.this).create();
             if (m_activityInfo != null && m_activityInfo.metaData.containsKey("android.app.fatal_error_msg"))
@@ -171,7 +155,7 @@ public class QtActivity extends Activity implements QtActivityInterface
             errorDialog.show();
         }
     }
-
+    
     private IMinistroCallback m_ministroCallback = new IMinistroCallback.Stub() {
         // this function is called back by Ministro.
         @Override
@@ -328,30 +312,40 @@ public class QtActivity extends Activity implements QtActivityInterface
         }
     }
 
-    @Override
-    public void setQtActivityDelegate(Object listener)
-    {
-        QtApplication.m_activityListener4 = (QtActivityDelegateInterface4) listener;
-        QtApplication.m_activityListener5 = (QtActivityDelegateInterface5) listener;
-        QtApplication.m_activityListener8 = (QtActivityDelegateInterface8) listener;
-        QtApplication.m_activityListener11 = (QtActivityDelegateInterface11) listener;
-        QtApplication.m_activityListener12 = (QtActivityDelegateInterface12) listener;
-    }
 
 
     /////////////////////////// forward all notifications ////////////////////////////
     /////////////////////////// Super class calls ////////////////////////////////////
     /////////////// PLEASE DO NOT CHANGE THE FOLLOWING CODE //////////////////////////
     //////////////////////////////////////////////////////////////////////////////////
+    private int stackNo=-1; 
+    private boolean invokeDelegate(Object res, Object...args)
+    {
+    	if (-1==stackNo)
+    	{
+            String aa=this.getClass().getCanonicalName();
+            StackTraceElement[] elements=Thread.currentThread().getStackTrace();
+            for(int it=0;it<elements.length;it++)
+            {
+            	if (elements[it].getClassName().equals(aa))
+            	{
+            		stack=it;
+            		break;
+            	}
+            }
+    	}
+    	return false;
+    }
+    
+    
     @Override
     public boolean dispatchKeyEvent(KeyEvent event)
     {
-        if (QtApplication.m_activityListener4 != null)
-            return QtApplication.m_activityListener4.dispatchKeyEvent(event);
+        if (QtApplication.m_delegateObject != null && QtApplication.dispatchKeyEvent != null)
+            return (Boolean) QtApplication.invokeDelegate(QtApplication.dispatchKeyEvent, event);
         else
             return super.dispatchKeyEvent(event);
     }
-    @Override
     public boolean super_dispatchKeyEvent(KeyEvent event)
     {
         return super.dispatchKeyEvent(event);
@@ -361,12 +355,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     public boolean dispatchPopulateAccessibilityEvent(AccessibilityEvent event)
     {
-        if (QtApplication.m_activityListener4 != null)
-            return QtApplication.m_activityListener4.dispatchPopulateAccessibilityEvent(event);
+        if (QtApplication.m_delegateObject != null && QtApplication.dispatchPopulateAccessibilityEvent != null)
+        	return (Boolean) QtApplication.invokeDelegate(QtApplication.dispatchPopulateAccessibilityEvent, event);
         else
             return super.dispatchPopulateAccessibilityEvent(event);
     }
-    @Override
     public boolean super_dispatchPopulateAccessibilityEvent(AccessibilityEvent event)
     {
         return super_dispatchPopulateAccessibilityEvent(event);
@@ -376,12 +369,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev)
     {
-        if (QtApplication.m_activityListener4 != null)
-            return QtApplication.m_activityListener4.dispatchTouchEvent(ev);
+        if (QtApplication.m_delegateObject != null && QtApplication.dispatchTouchEvent != null)
+        	return (Boolean) QtApplication.invokeDelegate(QtApplication.dispatchTouchEvent, ev);
         else
             return super.dispatchTouchEvent(ev);
     }
-    @Override
     public boolean super_dispatchTouchEvent(MotionEvent event)
     {
         return super.dispatchTouchEvent(event);
@@ -391,12 +383,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     public boolean dispatchTrackballEvent(MotionEvent ev)
     {
-        if (QtApplication.m_activityListener4 != null)
-            return QtApplication.m_activityListener4.dispatchTrackballEvent(ev);
+        if (QtApplication.m_delegateObject != null && QtApplication.dispatchTrackballEvent != null)
+        	return (Boolean) QtApplication.invokeDelegate(QtApplication.dispatchTrackballEvent, ev);
         else
             return super.dispatchTrackballEvent(ev);
     }
-    @Override
     public boolean super_dispatchTrackballEvent(MotionEvent event)
     {
         return super.dispatchTrackballEvent(event);
@@ -406,16 +397,16 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data)
     {
-        if (QtApplication.m_activityListener4 != null)
+    	
+        if (QtApplication.m_delegateObject != null && QtApplication.onActivityResult != null)
         {
-            QtApplication.m_activityListener4.onActivityResult(requestCode, resultCode, data);
+        	QtApplication.invokeDelegate(QtApplication.onActivityResult, requestCode, resultCode, data);
             return;
         }
         if (requestCode == MINISTRO_INSTALL_REQUEST_CODE)
                 startApp(false);
         super.onActivityResult(requestCode, resultCode, data);
     }
-    @Override
     public void super_onActivityResult(int requestCode, int resultCode, Intent data)
     {
         super.onActivityResult(requestCode, resultCode, data);
@@ -425,12 +416,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     protected void onApplyThemeResource(Theme theme, int resid, boolean first)
     {
-        if (QtApplication.m_activityListener4 != null)
-            QtApplication.m_activityListener4.onApplyThemeResource(theme, resid, first);
+        if (QtApplication.m_delegateObject != null)
+            QtApplication.m_delegateObject.onApplyThemeResource(theme, resid, first);
         else
             super.onApplyThemeResource(theme, resid, first);
     }
-    @Override
     public void super_onApplyThemeResource(Theme theme, int resid, boolean first)
     {
         super.onApplyThemeResource(theme, resid, first);
@@ -441,12 +431,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     protected void onChildTitleChanged(Activity childActivity, CharSequence title)
     {
-        if (QtApplication.m_activityListener4 != null)
-            QtApplication.m_activityListener4.onChildTitleChanged(childActivity, title);
+        if (QtApplication.m_delegateObject != null)
+            QtApplication.m_delegateObject.onChildTitleChanged(childActivity, title);
         else
             super.onChildTitleChanged(childActivity, title);
     }
-    @Override
     public void super_onChildTitleChanged(Activity childActivity, CharSequence title)
     {
         super.onChildTitleChanged(childActivity, title);
@@ -456,12 +445,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     public void onConfigurationChanged(Configuration newConfig)
     {
-        if (QtApplication.m_activityListener4 != null)
-            QtApplication.m_activityListener4.onConfigurationChanged(newConfig);
+        if (QtApplication.m_delegateObject != null)
+            QtApplication.m_delegateObject.onConfigurationChanged(newConfig);
         else
             super.onConfigurationChanged(newConfig);
     }
-    @Override
     public void super_onConfigurationChanged(Configuration newConfig)
     {
         super.onConfigurationChanged(newConfig);
@@ -471,12 +459,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     public void onContentChanged()
     {
-        if (QtApplication.m_activityListener4 != null)
-            QtApplication.m_activityListener4.onContentChanged();
+        if (QtApplication.m_delegateObject != null)
+            QtApplication.m_delegateObject.onContentChanged();
         else
             super.onContentChanged();
     }
-    @Override
     public void super_onContentChanged()
     {
         super.onContentChanged();
@@ -486,13 +473,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     public boolean onContextItemSelected(MenuItem item)
     {
-        if (QtApplication.m_activityListener4 != null)
-            return QtApplication.m_activityListener4.onContextItemSelected(item);
+        if (QtApplication.m_delegateObject != null)
+            return QtApplication.m_delegateObject.onContextItemSelected(item);
         else
             return super.onContextItemSelected(item);
     }
-
-    @Override
     public boolean super_onContextItemSelected(MenuItem item)
     {
         return super.onContextItemSelected(item);
@@ -502,12 +487,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     public void onContextMenuClosed(Menu menu)
     {
-        if (QtApplication.m_activityListener4 != null)
-            QtApplication.m_activityListener4.onContextMenuClosed(menu);
+        if (QtApplication.m_delegateObject != null)
+            QtApplication.m_delegateObject.onContextMenuClosed(menu);
         else
             super.onContextMenuClosed(menu);
     }
-    @Override
     public void super_onContextMenuClosed(Menu menu)
     {
         super.onContextMenuClosed(menu);
@@ -517,9 +501,9 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     public void onCreate(Bundle savedInstanceState)
     {
-        if (QtApplication.m_activityListener4 != null)
+        if (QtApplication.m_delegateObject != null)
         {
-            QtApplication.m_activityListener4.onCreate(savedInstanceState);
+            QtApplication.m_delegateObject.onCreate(savedInstanceState);
             return;
         }
         super.onCreate(savedInstanceState);
@@ -534,7 +518,6 @@ public class QtActivity extends Activity implements QtActivityInterface
         if (null == getLastNonConfigurationInstance())
             startApp(true);
     }
-    @Override
     public void super_onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
@@ -544,12 +527,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     public void onCreateContextMenu(ContextMenu menu, View v, ContextMenuInfo menuInfo)
     {
-        if (QtApplication.m_activityListener4 != null)
-            QtApplication.m_activityListener4.onCreateContextMenu(menu, v, menuInfo);
+        if (QtApplication.m_delegateObject != null)
+            QtApplication.m_delegateObject.onCreateContextMenu(menu, v, menuInfo);
         else
             super.onCreateContextMenu(menu, v, menuInfo);
     }
-    @Override
     public void super_onCreateContextMenu(ContextMenu menu, View v, ContextMenuInfo menuInfo)
     {
         super.onCreateContextMenu(menu, v, menuInfo);
@@ -559,12 +541,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     public CharSequence onCreateDescription()
     {
-        if (QtApplication.m_activityListener4 != null)
-            return QtApplication.m_activityListener4.onCreateDescription();
+        if (QtApplication.m_delegateObject != null)
+            return QtApplication.m_delegateObject.onCreateDescription();
         else
             return super.onCreateDescription();
     }
-    @Override
     public CharSequence super_onCreateDescription()
     {
         return super.onCreateDescription();
@@ -574,12 +555,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     protected Dialog onCreateDialog(int id)
     {
-        if (QtApplication.m_activityListener4 != null)
-            return QtApplication.m_activityListener4.onCreateDialog(id);
+        if (QtApplication.m_delegateObject != null)
+            return QtApplication.m_delegateObject.onCreateDialog(id);
         else
             return super.onCreateDialog(id);
     }
-    @Override
     public Dialog super_onCreateDialog(int id)
     {
         return super.onCreateDialog(id);
@@ -589,12 +569,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     public boolean onCreateOptionsMenu(Menu menu)
     {
-        if (QtApplication.m_activityListener4 != null)
-            return QtApplication.m_activityListener4.onCreateOptionsMenu(menu);
+        if (QtApplication.m_delegateObject != null)
+            return QtApplication.m_delegateObject.onCreateOptionsMenu(menu);
         else
             return super.onCreateOptionsMenu(menu);
     }
-    @Override
     public boolean super_onCreateOptionsMenu(Menu menu)
     {
         return super.onCreateOptionsMenu(menu);
@@ -604,12 +583,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     public boolean onCreatePanelMenu(int featureId, Menu menu)
     {
-        if (QtApplication.m_activityListener4 != null)
-            return QtApplication.m_activityListener4.onCreatePanelMenu(featureId, menu);
+        if (QtApplication.m_delegateObject != null)
+            return QtApplication.m_delegateObject.onCreatePanelMenu(featureId, menu);
         else
             return super.onCreatePanelMenu(featureId, menu);
     }
-    @Override
     public boolean super_onCreatePanelMenu(int featureId, Menu menu)
     {
         return super.onCreatePanelMenu(featureId, menu);
@@ -620,12 +598,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     public View onCreatePanelView(int featureId)
     {
-        if (QtApplication.m_activityListener4 != null)
-            return QtApplication.m_activityListener4.onCreatePanelView(featureId);
+        if (QtApplication.m_delegateObject != null)
+            return QtApplication.m_delegateObject.onCreatePanelView(featureId);
         else
             return super.onCreatePanelView(featureId);
     }
-    @Override
     public View super_onCreatePanelView(int featureId)
     {
         return super.onCreatePanelView(featureId);
@@ -635,12 +612,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     public boolean onCreateThumbnail(Bitmap outBitmap, Canvas canvas)
     {
-        if (QtApplication.m_activityListener4 != null)
-            return QtApplication.m_activityListener4.onCreateThumbnail(outBitmap, canvas);
+        if (QtApplication.m_delegateObject != null)
+            return QtApplication.m_delegateObject.onCreateThumbnail(outBitmap, canvas);
         else
             return super.onCreateThumbnail(outBitmap, canvas);
     }
-    @Override
     public boolean super_onCreateThumbnail(Bitmap outBitmap, Canvas canvas)
     {
         return super.onCreateThumbnail(outBitmap, canvas);
@@ -650,12 +626,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     public View onCreateView(String name, Context context, AttributeSet attrs)
     {
-        if (QtApplication.m_activityListener4 != null)
-            return QtApplication.m_activityListener4.onCreateView(name, context, attrs);
+        if (QtApplication.m_delegateObject != null)
+            return QtApplication.m_delegateObject.onCreateView(name, context, attrs);
         else
             return super.onCreateView(name, context, attrs);
     }
-    @Override
     public View super_onCreateView(String name, Context context, AttributeSet attrs)
     {
         return super.onCreateView(name, context, attrs);
@@ -665,12 +640,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     protected void onDestroy()
     {
-        if (QtApplication.m_activityListener4 != null)
-            QtApplication.m_activityListener4.onDestroy();
+        if (QtApplication.m_delegateObject != null)
+            QtApplication.m_delegateObject.onDestroy();
         else
             super.onDestroy();
     }
-    @Override
     public void super_onDestroy()
     {
         super.onDestroy();
@@ -681,12 +655,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event)
     {
-        if (QtApplication.m_activityListener4 != null)
-            return QtApplication.m_activityListener4.onKeyDown(keyCode, event);
+        if (QtApplication.m_delegateObject != null)
+            return QtApplication.m_delegateObject.onKeyDown(keyCode, event);
         else
             return super.onKeyDown(keyCode, event);
     }
-    @Override
     public boolean super_onKeyDown(int keyCode, KeyEvent event)
     {
         return super.onKeyDown(keyCode, event);
@@ -697,12 +670,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     public boolean onKeyMultiple(int keyCode, int repeatCount, KeyEvent event)
     {
-        if (QtApplication.m_activityListener4 != null)
-            return QtApplication.m_activityListener4.onKeyMultiple(keyCode, repeatCount, event);
+        if (QtApplication.m_delegateObject != null)
+            return QtApplication.m_delegateObject.onKeyMultiple(keyCode, repeatCount, event);
         else
             return super.onKeyMultiple(keyCode, repeatCount, event);
     }
-    @Override
     public boolean super_onKeyMultiple(int keyCode, int repeatCount, KeyEvent event)
     {
         return super.onKeyMultiple(keyCode, repeatCount, event);
@@ -712,12 +684,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     public boolean onKeyUp(int keyCode, KeyEvent event)
     {
-        if (QtApplication.m_activityListener4 != null)
-            return QtApplication.m_activityListener4.onKeyUp(keyCode, event);
+        if (QtApplication.m_delegateObject != null)
+            return QtApplication.m_delegateObject.onKeyUp(keyCode, event);
         else
             return super.onKeyUp(keyCode, event);
     }
-    @Override
     public boolean super_onKeyUp(int keyCode, KeyEvent event)
     {
         return super.onKeyUp(keyCode, event);
@@ -727,12 +698,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     public void onLowMemory()
     {
-        if (QtApplication.m_activityListener4 != null)
-            QtApplication.m_activityListener4.onLowMemory();
+        if (QtApplication.m_delegateObject != null)
+            QtApplication.m_delegateObject.onLowMemory();
         else
             super.onLowMemory();
     }
-    @Override
     public void super_onLowMemory()
     {
         super.onLowMemory();
@@ -742,12 +712,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     public boolean onMenuItemSelected(int featureId, MenuItem item)
     {
-        if (QtApplication.m_activityListener4 != null)
-            return QtApplication.m_activityListener4.onMenuItemSelected(featureId, item);
+        if (QtApplication.m_delegateObject != null)
+            return QtApplication.m_delegateObject.onMenuItemSelected(featureId, item);
         else
             return super.onMenuItemSelected(featureId, item);
     }
-    @Override
     public boolean super_onMenuItemSelected(int featureId, MenuItem item)
     {
         return super.onMenuItemSelected(featureId, item);
@@ -757,12 +726,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     public boolean onMenuOpened(int featureId, Menu menu)
     {
-        if (QtApplication.m_activityListener4 != null)
-            return QtApplication.m_activityListener4.onMenuOpened(featureId, menu);
+        if (QtApplication.m_delegateObject != null)
+            return QtApplication.m_delegateObject.onMenuOpened(featureId, menu);
         else
             return super.onMenuOpened(featureId, menu);
     }
-    @Override
     public boolean super_onMenuOpened(int featureId, Menu menu)
     {
         return super.onMenuOpened(featureId, menu);
@@ -772,12 +740,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     protected void onNewIntent(Intent intent)
     {
-        if (QtApplication.m_activityListener4 != null)
-            QtApplication.m_activityListener4.onNewIntent(intent);
+        if (QtApplication.m_delegateObject != null)
+            QtApplication.m_delegateObject.onNewIntent(intent);
         else
             super.onNewIntent(intent);
     }
-    @Override
     public void super_onNewIntent(Intent intent)
     {
         super.onNewIntent(intent);
@@ -787,12 +754,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     public boolean onOptionsItemSelected(MenuItem item)
     {
-        if (QtApplication.m_activityListener4 != null)
-            return QtApplication.m_activityListener4.onOptionsItemSelected(item);
+        if (QtApplication.m_delegateObject != null)
+            return QtApplication.m_delegateObject.onOptionsItemSelected(item);
         else
             return super.onOptionsItemSelected(item);
     }
-    @Override
     public boolean super_onOptionsItemSelected(MenuItem item)
     {
         return super.onOptionsItemSelected(item);
@@ -802,12 +768,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     public void onOptionsMenuClosed(Menu menu)
     {
-        if (QtApplication.m_activityListener4 != null)
-            QtApplication.m_activityListener4.onOptionsMenuClosed(menu);
+        if (QtApplication.m_delegateObject != null)
+            QtApplication.m_delegateObject.onOptionsMenuClosed(menu);
         else
             super.onOptionsMenuClosed(menu);
     }
-    @Override
     public void super_onOptionsMenuClosed(Menu menu)
     {
         super.onOptionsMenuClosed(menu);
@@ -817,12 +782,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     public void onPanelClosed(int featureId, Menu menu)
     {
-        if (QtApplication.m_activityListener4 != null)
-            QtApplication.m_activityListener4.onPanelClosed(featureId, menu);
+        if (QtApplication.m_delegateObject != null)
+            QtApplication.m_delegateObject.onPanelClosed(featureId, menu);
         else
             super.onPanelClosed(featureId, menu);
     }
-    @Override
     public void super_onPanelClosed(int featureId, Menu menu)
     {
         super.onPanelClosed(featureId, menu);
@@ -832,12 +796,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     protected void onPause()
     {
-        if (QtApplication.m_activityListener4 != null)
-            QtApplication.m_activityListener4.onPause();
+        if (QtApplication.m_delegateObject != null)
+            QtApplication.m_delegateObject.onPause();
         else
             super.onPause();
     }
-    @Override
     public void super_onPause()
     {
         super.onPause();
@@ -847,12 +810,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     protected void onPostCreate(Bundle savedInstanceState)
     {
-        if (QtApplication.m_activityListener4 != null)
-            QtApplication.m_activityListener4.onPostCreate(savedInstanceState);
+        if (QtApplication.m_delegateObject != null)
+            QtApplication.m_delegateObject.onPostCreate(savedInstanceState);
         else
             super.onPostCreate(savedInstanceState);
     }
-    @Override
     public void super_onPostCreate(Bundle savedInstanceState)
     {
         super.onPostCreate(savedInstanceState);
@@ -862,12 +824,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     protected void onPostResume()
     {
-        if (QtApplication.m_activityListener4 != null)
-            QtApplication.m_activityListener4.onPostResume();
+        if (QtApplication.m_delegateObject != null)
+            QtApplication.m_delegateObject.onPostResume();
         else
             super.onPostResume();
     }
-    @Override
     public void super_onPostResume()
     {
         super.onPostResume();
@@ -877,12 +838,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     protected void onPrepareDialog(int id, Dialog dialog)
     {
-        if (QtApplication.m_activityListener4 != null)
-            QtApplication.m_activityListener4.onPrepareDialog(id, dialog);
+        if (QtApplication.m_delegateObject != null)
+            QtApplication.m_delegateObject.onPrepareDialog(id, dialog);
         else
             super.onPrepareDialog(id, dialog);
     }
-    @Override
     public void super_onPrepareDialog(int id, Dialog dialog)
     {
         super.onPrepareDialog(id, dialog);
@@ -892,12 +852,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     public boolean onPrepareOptionsMenu(Menu menu)
     {
-        if (QtApplication.m_activityListener4 != null)
-            return QtApplication.m_activityListener4.onPrepareOptionsMenu(menu);
+        if (QtApplication.m_delegateObject != null)
+            return QtApplication.m_delegateObject.onPrepareOptionsMenu(menu);
         else
             return super.onPrepareOptionsMenu(menu);
     }
-    @Override
     public boolean super_onPrepareOptionsMenu(Menu menu)
     {
         return super.onPrepareOptionsMenu(menu);
@@ -907,12 +866,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     public boolean onPreparePanel(int featureId, View view, Menu menu)
     {
-        if (QtApplication.m_activityListener4 != null)
-            return QtApplication.m_activityListener4.onPreparePanel(featureId, view, menu);
+        if (QtApplication.m_delegateObject != null)
+            return QtApplication.m_delegateObject.onPreparePanel(featureId, view, menu);
         else
             return super.onPreparePanel(featureId, view, menu);
     }
-    @Override
     public boolean super_onPreparePanel(int featureId, View view, Menu menu)
     {
         return super.onPreparePanel(featureId, view, menu);
@@ -922,12 +880,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     protected void onRestart()
     {
-        if (QtApplication.m_activityListener4 != null)
-            QtApplication.m_activityListener4.onRestart();
+        if (QtApplication.m_delegateObject != null)
+            QtApplication.m_delegateObject.onRestart();
         else
             super.onRestart();
     }
-    @Override
     public void super_onRestart()
     {
         super.onRestart();
@@ -937,12 +894,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     protected void onRestoreInstanceState(Bundle savedInstanceState)
     {
-        if (QtApplication.m_activityListener4 != null)
-            QtApplication.m_activityListener4.onRestoreInstanceState(savedInstanceState);
+        if (QtApplication.m_delegateObject != null)
+            QtApplication.m_delegateObject.onRestoreInstanceState(savedInstanceState);
         else
             super.onRestoreInstanceState(savedInstanceState);
     }
-    @Override
     public void super_onRestoreInstanceState(Bundle savedInstanceState)
     {
         super.onRestoreInstanceState(savedInstanceState);
@@ -952,12 +908,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     protected void onResume()
     {
-        if (QtApplication.m_activityListener4 != null)
-            QtApplication.m_activityListener4.onResume();
+        if (QtApplication.m_delegateObject != null)
+            QtApplication.m_delegateObject.onResume();
         else
             super.onResume();
     }
-    @Override
     public void super_onResume()
     {
         super.onResume();
@@ -967,12 +922,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     public Object onRetainNonConfigurationInstance()
     {
-        if (QtApplication.m_activityListener4 != null)
-            return QtApplication.m_activityListener4.onRetainNonConfigurationInstance();
+        if (QtApplication.m_delegateObject != null)
+            return QtApplication.m_delegateObject.onRetainNonConfigurationInstance();
         else
             return super.onRetainNonConfigurationInstance();
     }
-    @Override
     public Object super_onRetainNonConfigurationInstance()
     {
         return super.onRetainNonConfigurationInstance();
@@ -982,12 +936,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     protected void onSaveInstanceState(Bundle outState)
     {
-        if (QtApplication.m_activityListener4 != null)
-            QtApplication.m_activityListener4.onSaveInstanceState(outState);
+        if (QtApplication.m_delegateObject != null)
+            QtApplication.m_delegateObject.onSaveInstanceState(outState);
         else
             super.onSaveInstanceState(outState);
     }
-    @Override
     public void super_onSaveInstanceState(Bundle outState)
     {
         super.onSaveInstanceState(outState);
@@ -998,12 +951,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     public boolean onSearchRequested()
     {
-        if (QtApplication.m_activityListener4 != null)
-            return QtApplication.m_activityListener4.onSearchRequested();
+        if (QtApplication.m_delegateObject != null)
+            return QtApplication.m_delegateObject.onSearchRequested();
         else
             return super.onSearchRequested();
     }
-    @Override
     public boolean super_onSearchRequested()
     {
         return super.onSearchRequested();
@@ -1013,12 +965,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     protected void onStart()
     {
-        if (QtApplication.m_activityListener4 != null)
-            QtApplication.m_activityListener4.onStart();
+        if (QtApplication.m_delegateObject != null)
+            QtApplication.m_delegateObject.onStart();
         else
             super.onStart();
     }
-    @Override
     public void super_onStart()
     {
         super.onStart();
@@ -1028,12 +979,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     protected void onStop()
     {
-        if (QtApplication.m_activityListener4 != null)
-            QtApplication.m_activityListener4.onStop();
+        if (QtApplication.m_delegateObject != null)
+            QtApplication.m_delegateObject.onStop();
         else
             super.onStop();
     }
-    @Override
     public void super_onStop()
     {
         super.onStop();
@@ -1043,12 +993,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     protected void onTitleChanged(CharSequence title, int color)
     {
-        if (QtApplication.m_activityListener4 != null)
-            QtApplication.m_activityListener4.onTitleChanged(title, color);
+        if (QtApplication.m_delegateObject != null)
+            QtApplication.m_delegateObject.onTitleChanged(title, color);
         else
             super.onTitleChanged(title, color);
     }
-    @Override
     public void super_onTitleChanged(CharSequence title, int color)
     {
         super.onTitleChanged(title, color);
@@ -1058,12 +1007,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     public boolean onTouchEvent(MotionEvent event)
     {
-        if (QtApplication.m_activityListener4 != null)
-            return QtApplication.m_activityListener4.onTouchEvent(event);
+        if (QtApplication.m_delegateObject != null)
+            return QtApplication.m_delegateObject.onTouchEvent(event);
         else
             return super.onTouchEvent(event);
     }
-    @Override
     public boolean super_onTouchEvent(MotionEvent event)
     {
         return super.onTouchEvent(event);
@@ -1073,12 +1021,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     public boolean onTrackballEvent(MotionEvent event)
     {
-        if (QtApplication.m_activityListener4 != null)
-            return QtApplication.m_activityListener4.onTrackballEvent(event);
+        if (QtApplication.m_delegateObject != null)
+            return QtApplication.m_delegateObject.onTrackballEvent(event);
         else
             return super.onTrackballEvent(event);
     }
-    @Override
     public boolean super_onTrackballEvent(MotionEvent event)
     {
         return super.onTrackballEvent(event);
@@ -1088,12 +1035,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     public void onUserInteraction()
     {
-        if (QtApplication.m_activityListener4 != null)
-            QtApplication.m_activityListener4.onUserInteraction();
+        if (QtApplication.m_delegateObject != null)
+            QtApplication.m_delegateObject.onUserInteraction();
         else
             super.onUserInteraction();
     }
-    @Override
     public void super_onUserInteraction()
     {
         super.onUserInteraction();
@@ -1103,12 +1049,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     protected void onUserLeaveHint()
     {
-        if (QtApplication.m_activityListener4 != null)
-            QtApplication.m_activityListener4.onUserLeaveHint();
+        if (QtApplication.m_delegateObject != null)
+            QtApplication.m_delegateObject.onUserLeaveHint();
         else
             super.onUserLeaveHint();
     }
-    @Override
     public void super_onUserLeaveHint()
     {
         super.onUserLeaveHint();
@@ -1118,12 +1063,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     public void onWindowAttributesChanged(LayoutParams params)
     {
-        if (QtApplication.m_activityListener4 != null)
-            QtApplication.m_activityListener4.onWindowAttributesChanged(params);
+        if (QtApplication.m_delegateObject != null)
+            QtApplication.m_delegateObject.onWindowAttributesChanged(params);
         else
             super.onWindowAttributesChanged(params);
     }
-    @Override
     public void super_onWindowAttributesChanged(LayoutParams params)
     {
         super.onWindowAttributesChanged(params);
@@ -1133,12 +1077,11 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     public void onWindowFocusChanged(boolean hasFocus)
     {
-        if (QtApplication.m_activityListener4 != null)
-            QtApplication.m_activityListener4.onWindowFocusChanged(hasFocus);
+        if (QtApplication.m_delegateObject != null)
+            QtApplication.m_delegateObject.onWindowFocusChanged(hasFocus);
         else
             super.onWindowFocusChanged(hasFocus);
     }
-    @Override
     public void super_onWindowFocusChanged(boolean hasFocus)
     {
         super.onWindowFocusChanged(hasFocus);
@@ -1155,7 +1098,6 @@ public class QtActivity extends Activity implements QtActivityInterface
         else
             super.onAttachedToWindow();
     }
-    @Override
     public void super_onAttachedToWindow()
     {
         super.onAttachedToWindow();
@@ -1170,7 +1112,6 @@ public class QtActivity extends Activity implements QtActivityInterface
         else
             super.onBackPressed();
     }
-    @Override
     public void super_onBackPressed()
     {
         super.onBackPressed();
@@ -1185,7 +1126,6 @@ public class QtActivity extends Activity implements QtActivityInterface
         else
             super.onDetachedFromWindow();
     }
-    @Override
     public void super_onDetachedFromWindow()
     {
         super.onDetachedFromWindow();
@@ -1200,7 +1140,6 @@ public class QtActivity extends Activity implements QtActivityInterface
         else
             return super.onKeyLongPress(keyCode, event);
     }
-    @Override
     public boolean super_onKeyLongPress(int keyCode, KeyEvent event)
     {
         return super.onKeyLongPress(keyCode, event);
@@ -1218,7 +1157,6 @@ public class QtActivity extends Activity implements QtActivityInterface
         else
             return super.onCreateDialog(id, args);
     }
-    @Override
     public Dialog super_onCreateDialog(int id, Bundle args)
     {
         return super.onCreateDialog(id, args);
@@ -1233,7 +1171,6 @@ public class QtActivity extends Activity implements QtActivityInterface
         else
             super.onPrepareDialog(id, dialog, args);
     }
-    @Override
     public void super_onPrepareDialog(int id, Dialog dialog, Bundle args)
     {
         super.onPrepareDialog(id, dialog, args);
@@ -1251,7 +1188,6 @@ public class QtActivity extends Activity implements QtActivityInterface
         else
             return super.dispatchKeyShortcutEvent(event);
     }
-    @Override
     public boolean super_dispatchKeyShortcutEvent(KeyEvent event)
     {
         return super.dispatchKeyShortcutEvent(event);
@@ -1266,7 +1202,6 @@ public class QtActivity extends Activity implements QtActivityInterface
         else
             super.onActionModeFinished(mode);
     }
-    @Override
     public void super_onActionModeFinished(ActionMode mode)
     {
         super.onActionModeFinished(mode);
@@ -1281,7 +1216,6 @@ public class QtActivity extends Activity implements QtActivityInterface
         else
             super.onActionModeStarted(mode);
     }
-    @Override
     public void super_onActionModeStarted(ActionMode mode)
     {
         super.onActionModeStarted(mode);
@@ -1296,7 +1230,6 @@ public class QtActivity extends Activity implements QtActivityInterface
         else
             super.onAttachFragment(fragment);
     }
-    @Override
     public void super_onAttachFragment(Fragment fragment)
     {
         super.onAttachFragment(fragment);
@@ -1310,7 +1243,6 @@ public class QtActivity extends Activity implements QtActivityInterface
         else
             return super.onCreateView(parent, name, context, attrs);
     }
-    @Override
     public View super_onCreateView(View parent, String name, Context context,
             AttributeSet attrs) {
         return super.onCreateView(parent, name, context, attrs);
@@ -1325,7 +1257,6 @@ public class QtActivity extends Activity implements QtActivityInterface
         else
             return super.onKeyShortcut(keyCode, event);
     }
-    @Override
     public boolean super_onKeyShortcut(int keyCode, KeyEvent event)
     {
         return super.onKeyShortcut(keyCode, event);
@@ -1340,7 +1271,6 @@ public class QtActivity extends Activity implements QtActivityInterface
         else
             return super.onWindowStartingActionMode(callback);
     }
-    @Override
     public ActionMode super_onWindowStartingActionMode(Callback callback)
     {
         return super.onWindowStartingActionMode(callback);
@@ -1358,7 +1288,6 @@ public class QtActivity extends Activity implements QtActivityInterface
         else
             return super.dispatchGenericMotionEvent(ev);
     }
-    @Override
     public boolean super_dispatchGenericMotionEvent(MotionEvent event)
     {
         return super.dispatchGenericMotionEvent(event);
@@ -1373,7 +1302,6 @@ public class QtActivity extends Activity implements QtActivityInterface
         else
             return super.onGenericMotionEvent(event);
     }
-    @Override
     public boolean super_onGenericMotionEvent(MotionEvent event)
     {
         return super.onGenericMotionEvent(event);
