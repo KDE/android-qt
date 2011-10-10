@@ -1,5 +1,6 @@
 package org.kde.necessitas.interfaces;
 
+//@ANDROID-11
 public interface QtActivitySuperInterface11
 {
     boolean super_dispatchKeyShortcutEvent (android.view.KeyEvent event);
@@ -10,3 +11,4 @@ public interface QtActivitySuperInterface11
     boolean super_onKeyShortcut(int keyCode, android.view.KeyEvent event);
     android.view.ActionMode super_onWindowStartingActionMode (android.view.ActionMode.Callback callback);
 }
+//@ANDROID-11

@@ -49,7 +49,6 @@ import org.kde.necessitas.ministro.IMinistroCallback;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
-import android.app.Fragment;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -68,8 +67,6 @@ import android.os.IBinder;
 import android.os.RemoteException;
 import android.util.AttributeSet;
 import android.util.Log;
-import android.view.ActionMode;
-import android.view.ActionMode.Callback;
 import android.view.ContextMenu;
 import android.view.ContextMenu.ContextMenuInfo;
 import android.view.KeyEvent;
@@ -82,12 +79,26 @@ import android.view.WindowManager.LayoutParams;
 import android.view.accessibility.AccessibilityEvent;
 import dalvik.system.DexClassLoader;
 
+//@ANDROID-11
+import android.app.Fragment;
+import android.view.ActionMode;
+import android.view.ActionMode.Callback;
+//@ANDROID-11
+
 public class QtActivity extends Activity implements QtActivityInterface
                                                 , QtActivitySuperInterface4
+//@ANDROID-5
                                                 , QtActivitySuperInterface5
+//@ANDROID-5
+//@ANDROID-8
                                                 , QtActivitySuperInterface8
+//@ANDROID-8
+//@ANDROID-11
                                                 , QtActivitySuperInterface11
+//@ANDROID-11
+//@ANDROID-12
                                                 , QtActivitySuperInterface12
+//@ANDROID-12
 {
     private final static int MINISTRO_INSTALL_REQUEST_CODE = 0xf3ee; // request code used to know when Ministro instalation is finished
     private static final int MINISTRO_API_LEVEL=1; // Ministro api level (check IMinistro.aidl file)
@@ -132,7 +143,7 @@ public class QtActivity extends Activity implements QtActivityInterface
                 libs.addAll(Arrays.asList(getResources().getStringArray(m_activityInfo.metaData.getInt("android.app.bundled_libs_resource_id"))));
 
             if ( m_activityInfo.metaData.containsKey("android.app.lib_name") )
-                libs.add(m_activityInfo.metaData.getString("lib_name"));
+                libs.add(m_activityInfo.metaData.getString("android.app.lib_name"));
             loaderParams.putStringArrayList(BUNDLED_LIBRARIES_KEY, libs);
 
             // load and start QtLoader class
@@ -142,7 +153,7 @@ public class QtActivity extends Activity implements QtActivityInterface
                                             , getClassLoader()); // parent loader
 
             @SuppressWarnings("rawtypes")
-            Class loaderClass = m_classLoader.loadClass(LOADER_CLASS_NAME_KEY); // load QtLoader class
+            Class loaderClass = m_classLoader.loadClass(loaderParams.getString(LOADER_CLASS_NAME_KEY)); // load QtLoader class
             QtLoaderInterface qtLoader=(QtLoaderInterface)loaderClass.newInstance(); // create an instance
             if (!qtLoader.startApplication(this, loaderParams))
                 throw new Exception("");
@@ -266,7 +277,7 @@ public class QtActivity extends Activity implements QtActivityInterface
                 loaderParams.putInt(ERROR_CODE_KEY, 0);
                 loaderParams.putString(DEX_PATH_KEY, dexPaths);
                 loaderParams.putString(LIB_PATH_KEY, "/data/local/qt/lib");
-                loaderParams.putString(LOADER_CLASS_NAME_KEY, getIntent().getExtras().getString("loader_class_name"));
+                loaderParams.putString(LOADER_CLASS_NAME_KEY, "org.kde.necessitas.industrius.QtActivityDelegate");//getIntent().getExtras().getString("loader_class_name"));
                 loaderParams.putStringArrayList(NATIVE_LIBRARIES_KEY, libraryList);
                 loaderParams.putString(ENVIRONMENT_VARIABLES_KEY,"QML_IMPORT_PATH=/data/local/qt/imports\tQT_PLUGIN_PATH=/data/local/qt/plugins");
                 loaderParams.putString(APPLICATION_PARAMETERS_KEY,"-platform\tandroid");
@@ -277,7 +288,7 @@ public class QtActivity extends Activity implements QtActivityInterface
             try {
                 if (!bindService(new Intent(org.kde.necessitas.ministro.IMinistro.class.getCanonicalName()), m_ministroConnection, Context.BIND_AUTO_CREATE))
                     throw new SecurityException("");
-            } catch (SecurityException e) {
+            } catch (Exception e) {
                 if (firstStart)
                 {
                     AlertDialog.Builder downloadDialog = new AlertDialog.Builder(this);
@@ -1135,6 +1146,7 @@ public class QtActivity extends Activity implements QtActivityInterface
     //---------------------------------------------------------------------------
 
     //////////////// Activity API 5 /////////////
+//@ANDROID-5
     @Override
     public void onAttachedToWindow()
     {
@@ -1191,13 +1203,14 @@ public class QtActivity extends Activity implements QtActivityInterface
     @Override
     public boolean super_onKeyLongPress(int keyCode, KeyEvent event)
     {
-        // TODO Auto-generated method stub
-        return false;
+        return super.onKeyLongPress(keyCode, event);
     }
     //---------------------------------------------------------------------------
-    //////////////// Activity API 8 /////////////
+//@ANDROID-5
 
-    @Override
+   //////////////// Activity API 8 /////////////
+//@ANDROID-8
+   @Override
     protected Dialog onCreateDialog(int id, Bundle args)
     {
         if (QtApplication.m_activityListener8 != null)
@@ -1226,8 +1239,10 @@ public class QtActivity extends Activity implements QtActivityInterface
         super.onPrepareDialog(id, dialog, args);
     }
     //---------------------------------------------------------------------------
+//@ANDROID-8
     //////////////// Activity API 11 /////////////
 
+//@ANDROID-11
     @Override
     public boolean dispatchKeyShortcutEvent(KeyEvent event)
     {
@@ -1331,8 +1346,10 @@ public class QtActivity extends Activity implements QtActivityInterface
         return super.onWindowStartingActionMode(callback);
     }
     //---------------------------------------------------------------------------
+//@ANDROID-11
     //////////////// Activity API 12 /////////////
 
+//@ANDROID-12
     @Override
     public boolean dispatchGenericMotionEvent(MotionEvent ev)
     {
@@ -1362,5 +1379,6 @@ public class QtActivity extends Activity implements QtActivityInterface
         return super.onGenericMotionEvent(event);
     }
     //---------------------------------------------------------------------------
+//@ANDROID-12
 
 }

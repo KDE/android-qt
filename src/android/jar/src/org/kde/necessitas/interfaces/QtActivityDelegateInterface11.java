@@ -1,6 +1,7 @@
 package org.kde.necessitas.interfaces;
 
 //activity interface for Android API level 11
+//@ANDROID-11
 public interface QtActivityDelegateInterface11
 {
     boolean dispatchKeyShortcutEvent (android.view.KeyEvent event);
@@ -11,3 +12,4 @@ public interface QtActivityDelegateInterface11
     boolean onKeyShortcut(int keyCode, android.view.KeyEvent event);
     android.view.ActionMode onWindowStartingActionMode (android.view.ActionMode.Callback callback);
 }
+//@ANDROID-11
