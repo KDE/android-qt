@@ -29,8 +29,8 @@ package org.kde.necessitas.origo;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 
 import android.app.Activity;
 import android.app.Application;
@@ -39,10 +39,10 @@ public class QtApplication extends Application
 {
     public final static String QtTAG="Qt";
     public static Object m_delegateObject = null;
-    public static HashMap<String, HashSet<Method>> m_delegateMethods=null;
+    public static HashMap<String, ArrayList<Method>> m_delegateMethods= new HashMap<String, ArrayList<Method>>();
     public static Method dispatchKeyEvent = null;
     public static Method dispatchPopulateAccessibilityEvent = null;
-    public static Method dispatchTouchEvent = null; 
+    public static Method dispatchTouchEvent = null;
     public static Method dispatchTrackballEvent = null;
     public static Method onKeyDown = null;
     public static Method onKeyMultiple = null;
@@ -50,15 +50,20 @@ public class QtApplication extends Application
     public static Method onTouchEvent = null;
     public static Method onTrackballEvent = null;
     public static Method onActivityResult = null;
+    public static Method onCreate = null;
+    public static Method onKeyLongPress = null;
+    public static Method dispatchKeyShortcutEvent = null;
+    public static Method onKeyShortcut = null;
+    public static Method dispatchGenericMotionEvent = null;
+    public static Method onGenericMotionEvent = null;
 /*
     public static Method onTerminate = null;
     public static Method onApplyThemeResource = null;
     public static Method onChildTitleChanged = null;
-    public static Method onConfigurationChanged = null; 
+    public static Method onConfigurationChanged = null;
     public static Method onContentChanged  = null;
     public static Method onContextItemSelected  = null;
     public static Method onContextMenuClosed = null;
-    public static Method onCreate = null;
     public static Method onCreateContextMenu = null;
     public static Method onCreateDescription = null;
     public static Method onCreateDialog = null;
@@ -97,76 +102,97 @@ public class QtApplication extends Application
     public static Method onAttachedToWindow = null;
     public static Method onBackPressed = null;
     public static Method onDetachedFromWindow = null;
-    public static Method onKeyLongPress = null;
     public static Method onCreateDialog8 = null;
     public static Method onPrepareDialog8 = null;
-    public static Method dispatchKeyShortcutEvent = null;
     public static Method onActionModeFinished = null;
     public static Method onActionModeStarted = null;
     public static Method onAttachFragment = null;
     public static Method onCreateView11 = null;
-    public static Method onKeyShortcut = null;
     public static Method onWindowStartingActionMode = null;
-    public static Method dispatchGenericMotionEvent = null;
-    public static Method onGenericMotionEvent = null;
 */
-    
+
     public static void setQtActivityDelegate(Object listener)
     {
         QtApplication.m_delegateObject = listener;
         Method[] delegateMethods = listener.getClass().getMethods();
         Method[] activityMethods = Activity.class.getMethods();
         Field[] applicationFields=QtApplication.class.getFields();
-    	for (Method delegateMethod:delegateMethods)
-    	{
-    		for(Method activityMethod:activityMethods)
-    		{
-        		if (delegateMethod.equals(activityMethod))
-        		{
-        			if (QtApplication.m_delegateMethods.containsKey(delegateMethod.getName()))
-        				QtApplication.m_delegateMethods.get(delegateMethod.getName()).add(delegateMethod);
-        			else
-        			{
-        				HashSet<Method> delegateSet = new HashSet<Method>();
-        				delegateSet.add(delegateMethod);
-        				QtApplication.m_delegateMethods.put(delegateMethod.getName(), delegateSet); 
-        			}
-		    		for(Field applicationField:applicationFields)
-		    		{
-		    			if (applicationField.getName().equals(delegateMethod.getName()))
-		    			{
-							try {
-								applicationField.set(null, delegateMethod);
-							} catch (Exception e) {
-								e.printStackTrace();
-							}
-		    			}
-		    		}
-        		}
-    		}
-    	}
+        for (Method delegateMethod:delegateMethods)
+        {
+            for(Method activityMethod:activityMethods)
+            {
+                if (delegateMethod.equals(activityMethod))
+                {
+                    if (QtApplication.m_delegateMethods.containsKey(delegateMethod.getName()))
+                        QtApplication.m_delegateMethods.get(delegateMethod.getName()).add(delegateMethod);
+                    else
+                    {
+                        ArrayList<Method> delegateSet = new ArrayList<Method>();
+                        delegateSet.add(delegateMethod);
+                        QtApplication.m_delegateMethods.put(delegateMethod.getName(), delegateSet);
+                    }
+                    for(Field applicationField:applicationFields)
+                    {
+                        if (applicationField.getName().equals(delegateMethod.getName()))
+                        {
+                            try {
+                                applicationField.set(null, delegateMethod);
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     @Override
     public void onTerminate() {
         if (m_delegateObject != null && m_delegateMethods.containsKey("onTerminate"))
-        	invokeDelegate(m_delegateMethods.get("onTerminate"));
+            invokeDelegate(m_delegateMethods.get("onTerminate"));
         super.onTerminate();
     }
 
+    static private int stackDeep=-1;
     public static boolean invokeDelegate(Object res, Object... args)
     {
-    	
-		return false;
+        if (m_delegateObject==null)
+            return false;
+        StackTraceElement[] elements=Thread.currentThread().getStackTrace();
+        if (-1 == stackDeep)
+        {
+            String activityClassName=QtActivity.class.getCanonicalName();
+            for(int it=0;it<elements.length;it++)
+                if (elements[it].getClassName().equals(activityClassName))
+                {
+                    stackDeep=it;
+                    break;
+                }
+        }
+        final String methodName=elements[stackDeep].getMethodName();
+        if (-1 == stackDeep || m_delegateMethods.containsKey(methodName))
+            return false;
+
+        for (Method m:m_delegateMethods.get(methodName))
+            if (m.getParameterTypes().length == args.length)
+            {
+                if (res!=null)
+                    res=invokeDelegateMethod(m, args);
+                else
+                    invokeDelegateMethod(m, args);
+                return true;
+            }
+        return false;
     }
 
-    public static Object invokeDelegate(Method m, Object... args)
+    public static Object invokeDelegateMethod(Method m, Object... args)
     {
-    	try {
-			return m.invoke(m_delegateObject, args);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		return null;
+        try {
+            return m.invoke(m_delegateObject, args);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 }

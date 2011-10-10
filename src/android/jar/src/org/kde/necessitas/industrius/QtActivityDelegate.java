@@ -29,73 +29,40 @@ package org.kde.necessitas.industrius;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.Iterator;
 
-import org.kde.necessitas.interfaces.QtActivityDelegateInterface11;
-import org.kde.necessitas.interfaces.QtActivityDelegateInterface12;
-import org.kde.necessitas.interfaces.QtActivityDelegateInterface4;
-import org.kde.necessitas.interfaces.QtActivityDelegateInterface5;
-import org.kde.necessitas.interfaces.QtActivityDelegateInterface8;
-import org.kde.necessitas.interfaces.QtActivityInterface;
-import org.kde.necessitas.interfaces.QtActivitySuperInterface11;
-import org.kde.necessitas.interfaces.QtActivitySuperInterface12;
-import org.kde.necessitas.interfaces.QtActivitySuperInterface4;
-import org.kde.necessitas.interfaces.QtActivitySuperInterface5;
-import org.kde.necessitas.interfaces.QtActivitySuperInterface8;
-import org.kde.necessitas.interfaces.QtLoaderInterface;
-import org.kde.necessitas.interfaces.QtStaticInitDataInterface;
-
 import android.app.Activity;
-import android.app.Dialog;
-import android.app.Fragment;
 import android.content.Context;
-import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
-import android.content.res.Configuration;
-import android.content.res.Resources.Theme;
-import android.graphics.Bitmap;
-import android.graphics.Canvas;
 import android.graphics.Rect;
 import android.os.Bundle;
 import android.text.method.MetaKeyKeyListener;
-import android.util.AttributeSet;
 import android.util.Log;
-import android.view.ActionMode;
-import android.view.ActionMode.Callback;
-import android.view.ContextMenu;
-import android.view.ContextMenu.ContextMenuInfo;
 import android.view.KeyCharacterMap;
 import android.view.KeyEvent;
-import android.view.Menu;
-import android.view.MenuItem;
-import android.view.MotionEvent;
-import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
-import android.view.WindowManager.LayoutParams;
-import android.view.accessibility.AccessibilityEvent;
 import android.view.inputmethod.InputMethodManager;
 
-public class QtActivityDelegate implements QtLoaderInterface
-                                        , QtActivityDelegateInterface4
-                                        , QtActivityDelegateInterface5
-                                        , QtActivityDelegateInterface8
-                                        , QtActivityDelegateInterface11
-                                        , QtActivityDelegateInterface12
+public class QtActivityDelegate
 {
-    private QtActivitySuperInterface4 m_activitySuperInterface4=null;
-    private QtActivitySuperInterface5 m_activitySuperInterface5=null;
-    private QtActivitySuperInterface8 m_activitySuperInterface8=null;
-    private QtActivitySuperInterface11 m_activitySuperInterface11=null;
-    private QtActivitySuperInterface12 m_activitySuperInterface12=null;
     private Activity m_activity = null;
+    private Method m_super_onRestoreInstanceState = null;
+    private Method m_super_onRetainNonConfigurationInstance = null;
+    private Method m_super_onSaveInstanceState = null;
+    private Method m_super_dispatchKeyEvent = null;
 
     private static final String NATIVE_LIBRARIES_KEY="native.libraries";
     private static final String BUNDLED_LIBRARIES_KEY="bundled.libraries";
     private static final String ENVIRONMENT_VARIABLES_KEY="environment.variables";
     private static final String APPLICATION_PARAMETERS_KEY="application.parameters";
     private static final String STATIC_INIT_CLASSES_KEY="application.parameters";
+
+    private static String m_environmentVariables = null;
+    private static String m_applicationParameters = null;
 
 
 //    private int m_id=-1;
@@ -151,9 +118,7 @@ public class QtActivityDelegate implements QtLoaderInterface
         }
         softwareKeyboardIsVisible = false;
     }
-
-    @Override
-    public boolean startApplication(QtActivityInterface activityInterface, Bundle loaderParams)
+    public boolean loadApplication(Object activityInterface, Bundle loaderParams)
     {
         /// check parameters integrity
         if (!loaderParams.containsKey(NATIVE_LIBRARIES_KEY)
@@ -162,15 +127,8 @@ public class QtActivityDelegate implements QtLoaderInterface
                 || !loaderParams.containsKey(APPLICATION_PARAMETERS_KEY))
             return false;
 
-        activityInterface.setQtActivityDelegate(this);
         m_activity = (Activity) activityInterface;
         QtNative.setActivity(m_activity, this);
-
-        m_activitySuperInterface4 = (QtActivitySuperInterface4) activityInterface;
-        m_activitySuperInterface5 = (QtActivitySuperInterface5) activityInterface;;
-        m_activitySuperInterface8 = (QtActivitySuperInterface8) activityInterface;;
-        m_activitySuperInterface11 = (QtActivitySuperInterface11) activityInterface;;
-        m_activitySuperInterface12 = (QtActivitySuperInterface12) activityInterface;;
 
         if (loaderParams.containsKey(STATIC_INIT_CLASSES_KEY))
             for(String className: loaderParams.getStringArrayList(STATIC_INIT_CLASSES_KEY))
@@ -178,13 +136,27 @@ public class QtActivityDelegate implements QtLoaderInterface
                 try {
                     @SuppressWarnings("rawtypes")
                     Class initClass = m_activity.getClassLoader().loadClass(className);
-                    QtStaticInitDataInterface staticInitDataObject=(QtStaticInitDataInterface)initClass.newInstance(); // create an instance
-                    staticInitDataObject.setActivity(m_activity, this);
+                    Object staticInitDataObject=initClass.newInstance(); // create an instance
+                    @SuppressWarnings("unchecked")
+                    Method m = initClass.getMethod("setActivity", Activity.class, Object.class);
+                    m.invoke(staticInitDataObject, m_activity, this);
                 } catch (ClassNotFoundException e) {
                     e.printStackTrace();
                 } catch (InstantiationException e) {
                     e.printStackTrace();
                 } catch (IllegalAccessException e) {
+                    e.printStackTrace();
+                } catch (IllegalArgumentException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                } catch (InvocationTargetException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                } catch (SecurityException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                } catch (NoSuchMethodException e) {
+                    // TODO Auto-generated catch block
                     e.printStackTrace();
                 }
             }
@@ -218,23 +190,37 @@ public class QtActivityDelegate implements QtLoaderInterface
                 Log.e(QtNative.QtTAG,"Can't start debugger"+e.getMessage());
             }
         }
+
+        try {
+            m_super_onRestoreInstanceState = m_activity.getClass().getMethod("super_onRestoreInstanceState", Bundle.class);
+            m_super_onRetainNonConfigurationInstance = m_activity.getClass().getMethod("super_onRetainNonConfigurationInstance");
+            m_super_onSaveInstanceState = m_activity.getClass().getMethod("super_onSaveInstanceState", Bundle.class);
+            m_super_dispatchKeyEvent = m_activity.getClass().getMethod("super_dispatchKeyEvent", KeyEvent.class);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+        m_environmentVariables=loaderParams.getString("ENVIRONMENT_VARIABLES_KEY");
+        m_applicationParameters=loaderParams.getString("APPLICATION_PARAMETERS_KEY");
+        return true;
+    }
+
+    public boolean startApplication()
+    {
         // start application
-        m_surface.applicationStared( QtNative.startApplication(loaderParams.getString("APPLICATION_PARAMETERS_KEY")
-                                                            , loaderParams.getString("ENVIRONMENT_VARIABLES_KEY")));
+        m_surface.applicationStared( QtNative.startApplication(m_applicationParameters
+                                                            , m_environmentVariables));
         m_started = true;
         return true;
     }
 
-    @Override
     public void onTerminate()
     {
         QtNative.terminateQt();
     }
 
-    @Override
     public void onCreate(Bundle savedInstanceState)
     {
-        m_activitySuperInterface4.super_onCreate(savedInstanceState);
         m_activity.requestWindowFeature(Window.FEATURE_NO_TITLE);
         m_quitApp = true;
 //        QtNative.setMainActivity(this);
@@ -256,11 +242,9 @@ public class QtActivityDelegate implements QtLoaderInterface
 //            startApp(true);
     }
 
-    @Override
+
     public void onDestroy()
     {
-//        QtNative.setMainActivity(null);
-        m_activitySuperInterface4.super_onDestroy();
         if (m_quitApp)
         {
             Log.i(QtNative.QtTAG, "onDestroy");
@@ -268,20 +252,21 @@ public class QtActivityDelegate implements QtLoaderInterface
                 m_debuggerProcess.destroy();
             System.exit(0);// FIXME remove it or find a better way
         }
-//        QtNative.setMainActivity(null);
     }
 
-    @Override
     public void onRestoreInstanceState(Bundle savedInstanceState)
     {
-        m_activitySuperInterface4.super_onRestoreInstanceState(savedInstanceState);
+        try {
+            m_super_onRestoreInstanceState.invoke(m_activity, savedInstanceState);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 //        setFullScreen(savedInstanceState.getBoolean("FullScreen"));
         m_started = savedInstanceState.getBoolean("Started");
         if (m_started)
             m_surface.applicationStared( true );
     }
 
-    @Override
     public void onResume()
     {
         // fire all lostActions
@@ -296,25 +281,29 @@ public class QtActivityDelegate implements QtLoaderInterface
                 QtNative.updateWindow();
             }
         }
-        m_activitySuperInterface4.super_onResume();
     }
 
-    @Override
     public Object onRetainNonConfigurationInstance()
     {
-        m_activitySuperInterface4.super_onRetainNonConfigurationInstance();
+        try {
+            m_super_onRetainNonConfigurationInstance.invoke(m_activity);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         m_quitApp = false;
         return true;
     }
 
-    @Override
     public void onSaveInstanceState(Bundle outState) {
-        m_activitySuperInterface4.super_onSaveInstanceState(outState);
+        try {
+            m_super_onSaveInstanceState.invoke(m_activity, outState);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         outState.putBoolean("FullScreen",m_fullScreen);
         outState.putBoolean("Started", m_started);
     }
 
-    @Override
     public boolean onKeyDown(int keyCode, KeyEvent event)
     {
         if (!m_started)
@@ -336,7 +325,6 @@ public class QtActivityDelegate implements QtLoaderInterface
         return true;
     }
 
-    @Override
     public boolean onKeyUp(int keyCode, KeyEvent event)
     {
         if (!m_started)
@@ -346,7 +334,6 @@ public class QtActivityDelegate implements QtLoaderInterface
         return true;
     }
 
-    @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         if (m_started && event.getAction() == KeyEvent.ACTION_MULTIPLE &&
             event.getCharacters() != null &&
@@ -357,372 +344,11 @@ public class QtActivityDelegate implements QtLoaderInterface
             QtNative.keyUp(0, event.getCharacters().charAt(0), event.getMetaState());
         }
 
-        return m_activitySuperInterface4.super_dispatchKeyEvent(event);
+        try {
+            return (Boolean) m_super_dispatchKeyEvent.invoke(m_activity, event);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
     }
-
-
-
-
-
-
-
-
-
-
-    @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent data)
-    {
-        m_activitySuperInterface4.super_onActivityResult(requestCode, resultCode, data);
-    }
-
-    @Override
-    public void onApplyThemeResource(Theme theme, int resid, boolean first)
-    {
-        m_activitySuperInterface4.super_onApplyThemeResource(theme, resid, first);
-    }
-
-    @Override
-    public void onChildTitleChanged(Activity childActivity, CharSequence title)
-    {
-        m_activitySuperInterface4.super_onChildTitleChanged(childActivity, title);
-    }
-
-    @Override
-    public boolean onContextItemSelected(MenuItem item)
-    {
-        return m_activitySuperInterface4.super_onContextItemSelected(item);
-    }
-
-    @Override
-    public void onContextMenuClosed(Menu menu)
-    {
-        m_activitySuperInterface4.super_onContextMenuClosed(menu);
-    }
-
-    @Override
-    public CharSequence onCreateDescription()
-    {
-        return m_activitySuperInterface4.super_onCreateDescription();
-    }
-
-    @Override
-    public Dialog onCreateDialog(int id)
-    {
-        return m_activitySuperInterface4.super_onCreateDialog(id);
-    }
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu)
-    {
-        return m_activitySuperInterface4.super_onCreateOptionsMenu(menu);
-    }
-
-    @Override
-    public boolean onCreateThumbnail(Bitmap outBitmap, Canvas canvas)
-    {
-        return m_activitySuperInterface4.super_onCreateThumbnail(outBitmap, canvas);
-    }
-
-    @Override
-    public void onNewIntent(Intent intent)
-    {
-        m_activitySuperInterface4.super_onNewIntent(intent);
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item)
-    {
-        return m_activitySuperInterface4.super_onOptionsItemSelected(item);
-    }
-
-    @Override
-    public void onOptionsMenuClosed(Menu menu)
-    {
-        m_activitySuperInterface4.super_onOptionsMenuClosed(menu);
-    }
-
-    @Override
-    public void onPause()
-    {
-        m_activitySuperInterface4.super_onPause();
-    }
-
-    @Override
-    public void onPostCreate(Bundle savedInstanceState)
-    {
-        m_activitySuperInterface4.super_onPostCreate(savedInstanceState);
-    }
-
-    @Override
-    public void onPostResume()
-    {
-        m_activitySuperInterface4.super_onPostResume();
-    }
-
-    @Override
-    public void onPrepareDialog(int id, Dialog dialog)
-    {
-        m_activitySuperInterface4.super_onPrepareDialog(id, dialog);
-    }
-
-    @Override
-    public boolean onPrepareOptionsMenu(Menu menu)
-    {
-        return m_activitySuperInterface4.super_onPrepareOptionsMenu(menu);
-    }
-
-    @Override
-    public void onRestart()
-    {
-        m_activitySuperInterface4.super_onRestart();
-    }
-
-    @Override
-    public void onStart()
-    {
-        m_activitySuperInterface4.super_onStart();
-    }
-
-    @Override
-    public void onStop()
-    {
-        m_activitySuperInterface4.super_onStop();
-    }
-
-    @Override
-    public void onTitleChanged(CharSequence title, int color)
-    {
-        m_activitySuperInterface4.super_onTitleChanged(title, color);
-    }
-
-    @Override
-    public boolean onTouchEvent(MotionEvent event)
-    {
-        return m_activitySuperInterface4.super_onTouchEvent(event);
-    }
-
-    @Override
-    public boolean onTrackballEvent(MotionEvent event)
-    {
-        return m_activitySuperInterface4.super_onTrackballEvent(event);
-    }
-
-    @Override
-    public void onUserInteraction()
-    {
-        m_activitySuperInterface4.super_onUserInteraction();
-    }
-
-    @Override
-    public void onUserLeaveHint()
-    {
-        m_activitySuperInterface4.super_onUserLeaveHint();
-    }
-
-    @Override
-    public void onConfigurationChanged(Configuration newConfig)
-    {
-        m_activitySuperInterface4.super_onConfigurationChanged(newConfig);
-    }
-
-    @Override
-    public void onLowMemory()
-    {
-        m_activitySuperInterface4.super_onLowMemory();
-    }
-
-    @Override
-    public boolean onKeyMultiple(int keyCode, int repeatCount, KeyEvent event)
-    {
-        return m_activitySuperInterface4.super_onKeyMultiple(keyCode, repeatCount, event);
-    }
-
-    @Override
-    public View onCreateView(String name, Context context, AttributeSet attrs)
-    {
-        return m_activitySuperInterface4.super_onCreateView(name, context, attrs);
-    }
-
-    @Override
-    public void onCreateContextMenu(ContextMenu menu, View v, ContextMenuInfo menuInfo)
-    {
-        m_activitySuperInterface4.super_onCreateContextMenu(menu, v, menuInfo);
-    }
-
-    @Override
-    public boolean dispatchPopulateAccessibilityEvent(AccessibilityEvent event)
-    {
-        return m_activitySuperInterface4.super_dispatchPopulateAccessibilityEvent(event);
-    }
-
-    @Override
-    public boolean dispatchTouchEvent(MotionEvent event)
-    {
-        return m_activitySuperInterface4.super_dispatchTouchEvent(event);
-    }
-
-    @Override
-    public boolean dispatchTrackballEvent(MotionEvent event)
-    {
-        return m_activitySuperInterface4.super_dispatchTrackballEvent(event);
-    }
-
-    @Override
-    public void onContentChanged()
-    {
-        m_activitySuperInterface4.super_onContentChanged();
-    }
-
-    @Override
-    public boolean onCreatePanelMenu(int featureId, Menu menu)
-    {
-        return m_activitySuperInterface4.super_onCreatePanelMenu(featureId, menu);
-    }
-
-    @Override
-    public View onCreatePanelView(int featureId)
-    {
-        return m_activitySuperInterface4.super_onCreatePanelView(featureId);
-    }
-
-    @Override
-    public boolean onMenuItemSelected(int featureId, MenuItem item)
-    {
-        return m_activitySuperInterface4.super_onMenuItemSelected(featureId, item);
-    }
-
-    @Override
-    public boolean onMenuOpened(int featureId, Menu menu)
-    {
-        return m_activitySuperInterface4.super_onMenuOpened(featureId, menu);
-    }
-
-    @Override
-    public void onPanelClosed(int featureId, Menu menu)
-    {
-        m_activitySuperInterface4.super_onPanelClosed(featureId, menu);
-    }
-
-    @Override
-    public boolean onPreparePanel(int featureId, View view, Menu menu)
-    {
-        return m_activitySuperInterface4.super_onPreparePanel(featureId, view, menu);
-    }
-
-    @Override
-    public boolean onSearchRequested()
-    {
-        return m_activitySuperInterface4.super_onSearchRequested();
-    }
-
-    @Override
-    public void onWindowAttributesChanged(LayoutParams params)
-    {
-        m_activitySuperInterface4.super_onWindowAttributesChanged(params);
-    }
-
-    @Override
-    public void onWindowFocusChanged(boolean hasFocus)
-    {
-        m_activitySuperInterface4.super_onWindowFocusChanged(hasFocus);
-    }
-
-
-
-// Activity API 5
-
-    @Override
-    public void onAttachedToWindow()
-    {
-        m_activitySuperInterface5.super_onAttachedToWindow();
-    }
-
-    @Override
-    public void onBackPressed()
-    {
-        m_activitySuperInterface5.super_onBackPressed();
-    }
-
-    @Override
-    public void onDetachedFromWindow()
-    {
-        m_activitySuperInterface5.super_onDetachedFromWindow();
-    }
-
-    @Override
-    public boolean onKeyLongPress(int keyCode, KeyEvent event)
-    {
-        return m_activitySuperInterface5.super_onKeyLongPress(keyCode, event);
-    }
-// Activity API 8
-
-    @Override
-    public Dialog onCreateDialog(int id, Bundle args)
-    {
-        return m_activitySuperInterface8.super_onCreateDialog(id, args);
-    }
-
-    @Override
-    public void onPrepareDialog(int id, Dialog dialog, Bundle args)
-    {
-        m_activitySuperInterface8.super_onPrepareDialog(id, dialog, args);
-    }
-
-// Activity API 11
-    @Override
-    public boolean dispatchKeyShortcutEvent(KeyEvent event)
-    {
-        return m_activitySuperInterface11.super_dispatchKeyShortcutEvent(event);
-    }
-
-    @Override
-    public void onActionModeFinished(ActionMode mode)
-    {
-        m_activitySuperInterface11.super_onActionModeFinished(mode);
-    }
-
-    @Override
-    public void onActionModeStarted(ActionMode mode)
-    {
-        m_activitySuperInterface11.super_onActionModeStarted(mode);
-    }
-
-    @Override
-    public void onAttachFragment(Fragment fragment)
-    {
-        m_activitySuperInterface11.super_onAttachFragment(fragment);
-    }
-
-    @Override
-    public View onCreateView(View parent, String name, Context context, AttributeSet attrs)
-    {
-        return m_activitySuperInterface11.super_onCreateView(parent, name, context, attrs);
-    }
-
-    @Override
-    public boolean onKeyShortcut(int keyCode, KeyEvent event)
-    {
-        return m_activitySuperInterface11.super_onKeyShortcut(keyCode, event);
-    }
-
-    @Override
-    public ActionMode onWindowStartingActionMode(Callback callback)
-    {
-        return m_activitySuperInterface11.super_onWindowStartingActionMode(callback);
-    }
-// Activity API 12
-
-    @Override
-    public boolean dispatchGenericMotionEvent(MotionEvent event)
-    {
-        return m_activitySuperInterface12.super_dispatchGenericMotionEvent(event);
-    }
-
-    @Override
-    public boolean onGenericMotionEvent(MotionEvent event)
-    {
-        return m_activitySuperInterface12.super_onGenericMotionEvent(event);
-    }
-
-
 }
