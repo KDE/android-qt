@@ -32,7 +32,6 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import android.app.Activity;
 import android.app.Application;
 
 public class QtApplication extends Application
@@ -114,35 +113,43 @@ public class QtApplication extends Application
     public static void setQtActivityDelegate(Object listener)
     {
         QtApplication.m_delegateObject = listener;
-        Method[] delegateMethods = listener.getClass().getMethods();
-        Method[] activityMethods = Activity.class.getMethods();
-        Field[] applicationFields=QtApplication.class.getFields();
+
+        ArrayList<Method> delegateMethods = new ArrayList<Method>();
+        for (Method m: listener.getClass().getMethods())
+            if (m.getDeclaringClass().getName().startsWith("org.kde.necessitas"))
+                delegateMethods.add(m);
+
+        ArrayList<Field> applicationFields = new ArrayList<Field>();
+        for (Field f: QtApplication.class.getFields())
+            if (f.getDeclaringClass().getName().equals(QtApplication.class.getName()))
+                applicationFields.add(f);
+
         for (Method delegateMethod:delegateMethods)
         {
-            for(Method activityMethod:activityMethods)
-            {
-                if (delegateMethod.equals(activityMethod))
+            try {
+                QtActivity.class.getDeclaredMethod(delegateMethod.getName(), delegateMethod.getParameterTypes());
+                if (QtApplication.m_delegateMethods.containsKey(delegateMethod.getName()))
+                    QtApplication.m_delegateMethods.get(delegateMethod.getName()).add(delegateMethod);
+                else
                 {
-                    if (QtApplication.m_delegateMethods.containsKey(delegateMethod.getName()))
-                        QtApplication.m_delegateMethods.get(delegateMethod.getName()).add(delegateMethod);
-                    else
+                    ArrayList<Method> delegateSet = new ArrayList<Method>();
+                    delegateSet.add(delegateMethod);
+                    QtApplication.m_delegateMethods.put(delegateMethod.getName(), delegateSet);
+                }
+                for(Field applicationField:applicationFields)
+                {
+                    if (applicationField.getName().equals(delegateMethod.getName()))
                     {
-                        ArrayList<Method> delegateSet = new ArrayList<Method>();
-                        delegateSet.add(delegateMethod);
-                        QtApplication.m_delegateMethods.put(delegateMethod.getName(), delegateSet);
-                    }
-                    for(Field applicationField:applicationFields)
-                    {
-                        if (applicationField.getName().equals(delegateMethod.getName()))
-                        {
-                            try {
-                                applicationField.set(null, delegateMethod);
-                            } catch (Exception e) {
-                                e.printStackTrace();
-                            }
+                        try {
+                            applicationField.set(null, delegateMethod);
+                        } catch (Exception e) {
+                            e.printStackTrace();
                         }
                     }
                 }
+            }
+            catch (Exception e)
+            {
             }
         }
     }
@@ -171,7 +178,7 @@ public class QtApplication extends Application
                 }
         }
         final String methodName=elements[stackDeep].getMethodName();
-        if (-1 == stackDeep || m_delegateMethods.containsKey(methodName))
+        if (-1 == stackDeep || !m_delegateMethods.containsKey(methodName))
             return false;
 
         for (Method m:m_delegateMethods.get(methodName))

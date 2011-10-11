@@ -67,6 +67,7 @@ import android.view.Window;
 import android.view.WindowManager.LayoutParams;
 import android.view.accessibility.AccessibilityEvent;
 import dalvik.system.DexClassLoader;
+import dalvik.system.PathClassLoader;
 
 //@ANDROID-11
 import android.app.Fragment;
@@ -91,8 +92,33 @@ public class QtActivity extends Activity
     private static final String APPLICATION_PARAMETERS_KEY="application.parameters";
     private static final String BUNDLED_LIBRARIES_KEY="bundled.libraries";
 
+    class QtClassLoader extends DexClassLoader
+    {
+        PathClassLoader m_parent=null;
+        public QtClassLoader(String dexPath, String dexOutputDir,
+                String libPath, ClassLoader parent) {
+            super(dexPath, dexOutputDir, libPath, parent);
+            m_parent=(PathClassLoader) getApplicationContext().getClassLoader();
+        }
+        @Override
+        protected String findLibrary(String libname) {
+            if (m_parent != null)
+            {
+                try
+                {
+                    String lib=m_parent.findLibrary(libname);
+                    if (null != lib)
+                        return lib;
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+            return super.findLibrary(libname);
+        }
+    }
+
     private ActivityInfo m_activityInfo = null; // activity info object, used to access the libs and the strings
-    private DexClassLoader m_classLoader = null; // loader object
+    private QtClassLoader m_classLoader = null; // loader object
     private String[] m_qtLibs = null; // required qt libs
 
     // this function is used to load and start the loader
@@ -123,7 +149,7 @@ public class QtActivity extends Activity
             loaderParams.putStringArrayList(BUNDLED_LIBRARIES_KEY, libs);
 
             // load and start QtLoader class
-            m_classLoader = new DexClassLoader(loaderParams.getString(DEX_PATH_KEY) // .jar/.apk files
+            m_classLoader = new QtClassLoader(loaderParams.getString(DEX_PATH_KEY) // .jar/.apk files
                                             , getDir("outdex", Context.MODE_PRIVATE).getAbsolutePath() // directory where optimized DEX files should be written.
                                             , loaderParams.containsKey(LIB_PATH_KEY)?loaderParams.getString(LIB_PATH_KEY):null // libs folder (if exists)
                                             , getClassLoader()); // parent loader
@@ -240,11 +266,11 @@ public class QtActivity extends Activity
                         libraryList.add("/data/local/qt/"+extraLibs[i]);
                 }
 
+                String pathSeparator = System.getProperty("path.separator", ":");
                 String dexPaths = new String();
                 File jarDir=new File("/data/local/qt/jar");
                 if (jarDir.exists())
                 {
-                    String pathSeparator = System.getProperty("path.separator", ":");
                     File[] files = jarDir.listFiles();
                     for (File file: files)
                     {
@@ -260,8 +286,9 @@ public class QtActivity extends Activity
                 Bundle loaderParams = new Bundle();
                 loaderParams.putInt(ERROR_CODE_KEY, 0);
                 loaderParams.putString(DEX_PATH_KEY, dexPaths);
-                loaderParams.putString(LIB_PATH_KEY, "/data/local/qt/lib");
-                loaderParams.putString(LOADER_CLASS_NAME_KEY, "org.kde.necessitas.industrius.QtActivityDelegate");//getIntent().getExtras().getString("loader_class_name"));
+                loaderParams.putString(LOADER_CLASS_NAME_KEY, getIntent().getExtras().containsKey("loader_class_name")
+                                                            ?getIntent().getExtras().getString("loader_class_name")
+                                                            :"org.kde.necessitas.industrius.QtActivityDelegate");
                 loaderParams.putStringArrayList(NATIVE_LIBRARIES_KEY, libraryList);
                 loaderParams.putString(ENVIRONMENT_VARIABLES_KEY,"QML_IMPORT_PATH=/data/local/qt/imports\tQT_PLUGIN_PATH=/data/local/qt/plugins");
                 loaderParams.putString(APPLICATION_PARAMETERS_KEY,"-platform\tandroid");
@@ -537,7 +564,7 @@ public class QtActivity extends Activity
     @Override
     public boolean onCreateOptionsMenu(Menu menu)
     {
-        Boolean ret = null;
+        Boolean ret = new Boolean(false);
         if (QtApplication.invokeDelegate(ret, menu))
             return ret;
         else
@@ -552,7 +579,7 @@ public class QtActivity extends Activity
     @Override
     public boolean onCreatePanelMenu(int featureId, Menu menu)
     {
-        Boolean ret = null;
+        Boolean ret = new Boolean(false);
         if (QtApplication.invokeDelegate(ret, featureId, menu))
             return ret;
         else
@@ -583,7 +610,7 @@ public class QtActivity extends Activity
     @Override
     public boolean onCreateThumbnail(Bitmap outBitmap, Canvas canvas)
     {
-        Boolean ret = null;
+        Boolean ret = new Boolean(false);
         if (QtApplication.invokeDelegate(ret, outBitmap, canvas))
             return ret;
         else
@@ -673,7 +700,7 @@ public class QtActivity extends Activity
     @Override
     public boolean onMenuItemSelected(int featureId, MenuItem item)
     {
-        Boolean ret = null;
+        Boolean ret = new Boolean(false);
         if (QtApplication.invokeDelegate(ret,featureId, item))
             return ret;
         else
@@ -688,7 +715,7 @@ public class QtActivity extends Activity
     @Override
     public boolean onMenuOpened(int featureId, Menu menu)
     {
-        Boolean ret = null;
+        Boolean ret = new Boolean(false);
         if (QtApplication.invokeDelegate(ret,featureId, menu))
             return ret;
         else
@@ -715,7 +742,7 @@ public class QtActivity extends Activity
     @Override
     public boolean onOptionsItemSelected(MenuItem item)
     {
-        Boolean ret = null;
+        Boolean ret = new Boolean(false);
         if (QtApplication.invokeDelegate(ret, item))
             return ret;
         else
@@ -790,7 +817,7 @@ public class QtActivity extends Activity
     @Override
     public boolean onPrepareOptionsMenu(Menu menu)
     {
-        Boolean ret = null;
+        Boolean ret = new Boolean(false);
         if (QtApplication.invokeDelegate(ret, menu))
             return ret;
         else
@@ -805,7 +832,7 @@ public class QtActivity extends Activity
     @Override
     public boolean onPreparePanel(int featureId, View view, Menu menu)
     {
-        Boolean ret = null;
+        Boolean ret = new Boolean(false);
         if (QtApplication.invokeDelegate(ret, featureId, view, menu))
             return ret;
         else
@@ -876,7 +903,7 @@ public class QtActivity extends Activity
     @Override
     public boolean onSearchRequested()
     {
-        Boolean ret = null;
+        Boolean ret = new Boolean(false);
         if (QtApplication.invokeDelegate(ret))
             return ret;
         else

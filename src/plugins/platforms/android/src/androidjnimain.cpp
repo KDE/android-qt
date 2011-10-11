@@ -791,7 +791,7 @@ static int registerNativeMethods(JNIEnv* env, const char* className,
     m_surfaceFieldID = env->GetFieldID(clazz, ANDROID_VIEW_SURFACE_JNI_ID, "I");
 #endif
 
-    jmethodID methodID=env->GetStaticMethodID(m_applicationClass, "mainActivity", "()Leu/licentia/necessitas/industrius/QtActivity;");
+    jmethodID methodID=env->GetStaticMethodID(m_applicationClass, "activity", "()Landroid/app/Activity;");
     jobject activityObject=env->CallStaticObjectMethod(m_applicationClass, methodID);
 
     clazz=env->FindClass(ContextWrapperClassPathName);

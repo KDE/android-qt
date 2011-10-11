@@ -113,14 +113,6 @@ public class QtNative
             {
                 System.loadLibrary(libName);
             }
-            catch (UnsatisfiedLinkError e)
-            {
-                Log.i(QtTAG, "Can't load '" + libName + "'", e);
-            }
-            catch (SecurityException e)
-            {
-                Log.i(QtTAG, "Can't load '" + libName + "'", e);
-            }
             catch (Exception e)
             {
                 Log.i(QtTAG, "Can't load '" + libName + "'", e);
@@ -228,7 +220,7 @@ public class QtNative
         }
     }
     // application methods
-    public static native void startQtApp(String params,String env);
+    public static native void startQtApp(String params, String env);
     public static native void pauseQtApp();
     public static native void resumeQtApp();
     public static native boolean startQtAndroidPlugin();

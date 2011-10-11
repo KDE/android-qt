@@ -29,7 +29,6 @@ package org.kde.necessitas.industrius;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Iterator;
 
@@ -40,6 +39,7 @@ import android.content.pm.PackageManager.NameNotFoundException;
 import android.graphics.Rect;
 import android.os.Bundle;
 import android.text.method.MetaKeyKeyListener;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.KeyCharacterMap;
 import android.view.KeyEvent;
@@ -59,7 +59,7 @@ public class QtActivityDelegate
     private static final String BUNDLED_LIBRARIES_KEY="bundled.libraries";
     private static final String ENVIRONMENT_VARIABLES_KEY="environment.variables";
     private static final String APPLICATION_PARAMETERS_KEY="application.parameters";
-    private static final String STATIC_INIT_CLASSES_KEY="application.parameters";
+    private static final String STATIC_INIT_CLASSES_KEY="static.init.classes";
 
     private static String m_environmentVariables = null;
     private static String m_applicationParameters = null;
@@ -140,23 +140,7 @@ public class QtActivityDelegate
                     @SuppressWarnings("unchecked")
                     Method m = initClass.getMethod("setActivity", Activity.class, Object.class);
                     m.invoke(staticInitDataObject, m_activity, this);
-                } catch (ClassNotFoundException e) {
-                    e.printStackTrace();
-                } catch (InstantiationException e) {
-                    e.printStackTrace();
-                } catch (IllegalAccessException e) {
-                    e.printStackTrace();
-                } catch (IllegalArgumentException e) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
-                } catch (InvocationTargetException e) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
-                } catch (SecurityException e) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
-                } catch (NoSuchMethodException e) {
-                    // TODO Auto-generated catch block
+                } catch (Exception e) {
                     e.printStackTrace();
                 }
             }
@@ -200,14 +184,16 @@ public class QtActivityDelegate
             e.printStackTrace();
             return false;
         }
-        m_environmentVariables=loaderParams.getString("ENVIRONMENT_VARIABLES_KEY");
-        m_applicationParameters=loaderParams.getString("APPLICATION_PARAMETERS_KEY");
+        m_environmentVariables=loaderParams.getString(ENVIRONMENT_VARIABLES_KEY);
+        m_applicationParameters=loaderParams.getString(APPLICATION_PARAMETERS_KEY);
         return true;
     }
 
     public boolean startApplication()
     {
         // start application
+        if (null == m_surface)
+            onCreate(null);
         m_surface.applicationStared( QtNative.startApplication(m_applicationParameters
                                                             , m_environmentVariables));
         m_started = true;
@@ -223,23 +209,19 @@ public class QtActivityDelegate
     {
         m_activity.requestWindowFeature(Window.FEATURE_NO_TITLE);
         m_quitApp = true;
-//        QtNative.setMainActivity(this);
-//        if (null == getLastNonConfigurationInstance())
-//        {
-//            DisplayMetrics metrics = new DisplayMetrics();
-//            getWindowManager().getDefaultDisplay().getMetrics(metrics);
-//            QtNative.setApplicationDisplayMetrics(metrics.widthPixels, metrics.heightPixels,
-//                            metrics.widthPixels, metrics.heightPixels,
-//                            metrics.xdpi, metrics.ydpi);
-//        }
-//        // requestWindowFeature(Window.FEATURE_NO_TITLE);
-//        m_layout=new QtLayout(this);
-//        m_surface = new QtSurface(this, m_id);
-//        m_layout.addView(m_surface,0);
-//        setContentView(m_layout);
-//        m_layout.bringChildToFront(m_surface);
-//        if (null == getLastNonConfigurationInstance())
-//            startApp(true);
+        if (null == savedInstanceState)
+        {
+            DisplayMetrics metrics = new DisplayMetrics();
+            m_activity.getWindowManager().getDefaultDisplay().getMetrics(metrics);
+            QtNative.setApplicationDisplayMetrics(metrics.widthPixels, metrics.heightPixels,
+                            metrics.widthPixels, metrics.heightPixels,
+                            metrics.xdpi, metrics.ydpi);
+        }
+        m_layout=new QtLayout(m_activity);
+        m_surface = new QtSurface(m_activity, 0);
+        m_layout.addView(m_surface,0);
+        m_activity.setContentView(m_layout);
+        m_layout.bringChildToFront(m_surface);
     }
 
 
