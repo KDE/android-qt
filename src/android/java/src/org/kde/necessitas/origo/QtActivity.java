@@ -168,6 +168,7 @@ public class QtActivity extends Activity
                 throw new Exception("");
 
         } catch (Exception e) {
+            e.printStackTrace();
             AlertDialog errorDialog = new AlertDialog.Builder(QtActivity.this).create();
             if (m_activityInfo != null && m_activityInfo.metaData.containsKey("android.app.fatal_error_msg"))
                 errorDialog.setMessage(m_activityInfo.metaData.getString("android.app.fatal_error_msg"));
@@ -303,8 +304,8 @@ public class QtActivity extends Activity
                 if (firstStart)
                 {
                     AlertDialog.Builder downloadDialog = new AlertDialog.Builder(this);
-                    if (m_activityInfo != null && m_activityInfo.metaData.containsKey("android.app.android.app.ministro_needed_msg"))
-                        downloadDialog.setMessage(m_activityInfo.metaData.getString("android.app.android.app.ministro_needed_msg"));
+                    if (m_activityInfo != null && m_activityInfo.metaData.containsKey("android.app.ministro_needed_msg"))
+                        downloadDialog.setMessage(m_activityInfo.metaData.getString("android.app.ministro_needed_msg"));
                     downloadDialog.setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
                         public void onClick(DialogInterface dialogInterface, int i) {
                             try
@@ -515,7 +516,12 @@ public class QtActivity extends Activity
             return;
         }
         if (null == getLastNonConfigurationInstance())
+        {
+            // if splash screen is defined, then show it
+            if ( m_activityInfo.metaData.containsKey("android.app.splash_screen") )
+                setContentView(m_activityInfo.metaData.getInt("android.app.splash_screen"));
             startApp(true);
+        }
     }
     //---------------------------------------------------------------------------
 

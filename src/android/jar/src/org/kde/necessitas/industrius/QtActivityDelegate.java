@@ -97,9 +97,15 @@ public class QtActivityDelegate
         if (m_fullScreen == enterFullScreen)
             return;
         if (m_fullScreen = enterFullScreen)
+        {
             m_activity.getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+            m_activity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FORCE_NOT_FULLSCREEN);
+        }
         else
+        {
+            m_activity.getWindow().addFlags(WindowManager.LayoutParams.FLAG_FORCE_NOT_FULLSCREEN);
             m_activity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        }
     }
 
     public void showSoftwareKeyboard()
@@ -192,12 +198,18 @@ public class QtActivityDelegate
     public boolean startApplication()
     {
         // start application
-        if (null == m_surface)
-            onCreate(null);
-        m_surface.applicationStared( QtNative.startApplication(m_applicationParameters
-                                                            , m_environmentVariables));
-        m_started = true;
-        return true;
+        try
+        {
+            if (null == m_surface)
+                onCreate(null);
+            m_surface.applicationStared( QtNative.startApplication(m_applicationParameters
+                                                                , m_environmentVariables));
+            m_started = true;
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 
     public void onTerminate()
@@ -207,7 +219,6 @@ public class QtActivityDelegate
 
     public void onCreate(Bundle savedInstanceState)
     {
-        m_activity.requestWindowFeature(Window.FEATURE_NO_TITLE);
         m_quitApp = true;
         if (null == savedInstanceState)
         {
