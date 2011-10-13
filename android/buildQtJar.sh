@@ -2,7 +2,7 @@
 
 mkdir -p $2
 pushd $1
-android update lib-project -t android-13 -p .
-ant clean compile
-dx --dex --output=$2/QtIndustrius.jar bin/classes
+${ANDROID_SDK_TOOLS_PATH}android update lib-project -t android-13 -p .
+${ANT_TOOL_PATH}ant clean compile
+${ANDROID_SDK_PLATFORM_TOOLS_PATH}dx --dex --output=$2/QtIndustrius.jar bin/classes
 popd

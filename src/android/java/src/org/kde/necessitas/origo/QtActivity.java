@@ -80,7 +80,7 @@ public class QtActivity extends Activity
     private final static int MINISTRO_INSTALL_REQUEST_CODE = 0xf3ee; // request code used to know when Ministro instalation is finished
     private static final int MINISTRO_API_LEVEL=1; // Ministro api level (check IMinistro.aidl file)
     private static final String QT_PROVIDER="necessitas";
-    private static final int QT_API_LEVEL=4; // Necessitas api level.
+    private static final int QT_VERSION=0x040800; // Qt version 4.8.00 check http://doc.trolltech.com/4.8/qtglobal.html#QT_VERSION
 
     private static final String ERROR_CODE_KEY="error.code";
     private static final String ERROR_MESSAGE_KEY="error.message";
@@ -91,6 +91,14 @@ public class QtActivity extends Activity
     private static final String ENVIRONMENT_VARIABLES_KEY="environment.variables";
     private static final String APPLICATION_PARAMETERS_KEY="application.parameters";
     private static final String BUNDLED_LIBRARIES_KEY="bundled.libraries";
+
+    /// Ministro server parameter keys
+    private static final String REQUIRED_MODULES_KEY="required.modules";
+    private static final String APPLICATION_TITLE_KEY="application.title";
+    private static final String QT_PROVIDER_KEY="qt.provider";
+    private static final String MINIMUM_MINISTRO_API_KEY="minimum.ministro.api";
+    private static final String MINIMUM_QT_VERSION_KEY="minimum.qt.version";
+    /// Ministro server parameter keys
 
     class QtClassLoader extends DexClassLoader
     {
@@ -131,6 +139,7 @@ public class QtActivity extends Activity
                 AlertDialog errorDialog = new AlertDialog.Builder(QtActivity.this).create();
                 errorDialog.setMessage(loaderParams.getString(ERROR_MESSAGE_KEY));
                 errorDialog.setButton(getResources().getString(android.R.string.ok), new DialogInterface.OnClickListener() {
+                    @Override
                     public void onClick(DialogInterface dialog, int which) {
                         finish();
                     }
@@ -175,6 +184,7 @@ public class QtActivity extends Activity
             else
                 errorDialog.setMessage("Fatal error, your application can't be started.");
             errorDialog.setButton(getResources().getString(android.R.string.ok), new DialogInterface.OnClickListener() {
+                @Override
                 public void onClick(DialogInterface dialog, int which) {
                     finish();
                 }
@@ -186,9 +196,14 @@ public class QtActivity extends Activity
     private IMinistroCallback m_ministroCallback = new IMinistroCallback.Stub() {
         // this function is called back by Ministro.
         @Override
-        public void loaderReady(Bundle loaderParams) throws RemoteException
+        public void loaderReady(final Bundle loaderParams) throws RemoteException
         {
-            loadApplication(loaderParams);
+            runOnUiThread( new Runnable() {
+                @Override
+                public void run() {
+                    loadApplication(loaderParams);
+                }
+            });
         }
     };
 
@@ -202,11 +217,11 @@ public class QtActivity extends Activity
                 if (m_service!=null)
                 {
                     Bundle parameters= new Bundle();
-                    parameters.putStringArray("required.modules", m_qtLibs);
-                    parameters.putString("application.title", (String)QtActivity.this.getTitle());
-                    parameters.putInt("minimum.ministro.api", MINISTRO_API_LEVEL);
-                    parameters.putString("qt.provider", QT_PROVIDER);
-                    parameters.putInt("minimum.qt.api", QT_API_LEVEL);
+                    parameters.putStringArray(REQUIRED_MODULES_KEY, m_qtLibs);
+                    parameters.putString(APPLICATION_TITLE_KEY, (String)QtActivity.this.getTitle());
+                    parameters.putInt(MINIMUM_MINISTRO_API_KEY, MINISTRO_API_LEVEL);
+                    parameters.putString(QT_PROVIDER_KEY, QT_PROVIDER);
+                    parameters.putInt(MINIMUM_QT_VERSION_KEY, QT_VERSION);
                     m_service.requestLoader(m_ministroCallback, parameters);
                 }
             } catch (RemoteException e) {
@@ -231,6 +246,7 @@ public class QtActivity extends Activity
             errorDialog.setMessage("Can't find Ministro service.\nThe application can't start.");
 
         errorDialog.setButton(getResources().getString(android.R.string.ok), new DialogInterface.OnClickListener() {
+            @Override
             public void onClick(DialogInterface dialog, int which) {
                 finish();
             }
@@ -307,6 +323,7 @@ public class QtActivity extends Activity
                     if (m_activityInfo != null && m_activityInfo.metaData.containsKey("android.app.ministro_needed_msg"))
                         downloadDialog.setMessage(m_activityInfo.metaData.getString("android.app.ministro_needed_msg"));
                     downloadDialog.setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+                        @Override
                         public void onClick(DialogInterface dialogInterface, int i) {
                             try
                             {
@@ -322,6 +339,7 @@ public class QtActivity extends Activity
                     });
 
                     downloadDialog.setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
+                        @Override
                         public void onClick(DialogInterface dialogInterface, int i) {
                             QtActivity.this.finish();
                         }

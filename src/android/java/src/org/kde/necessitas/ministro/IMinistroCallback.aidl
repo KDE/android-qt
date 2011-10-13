@@ -43,6 +43,7 @@ oneway interface IMinistroCallback {
 *  - 0 no error.
 *  - 1 incompatible Ministro version. Ministro needs to be upgraded.
 *  - 2 not all modules could be satisfy.
+*  - 3 invalid parameters
 *
 * This parameter will contain additional fields which are used by the loader to start your application, so it must be passed to loader.
 */
