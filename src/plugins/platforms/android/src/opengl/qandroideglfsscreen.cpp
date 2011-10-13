@@ -144,6 +144,7 @@ QAndroidEglFSScreen::QAndroidEglFSScreen(EGLNativeDisplayType display)
     }
     eglSwapInterval(m_display, swapInterval);
 }
+
 void QAndroidEglFSScreen::createWindowSurface()
 {
     if (m_windowSurface!=EGL_NO_SURFACE)
@@ -182,6 +183,9 @@ void QAndroidEglFSScreen::createWindowSurface()
 
     if(w <= 0 || h <= 0)
         qFatal("EGL-WindowSurface has invalid size!");
+    QWindowSystemInterface::handleScreenAvailableGeometryChange(0);
+    QWindowSystemInterface::handleScreenGeometryChange(0);
+    QTimer::singleShot(50, this, SLOT(updateTLWindows())); // repaint the whole scene
 }
 
 void QAndroidEglFSScreen::createAndSetPlatformContext() const {
@@ -194,13 +198,24 @@ void QAndroidEglFSScreen::createAndSetPlatformContext()
 
     platformFormat.setWindowApi(QPlatformWindowFormat::OpenGL);
 
-    platformFormat.setDepth(32);
-    platformFormat.setRedBufferSize(8);
-    platformFormat.setGreenBufferSize(8);
-    platformFormat.setBlueBufferSize(8);
-    m_depth = 32;
-    m_format = QImage::Format_RGB32;
-
+    if (qgetenv("QT_QPA_EGLFS_DEPTH").toInt()==16)
+    {
+        platformFormat.setDepth(16);
+        platformFormat.setRedBufferSize(6);
+        platformFormat.setGreenBufferSize(5);
+        platformFormat.setBlueBufferSize(6);
+        m_depth = 16;
+        m_format = QImage::Format_RGB16;
+    }
+    else
+    {
+        platformFormat.setDepth(32);
+        platformFormat.setRedBufferSize(8);
+        platformFormat.setGreenBufferSize(8);
+        platformFormat.setBlueBufferSize(8);
+        m_depth = 32;
+        m_format = QImage::Format_RGB32;
+    }
     if (!qgetenv("QT_QPA_EGLFS_MULTISAMPLE").isEmpty()) {
         platformFormat.setSampleBuffers(true);
     }
@@ -246,11 +261,6 @@ void QAndroidEglFSScreen::updateTLWindows()
 
 QRect QAndroidEglFSScreen::geometry() const
 {
-    if(!mGeometry.isValid()) {
-        createAndSetPlatformContext();
-    }
-    Q_ASSERT(mGeometry.isValid());
-
     return mGeometry;
 }
 
@@ -288,11 +298,6 @@ void QAndroidEglFSScreen::surfaceChanged()
         createWindowSurface();
 
     platformContext()->setSurface(m_windowSurface);
-
-    QWindowSystemInterface::handleScreenAvailableGeometryChange(0);
-    QWindowSystemInterface::handleScreenGeometryChange(0);
-    QTimer::singleShot(50, this, SLOT(updateTLWindows()));
-    qDebug()<<"QAndroidEglFSScreen::surfaceChanged()";
 }
 
 QT_END_NAMESPACE
