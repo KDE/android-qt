@@ -11,9 +11,11 @@ met:
 THIS SOFTWARE IS PROVIDED BY Elektrobit (EB) ''AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Elektrobit (EB) BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-package eu.licentia.necessitas.mobile;
+package org.kde.necessitas.mobile;
 
 import java.io.IOException;
+
+import org.kde.necessitas.industrius.QtNative;
 
 import android.app.Activity;
 import android.app.AlarmManager;
@@ -26,7 +28,6 @@ import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.os.Vibrator;
 import android.view.View;
-import eu.licentia.necessitas.industrius.QtApplication;
 
 public class QtFeedback extends BroadcastReceiver{
     private static View m_view=null;
@@ -41,12 +42,12 @@ public class QtFeedback extends BroadcastReceiver{
     private PendingIntent m_pendingIntent=null;
 
     public QtFeedback() {
-        m_alarmManager = (AlarmManager) QtApplication.mainActivity().getSystemService(Activity.ALARM_SERVICE);
+        m_alarmManager = (AlarmManager) QtNative.activity().getSystemService(Activity.ALARM_SERVICE);
         m_mediaPlayer= new MediaPlayer();
         m_mediaPlayer.setLooping(false);
-        m_vibrator =(Vibrator) QtApplication.mainActivity().getSystemService(Activity.VIBRATOR_SERVICE);
-        m_audioManager = (AudioManager)QtApplication.mainActivity().getSystemService(Activity.AUDIO_SERVICE);
-        m_view = QtApplication.mainView();
+        m_vibrator =(Vibrator) QtNative.activity().getSystemService(Activity.VIBRATOR_SERVICE);
+        m_audioManager = (AudioManager)QtNative.activity().getSystemService(Activity.AUDIO_SERVICE);
+        m_view = QtNative.activityDelegate().getQtSurface();
     }
 
 
@@ -128,7 +129,7 @@ public class QtFeedback extends BroadcastReceiver{
         case 0:
         case 1:
                 m_vibrator.cancel();
-                QtApplication.mainActivity().unregisterReceiver(this);
+                QtNative.activity().unregisterReceiver(this);
                 break;
         case 2:
         case 3:
@@ -162,23 +163,23 @@ public class QtFeedback extends BroadcastReceiver{
     public void registerReciever()
     {
         IntentFilter filter = new IntentFilter("Alarm");
-        QtApplication.mainActivity().registerReceiver(this , filter);
+        QtNative.activity().registerReceiver(this , filter);
         Intent intent = new Intent("Alarm");
-        m_pendingIntent = PendingIntent.getBroadcast(QtApplication.mainActivity(), 0, intent, 0);
+        m_pendingIntent = PendingIntent.getBroadcast(QtNative.activity(), 0, intent, 0);
     }
 
     @Override
     public void onReceive(Context context, Intent intent)
     {
         m_vibrator.cancel();
-        QtApplication.mainActivity().unregisterReceiver(this);
+        QtNative.activity().unregisterReceiver(this);
     }
 
     public void setHapticFeedback(boolean enabled)
     {
 
         final boolean enable = enabled;
-        QtApplication.mainActivity().runOnUiThread(new Runnable() {
+        QtNative.activity().runOnUiThread(new Runnable() {
             public void run() {
                 m_view.setHapticFeedbackEnabled(enable);
             }
@@ -188,7 +189,7 @@ public class QtFeedback extends BroadcastReceiver{
 
     public void performHapticFeedback()
     {
-        QtApplication.mainActivity().runOnUiThread(new Runnable() {
+        QtNative.activity().runOnUiThread(new Runnable() {
             public void run() {
                 m_view.performHapticFeedback(m_hapticConstant);
             }

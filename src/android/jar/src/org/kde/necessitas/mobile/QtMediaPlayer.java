@@ -28,7 +28,7 @@ OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-package eu.licentia.necessitas.mobile;
+package org.kde.necessitas.mobile;
 
 import java.io.IOException;
 import android.media.MediaPlayer;

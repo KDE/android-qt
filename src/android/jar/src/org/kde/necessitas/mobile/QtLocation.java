@@ -11,13 +11,14 @@ met:
 THIS SOFTWARE IS PROVIDED BY Elektrobit (EB) ''AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Elektrobit (EB) BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-package eu.licentia.necessitas.mobile;
+package org.kde.necessitas.mobile;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-import eu.licentia.necessitas.industrius.QtApplication;
+import org.kde.necessitas.industrius.QtNative;
+
 
 import android.app.Activity;
 import android.hardware.GeomagneticField;
@@ -63,7 +64,7 @@ public class QtLocation implements LocationListener ,GpsStatus.Listener
     public QtLocation ()
     {
         // Get the location manager
-        m_locationManager = (LocationManager) QtApplication.mainActivity().getSystemService(Activity.LOCATION_SERVICE);
+        m_locationManager = (LocationManager) QtNative.activity().getSystemService(Activity.LOCATION_SERVICE);
         m_status = m_locationManager.getGpsStatus(null);
         m_providerChossenList.add(GPS);
         m_providerChossenList.add(NETWORK);
@@ -142,7 +143,7 @@ public class QtLocation implements LocationListener ,GpsStatus.Listener
     public void requestUpdates(long minTime)
     {
         m_getMinTime=minTime;
-        QtApplication.mainActivity().runOnUiThread(new Runnable() {
+        QtNative.activity().runOnUiThread(new Runnable() {
 
             public void run() {
                 // TODO Auto-generated method stub
@@ -155,7 +156,7 @@ public class QtLocation implements LocationListener ,GpsStatus.Listener
 
     public void requestSatelliteUpdates()
     {
-        QtApplication.mainActivity().runOnUiThread(new Runnable() {
+        QtNative.activity().runOnUiThread(new Runnable() {
 
             public void run() {
                 // TODO Auto-generated method stub

@@ -789,13 +789,15 @@ void QWidgetPrivate::deleteTLSysExtra()
         //delete the qglcontext before we delete the qplatformglcontext.
         //One unfortunate thing about this is that we potentially create a glContext just to
         //delete it straight afterwards.
+#ifndef Q_OS_ANDROID
         if (extra->topextra->platformWindow) {
             if (QPlatformGLContext *context = extra->topextra->platformWindow->glContext()) {
                 context->deleteQGLContext();
             }
         }
-        setWinId(0);
         delete extra->topextra->platformWindow;
+#endif
+        setWinId(0);
         extra->topextra->platformWindow = 0;
     }
 }

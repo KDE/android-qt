@@ -292,7 +292,7 @@ fi
 # This should loop until make succeeds, Workaround for Cygwin/MSYS
 # couldn't commit heap memory error
 if [ "$BUILD_QT" = "1" ]; then
-	make -f $MAKEFILE -j 3
+	make -f $MAKEFILE -j 3 all QtJar
 	while [ "$?" != "0" ]
 	do
 		if [ -f /usr/break-make ]; then
@@ -300,7 +300,7 @@ if [ "$BUILD_QT" = "1" ]; then
 			rm -f /usr/break-make
 			exit 1
 		fi
-		make -f $MAKEFILE -j 3
+		make -f $MAKEFILE -j 3 all QtJar
 	done
 fi
 

@@ -201,7 +201,7 @@ for(QTLIB, $$list($$lower($$unique(QT)))) {
         }else {
             QMAKE_LFLAGS += -Wl,--no-undefined -Wl,-z,noexecstack -shared
         }
-        isEmpty(QT_BUILD_TREE) {
+        isEmpty(QT_BUILD_TREE) : CONFIG(android_install) {
             contains(ANDROID_TARGET_ARCH, armeabi-v7a) : target.path=/libs/armeabi-v7a/
             contains(ANDROID_TARGET_ARCH, armeabi)     : target.path=/libs/armeabi/
             contains(ANDROID_TARGET_ARCH, x86)         : target.path=/libs/x86/

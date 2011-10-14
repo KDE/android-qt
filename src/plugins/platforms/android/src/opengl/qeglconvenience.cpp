@@ -229,6 +229,7 @@ EGLConfig q_configFromQPlatformWindowFormat(EGLDisplay display, const QPlatformW
         if (!eglChooseConfig(display, configureAttributes.constData(), 0, 0, &matching) || !matching)
             continue;
 
+
 //        // If we want the best pixel format, then return the first
 //        // matching configuration.
 //        if (match == QEgl::BestPixelFormat) {
@@ -251,24 +252,29 @@ EGLConfig q_configFromQPlatformWindowFormat(EGLDisplay display, const QPlatformW
 
         EGLint size = matching;
         EGLConfig *configs = new EGLConfig [size];
-        eglChooseConfig(display, configureAttributes.constData(), configs, size, &matching);
-        qt_checkAndWarnAboutEGLError(__PRETTY_FUNCTION__, "eglChooseConfig");
-        for (EGLint index = 0; index < size; ++index) {
-            EGLint red, green, blue, alpha;
-            eglGetConfigAttrib(display, configs[index], EGL_RED_SIZE, &red);
-            eglGetConfigAttrib(display, configs[index], EGL_GREEN_SIZE, &green);
-            eglGetConfigAttrib(display, configs[index], EGL_BLUE_SIZE, &blue);
-            eglGetConfigAttrib(display, configs[index], EGL_ALPHA_SIZE, &alpha);
-            if (red == confAttrRed &&
-                    green == confAttrGreen &&
-                    blue == confAttrBlue &&
-                    (confAttrAlpha == 0 ||
-                     alpha == confAttrAlpha)) {
-                cfg = configs[index];
-                delete [] configs;
-                return cfg;
+        eglGetError(); // Clear any previous EGL error state
+        EGLBoolean res=eglChooseConfig(display, configureAttributes.constData(), configs, size, &matching);
+        if (res == EGL_FALSE)
+            qt_checkAndWarnAboutEGLError(__PRETTY_FUNCTION__, "eglChooseConfig");
+        else
+            for (EGLint index = 0; index < size; ++index)
+            {
+                EGLint red, green, blue, alpha;
+                eglGetConfigAttrib(display, configs[index], EGL_RED_SIZE, &red);
+                eglGetConfigAttrib(display, configs[index], EGL_GREEN_SIZE, &green);
+                eglGetConfigAttrib(display, configs[index], EGL_BLUE_SIZE, &blue);
+                eglGetConfigAttrib(display, configs[index], EGL_ALPHA_SIZE, &alpha);
+                if (red == confAttrRed &&
+                        green == confAttrGreen &&
+                        blue == confAttrBlue &&
+                        (confAttrAlpha == 0 ||
+                         alpha == confAttrAlpha))
+                {
+                    cfg = configs[index];
+                    delete [] configs;
+                    return cfg;
+                }
             }
-        }
         delete [] configs;
     } while (q_reduceConfigAttributes(&configureAttributes));
     qWarning("Cant find EGLConfig, returning null config");

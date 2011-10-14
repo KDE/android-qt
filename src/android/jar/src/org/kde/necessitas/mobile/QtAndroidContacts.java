@@ -28,13 +28,15 @@ OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-package eu.licentia.necessitas.mobile;
+package org.kde.necessitas.mobile;
 //@ANDROID-5
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
+
+import org.kde.necessitas.industrius.QtNative;
 
 import android.content.ContentResolver;
 import android.content.ContentUris;
@@ -54,7 +56,6 @@ import android.provider.ContactsContract.CommonDataKinds.Website;
 import android.provider.ContactsContract.Contacts.Data;
 import android.provider.ContactsContract.RawContacts;
 import android.util.Log;
-import eu.licentia.necessitas.industrius.QtApplication;
 public class QtAndroidContacts
 {
     private static AndroidContacts m_androidContacts;
@@ -62,7 +63,7 @@ public class QtAndroidContacts
     @SuppressWarnings("unused")
     private void getContacts()
     {
-        Cursor c=QtApplication.mainActivity().getContentResolver().query(ContactsContract.Contacts.CONTENT_URI,null, null, null, null);
+        Cursor c=QtNative.activity().getContentResolver().query(ContactsContract.Contacts.CONTENT_URI,null, null, null, null);
         m_androidContacts = new AndroidContacts(c.getCount());
         for(int i=0;i<c.getCount();i++)
         {
@@ -93,7 +94,7 @@ public class QtAndroidContacts
         String nameWhere = ContactsContract.Data.CONTACT_ID + " = ? AND " + ContactsContract.Data.MIMETYPE + " = ?";
         String[] nameWhereParams = new String[]{id,
                         ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE};
-        Cursor nameCur = QtApplication.mainActivity().getContentResolver().query(ContactsContract.Data.CONTENT_URI,
+        Cursor nameCur = QtNative.activity().getContentResolver().query(ContactsContract.Data.CONTENT_URI,
                         null, nameWhere, nameWhereParams, null);
         if(nameCur != null && nameCur.moveToFirst())
         {
@@ -121,7 +122,7 @@ public class QtAndroidContacts
 
     private PhoneNumber[] getPhoneNumberDetails(String id)
     {
-        Cursor pCur = QtApplication.mainActivity().getContentResolver().query(
+        Cursor pCur = QtNative.activity().getContentResolver().query(
                         ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
                         null,
                         ContactsContract.CommonDataKinds.Phone.CONTACT_ID +" = ?",
@@ -145,7 +146,7 @@ public class QtAndroidContacts
 
     private EmailData[] getEmailAddressDetails(String id)
     {
-        Cursor emailCur = QtApplication.mainActivity().getContentResolver().query(
+        Cursor emailCur = QtNative.activity().getContentResolver().query(
                         ContactsContract.CommonDataKinds.Email.CONTENT_URI,
                         null,
                         ContactsContract.CommonDataKinds.Email.CONTACT_ID + " = ?",
@@ -171,7 +172,7 @@ public class QtAndroidContacts
     {
         String noteWhere = ContactsContract.Data.CONTACT_ID + " = ? AND " + ContactsContract.Data.MIMETYPE + " = ?";
         String[] noteWhereParams = new String[]{id, ContactsContract.CommonDataKinds.Note.CONTENT_ITEM_TYPE};
-        Cursor noteCur = QtApplication.mainActivity().getContentResolver().query(ContactsContract.Data.CONTENT_URI, null, noteWhere, noteWhereParams, null);
+        Cursor noteCur = QtNative.activity().getContentResolver().query(ContactsContract.Data.CONTENT_URI, null, noteWhere, noteWhereParams, null);
         String note = null;
         if (noteCur.moveToFirst()) {
             note = noteCur.getString(noteCur.getColumnIndex(ContactsContract.CommonDataKinds.Note.NOTE));
@@ -182,7 +183,7 @@ public class QtAndroidContacts
 
     private String getBirthdayDetails(String id)
     {
-        Cursor birthDayCur =QtApplication.mainActivity().getContentResolver().query( ContactsContract.Data.CONTENT_URI, new String[] { Event.DATA }, ContactsContract.Data.CONTACT_ID + "=" + id + " AND " + Data.MIMETYPE + "= '" + Event.CONTENT_ITEM_TYPE + "' AND " + Event.TYPE + "=" + Event.TYPE_BIRTHDAY, null, null);
+        Cursor birthDayCur =QtNative.activity().getContentResolver().query( ContactsContract.Data.CONTENT_URI, new String[] { Event.DATA }, ContactsContract.Data.CONTACT_ID + "=" + id + " AND " + Data.MIMETYPE + "= '" + Event.CONTENT_ITEM_TYPE + "' AND " + Event.TYPE + "=" + Event.TYPE_BIRTHDAY, null, null);
         if(birthDayCur.moveToFirst())
         {
             DateFormat df = DateFormat.getDateInstance(DateFormat.LONG);
@@ -202,7 +203,7 @@ public class QtAndroidContacts
 
     private String getAnniversaryDetails(String id)
     {
-        Cursor anniversaryCur =QtApplication.mainActivity().getContentResolver().query( ContactsContract.Data.CONTENT_URI, new String[] { Event.DATA }, ContactsContract.Data.CONTACT_ID + "=" + id + " AND " + Data.MIMETYPE + "= '" + Event.CONTENT_ITEM_TYPE + "' AND " + Event.TYPE + "=" + Event.TYPE_ANNIVERSARY, null, ContactsContract.Data.DISPLAY_NAME);
+        Cursor anniversaryCur =QtNative.activity().getContentResolver().query( ContactsContract.Data.CONTENT_URI, new String[] { Event.DATA }, ContactsContract.Data.CONTACT_ID + "=" + id + " AND " + Data.MIMETYPE + "= '" + Event.CONTENT_ITEM_TYPE + "' AND " + Event.TYPE + "=" + Event.TYPE_ANNIVERSARY, null, ContactsContract.Data.DISPLAY_NAME);
         if(anniversaryCur.moveToFirst())
         {
             DateFormat df = DateFormat.getDateInstance(DateFormat.LONG);
@@ -225,7 +226,7 @@ public class QtAndroidContacts
         String nickWhere = ContactsContract.Data.CONTACT_ID + " = ? AND " + ContactsContract.Data.MIMETYPE + " = ?";
         String[] nickWhereParams = new String[]{id,
                         ContactsContract.CommonDataKinds.Nickname.CONTENT_ITEM_TYPE};
-        Cursor nickCur = QtApplication.mainActivity().getContentResolver().query(ContactsContract.Data.CONTENT_URI,
+        Cursor nickCur = QtNative.activity().getContentResolver().query(ContactsContract.Data.CONTENT_URI,
                         null, nickWhere, nickWhereParams, null);
         if (nickCur.moveToFirst()) {
             String nickName= nickCur.getString(nickCur.getColumnIndex(ContactsContract.CommonDataKinds.Nickname.DATA));
@@ -240,7 +241,7 @@ public class QtAndroidContacts
         String orgWhere = ContactsContract.Data.CONTACT_ID + " = ? AND " + ContactsContract.Data.MIMETYPE + " = ?";
         String[] orgWhereParams = new String[]{id,
                         ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE};
-        Cursor orgCur = QtApplication.mainActivity().getContentResolver().query(ContactsContract.Data.CONTENT_URI,
+        Cursor orgCur = QtNative.activity().getContentResolver().query(ContactsContract.Data.CONTENT_URI,
                         null, orgWhere, orgWhereParams, null);
         if(orgCur!= null)
         {
@@ -269,7 +270,7 @@ public class QtAndroidContacts
         String addrWhere = ContactsContract.Data.CONTACT_ID + " = ? AND " + ContactsContract.Data.MIMETYPE + " = ?";
         String[] addrWhereParams = new String[]{id,
                         ContactsContract.CommonDataKinds.StructuredPostal.CONTENT_ITEM_TYPE};
-        Cursor addrCur = QtApplication.mainActivity().getContentResolver().query(ContactsContract.Data.CONTENT_URI,
+        Cursor addrCur = QtNative.activity().getContentResolver().query(ContactsContract.Data.CONTENT_URI,
                         null, addrWhere,addrWhereParams, null);
         if(addrCur != null)
         {
@@ -308,7 +309,7 @@ public class QtAndroidContacts
     {
         String urlWhere = ContactsContract.Data.CONTACT_ID + " = ? AND " + ContactsContract.Data.MIMETYPE + " = ?";
         String[] urlWhereParams = new String[]{id, ContactsContract.CommonDataKinds.Website.CONTENT_ITEM_TYPE};
-        Cursor urlCur = QtApplication.mainActivity().getContentResolver().query(ContactsContract.Data.CONTENT_URI, null, urlWhere, urlWhereParams, null);
+        Cursor urlCur = QtNative.activity().getContentResolver().query(ContactsContract.Data.CONTENT_URI, null, urlWhere, urlWhereParams, null);
         if(urlCur!= null)
         {
             String[] urls = new String[urlCur.getCount()];
@@ -328,7 +329,7 @@ public class QtAndroidContacts
     {
         String imWhere = ContactsContract.Data.CONTACT_ID + " = ? AND " + ContactsContract.Data.MIMETYPE + " = ?";
         String[] imWhereParams = new String[]{id, ContactsContract.CommonDataKinds.Im.CONTENT_ITEM_TYPE};
-        Cursor imCur = QtApplication.mainActivity().getContentResolver().query(ContactsContract.Data.CONTENT_URI, null, imWhere, imWhereParams, null);
+        Cursor imCur = QtNative.activity().getContentResolver().query(ContactsContract.Data.CONTENT_URI, null, imWhere, imWhereParams, null);
         if(imCur!=null)
         {
             OnlineAccount[] onlineAcoountArray = new OnlineAccount[imCur.getCount()];
@@ -385,7 +386,7 @@ public class QtAndroidContacts
     private String searchByRID(String rid)
     {
         String id=null;
-        Cursor allContactsCur =  QtApplication.mainActivity().managedQuery(RawContacts.CONTENT_URI, new String[] {RawContacts._ID}, RawContacts.CONTACT_ID + " = " + rid, null, null);
+        Cursor allContactsCur =  QtNative.activity().managedQuery(RawContacts.CONTENT_URI, new String[] {RawContacts._ID}, RawContacts.CONTACT_ID + " = " + rid, null, null);
         if(allContactsCur.moveToFirst())
         {
             id = allContactsCur.getString(allContactsCur.getColumnIndex(ContactsContract.Contacts._ID));
@@ -402,7 +403,7 @@ public class QtAndroidContacts
         String id;
         values.put(RawContacts.ACCOUNT_TYPE,group);
         values.put(RawContacts.ACCOUNT_NAME, group);
-        Uri rawContactUri = QtApplication.mainActivity().getContentResolver().insert(RawContacts.CONTENT_URI, values);
+        Uri rawContactUri = QtNative.activity().getContentResolver().insert(RawContacts.CONTENT_URI, values);
         long rawContactId = ContentUris.parseId(rawContactUri);
         saveNameDetails(qtContacts.m_names,values,rawContactId);
 
@@ -525,7 +526,7 @@ public class QtAndroidContacts
         {
             values.put(StructuredName.SUFFIX,names.m_suffix);
         }
-        QtApplication.mainActivity().getContentResolver().insert( ContactsContract.Data.CONTENT_URI, values);
+        QtNative.activity().getContentResolver().insert( ContactsContract.Data.CONTENT_URI, values);
     }
 
     private void savePhoneNumberDetails(String number,int type,ContentValues values,long rawContactId)
@@ -535,7 +536,7 @@ public class QtAndroidContacts
         values.put(Data.MIMETYPE,Phone.CONTENT_ITEM_TYPE);
         values.put(Phone.NUMBER,number);
         values.put(Phone.TYPE, type);
-        QtApplication.mainActivity().getContentResolver().insert(ContactsContract.Data.CONTENT_URI, values);
+        QtNative.activity().getContentResolver().insert(ContactsContract.Data.CONTENT_URI, values);
     }
 
     private void saveAddressDetails(String postbox,String Street,String city,String region,String postcode,String country,int type,ContentValues values,long rawContactId)
@@ -556,7 +557,7 @@ public class QtAndroidContacts
         if(country.length()!=0)
                 values.put(StructuredPostal.COUNTRY,country);
         values.put(StructuredPostal.TYPE, type);
-        QtApplication.mainActivity().getContentResolver().insert(ContactsContract.Data.CONTENT_URI, values);
+        QtNative.activity().getContentResolver().insert(ContactsContract.Data.CONTENT_URI, values);
     }
 
     private void saveOrganizationalDetails(String orgname,String title,int type,ContentValues values,long rawContactId)
@@ -569,7 +570,7 @@ public class QtAndroidContacts
         if(title.length()!= 0)
                 values.put(Organization.TITLE,title);
         values.put(Organization.TYPE,type);
-        QtApplication.mainActivity().getContentResolver().insert(ContactsContract.Data.CONTENT_URI, values);
+        QtNative.activity().getContentResolver().insert(ContactsContract.Data.CONTENT_URI, values);
     }
     private void saveUrlDetails(String url,ContentValues values,long rawContactId)
     {
@@ -578,7 +579,7 @@ public class QtAndroidContacts
         values.put(Data.MIMETYPE,Website.CONTENT_ITEM_TYPE);
         values.put(Website.URL, url);
         values.put(Website.TYPE,Website.TYPE_HOMEPAGE);
-        QtApplication.mainActivity().getContentResolver().insert(ContactsContract.Data.CONTENT_URI,values);
+        QtNative.activity().getContentResolver().insert(ContactsContract.Data.CONTENT_URI,values);
     }
 
     private void SaveEmailDetails(String email,int type,ContentValues values,long rawContactId)
@@ -588,7 +589,7 @@ public class QtAndroidContacts
         values.put(Data.MIMETYPE,Email.CONTENT_ITEM_TYPE);
         values.put(Email.DATA, email);
         values.put(Email.TYPE, type);
-        QtApplication.mainActivity().getContentResolver().insert(ContactsContract.Data.CONTENT_URI, values);
+        QtNative.activity().getContentResolver().insert(ContactsContract.Data.CONTENT_URI, values);
     }
 
     private void saveNoteDetails(String note,ContentValues values,long rawContactId)
@@ -597,7 +598,7 @@ public class QtAndroidContacts
         values.put(Data.RAW_CONTACT_ID, rawContactId);
         values.put(Data.MIMETYPE, Note.CONTENT_ITEM_TYPE);
         values.put(Note.NOTE,note);
-        QtApplication.mainActivity().getContentResolver().insert( ContactsContract.Data.CONTENT_URI, values);
+        QtNative.activity().getContentResolver().insert( ContactsContract.Data.CONTENT_URI, values);
     }
 
     private void saveNickNameDetails(String nickname,ContentValues values,long rawContactId)
@@ -606,7 +607,7 @@ public class QtAndroidContacts
         values.put(Data.RAW_CONTACT_ID, rawContactId);
         values.put(Data.MIMETYPE, Nickname.CONTENT_ITEM_TYPE);
         values.put(Nickname.NAME,nickname);
-        QtApplication.mainActivity().getContentResolver().insert( ContactsContract.Data.CONTENT_URI, values);
+        QtNative.activity().getContentResolver().insert( ContactsContract.Data.CONTENT_URI, values);
     }
 
     private void saveBirthdayDetails(int year,int month,int date,ContentValues values,long rawContactId)
@@ -622,7 +623,7 @@ public class QtAndroidContacts
         values.put(Data.MIMETYPE,Event.CONTENT_ITEM_TYPE);
         values.put(Event.START_DATE,birdate);
         values.put(Event.TYPE,Event.TYPE_BIRTHDAY);
-        QtApplication.mainActivity().getContentResolver().insert(ContactsContract.Data.CONTENT_URI, values);
+        QtNative.activity().getContentResolver().insert(ContactsContract.Data.CONTENT_URI, values);
     }
 
     private void saveAnniversaryDetails(int year,int month,int date,ContentValues values,long rawContactId)
@@ -637,17 +638,17 @@ public class QtAndroidContacts
         values.put(Data.MIMETYPE,Event.CONTENT_ITEM_TYPE);
         values.put(Event.START_DATE,annidate);
         values.put(Event.TYPE,Event.TYPE_ANNIVERSARY);
-        QtApplication.mainActivity().getContentResolver().insert(ContactsContract.Data.CONTENT_URI, values);
+        QtNative.activity().getContentResolver().insert(ContactsContract.Data.CONTENT_URI, values);
     }
 
     @SuppressWarnings("unused")
     private int removeContact(String id)
     {
         int deleted = 0;
-        ContentResolver cr = QtApplication.mainActivity().getContentResolver();
+        ContentResolver cr = QtNative.activity().getContentResolver();
         String where = ContactsContract.Data.CONTACT_ID + " = ?";
         String[] whereParams = new String[]{id};
-        Cursor rmCur = QtApplication.mainActivity().getContentResolver().query(ContactsContract.Data.CONTENT_URI, null, where, whereParams, null);
+        Cursor rmCur = QtNative.activity().getContentResolver().query(ContactsContract.Data.CONTENT_URI, null, where, whereParams, null);
         if(rmCur.moveToFirst())
         {
             try{
@@ -709,12 +710,12 @@ public class QtAndroidContacts
         String nameWhere = ContactsContract.Data.CONTACT_ID + " = ? AND " + ContactsContract.Data.MIMETYPE + " = ?";
         String[] nameWhereParams = new String[]{id,
                         ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE};
-        Cursor nameCur = QtApplication.mainActivity().getContentResolver().query(ContactsContract.Data.CONTENT_URI,
+        Cursor nameCur = QtNative.activity().getContentResolver().query(ContactsContract.Data.CONTENT_URI,
                         null, nameWhere, nameWhereParams, null);
         if(nameCur.moveToFirst())
         {
             String nid = nameCur.getString(nameCur.getColumnIndex(ContactsContract.CommonDataKinds.StructuredName._ID));
-            QtApplication.mainActivity().getContentResolver().delete(ContentUris.withAppendedId(ContactsContract.Data.CONTENT_URI,Long.parseLong(nid)),null,null);
+            QtNative.activity().getContentResolver().delete(ContentUris.withAppendedId(ContactsContract.Data.CONTENT_URI,Long.parseLong(nid)),null,null);
         }
         long lid = Long.parseLong(id);
         saveNameDetails(names, values, lid);
@@ -722,9 +723,9 @@ public class QtAndroidContacts
 
     private void updateNumberDetails(PhoneNumber[] phoneinfo,String id)
     {
-        ContentResolver cr = QtApplication.mainActivity().getContentResolver();
+        ContentResolver cr = QtNative.activity().getContentResolver();
         ContentValues values = new ContentValues();
-        Cursor pCur = QtApplication.mainActivity().getContentResolver().query(
+        Cursor pCur = QtNative.activity().getContentResolver().query(
                         ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
                         null,
                         ContactsContract.CommonDataKinds.Phone.CONTACT_ID +" = ?",
@@ -754,11 +755,11 @@ public class QtAndroidContacts
 
     private void updateAddressDetails(AddressData[] addrinfo,String id)
     {
-        ContentResolver cr = QtApplication.mainActivity().getContentResolver();
+        ContentResolver cr = QtNative.activity().getContentResolver();
         String addrWhere = ContactsContract.Data.CONTACT_ID + " = ? AND " + ContactsContract.Data.MIMETYPE + " = ?";
         String[] addrWhereParams = new String[]{id,
                         ContactsContract.CommonDataKinds.StructuredPostal.CONTENT_ITEM_TYPE};
-        Cursor addrCur = QtApplication.mainActivity().getContentResolver().query(ContactsContract.Data.CONTENT_URI,
+        Cursor addrCur = QtNative.activity().getContentResolver().query(ContactsContract.Data.CONTENT_URI,
                         null, addrWhere,addrWhereParams, null);
         ContentValues values = new ContentValues();
         while(addrCur.moveToNext())
@@ -787,12 +788,12 @@ public class QtAndroidContacts
 
     private void updateOrganizationalDetails(OrganizationalData[] orginfo,String id)
     {
-        ContentResolver cr = QtApplication.mainActivity().getContentResolver();
+        ContentResolver cr = QtNative.activity().getContentResolver();
         ContentValues values = new ContentValues();
         String orgWhere = ContactsContract.Data.CONTACT_ID + " = ? AND " + ContactsContract.Data.MIMETYPE + " = ?";
         String[] orgWhereParams = new String[]{id,
                         ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE};
-        Cursor orgCur = QtApplication.mainActivity().getContentResolver().query(ContactsContract.Data.CONTENT_URI,
+        Cursor orgCur = QtNative.activity().getContentResolver().query(ContactsContract.Data.CONTENT_URI,
                         null, orgWhere, orgWhereParams, null);
         while(orgCur.moveToNext())
         {
@@ -815,11 +816,11 @@ public class QtAndroidContacts
 
     private void updateUrlDetails(String[] urlStrings,String id)
     {
-        ContentResolver cr = QtApplication.mainActivity().getContentResolver();
+        ContentResolver cr = QtNative.activity().getContentResolver();
         ContentValues values = new ContentValues();
         String urlWhere = ContactsContract.Data.CONTACT_ID + " = ? AND " + ContactsContract.Data.MIMETYPE + " = ?";
         String[] urlWhereParams = new String[]{id, ContactsContract.CommonDataKinds.Website.CONTENT_ITEM_TYPE};
-        Cursor urlCur = QtApplication.mainActivity().getContentResolver().query(ContactsContract.Data.CONTENT_URI, null, urlWhere, urlWhereParams, null);
+        Cursor urlCur = QtNative.activity().getContentResolver().query(ContactsContract.Data.CONTENT_URI, null, urlWhere, urlWhereParams, null);
         while(urlCur.moveToNext())
         {
             String uid =urlCur.getString(urlCur.getColumnIndex(ContactsContract.CommonDataKinds.Website._ID));
@@ -838,9 +839,9 @@ public class QtAndroidContacts
 
     private void updateEmailDetails(EmailData[] emailinfo,String id)
     {
-        ContentResolver cr = QtApplication.mainActivity().getContentResolver();
+        ContentResolver cr = QtNative.activity().getContentResolver();
         ContentValues values = new ContentValues();
-        Cursor emailCur = QtApplication.mainActivity().getContentResolver().query(
+        Cursor emailCur = QtNative.activity().getContentResolver().query(
                         ContactsContract.CommonDataKinds.Email.CONTENT_URI,
                         null,
                         ContactsContract.CommonDataKinds.Email.CONTACT_ID + " = ?",
@@ -863,12 +864,12 @@ public class QtAndroidContacts
 
     private void updateNoteDetails(String note,String id)
     {
-        ContentResolver cr = QtApplication.mainActivity().getContentResolver();
+        ContentResolver cr = QtNative.activity().getContentResolver();
         ContentValues values = new ContentValues();
         values.put(Note.NOTE,note);
         String noteWhere = ContactsContract.Data.CONTACT_ID + " = ? AND " + ContactsContract.Data.MIMETYPE + " = ?";
         String[] noteWhereParams = new String[]{id, ContactsContract.CommonDataKinds.Note.CONTENT_ITEM_TYPE};
-        Cursor noteCur = QtApplication.mainActivity().getContentResolver().query(ContactsContract.Data.CONTENT_URI, null, noteWhere, noteWhereParams, null);
+        Cursor noteCur = QtNative.activity().getContentResolver().query(ContactsContract.Data.CONTENT_URI, null, noteWhere, noteWhereParams, null);
         if (noteCur.moveToFirst()) {
             String nid = noteCur.getString(noteCur.getColumnIndex(ContactsContract.CommonDataKinds.Note._ID));
             cr.delete(ContentUris.withAppendedId(ContactsContract.Data.CONTENT_URI,Long.parseLong(nid)),null,null);
@@ -879,12 +880,12 @@ public class QtAndroidContacts
 
     private void updateNicknameDetails(String nickname,String id)
     {
-        ContentResolver cr = QtApplication.mainActivity().getContentResolver();
+        ContentResolver cr = QtNative.activity().getContentResolver();
         ContentValues values = new ContentValues();
         String nickWhere = ContactsContract.Data.CONTACT_ID + " = ? AND " + ContactsContract.Data.MIMETYPE + " = ?";
         String[] nickWhereParams = new String[]{id,
                         ContactsContract.CommonDataKinds.Nickname.CONTENT_ITEM_TYPE};
-        Cursor nickCur = QtApplication.mainActivity().getContentResolver().query(ContactsContract.Data.CONTENT_URI,
+        Cursor nickCur = QtNative.activity().getContentResolver().query(ContactsContract.Data.CONTENT_URI,
                         null, nickWhere, nickWhereParams, null);
         if (nickCur.moveToFirst()) {
             String nid= nickCur.getString(nickCur.getColumnIndex(ContactsContract.CommonDataKinds.Nickname._ID));
@@ -896,11 +897,11 @@ public class QtAndroidContacts
 
     private void updateBirthdayDetails(int year,int month,int date,String id)
     {
-        ContentResolver cr = QtApplication.mainActivity().getContentResolver();
+        ContentResolver cr = QtNative.activity().getContentResolver();
         String where = ContactsContract.Data.MIMETYPE + " = ? ";
         String[] whereParams = new String[] {ContactsContract.CommonDataKinds.Event.CONTENT_ITEM_TYPE};
         ContentValues values = new ContentValues();
-        Cursor birthDayCur =QtApplication.mainActivity().getContentResolver().query( ContactsContract.Data.CONTENT_URI, new String[] { Event.DATA }, ContactsContract.Data.CONTACT_ID + "=" + id + " AND " + Data.MIMETYPE + "= '" + Event.CONTENT_ITEM_TYPE + "' AND " + Event.TYPE + "=" + Event.TYPE_BIRTHDAY, null, null);
+        Cursor birthDayCur =QtNative.activity().getContentResolver().query( ContactsContract.Data.CONTENT_URI, new String[] { Event.DATA }, ContactsContract.Data.CONTACT_ID + "=" + id + " AND " + Data.MIMETYPE + "= '" + Event.CONTENT_ITEM_TYPE + "' AND " + Event.TYPE + "=" + Event.TYPE_BIRTHDAY, null, null);
         if(birthDayCur.moveToFirst())
         {
             cr.delete(ContactsContract.Data.CONTENT_URI,where,whereParams);
@@ -911,11 +912,11 @@ public class QtAndroidContacts
 
     private void updateAnniversaryDetails(int year,int month,int date,String id)
     {
-        ContentResolver cr = QtApplication.mainActivity().getContentResolver();
+        ContentResolver cr = QtNative.activity().getContentResolver();
         String where = ContactsContract.Data.MIMETYPE + " = ? ";
         String[] whereParams = new String[]{Event.CONTENT_ITEM_TYPE};
         ContentValues values = new ContentValues();
-        Cursor anniversaryCur =QtApplication.mainActivity().getContentResolver().query( ContactsContract.Data.CONTENT_URI, new String[] { Event.DATA }, ContactsContract.Data.CONTACT_ID + "=" + id + " AND " + Data.MIMETYPE + "= '" + Event.CONTENT_ITEM_TYPE + "' AND " + Event.TYPE + "=" + Event.TYPE_ANNIVERSARY, null, ContactsContract.Data.DISPLAY_NAME);
+        Cursor anniversaryCur =QtNative.activity().getContentResolver().query( ContactsContract.Data.CONTENT_URI, new String[] { Event.DATA }, ContactsContract.Data.CONTACT_ID + "=" + id + " AND " + Data.MIMETYPE + "= '" + Event.CONTENT_ITEM_TYPE + "' AND " + Event.TYPE + "=" + Event.TYPE_ANNIVERSARY, null, ContactsContract.Data.DISPLAY_NAME);
         if(anniversaryCur.moveToFirst())
         {
             cr.delete(ContactsContract.Data.CONTENT_URI,where,whereParams);

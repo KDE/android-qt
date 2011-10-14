@@ -182,8 +182,18 @@ for(subname, SRC_SUBDIRS) {
        QMAKE_EXTRA_TARGETS += release-$${subtarget}
    }
 }
+
+android {
+    QtJar.commands = $$QT_SOURCE_TREE/android/buildQtJar.sh $$QT_SOURCE_TREE/src/android/jar $$QT_BUILD_TREE/jar
+    EXTRA_RELEASE_TARGETS += QtJar
+    EXTRA_DEBUG_TARGETS += QtJar
+    QMAKE_EXTRA_TARGETS += QtJar
+}
+
 debug.depends = $$EXTRA_DEBUG_TARGETS
 release.depends = $$EXTRA_RELEASE_TARGETS
+
+
 QMAKE_EXTRA_TARGETS += debug release
 
 # This gives us a top-level runonphone target, which installs Qt and optionally QtWebKit.
@@ -196,5 +206,4 @@ contains(CONFIG, run_on_phone) {
     }
     QMAKE_EXTRA_TARGETS += src_runonphone_target
 }
-
 SUBDIRS += $$SRC_SUBDIRS

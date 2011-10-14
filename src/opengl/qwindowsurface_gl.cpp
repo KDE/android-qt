@@ -240,7 +240,9 @@ bool QGLGlobalShareWidget::created = false;
 static void qt_cleanup_gl_share_widget();
 Q_GLOBAL_STATIC_WITH_INITIALIZER(QGLGlobalShareWidget, _qt_gl_share_widget,
                                  {
-                                     qAddPostRoutine(qt_cleanup_gl_share_widget);
+                                    #ifndef Q_OS_ANDROID
+                                        qAddPostRoutine(qt_cleanup_gl_share_widget);
+                                    #endif
                                  })
 
 static void qt_cleanup_gl_share_widget()

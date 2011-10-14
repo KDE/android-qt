@@ -9,6 +9,7 @@
         <version value="10" symlink="9"/>
         <version value="11" symlink="9"/>
         <version value="12" symlink="9"/>
+        <version value="13" symlink="9"/>
     </platforms>
     <dependencies> <!-- The order is very important -->
         <lib name="QtGui">
