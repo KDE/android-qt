@@ -124,7 +124,8 @@ public class QtActivityDelegate
         }
         softwareKeyboardIsVisible = false;
     }
-    public boolean loadApplication(Object activityInterface, Bundle loaderParams)
+
+    public boolean loadApplication(Activity activity, ClassLoader classLoader, Bundle loaderParams)
     {
         /// check parameters integrity
         if (!loaderParams.containsKey(NATIVE_LIBRARIES_KEY)
@@ -133,7 +134,7 @@ public class QtActivityDelegate
                 || !loaderParams.containsKey(APPLICATION_PARAMETERS_KEY))
             return false;
 
-        m_activity = (Activity) activityInterface;
+        m_activity = activity;
         QtNative.setActivity(m_activity, this);
 
         if (loaderParams.containsKey(STATIC_INIT_CLASSES_KEY))
@@ -141,7 +142,7 @@ public class QtActivityDelegate
             {
                 try {
                     @SuppressWarnings("rawtypes")
-                    Class initClass = m_activity.getClassLoader().loadClass(className);
+                    Class initClass = classLoader.loadClass(className);
                     Object staticInitDataObject=initClass.newInstance(); // create an instance
                     @SuppressWarnings("unchecked")
                     Method m = initClass.getMethod("setActivity", Activity.class, Object.class);
