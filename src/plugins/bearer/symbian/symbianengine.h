@@ -145,16 +145,17 @@ public:
 
 Q_SIGNALS:
     void onlineStateChanged(bool isOnline);
-    
+
     void configurationStateChanged(quint32 accessPointId, quint32 connMonId,
                                    QNetworkSession::State newState);
-    
+
 public Q_SLOTS:
     void updateConfigurations();
     void delayedConfigurationUpdate();
 
 private:
     void updateStatesToSnaps();
+    void updatePurposeToIaps();
     bool changeConfigurationStateTo(QNetworkConfigurationPrivatePointer ptr,
                                     QNetworkConfiguration::StateFlags newState);
     bool changeConfigurationStateAtMinTo(QNetworkConfigurationPrivatePointer ptr,
@@ -169,8 +170,8 @@ private:
             TUint32 aApId, SymbianNetworkConfigurationPrivate *apNetworkConfiguration);
     void readNetworkConfigurationValuesFromCommsDbL(
             TUint32 aApId, SymbianNetworkConfigurationPrivate *apNetworkConfiguration);
-#endif    
-    
+#endif
+
     void updateConfigurationsL();
     void updateActiveAccessPoints();
     void updateAvailableAccessPoints();
@@ -184,11 +185,13 @@ private:
     void startMonitoringIAPData(TUint32 aIapId);
     QNetworkConfigurationPrivatePointer dataByConnectionId(TUint aConnectionId);
 
+    void StartConnectionMonitorNotifyL();
+
 protected:
     // From CActive
     void RunL();
     void DoCancel();
-    
+
 private:
     // MConnectionMonitorObserver
     void EventL(const CConnMonEventBase& aEvent);
@@ -198,7 +201,7 @@ private:
 #endif
 
 private: // Data
-    bool               iFirstUpdate; 
+    bool               iFirstUpdate;
     CCommsDatabase*    ipCommsDB;
     RConnectionMonitor iConnectionMonitor;
 
@@ -225,11 +228,11 @@ class AccessPointsAvailabilityScanner : public CActive
 {
 public:
     AccessPointsAvailabilityScanner(SymbianEngine& owner,
-                                   RConnectionMonitor& connectionMonitor); 
+                                   RConnectionMonitor& connectionMonitor);
     ~AccessPointsAvailabilityScanner();
 
     void StartScanning();
-    
+
 protected: // From CActive
     void RunL();
     void DoCancel();

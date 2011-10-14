@@ -53,6 +53,23 @@
 
 #include <QtDebug>
 
+static GLint stencilBits()
+{
+    static GLint bits;
+    static bool initialized = false;
+    if (!initialized) {
+        glGetIntegerv(GL_STENCIL_BITS, &bits);
+        initialized = true;
+    }
+    return bits;
+}
+
+static GLint depthBits()
+{
+    // we can choose between GL_DEPTH24_STENCIL8_OES and GL_DEPTH_COMPONENT16
+    return stencilBits() > 0 ? 24 : 16;
+}
+
 class EAGLPlatformContext : public QPlatformGLContext
 {
 public:
@@ -60,13 +77,13 @@ public:
         : mView(view)
     {
         mFormat.setWindowApi(QPlatformWindowFormat::OpenGL);
-        mFormat.setDepthBufferSize(24);
+        mFormat.setDepthBufferSize(depthBits());
         mFormat.setAccumBufferSize(0);
         mFormat.setRedBufferSize(8);
         mFormat.setGreenBufferSize(8);
         mFormat.setBlueBufferSize(8);
         mFormat.setAlphaBufferSize(8);
-        mFormat.setStencilBufferSize(8);
+        mFormat.setStencilBufferSize(stencilBits());
         mFormat.setSamples(0);
         mFormat.setSampleBuffers(false);
         mFormat.setDoubleBuffer(true);
@@ -74,7 +91,7 @@ public:
         mFormat.setRgba(true);
         mFormat.setAlpha(true);
         mFormat.setAccum(false);
-        mFormat.setStencil(true);
+        mFormat.setStencil(stencilBits() > 0);
         mFormat.setStereo(false);
         mFormat.setDirectRendering(false);
 
@@ -203,9 +220,13 @@ private:
 
         glGenRenderbuffers(1, &mDepthRenderbuffer);
         glBindRenderbuffer(GL_RENDERBUFFER, mDepthRenderbuffer);
-        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8_OES, mFramebufferWidth, mFramebufferHeight);
+        if (stencilBits() > 0) {
+            glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8_OES, mFramebufferWidth, mFramebufferHeight);
+            glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, mDepthRenderbuffer);
+        } else {
+            glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, mFramebufferWidth, mFramebufferHeight);
+        }
         glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, mDepthRenderbuffer);
-        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, mDepthRenderbuffer);
 
         if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
             NSLog(@"Failed to make complete framebuffer object %x", glCheckFramebufferStatus(GL_FRAMEBUFFER));
@@ -320,10 +341,7 @@ QUIKitWindow::QUIKitWindow(QWidget *tlw) :
     mContext(0)
 {
     mScreen = static_cast<QUIKitScreen *>(QPlatformScreen::platformScreenForWidget(tlw));
-    CGRect screenBounds = [mScreen->uiScreen() bounds];
-    QRect geom(screenBounds.origin.x, screenBounds.origin.y, screenBounds.size.width, screenBounds.size.height);
-    QPlatformWindow::setGeometry(geom);
-    mView = [[EAGLView alloc] initWithFrame:CGRectMake(geom.x(), geom.y(), geom.width(), geom.height())];
+    mView = [[EAGLView alloc] init];
 }
 
 QUIKitWindow::~QUIKitWindow()
@@ -335,29 +353,23 @@ QUIKitWindow::~QUIKitWindow()
 
 void QUIKitWindow::setGeometry(const QRect &rect)
 {
-    if (mWindow && rect != geometry()) {
-        mWindow.frame = CGRectMake(rect.x(), rect.y(), rect.width(), rect.height());
-        mView.frame = CGRectMake(0, 0, rect.width(), rect.height());
-        [mView deleteFramebuffer];
-        [mWindow setNeedsDisplay];
-    }
+    // Not supported. Only a single "full screen" window is supported
     QPlatformWindow::setGeometry(rect);
 }
 
 UIWindow *QUIKitWindow::ensureNativeWindow()
 {
     if (!mWindow) {
-        // window
-        CGRect frame = [mScreen->uiScreen() applicationFrame];
-        QRect geom = QRect(frame.origin.x, frame.origin.y, frame.size.width, frame.size.height);
-        widget()->setGeometry(geom);
         mWindow = [[UIWindow alloc] init];
+        updateGeometryAndOrientation();
+        // window
         mWindow.screen = mScreen->uiScreen();
-        mWindow.frame = frame; // for some reason setting the screen resets frame.origin, so we need to set the frame afterwards
+        // for some reason setting the screen resets frame.origin, so we need to set the frame afterwards
+        mWindow.frame = mFrame;
 
         // view
         [mView deleteFramebuffer];
-        mView.frame = CGRectMake(0, 0, frame.size.width, frame.size.height); // fill
+        mView.frame = CGRectMake(0, 0, mWindow.bounds.size.width, mWindow.bounds.size.height); // fill
         [mView setMultipleTouchEnabled:YES];
         [mView setWindow:this];
         [mWindow addSubview:mView];
@@ -365,6 +377,50 @@ UIWindow *QUIKitWindow::ensureNativeWindow()
         [mWindow makeKeyAndVisible];
     }
     return mWindow;
+}
+
+void QUIKitWindow::updateGeometryAndOrientation()
+{
+    if (!mWindow)
+        return;
+    mFrame = [mScreen->uiScreen() applicationFrame];
+    CGRect screen = [mScreen->uiScreen() bounds];
+    QRect geom;
+    CGFloat angle = 0;
+    switch ([[UIApplication sharedApplication] statusBarOrientation]) {
+    case UIInterfaceOrientationPortrait:
+        geom = QRect(mFrame.origin.x, mFrame.origin.y, mFrame.size.width, mFrame.size.height);
+        break;
+    case UIInterfaceOrientationPortraitUpsideDown:
+        geom = QRect(screen.size.width - mFrame.origin.x - mFrame.size.width,
+                     screen.size.height - mFrame.origin.y - mFrame.size.height,
+                     mFrame.size.width,
+                     mFrame.size.height);
+        angle = M_PI;
+        break;
+    case UIInterfaceOrientationLandscapeLeft:
+        geom = QRect(screen.size.height - mFrame.origin.y - mFrame.size.height,
+                     mFrame.origin.x,
+                     mFrame.size.height,
+                     mFrame.size.width);
+        angle = -M_PI/2.;
+        break;
+    case UIInterfaceOrientationLandscapeRight:
+        geom = QRect(mFrame.origin.y,
+                     screen.size.width - mFrame.origin.x - mFrame.size.width,
+                     mFrame.size.height,
+                     mFrame.size.width);
+        angle = +M_PI/2.;
+        break;
+    }
+    if (angle != 0) {
+        [mView layer].transform = CATransform3DMakeRotation(angle, 0, 0, 1.);
+    } else {
+        [mView layer].transform = CATransform3DIdentity;
+    }
+    [mView setNeedsDisplay];
+    widget()->setGeometry(geom);
+    widget()->update();
 }
 
 QPlatformGLContext *QUIKitWindow::glContext() const

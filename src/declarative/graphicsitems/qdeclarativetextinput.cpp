@@ -407,7 +407,11 @@ bool QDeclarativeTextInputPrivate::determineHorizontalAlignment()
     if (hAlignImplicit) {
         // if no explicit alignment has been set, follow the natural layout direction of the text
         QString text = control->text();
-        bool isRightToLeft = text.isEmpty() ? QApplication::keyboardInputDirection() == Qt::RightToLeft : text.isRightToLeft();
+        if (text.isEmpty())
+            text = control->preeditAreaText();
+        bool isRightToLeft = text.isEmpty()
+                ? QApplication::keyboardInputDirection() == Qt::RightToLeft
+                : text.isRightToLeft();
         return setHAlign(isRightToLeft ? QDeclarativeTextInput::AlignRight : QDeclarativeTextInput::AlignLeft);
     }
     return false;
@@ -560,13 +564,11 @@ QRect QDeclarativeTextInput::cursorRectangle() const
     \qmlproperty int TextInput::selectionStart
 
     The cursor position before the first character in the current selection.
-    Setting this and selectionEnd allows you to specify a selection in the
-    text edit.
 
-    Note that if selectionStart == selectionEnd then there is no current
-    selection.
+    This property is read-only. To change the selection, use select(start,end),
+    selectAll(), or selectWord().
 
-    \sa selectionEnd, cursorPosition, selectedText, select()
+    \sa selectionEnd, cursorPosition, selectedText
 */
 int QDeclarativeTextInput::selectionStart() const
 {
@@ -578,13 +580,11 @@ int QDeclarativeTextInput::selectionStart() const
     \qmlproperty int TextInput::selectionEnd
 
     The cursor position after the last character in the current selection.
-    Setting this and selectionStart allows you to specify a selection in the
-    text edit.
 
-    Note that if selectionStart == selectionEnd then there is no current
-    selection.
+    This property is read-only. To change the selection, use select(start,end),
+    selectAll(), or selectWord().
 
-    \sa selectionStart, cursorPosition, selectedText, select()
+    \sa selectionStart, cursorPosition, selectedText
 */
 int QDeclarativeTextInput::selectionEnd() const
 {
@@ -878,7 +878,8 @@ void QDeclarativeTextInputPrivate::updateInputMethodHints()
     \o TextInput.Normal - Displays the text as it is. (Default)
     \o TextInput.Password - Displays asterixes instead of characters.
     \o TextInput.NoEcho - Displays nothing.
-    \o TextInput.PasswordEchoOnEdit - Displays all but the current character as asterixes.
+    \o TextInput.PasswordEchoOnEdit - Displays characters as they are entered
+    while editing, otherwise displays asterisks.
     \endlist
 */
 QDeclarativeTextInput::EchoMode QDeclarativeTextInput::echoMode() const
@@ -1050,7 +1051,7 @@ void QDeclarativeTextInputPrivate::focusChanged(bool hasFocus)
     Q_Q(QDeclarativeTextInput);
     focused = hasFocus;
     q->setCursorVisible(hasFocus && scene && scene->hasFocus());
-    if(q->echoMode() == QDeclarativeTextInput::PasswordEchoOnEdit && !hasFocus)
+    if(!hasFocus && control->passwordEchoEditing())
         control->updatePasswordEchoEditing(false);//QLineControl sets it on key events, but doesn't deal with focus events
     if (!hasFocus)
         control->deselect();
@@ -1910,6 +1911,7 @@ void QDeclarativeTextInput::cursorPosChanged()
 void QDeclarativeTextInput::updateCursorRectangle()
 {
     Q_D(QDeclarativeTextInput);
+    d->determineHorizontalAlignment();
     d->updateHorizontalScroll();
     updateRect();//TODO: Only update rect between pos's
     updateMicroFocus();

@@ -5792,16 +5792,19 @@ void QPainter::drawImage(const QRectF &targetRect, const QImage &image, const QR
     d->engine->drawImage(QRectF(x, y, w, h), image, QRectF(sx, sy, sw, sh), flags);
 }
 
+#if !defined(QT_NO_RAWFONT)
 /*!
-    Draws the glyphs represented by \a glyphs at \a position. The \a position gives the
-    edge of the baseline for the string of glyphs. The glyphs will be retrieved from the font
-    selected on \a glyphs and at offsets given by the positions in \a glyphs.
+    \fn void QPainter::drawGlyphRun(const QPointF &position, const QGlyphRun &glyphs)
+
+    Draws the specified \a glyphs at the given \a position.
+    The \a position gives the edge of the baseline for the string of glyphs.
+    The glyphs will be retrieved from the font selected by \a glyphs and at
+    offsets given by the positions in \a glyphs.
 
     \since 4.8
 
     \sa QGlyphRun::setRawFont(), QGlyphRun::setPositions(), QGlyphRun::setGlyphIndexes()
 */
-#if !defined(QT_NO_RAWFONT)
 void QPainter::drawGlyphRun(const QPointF &position, const QGlyphRun &glyphRun)
 {
     Q_D(QPainter);
@@ -6469,10 +6472,16 @@ static void drawTextItemDecoration(QPainter *painter, const QPointF &pos, const 
 
     QLineF line(pos.x(), pos.y(), pos.x() + qFloor(width), pos.y());
 
-    const qreal underlineOffset = fe->underlinePosition().toReal();
+    qreal underlineOffset = fe->underlinePosition().toReal();
+    qreal y = pos.y();
+    // compensate for different rounding rule in Core Graphics paint engine,
+    // ideally code like this should be moved to respective engines.
+    if (painter->paintEngine()->type() == QPaintEngine::CoreGraphics) {
+        y = qCeil(y);
+    }
     // deliberately ceil the offset to avoid the underline coming too close to
     // the text above it.
-    const qreal underlinePos = pos.y() + qCeil(underlineOffset);
+    const qreal underlinePos = y + qCeil(underlineOffset);
 
     if (underlineStyle == QTextCharFormat::SpellCheckUnderline) {
         underlineStyle = QTextCharFormat::UnderlineStyle(QApplication::style()->styleHint(QStyle::SH_SpellCheckUnderlineStyle));
@@ -9238,6 +9247,52 @@ void QPainter::drawPixmapFragments(const PixmapFragment *fragments, int fragment
 
         setOpacity(oldOpacity);
         setTransform(oldTransform);
+    }
+}
+
+/*!
+    \since 4.8
+
+    This function is used to draw the same \a pixmap with multiple target
+    and source rectangles specified by \a targetRects. If \a sourceRects is 0,
+    the whole pixmap will be rendered at each of the target rectangles.
+    The \a hints parameter can be used to pass in drawing hints.
+
+    This function is potentially faster than multiple calls to drawPixmap(),
+    since the backend can optimize state changes.
+
+    \sa QPainter::PixmapFragmentHint
+*/
+
+void QPainter::drawPixmapFragments(const QRectF *targetRects, const QRectF *sourceRects, int fragmentCount,
+                                   const QPixmap &pixmap, PixmapFragmentHints hints)
+{
+    Q_D(QPainter);
+
+    if (!d->engine || pixmap.isNull())
+        return;
+
+#ifndef QT_NO_DEBUG
+    if (sourceRects) {
+        for (int i = 0; i < fragmentCount; ++i) {
+            QRectF sourceRect = sourceRects[i];
+            if (!(QRectF(pixmap.rect()).contains(sourceRect)))
+                qWarning("QPainter::drawPixmapFragments - the source rect is not contained by the pixmap's rectangle");
+        }
+    }
+#endif
+
+    if (d->engine->isExtended()) {
+        d->extended->drawPixmapFragments(targetRects, sourceRects, fragmentCount, pixmap, hints);
+    } else {
+        if (sourceRects) {
+            for (int i = 0; i < fragmentCount; ++i)
+                drawPixmap(targetRects[i], pixmap, sourceRects[i]);
+        } else {
+            QRectF sourceRect = pixmap.rect();
+            for (int i = 0; i < fragmentCount; ++i)
+                drawPixmap(targetRects[i], pixmap, sourceRect);
+        }
     }
 }
 

@@ -1639,7 +1639,8 @@ QGraphicsScene::~QGraphicsScene()
     Q_D(QGraphicsScene);
 
     // Remove this scene from qApp's global scene list.
-    qApp->d_func()->scene_list.removeAll(this);
+    if (!QApplicationPrivate::is_app_closing)
+        qApp->d_func()->scene_list.removeAll(this);
 
     clear();
 
@@ -3503,7 +3504,9 @@ bool QGraphicsScene::event(QEvent *event)
         }
         break;
     case QEvent::WindowDeactivate:
-        if (!--d->activationRefCount) {
+        if (d->activationRefCount > 0)
+            --d->activationRefCount;
+        if (!d->activationRefCount) {
             if (d->activePanel) {
                 // Deactivate the active panel (but keep it so we can
                 // reactivate it later).

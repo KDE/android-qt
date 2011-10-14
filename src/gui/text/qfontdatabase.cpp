@@ -1132,13 +1132,14 @@ QT_BEGIN_INCLUDE_NAMESPACE
 #elif defined(Q_OS_SYMBIAN)
 #  include "qfontdatabase_s60.cpp"
 #endif
+QT_END_INCLUDE_NAMESPACE
+
 #if !defined(Q_WS_X11)
 QString QFontDatabase::resolveFontFamilyAlias(const QString &family)
 {
     return family;
 }
 #endif
-QT_END_INCLUDE_NAMESPACE
 
 static QtFontStyle *bestStyle(QtFontFoundry *foundry, const QtFontStyle::Key &styleKey,
                               const QString &styleName = QString())
@@ -1944,8 +1945,9 @@ bool  QFontDatabase::isScalable(const QString &family,
 
 
 /*!
-    Returns a list of the point sizes available for the font that has
-    family \a family and style \a style. The list may be empty.
+    \fn QList<int> QFontDatabase::pointSizes(const QString &family, const QString &style)
+    Returns a list of the point sizes available for the font with the
+    given \a family and \a style. The list may be empty.
 
     \sa smoothSizes(), standardSizes()
 */
@@ -2053,8 +2055,9 @@ QFont QFontDatabase::font(const QString &family, const QString &style,
 
 
 /*!
-    Returns the point sizes of a font that has family \a family and
-    style \a style that will look attractive. The list may be empty.
+    \fn QList<int> QFontDatabase::smoothSizes(const QString &family, const QString &style)
+    Returns the point sizes of a font with the given \a family and \a style
+    that will look attractive. The list may be empty.
     For non-scalable fonts and bitmap scalable fonts, this function
     is equivalent to pointSizes().
 
@@ -2238,6 +2241,16 @@ int QFontDatabase::weight(const QString &family,
     QtFontStyle::Key styleKey(style);
     QtFontStyle *s = allStyles.style(styleKey, style);
     return s ? s->key.weight : -1;
+}
+
+
+/*! \internal */
+bool QFontDatabase::hasFamily(const QString &family) const
+{
+    QString parsedFamily, foundry;
+    parseFontName(family, foundry, parsedFamily);
+    const QString familyAlias = resolveFontFamilyAlias(parsedFamily);
+    return families().contains(familyAlias, Qt::CaseInsensitive);
 }
 
 

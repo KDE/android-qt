@@ -44,7 +44,7 @@
 #include "quikitwindowsurface.h"
 #include "quikitscreen.h"
 #include "quikiteventloop.h"
-#include "qgenericunixfontdatabase.h"
+#include "qcoretextfontdatabase.h"
 
 #include <QtGui/QApplication>
 
@@ -56,19 +56,18 @@
 
 QT_BEGIN_NAMESPACE
 
-class QUIKitFontDatabase : public QGenericUnixFontDatabase
+static QUIKitIntegration *m_instance = 0;
+
+QUIKitIntegration * QUIKitIntegration::instance()
 {
-public:
-    virtual QString fontDir() const
-    {
-        return QString( [[[[NSBundle mainBundle] bundlePath]
-            stringByAppendingPathComponent:@"fonts"] UTF8String] );
-    }
-};
+    return m_instance;
+}
 
 QUIKitIntegration::QUIKitIntegration()
-    :mFontDb(new QUIKitFontDatabase() )
+    :mFontDb(new QCoreTextFontDatabase)
 {
+    if (!m_instance)
+        m_instance = this;
     mScreens << new QUIKitScreen(0);
 }
 
