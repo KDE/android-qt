@@ -280,7 +280,7 @@ then
 
 	$SRC_DIR_QT/configure -v -opensource -qpa -arch $ANDROID_ARCHITECTURE \
 		-no-phonon -freetype -fast -xplatform android-g++ \
-		$PLATFORM -host-little-endian \
+		-host-arch i386 $PLATFORM -host-little-endian \
 		-little-endian -no-qt3support -no-largefile \
 		-openssl -pch \
 		-nomake demos -no-multimedia -nomake examples -confirm-license \
