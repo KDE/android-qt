@@ -13,7 +13,7 @@ DOWNLOAD_OPENSSL=1
 NDK_PLATFORM=5
 DEST_DIR_QT=$PWD
 PLATFORM="-platform linux-g++"
-NDK_ROOT=~/NecessitasQtSDK/android-ndk-r6
+NDK_ROOT=~/NecessitasQtSDK/android-ndk-r6b
 NDK_HOST=linux-x86
 NDK_TOOLCHAIN_VERSION=4.4.3
 NDK_TOOLCHAIN_PREFIX=arm-linux-androideabi
@@ -292,7 +292,7 @@ fi
 # This should loop until make succeeds, Workaround for Cygwin/MSYS
 # couldn't commit heap memory error
 if [ "$BUILD_QT" = "1" ]; then
-	make -f $MAKEFILE -j 3 all QtJar
+	make -f $MAKEFILE -j 6 all QtJar
 	while [ "$?" != "0" ]
 	do
 		if [ -f /usr/break-make ]; then
@@ -300,7 +300,7 @@ if [ "$BUILD_QT" = "1" ]; then
 			rm -f /usr/break-make
 			exit 1
 		fi
-		make -f $MAKEFILE -j 3 all QtJar
+		make -f $MAKEFILE -j 6 all QtJar
 	done
 fi
 

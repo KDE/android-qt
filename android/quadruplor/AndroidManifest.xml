@@ -4,8 +4,8 @@
       android:versionCode="1"
       android:versionName="1.0">
     <uses-sdk android:minSdkVersion="4" />
-    <application android:icon="@drawable/icon" android:label="@string/app_name" android:name="eu.licentia.necessitas.industrius.QtApplication">
-        <activity android:label="@string/app_name" android:name="eu.licentia.necessitas.industrius.QtActivity">
+    <application android:icon="@drawable/icon" android:label="@string/app_name" android:name="org.kde.necessitas.industrius.QtNative">
+        <activity android:label="@string/app_name" android:name="org.kde.necessitas.industrius.QtActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

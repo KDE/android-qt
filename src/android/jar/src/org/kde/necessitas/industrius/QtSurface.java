@@ -53,7 +53,7 @@ public class QtSurface extends SurfaceView implements SurfaceHolder.Callback
         setId(id);
     }
 
-    public void applicationStared(boolean usesGL)
+    public void applicationStarted(boolean usesGL)
     {
         m_started = true;
         m_usesGL = usesGL;

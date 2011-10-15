@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package eu.licentia.necessitas.industrius;
+package org.kde.necessitas.industrius;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -48,7 +48,7 @@ public class QtActivity extends Activity {
     private boolean m_usesGL = false;
     private void loadQtLibs(String [] libs, String environment, String params)
     {
-        QtApplication.loadQtLibraries(libs);
+        QtNative.loadQtLibraries(libs);
         // start application
 
         final String envPaths="HOME="+getFilesDir().getAbsolutePath()+
@@ -65,8 +65,8 @@ public class QtActivity extends Activity {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
-        QtApplication.startApplication(params, environment);
-        m_surface.applicationStared( m_usesGL );
+        QtNative.startApplication(params, environment);
+        m_surface.applicationStarted( m_usesGL );
         m_started = true;
     }
 
@@ -110,7 +110,7 @@ public class QtActivity extends Activity {
         }
         catch (Exception e)
         {
-            Log.e(QtApplication.QtTAG, "Can't create main activity", e);
+            Log.e(QtNative.QtTAG, "Can't create main activity", e);
         }
     }
 
@@ -126,12 +126,12 @@ public class QtActivity extends Activity {
         f.setWritable(true,false);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         m_quitApp = true;
-        QtApplication.setMainActivity(this);
+        QtNative.setMainActivity(this);
         if (null == getLastNonConfigurationInstance())
         {
             DisplayMetrics metrics = new DisplayMetrics();
             getWindowManager().getDefaultDisplay().getMetrics(metrics);
-            QtApplication.setApplicationDisplayMetrics(metrics.widthPixels, metrics.heightPixels,
+            QtNative.setApplicationDisplayMetrics(metrics.widthPixels, metrics.heightPixels,
                             metrics.widthPixels, metrics.heightPixels,
                             metrics.xdpi, metrics.ydpi);
         }
@@ -157,31 +157,31 @@ public class QtActivity extends Activity {
     @Override
     protected void onDestroy()
     {
-        QtApplication.setMainActivity(null);
+        QtNative.setMainActivity(null);
         super.onDestroy();
         if (m_quitApp)
         {
-            Log.i(QtApplication.QtTAG, "onDestroy");
+            Log.i(QtNative.QtTAG, "onDestroy");
             if (m_debuggerProcess != null)
                 m_debuggerProcess.destroy();
             System.exit(0);// FIXME remove it or find a better way
         }
-        QtApplication.setMainActivity(null);
+        QtNative.setMainActivity(null);
     }
 
     @Override
     protected void onResume()
     {
         // fire all lostActions
-        synchronized (QtApplication.m_mainActivityMutex)
+        synchronized (QtNative.m_mainActivityMutex)
         {
-            Iterator<Runnable> itr=QtApplication.getLostActions().iterator();
+            Iterator<Runnable> itr=QtNative.getLostActions().iterator();
             while(itr.hasNext())
                 runOnUiThread(itr.next());
             if (m_started)
             {
-                QtApplication.clearLostActions();
-                QtApplication.updateWindow();
+                QtNative.clearLostActions();
+                QtNative.updateWindow();
             }
         }
         super.onResume();
@@ -214,7 +214,7 @@ public class QtActivity extends Activity {
         setFullScreen(savedInstanceState.getBoolean("FullScreen"));
         m_started = savedInstanceState.getBoolean("Started");
         if (m_started)
-            m_surface.applicationStared( true );
+            m_surface.applicationStarted( true );
     }
 
     public void showSoftwareKeyboard()
@@ -240,9 +240,9 @@ public class QtActivity extends Activity {
             event.getCharacters() != null &&
             event.getCharacters().length() == 1 &&
             event.getKeyCode() == 0) {
-            Log.i(QtApplication.QtTAG, "dispatchKeyEvent at MULTIPLE with one character: "+event.getCharacters());
-            QtApplication.keyDown(0, event.getCharacters().charAt(0), event.getMetaState());
-            QtApplication.keyUp(0, event.getCharacters().charAt(0), event.getMetaState());
+            Log.i(QtNative.QtTAG, "dispatchKeyEvent at MULTIPLE with one character: "+event.getCharacters());
+            QtNative.keyDown(0, event.getCharacters().charAt(0), event.getMetaState());
+            QtNative.keyUp(0, event.getCharacters().charAt(0), event.getMetaState());
         }
 
         return super.dispatchKeyEvent(event);
@@ -266,7 +266,7 @@ public class QtActivity extends Activity {
         }
         m_lastChar = lc;
         if (keyCode != KeyEvent.KEYCODE_BACK)
-                QtApplication.keyDown(keyCode, c, event.getMetaState());
+                QtNative.keyDown(keyCode, c, event.getMetaState());
         return true;
     }
 
@@ -276,7 +276,7 @@ public class QtActivity extends Activity {
         if (!m_started)
             return false;
         m_metaState = MetaKeyKeyListener.handleKeyUp(m_metaState, keyCode, event);
-        QtApplication.keyUp(keyCode, event.getUnicodeChar(), event.getMetaState());
+        QtNative.keyUp(keyCode, event.getUnicodeChar(), event.getMetaState());
         return true;
     }
 

@@ -203,7 +203,7 @@ public class QtActivityDelegate
         {
             if (null == m_surface)
                 onCreate(null);
-            m_surface.applicationStared( QtNative.startApplication(m_applicationParameters
+            m_surface.applicationStarted( QtNative.startApplication(m_applicationParameters
                                                                 , m_environmentVariables));
             m_started = true;
             return true;
@@ -258,7 +258,7 @@ public class QtActivityDelegate
 //        setFullScreen(savedInstanceState.getBoolean("FullScreen"));
         m_started = savedInstanceState.getBoolean("Started");
         if (m_started)
-            m_surface.applicationStared( true );
+            m_surface.applicationStarted( true );
     }
 
     public void onResume()

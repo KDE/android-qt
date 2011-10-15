@@ -15,18 +15,19 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package eu.licentia.necessitas.industrius;
+package org.kde.necessitas.industrius;
 
 import java.io.File;
 import java.util.ArrayList;
 
+import android.app.Activity;
 import android.app.Application;
 import android.content.Intent;
 import android.net.Uri;
 import android.util.Log;
 import android.view.MotionEvent;
 
-public class QtApplication extends Application
+public class QtNative extends Application
 {
     private static QtActivity m_mainActivity = null;
     private static QtSurface m_mainView = null;
@@ -45,7 +46,7 @@ public class QtApplication extends Application
     private static final int m_moveThreshold = 0;
 
 
-    public static QtActivity mainActivity()
+    public static Activity activity()
     {
         return m_mainActivity;
     }
@@ -59,7 +60,7 @@ public class QtApplication extends Application
     {
         Uri uri = Uri.parse(url);
         Intent intent = new Intent(Intent.ACTION_VIEW, uri);
-        mainActivity().startActivity(intent);
+        activity().startActivity(intent);
     }
 
     // this method loads full path libs
@@ -219,7 +220,7 @@ public class QtApplication extends Application
     public static native void startQtApp(String params,String env);
     public static native void pauseQtApp();
     public static native void resumeQtApp();
-    public static native void startQtAndroidPlugin();
+    public static native boolean startQtAndroidPlugin();
     public static native void quitQtAndroidPlugin();
     public static native void terminateQt();
     // application methods
