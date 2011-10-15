@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="ministro_not_found_msg">Impossível localizar o serviço Ministro.\nA aplicação não pode ser iniciada.</string>
+    <string name="ministro_needed_msg">Esta aplicação requer o serviço Ministro. Você gostaria de instalá-lo?</string>
+    <string name="fatal_error_msg">Sua aplicação encontrou um erro fatal não pode continuar.</string>
+</resources>
