@@ -422,22 +422,28 @@ static void setDisplayMetrics(JNIEnv* /*env*/, jclass /*clazz*/,
 static void mouseDown(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/, jint x, jint y)
 {
     QPoint globalPos(x,y);
-    QWindowSystemInterface::handleMouseEvent(m_androidGraphicsSystem->getPrimaryScreen()->topLevelAt(globalPos),
-                                             globalPos, globalPos, Qt::MouseButtons(Qt::LeftButton));
+    QWidget *tlw = m_androidGraphicsSystem?m_androidGraphicsSystem->getPrimaryScreen()->topLevelAt(globalPos):0;
+    QPoint localPos=tlw?globalPos-tlw->pos():globalPos;
+    QWindowSystemInterface::handleMouseEvent(tlw, localPos, globalPos
+                                             , Qt::MouseButtons(Qt::LeftButton));
 }
 
 static void mouseUp(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/, jint x, jint y)
 {
     QPoint globalPos(x,y);
-    QWindowSystemInterface::handleMouseEvent(m_androidGraphicsSystem->getPrimaryScreen()->topLevelAt(globalPos),
-                                             globalPos,globalPos, Qt::MouseButtons(Qt::NoButton));
+    QWidget *tlw = m_androidGraphicsSystem?m_androidGraphicsSystem->getPrimaryScreen()->topLevelAt(globalPos):0;
+    QPoint localPos=tlw?globalPos-tlw->pos():globalPos;
+    QWindowSystemInterface::handleMouseEvent(tlw, localPos, globalPos
+                                             , Qt::MouseButtons(Qt::NoButton));
 }
 
 static void mouseMove(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/, jint x, jint y)
 {
     QPoint globalPos(x,y);
-    QWindowSystemInterface::handleMouseEvent(m_androidGraphicsSystem->getPrimaryScreen()->topLevelAt(globalPos),
-                                             globalPos, globalPos, Qt::MouseButtons(Qt::LeftButton));
+    QWidget *tlw = m_androidGraphicsSystem?m_androidGraphicsSystem->getPrimaryScreen()->topLevelAt(globalPos):0;
+    QPoint localPos=tlw?globalPos-tlw->pos():globalPos;
+    QWindowSystemInterface::handleMouseEvent(tlw, localPos, globalPos
+                                             , Qt::MouseButtons(Qt::LeftButton));
 }
 
 static void touchBegin(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/)
