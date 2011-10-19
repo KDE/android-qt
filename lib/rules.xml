@@ -1,21 +1,38 @@
 <rules>
     <platforms>
-        <version value="4"/>
-        <version value="5"/>
-        <version value="6" symlink="5"/>
-        <version value="7" symlink="5"/>
-        <version value="8"/>
-        <version value="9"/>
-        <version value="10" symlink="9"/>
-        <version value="11" symlink="9"/>
-        <version value="12" symlink="9"/>
-        <version value="13" symlink="9"/>
+        <libs>
+            <version value="4"/>
+            <version value="5"/>
+            <version value="6" symlink="5"/>
+            <version value="7" symlink="5"/>
+            <version value="8"/>
+            <version value="9"/>
+            <version value="10" symlink="9"/>
+            <version value="11" symlink="9"/>
+            <version value="12" symlink="9"/>
+            <version value="13" symlink="9"/>
+            <version value="14" symlink="9"/>
+        </libs>
+        <jars>
+            <version value="8"/>
+            <version value="4" symlink="8"/>
+            <version value="5" symlink="8"/>
+            <version value="6" symlink="8"/>
+            <version value="7" symlink="8"/>
+            <version value="14"/>
+            <version value="9" symlink="14"/>
+            <version value="10" symlink="14"/>
+            <version value="11" symlink="14"/>
+            <version value="12" symlink="14"/>
+            <version value="13" symlink="14"/>
+        </jars>
     </platforms>
     <dependencies> <!-- The order is very important -->
-        <lib name="QtGui">
+        <lib name="QtCore">
             <depends>
-            <!-- %1 will be replaced with device matched api level, e.g. if the device has api level 11 %1 will be replaced with 8 -->
+                <!-- %1 will be replaced with device matched api level, e.g. if the device has api level 11 %1 will be replaced with 8 -->
                 <lib file="plugins/platforms/android/libandroid-%1.so"/>
+                <jar file="jar/QtIndustrius-%1.jar"/>
             </depends>
         </lib>
 

@@ -102,7 +102,7 @@ public class QtNative
     }
 
         // this method loads bundled libs by name.
-    public static void loadBundledLibraries(ArrayList<String> libraries)
+    public static void loadBundledLibraries(ArrayList<String> libraries, String nativeLibraryDir)
     {
         if (libraries == null)
             return;
@@ -111,7 +111,11 @@ public class QtNative
         {
             try
             {
-                System.loadLibrary(libName);
+                File f = new File(nativeLibraryDir+"lib"+libName+".so");
+                if (f.exists())
+                    System.load(f.getAbsolutePath());
+                else
+                    Log.i(QtTAG, "Can't find '" + f.getAbsolutePath());
             }
             catch (Exception e)
             {

@@ -67,7 +67,6 @@ import android.view.Window;
 import android.view.WindowManager.LayoutParams;
 import android.view.accessibility.AccessibilityEvent;
 import dalvik.system.DexClassLoader;
-import dalvik.system.PathClassLoader;
 
 //@ANDROID-11
 import android.app.Fragment;
@@ -100,33 +99,8 @@ public class QtActivity extends Activity
     private static final String MINIMUM_QT_VERSION_KEY="minimum.qt.version";
     /// Ministro server parameter keys
 
-    class QtClassLoader extends DexClassLoader
-    {
-        PathClassLoader m_parent=null;
-        public QtClassLoader(String dexPath, String dexOutputDir,
-                String libPath, ClassLoader parent) {
-            super(dexPath, dexOutputDir, libPath, parent);
-            m_parent=(PathClassLoader) getApplicationContext().getClassLoader();
-        }
-        @Override
-        protected String findLibrary(String libname) {
-            if (m_parent != null)
-            {
-                try
-                {
-                    String lib=m_parent.findLibrary(libname);
-                    if (null != lib)
-                        return lib;
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-            return super.findLibrary(libname);
-        }
-    }
-
     private ActivityInfo m_activityInfo = null; // activity info object, used to access the libs and the strings
-    private QtClassLoader m_classLoader = null; // loader object
+    private DexClassLoader m_classLoader = null; // loader object
     private String[] m_qtLibs = null; // required qt libs
 
     // this function is used to load and start the loader
@@ -158,7 +132,7 @@ public class QtActivity extends Activity
             loaderParams.putStringArrayList(BUNDLED_LIBRARIES_KEY, libs);
 
             // load and start QtLoader class
-            m_classLoader = new QtClassLoader(loaderParams.getString(DEX_PATH_KEY) // .jar/.apk files
+            m_classLoader = new DexClassLoader(loaderParams.getString(DEX_PATH_KEY) // .jar/.apk files
                                             , getDir("outdex", Context.MODE_PRIVATE).getAbsolutePath() // directory where optimized DEX files should be written.
                                             , loaderParams.containsKey(LIB_PATH_KEY)?loaderParams.getString(LIB_PATH_KEY):null // libs folder (if exists)
                                             , getClassLoader()); // parent loader
@@ -264,40 +238,41 @@ public class QtActivity extends Activity
                 int resourceId = ai.metaData.getInt("android.app.qt_libs_resource_id");
                 m_qtLibs=getResources().getStringArray(resourceId);
             }
-
             if (getIntent().getExtras()!= null && getIntent().getExtras().containsKey("use_local_qt_libs")
                     && getIntent().getExtras().getString("use_local_qt_libs").equals("true"))
             {
                 ArrayList<String> libraryList= new ArrayList<String>();
 
+                String localPrefix="/data/local/qt/";
+                if (getIntent().getExtras().containsKey("libs_prefix"))
+                    localPrefix=getIntent().getExtras().getString("libs_prefix");
+
                 if (m_qtLibs != null)
                     for(int i=0;i<m_qtLibs.length;i++)
                     {
-                        libraryList.add("/data/local/qt/lib/lib"+m_qtLibs[i]+".so");
+                        libraryList.add(localPrefix+"lib/lib"+m_qtLibs[i]+".so");
                     }
 
                 if (getIntent().getExtras().containsKey("load_local_libs"))
                 {
                     String []extraLibs=getIntent().getExtras().getString("load_local_libs").split(":");
-                    for (int i=0;i<extraLibs.length;i++)
-                        libraryList.add("/data/local/qt/"+extraLibs[i]);
+                    for (String lib:extraLibs)
+                        if (lib.length()>0)
+                            libraryList.add(localPrefix+lib);
                 }
 
-                String pathSeparator = System.getProperty("path.separator", ":");
                 String dexPaths = new String();
-                File jarDir=new File("/data/local/qt/jar");
-                if (jarDir.exists())
+                String pathSeparator = System.getProperty("path.separator", ":");
+                if (getIntent().getExtras().containsKey("load_local_jars"))
                 {
-                    File[] files = jarDir.listFiles();
-                    for (File file: files)
-                    {
-                        if (!file.isDirectory() && file.isFile())
+                    String []jarFiles=getIntent().getExtras().getString("load_local_jars").split(":");
+                    for (String jar:jarFiles)
+                        if (jar.length()>0)
                         {
                             if (dexPaths.length()>0)
                                 dexPaths+=pathSeparator;
-                            dexPaths+=file.getAbsolutePath();
+                            dexPaths+=localPrefix+jar;
                         }
-                    }
                 }
 
                 Bundle loaderParams = new Bundle();
