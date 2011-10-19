@@ -596,7 +596,7 @@ static int mapAndroidKey(int key)
             return Qt::Key_MediaStop;
 
         case 0x00000052: //KEYCODE_MENU
-            return Qt::Key_TopMenu;
+            return Qt::Key_Menu;
 
         case 0x00000045:
             return Qt::Key_Minus;
