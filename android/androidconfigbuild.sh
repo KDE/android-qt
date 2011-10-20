@@ -21,6 +21,7 @@ NDK_TOOLS_PREFIX=arm-linux-androideabi
 TARGET_ARCH=armeabi
 ANDROID_ARCHITECTURE=arm
 
+OSTYPE_MAJOR=${OSTYPE/%[0-9.]*/}
 SRC_DIR_QT=`dirname $0`
 pushd .
 SRC_DIR_QT=`(cd "$SRC_DIR_QT"; /bin/pwd)`
@@ -35,12 +36,12 @@ OPENSSL_URL=http://www.openssl.org/source/$OPENSSL_PACKAGE
 OPENSSL_PREFIX=$SRC_DIR_QT/src/3rdparty/android/src/openssl
 OPENSSL_ROOT=$OPENSSL_PREFIX/$OPENSSL_NAME
 
-if [ "$OSTYPE" = "msys" ]; then
+if [ "$OSTYPE_MAJOR" = "msys" ]; then
 	PLATFORM="-platform win32-g++"
 	NDK_HOST=windows
 	NDK_PLATFORM=4
 else
-	if [ "$OSTYPE" = "darwin9.0" -o "$OSTYPE" = "darwin10.0" ]; then
+	if [ "$OSTYPE_MAJOR" = "darwin" ]; then
 		PLATFORM="-platform macx-g++42"
 		NDK_ROOT=/usr/local/android/android-ndk-r5b
 		NDK_HOST=darwin-x86
@@ -181,7 +182,7 @@ fi
 if [ "$DOWNLOAD_OPENSSL" -eq "1" ]; then
 	if [ ! -d "$OPENSSL_ROOT" ]; then
 		echo "Downloading OpenSSL sources from $OPENSSL_URL."
-        if [ "$OSTYPE" = "darwin9.0" -o "$OSTYPE" = "darwin10.0" ] ; then
+        if [ "$OSTYPE_MAJOR" = "darwin" ] ; then
             pushd "$OPENSSL_PREFIX"
             curl --insecure -S -L -O "$OPENSSL_URL"
             popd
@@ -244,7 +245,7 @@ EOF
 
 # Without this, make will not be able to translate relative paths
 # properly as it can't step beyond where / is mounted.
-if [ "$OSTYPE" = "msys" ]; then
+if [ "$OSTYPE_MAJOR" = "msys" ]; then
 	MAKEDIR=`pwd -W`
 	MAKEFILE=$MAKEDIR/Makefile
 else
