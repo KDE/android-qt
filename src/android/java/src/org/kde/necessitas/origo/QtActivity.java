@@ -167,20 +167,6 @@ public class QtActivity extends Activity
         }
     }
 
-    private IMinistroCallback m_ministroCallback = new IMinistroCallback.Stub() {
-        // this function is called back by Ministro.
-        @Override
-        public void loaderReady(final Bundle loaderParams) throws RemoteException
-        {
-            runOnUiThread( new Runnable() {
-                @Override
-                public void run() {
-                    loadApplication(loaderParams);
-                }
-            });
-        }
-    };
-
     private ServiceConnection m_ministroConnection=new ServiceConnection() {
         private IMinistro m_service = null;
     @Override
@@ -202,6 +188,21 @@ public class QtActivity extends Activity
                     e.printStackTrace();
             }
         }
+
+    private IMinistroCallback m_ministroCallback = new IMinistroCallback.Stub() {
+        // this function is called back by Ministro.
+        @Override
+        public void loaderReady(final Bundle loaderParams) throws RemoteException
+        {
+            runOnUiThread( new Runnable() {
+                @Override
+                public void run() {
+                    unbindService(m_ministroConnection);
+                    loadApplication(loaderParams);
+                }
+            });
+        }
+    };
 
         @Override
         public void onServiceDisconnected(ComponentName name)
