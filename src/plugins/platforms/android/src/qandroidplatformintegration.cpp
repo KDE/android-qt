@@ -81,10 +81,11 @@ public:
         Q_UNUSED(family);
         Q_UNUSED(style);
         Q_UNUSED(script);
+//        qDebug() << family << style << script;
         if (styleHint == QFont::Monospace)
                 return QStringList() << "Droid Sans Mono";
 
-        return QStringList() << "Droid Sans Fallback";
+        return QStringList() << "Droid Sans" << "Droid Sans Fallback";
     }
 };
 
