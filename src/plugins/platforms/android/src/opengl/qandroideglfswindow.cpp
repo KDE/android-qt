@@ -40,6 +40,7 @@
 ****************************************************************************/
 
 #include "qandroideglfswindow.h"
+#include "androidjnimain.h"
 
 #include <QtGui/QWindowSystemInterface>
 
@@ -78,6 +79,8 @@ Qt::WindowFlags QAndroidEglFSWindow::setWindowFlags(Qt::WindowFlags type)
     flags = type;
     if (!widget()->isFullScreen() && flags != Qt::Popup && flags != Qt::Tool && flags != Qt::ToolTip && flags != Qt::SplashScreen)
          widget()->setWindowState(widget()->windowState() | Qt::WindowMaximized);
+
+    QtAndroid::setFullScreen(widget()->isFullScreen());
     return flags;
 }
 

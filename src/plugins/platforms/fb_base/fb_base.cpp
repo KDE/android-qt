@@ -45,6 +45,7 @@
 #include <qbitmap.h>
 #include <QPlatformCursor>
 #include <QWindowSystemInterface>
+#include <androidjnimain.h>
 
 QPlatformSoftwareCursor::QPlatformSoftwareCursor(QPlatformScreen *scr)
         : QPlatformCursor(scr), currentRect(QRect()), prevRect(QRect())
@@ -513,6 +514,8 @@ Qt::WindowFlags QFbWindow::setWindowFlags(Qt::WindowFlags type)
         (*i)->invalidateRectCache();
         ++i;
     }
+
+    QtAndroid::setFullScreen(widget()->isFullScreen());
     return flags;
 }
 
