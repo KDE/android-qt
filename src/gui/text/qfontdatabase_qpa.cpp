@@ -112,6 +112,17 @@ static void initializeDb()
         QApplicationPrivate::platformIntegration()->fontDatabase()->populateFontDatabase();
         initialized = true;
     }
+
+    QFontDatabasePrivate *db = privateDb();
+    if (db->reregisterAppFonts) {
+        db->reregisterAppFonts = false;
+        for (int i = 0; i < db->applicationFonts.count(); ++i)
+            if (!db->applicationFonts.at(i).families.isEmpty()) {
+                QApplicationPrivate::platformIntegration()->fontDatabase()->addApplicationFont(
+                   db->applicationFonts[i].data, db->applicationFonts[i].fileName
+                   );
+            }
+    }
 }
 
 #ifndef QT_NO_SETTINGS
