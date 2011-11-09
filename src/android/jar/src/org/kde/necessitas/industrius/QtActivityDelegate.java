@@ -192,6 +192,12 @@ public class QtActivityDelegate
             return false;
         }
         m_environmentVariables=loaderParams.getString(ENVIRONMENT_VARIABLES_KEY);
+        final String homePath="HOME="+m_activity.getFilesDir().getAbsolutePath()+"\tTMPDIR="+m_activity.getFilesDir().getAbsolutePath();
+        if (m_environmentVariables != null && m_environmentVariables.length()>0)
+            m_environmentVariables=homePath+"\t"+m_environmentVariables;
+        else
+            m_environmentVariables=homePath;
+
         m_applicationParameters=loaderParams.getString(APPLICATION_PARAMETERS_KEY);
         return true;
     }
