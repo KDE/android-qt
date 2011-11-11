@@ -850,8 +850,11 @@ QString QDir::fromNativeSeparators(const QString &pathName)
 
         return n;
     }
-    if (n.length() >= 2 && n[1] == QLatin1Char(':'))
+    if (pathName.length() >= 2 && pathName[1] == QLatin1Char(':')) {
+        QString n(pathName);
         n[0] = n.at(0).toUpper(); // Force uppercase drive letters.
+        return n;
+    }
 #endif
     return pathName;
 }

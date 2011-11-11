@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh -x
 #############################################################################
 ##
 ## Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
@@ -1624,8 +1624,6 @@ while [ "$#" -gt 0 ]; do
             ;;
         win32-g++)
             PLATFORM=win32-g++
-            PLATFORM_QWS=no
-            PLATFORM_QPA=no
             ;;
         esac
         ;;
