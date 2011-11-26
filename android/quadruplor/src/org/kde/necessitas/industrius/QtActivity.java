@@ -51,9 +51,9 @@ public class QtActivity extends Activity {
         QtNative.loadQtLibraries(libs);
         // start application
 
-        final String envPaths="HOME="+getFilesDir().getAbsolutePath()+
-                            "\tTMPDIR="+getFilesDir().getAbsolutePath()+
-                            "\tCACHE_PATH="+getCacheDir().getAbsolutePath();
+        final String envPaths="HOME="+getDir("files", MODE_WORLD_WRITEABLE).getAbsolutePath()+
+                            "\tTMPDIR="+getDir("files", MODE_WORLD_WRITEABLE).getAbsolutePath()+
+                            "\tCACHE_PATH="+getDir("files", MODE_WORLD_WRITEABLE).getAbsolutePath();
         if (environment != null && environment.length()>0)
             environment=envPaths+"\t"+environment;
         else
@@ -118,12 +118,7 @@ public class QtActivity extends Activity {
     public void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
-        File f = new File(getFilesDir().getAbsolutePath());
-        f.mkdirs();
-        f.setWritable(true,false);
-        f=new File(getCacheDir().getAbsolutePath());
-        f.mkdirs();
-        f.setWritable(true,false);
+        getDir("files", MODE_WORLD_WRITEABLE);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         m_quitApp = true;
         QtNative.setMainActivity(this);

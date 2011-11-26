@@ -248,81 +248,8 @@ public class QtNative extends Application
     }
 
 
-    //@ANDROID-5
-    static private int getAction(int index, MotionEvent event)
-    {
-        int action=event.getAction();
-        if (action == MotionEvent.ACTION_MOVE)
-        {
-            int hsz=event.getHistorySize();
-            if (hsz>0)
-            {
-                if (Math.abs(event.getX(index)-event.getHistoricalX(index, hsz-1))>1||
-                                Math.abs(event.getY(index)-event.getHistoricalY(index, hsz-1))>1)
-                    return 1;
-                else
-                    return 2;
-            }
-            return 1;
-        }
-
-        switch(index)
-        {
-            case 0:
-                if (action == MotionEvent.ACTION_DOWN ||
-                        action == MotionEvent.ACTION_POINTER_1_DOWN)
-                    return 0;
-                if (action == MotionEvent.ACTION_UP ||
-                        action == MotionEvent.ACTION_POINTER_1_UP)
-                    return 3;
-                break;
-
-            case 1:
-                if (action == MotionEvent.ACTION_POINTER_2_DOWN ||
-                        action == MotionEvent.ACTION_POINTER_DOWN)
-                    return 0;
-                if (action == MotionEvent.ACTION_POINTER_2_UP ||
-                        action == MotionEvent.ACTION_POINTER_UP)
-                    return 3;
-                break;
-
-            case 2:
-                if (action == MotionEvent.ACTION_POINTER_3_DOWN ||
-                        action == MotionEvent.ACTION_POINTER_DOWN)
-                    return 0;
-                if (action == MotionEvent.ACTION_POINTER_3_UP ||
-                        action == MotionEvent.ACTION_POINTER_UP)
-                    return 3;
-                break;
-        }
-        return 2;
-    }
-    //@ANDROID-5
-
     static public void sendTouchEvent(MotionEvent event, int id)
     {
-        //@ANDROID-5
-        touchBegin(id);
-        for (int i=0;i<event.getPointerCount();i++)
-                touchAdd(id,event.getPointerId(i), getAction(i, event), i==0,
-                                (int)event.getX(i), (int)event.getY(i), event.getSize(i),
-                                event.getPressure(i));
-
-        switch(event.getAction())
-        {
-            case MotionEvent.ACTION_DOWN:
-                touchEnd(id,0);
-                break;
-
-            case MotionEvent.ACTION_UP:
-                touchEnd(id,2);
-                break;
-
-            default:
-                touchEnd(id,1);
-        }
-        //@ANDROID-5
-
         switch (event.getAction())
         {
             case MotionEvent.ACTION_UP:

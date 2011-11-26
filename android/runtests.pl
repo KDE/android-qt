@@ -20,7 +20,7 @@ my $help = 0;
 my $make_clean = 0;
 my $deploy_qt = 0;
 my $time_out=400;
-my $android_sdk_dir = "$ENV{'HOME'}/NecessitasQtSDK/android-sdk-linux_x86";
+my $android_sdk_dir = "$ENV{'HOME'}/NecessitasQtSDK/android-sdk";
 my $ant_tool = `which ant`;
 chomp $ant_tool;
 my $strip_tool="";
@@ -46,8 +46,8 @@ system("$adb_tool devices") == 0 or die "No device found, please plug/start at l
 $device_serial = "-s $device_serial" if ($device_serial);
 $testsubset="/$testsubset" if ($testsubset);
 
-$strip_tool="$ENV{'HOME'}/NecessitasQtSDK/android-ndk-r6/toolchains/arm-linux-androideabi-4.4.3/prebuilt/linux-x86/bin/arm-linux-androideabi-strip" unless($strip_tool);
-$readelf_tool="$ENV{'HOME'}/NecessitasQtSDK/android-ndk-r6/toolchains/arm-linux-androideabi-4.4.3/prebuilt/linux-x86/bin/arm-linux-androideabi-readelf"  unless($readelf_tool);
+$strip_tool="$ENV{'HOME'}/NecessitasQtSDK/android-ndk-r6b/toolchains/arm-linux-androideabi-4.4.3/prebuilt/linux-x86/bin/arm-linux-androideabi-strip" unless($strip_tool);
+$readelf_tool="$ENV{'HOME'}/NecessitasQtSDK/android-ndk-r6b/toolchains/arm-linux-androideabi-4.4.3/prebuilt/linux-x86/bin/arm-linux-androideabi-readelf"  unless($readelf_tool);
 $readelf_tool="$readelf_tool -d -w ";
 
 sub dir
@@ -120,8 +120,8 @@ if ($output =~ m/.*\[ro.build.version.sdk\]: \[(\d+)\]/)
 sub reinstallQuadruplor
 {
     pushd($quadruplor_dir);
-    system("$android_sdk_dir/tools/android update project -p . -t android-10")==0 or die "Can't update project ...\n";
-    system("$ant_tool uninstall install")==0 or die "Can't install Quadruplor\n";
+    system("$android_sdk_dir/tools/android update project -p . -t android-4")==0 or die "Can't update project ...\n";
+    system("$ant_tool uninstall clean debug install")==0 or die "Can't install Quadruplor\n";
     system("$adb_tool $device_serial shell am start -n $intentName"); # create application folders
     waitForProcess($packageName,1,10);
     waitForProcess($packageName,0,20);
@@ -163,7 +163,7 @@ sub startTest
         return 1;
     }
     my $output_file = shift;
-    system("$adb_tool $device_serial pull /data/data/$packageName/files/output.xml $output_dir/$output_file");
+    system("$adb_tool $device_serial pull /data/data/$packageName/app_files/output.xml $output_dir/$output_file");
     return 1;
 }
 
@@ -212,8 +212,8 @@ foreach(split("\n",$testsFiles))
     chomp; #remove white spaces
     pushd(abs_path(dirname($_))); # cd to application dir
     system("make INSTALL_ROOT=$temp_dir install"); # install the application to temp dir
-    system("$adb_tool $device_serial shell rm -r /data/data/$packageName/files/*"); # remove old data
-    system("$adb_tool $device_serial push $temp_dir /data/data/$packageName/files"); # copy
+    system("$adb_tool $device_serial shell rm -r /data/data/$packageName/app_files/*"); # remove old data
+    system("$adb_tool $device_serial push $temp_dir /data/data/$packageName/app_files"); # copy
     my $application=basename(cwd);
     my $output_name=dirname($_);
     $output_name =~ s/\.//;   # remove first "." character
@@ -223,7 +223,7 @@ foreach(split("\n",$testsFiles))
     $time_out=5*60/5; # 5 minutes time out for a normal test
     if (-e "$temp_dir/libtst_bench_$application.so")
     {
-        $time_out=10*60/5; # 10 minutes for a benchmark
+        $time_out=5*60/5; # 10 minutes for a benchmark
         $application = "bench_$application";
     }
 
@@ -231,12 +231,12 @@ foreach(split("\n",$testsFiles))
     {
         if (needsOpenGl("$temp_dir/libtst_$application.so"))
         {
-             startTest("/data/local/qt/plugins/platforms/android/libandroidGL-$sdk_api.so:/data/data/$packageName/files/libtst_$application.so", 1
+             startTest("/data/local/qt/plugins/platforms/android/libandroidGL-$sdk_api.so:/data/data/$packageName/app_files/libtst_$application.so", 1
                         , "$output_name.xml") or die "Can't run $application stopping tests ...\n";
         }
         else
         {
-             startTest("/data/local/qt/plugins/platforms/android/libandroid-$sdk_api.so:/data/data/$packageName/files/libtst_$application.so", 0
+             startTest("/data/local/qt/plugins/platforms/android/libandroid-$sdk_api.so:/data/data/$packageName/app_files/libtst_$application.so", 0
                         , "$output_name.xml") or die "Can't run $application stopping tests ...\n";
         }
     }
