@@ -375,12 +375,14 @@ public class QtNative
     }
 
 
-    private static void showSoftwareKeyboard()
+    private static void showSoftwareKeyboard(final int top, final int left
+                                        , final int width, final int height
+                                        , final int inputHints )
     {
         runAction(new Runnable() {
             @Override
             public void run() {
-                m_activityDelegate.showSoftwareKeyboard();
+                m_activityDelegate.showSoftwareKeyboard(top, left, width, height, inputHints);
             }
         });
     }

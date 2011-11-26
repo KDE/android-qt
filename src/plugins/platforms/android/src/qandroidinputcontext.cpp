@@ -29,13 +29,118 @@
 #include "androidjnimain.h"
 #include <QDebug>
 
+static QAndroidInputContext * m_androidInputContext = 0;
+
+static jboolean clearMetaKeyStates(JNIEnv */*env*/, jobject /*thiz*/, jint states)
+{
+
+}
+
+static jboolean commitText(JNIEnv */*env*/, jobject /*thiz*/, jstring text, jint newCursorPosition)
+{
+
+}
+
+static jboolean deleteSurroundingText(JNIEnv */*env*/, jobject /*thiz*/, jint leftLength, jint rightLength)
+{
+
+}
+
+static jboolean finishComposingText(JNIEnv */*env*/, jobject /*thiz*/)
+{
+
+}
+
+static jint getCursorCapsMode(JNIEnv */*env*/, jobject /*thiz*/, jint reqModes)
+{
+
+}
+
+static jobject getExtractedText(JNIEnv */*env*/, jobject /*thiz*/, jobject request, jint flags)
+{
+    //ExtractedTextRequest request
+    //ExtractedText
+}
+
+static jstring getSelectedText(JNIEnv */*env*/, jobject /*thiz*/, jint flags)
+{
+
+}
+
+static jstring getTextAfterCursor(JNIEnv */*env*/, jobject /*thiz*/, jint length, jint flags)
+{
+
+}
+
+static jstring getTextBeforeCursor(JNIEnv */*env*/, jobject /*thiz*/, jint length, jint flags)
+{
+
+}
+
+static jboolean setComposingText(JNIEnv */*env*/, jobject /*thiz*/, jstring text, jint newCursorPosition)
+{
+
+}
+
+static jboolean setSelection(JNIEnv */*env*/, jobject /*thiz*/, jint start, jint end)
+{
+
+}
+
+static jboolean selectAll(JNIEnv */*env*/, jobject /*thiz*/)
+{
+
+}
+
+static jboolean cut(JNIEnv */*env*/, jobject /*thiz*/)
+{
+
+}
+
+static jboolean copy(JNIEnv */*env*/, jobject /*thiz*/)
+{
+
+}
+
+static jboolean copyURL(JNIEnv */*env*/, jobject /*thiz*/)
+{
+
+}
+
+static jboolean paste(JNIEnv */*env*/, jobject /*thiz*/)
+{
+
+}
+
+
+static JNINativeMethod methods[] = {
+    {"clearMetaKeyStates", "(I)Z", (void *)clearMetaKeyStates},
+    {"commitText", "(Ljava/lang/String;I)Z", (void *)commitText},
+    {"deleteSurroundingText", "(II)Z", (void *)deleteSurroundingText},
+    {"finishComposingText", "()Z", (void *)finishComposingText},
+    {"getCursorCapsMode", "(I)I", (void *)getCursorCapsMode},
+    {"getExtractedText", "(III)Lorg/kde/necessitas/industrius/QtExtractedText;", (void *)getExtractedText},
+    {"getSelectedText", "(I)Ljava/lang/String;", (void *)getSelectedText},
+    {"getTextAfterCursor", "(II)Ljava/lang/String;", (void *)getTextAfterCursor},
+    {"getTextBeforeCursor", "(II)Ljava/lang/String;", (void *)getTextBeforeCursor},
+    {"setComposingText", "(Ljava/lang/String;I)Z", (void *)setComposingText},
+    {"setSelection", "(II)Z", (void *)setSelection},
+    {"selectAll", "()Z", (void *)selectAll},
+    {"cut", "()Z", (void *)cut},
+    {"copy", "()Z", (void *)copy},
+    {"copyURL", "()Z", (void *)copyURL},
+    {"paste", "()Z", (void *)paste}
+};
+
 QAndroidInputContext::QAndroidInputContext(QObject *parent) :
     QInputContext(parent)
 {
+    m_androidInputContext = this;
 }
 
 QAndroidInputContext::~QAndroidInputContext()
 {
+    m_androidInputContext = 0;
 }
 
 

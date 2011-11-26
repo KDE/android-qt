@@ -66,14 +66,14 @@ public class QtActivityDelegate
 
 
 //    private int m_id=-1;
-    private boolean softwareKeyboardIsVisible=false;
     private long m_metaState;
     private int m_lastChar=0;
-    private boolean m_fullScreen=false;
+    private boolean m_fullScreen = false;
     private boolean m_started = false;
-    private QtSurface m_surface=null;
-    private QtLayout m_layout=null;
-
+    private QtSurface m_surface = null;
+    private QtLayout m_layout = null;
+    private QtEditText m_editText = null;
+    private InputMethodManager m_imm = null;
     private boolean m_quitApp = true;
     private Process m_debuggerProcess=null; // debugger process
 
@@ -108,21 +108,25 @@ public class QtActivityDelegate
         }
     }
 
-    public void showSoftwareKeyboard()
+    public void showSoftwareKeyboard(int top, int left, int width, int height, int inputHints)
     {
-        softwareKeyboardIsVisible = true;
-        InputMethodManager imm = (InputMethodManager)m_activity.getSystemService(Context.INPUT_METHOD_SERVICE);
-        imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, InputMethodManager.HIDE_IMPLICIT_ONLY );
+        if (m_imm == null)
+            return;
+        m_layout.removeView(m_editText);
+        m_layout.addView(m_editText, new QtLayout.LayoutParams(width, height, top, left));
+        m_editText.requestFocus();
+        m_imm.restartInput(m_editText);
+        m_editText.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                m_imm.showSoftInput(m_editText, 0);
+            }
+        }, 50);
     }
 
     public void hideSoftwareKeyboard()
     {
-        if (softwareKeyboardIsVisible)
-        {
-            InputMethodManager imm = (InputMethodManager)m_activity.getSystemService(Context.INPUT_METHOD_SERVICE);
-            imm.toggleSoftInput(0, 0);
-        }
-        softwareKeyboardIsVisible = false;
+        m_imm.hideSoftInputFromWindow(m_editText.getWindowToken(), 0);
     }
 
     public boolean loadApplication(Activity activity, ClassLoader classLoader, Bundle loaderParams)
@@ -237,6 +241,8 @@ public class QtActivityDelegate
         }
         m_layout=new QtLayout(m_activity);
         m_surface = new QtSurface(m_activity, 0);
+        m_editText = new QtEditText(m_activity);
+        InputMethodManager m_imm = (InputMethodManager)m_activity.getSystemService(Context.INPUT_METHOD_SERVICE);
         m_layout.addView(m_surface,0);
         m_activity.setContentView(m_layout);
         m_layout.bringChildToFront(m_surface);
