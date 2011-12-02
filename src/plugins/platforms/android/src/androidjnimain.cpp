@@ -60,6 +60,8 @@ Q_IMPORT_PLUGIN (QtAndroid)
 
 static JavaVM *m_javaVM = NULL;
 static jclass m_applicationClass  = NULL;
+static jobject m_classLoaderObject = NULL;
+static jmethodID m_loadClassMethodID = NULL;
 static AAssetManager* m_assetManager = NULL;
 
 
@@ -223,7 +225,7 @@ namespace QtAndroid
         m_surfaceMutex.unlock();
     }
 
-    void showSoftwareKeyboard()
+    void showSoftwareKeyboard(int left, int top, int width, int height, int inputHints)
     {
         JNIEnv* env;
         if (m_javaVM->AttachCurrentThread(&env, NULL)<0)
@@ -232,7 +234,7 @@ namespace QtAndroid
             return;
         }
         qDebug()<<"showSoftwareKeyboard";
-        env->CallStaticVoidMethod(m_applicationClass, m_showSoftwareKeyboardMethodID);
+        env->CallStaticVoidMethod(m_applicationClass, m_showSoftwareKeyboardMethodID, left, top, width, height, inputHints);
         m_javaVM->DetachCurrentThread();
     }
 
@@ -267,6 +269,12 @@ namespace QtAndroid
         return m_javaVM;
     }
 
+    jclass findClass(const QString & className, JNIEnv* env)
+    {
+        return (jclass)env->CallObjectMethod(m_classLoaderObject, m_loadClassMethodID
+                                              , env->NewString((jchar*)className.constData(), (jsize)className.length()));
+    }
+
     AAssetManager * assetManager()
     {
         return m_assetManager;
@@ -279,7 +287,7 @@ namespace QtAndroid
 
 }
 
-static jboolean startQtAndroidPlugin(JNIEnv* env, jobject /*object*//*, jobject applicationAssetManager*/)
+static jboolean startQtAndroidPlugin(JNIEnv* /*env*/, jobject /*object*//*, jobject applicationAssetManager*/)
 {
 #ifndef ANDROID_PLUGIN_OPENGL
     m_surface = 0;
@@ -331,15 +339,17 @@ static void quitQtAndroidPlugin(JNIEnv* env, jclass /*clazz*/)
         env->DeleteGlobalRef(m_surface);
         m_surface=0;
     }
+#else
+    Q_UNUSED(env);
 #endif
     m_androidGraphicsSystem=0;
-
     delete m_androidAssetsFileEngineHandler;
 }
 
 static void terminateQt(JNIEnv* env, jclass /*clazz*/)
 {
     env->DeleteGlobalRef(m_applicationClass);
+    env->DeleteGlobalRef(m_classLoaderObject);
 }
 
 #ifdef ANDROID_PLUGIN_OPENGL
@@ -389,18 +399,19 @@ static void setSurface(JNIEnv *env, jobject /*thiz*/, jobject jSurface)
 #endif  // for #ifndef ANDROID_PLUGIN_OPENGL
 }
 
-static void destroySurface(JNIEnv *env, jobject /*thiz*/)
+static void destroySurface(JNIEnv * env, jobject /*thiz*/)
 {
 #ifndef ANDROID_PLUGIN_OPENGL
     env->DeleteGlobalRef(m_surface);
     m_surface = 0;
 #else
+    Q_UNUSED(env);
     m_nativeWindow = 0;
 #endif
 }
 
 static void setDisplayMetrics(JNIEnv* /*env*/, jclass /*clazz*/,
-                              jint widthPixels, jint heightPixels,
+                              jint /*widthPixels*/, jint /*heightPixels*/,
                               jint desktopWidthPixels, jint desktopHeightPixels,
                               jdouble xdpi, jdouble ydpi)
 {
@@ -770,6 +781,7 @@ static JNINativeMethod methods[] = {
 static int registerNativeMethods(JNIEnv* env, const char* className,
     JNINativeMethod* gMethods, int numMethods)
 {
+
     jclass clazz=env->FindClass(className);
     if (clazz == NULL)
     {
@@ -783,7 +795,7 @@ static int registerNativeMethods(JNIEnv* env, const char* className,
         return JNI_FALSE;
     }
     m_redrawSurfaceMethodID = env->GetStaticMethodID(m_applicationClass, "redrawSurface", "(IIII)V");
-    m_showSoftwareKeyboardMethodID = env->GetStaticMethodID(m_applicationClass, "showSoftwareKeyboard", "()V");
+    m_showSoftwareKeyboardMethodID = env->GetStaticMethodID(m_applicationClass, "showSoftwareKeyboard", "(IIIII)V");
     m_hideSoftwareKeyboardMethodID = env->GetStaticMethodID(m_applicationClass, "hideSoftwareKeyboard", "()V");
     m_setFullScreenMethodID = env->GetStaticMethodID(m_applicationClass, "setFullScreen", "(Z)V");
 
@@ -799,6 +811,12 @@ static int registerNativeMethods(JNIEnv* env, const char* className,
 
     jmethodID methodID=env->GetStaticMethodID(m_applicationClass, "activity", "()Landroid/app/Activity;");
     jobject activityObject=env->CallStaticObjectMethod(m_applicationClass, methodID);
+
+    methodID=env->GetStaticMethodID(m_applicationClass, "classLoader", "()Ljava/lang/ClassLoader;");
+    m_classLoaderObject = env->NewGlobalRef(env->CallStaticObjectMethod(m_applicationClass, methodID));
+
+    clazz = env->GetObjectClass(m_classLoaderObject);
+    m_loadClassMethodID = env->GetMethodID(clazz, "loadClass", "(Ljava/lang/String;)Ljava/lang/Class;");
 
     clazz=env->FindClass(ContextWrapperClassPathName);
     methodID=env->GetMethodID(clazz, "getAssets", "()Landroid/content/res/AssetManager;");
@@ -819,15 +837,10 @@ static int registerNatives(JNIEnv* env)
     return JNI_TRUE;
 }
 
-typedef union {
-    JNIEnv* nativeEnvironment;
-    void* venv;
-} UnionJNIEnvToVoid;
-
 Q_DECL_EXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* /*reserved*/)
 {
     __android_log_print(ANDROID_LOG_INFO,"Qt", "qt start");
-    UnionJNIEnvToVoid uenv;
+    QtAndroid::UnionJNIEnvToVoid uenv;
     uenv.venv = NULL;
     m_javaVM = 0;
 

@@ -29,10 +29,35 @@
 #define ANDROIDINPUTCONTEXT_H
 
 #include <QInputContext>
+#include <jni.h>
 
 class QAndroidInputContext : public QInputContext
 {
     Q_OBJECT
+    enum CapsMode
+    {
+        CAP_MODE_CHARACTERS = 0x00001000,
+        CAP_MODE_SENTENCES  = 0x00004000,
+        CAP_MODE_WORDS      = 0x00002000
+    };
+
+public:
+    struct ExtractedText
+    {
+        ExtractedText() {clear();}
+        void clear()
+        {
+            partialEndOffset=partialStartOffset=selectionEnd=selectionStart=startOffset = -1;
+            text.clear();
+        }
+        int partialEndOffset;
+        int partialStartOffset;
+        int selectionEnd;
+        int selectionStart;
+        int startOffset;
+        QString text;
+    };
+
 public:
     explicit QAndroidInputContext(QObject *parent = 0);
     ~QAndroidInputContext();
@@ -40,12 +65,33 @@ public:
     virtual bool isComposing () const;
     virtual QString language ();
     virtual void reset ();
-    virtual void update ();
     virtual bool filterEvent ( const QEvent * event );
+
+    //---------------//
+    jboolean commitText(const QString & text, jint newCursorPosition);
+    jboolean deleteSurroundingText(jint leftLength, jint rightLength);
+    jboolean finishComposingText();
+    jint getCursorCapsMode(jint reqModes);
+    const ExtractedText & getExtractedText(jint hintMaxChars, jint hintMaxLines, jint flags);
+    QString getSelectedText(jint flags);
+    QString getTextAfterCursor(jint length, jint flags);
+    QString getTextBeforeCursor(jint length, jint flags);
+    jboolean setComposingText(const QString & text, jint newCursorPosition);
+    jboolean setSelection(jint start, jint end);
+    jboolean selectAll();
+    jboolean cut();
+    jboolean copy();
+    jboolean copyURL();
+    jboolean paste();
+
 signals:
 
-public slots:
+private slots:
+    virtual void sendEvent(const QInputMethodEvent &event);
 
+private:
+     ExtractedText m_extractedText;
+     QString m_composingText;
 };
 
 #endif // ANDROIDINPUTCONTEXT_H

@@ -54,6 +54,16 @@ public class QtNative
     private static int m_oldx, m_oldy;
     private static final int m_moveThreshold = 0;
 
+    private static ClassLoader m_classLoader = null;
+    public static ClassLoader classLoader()
+    {
+        return m_classLoader;
+    }
+
+    public static void setClassLoader(ClassLoader classLoader)
+    {
+            m_classLoader = classLoader;
+    }
 
     public static Activity activity()
     {
@@ -302,14 +312,14 @@ public class QtNative
     }
 
 
-    private static void showSoftwareKeyboard(final int top, final int left
+    private static void showSoftwareKeyboard(final int x, final int y
                                         , final int width, final int height
                                         , final int inputHints )
     {
         runAction(new Runnable() {
             @Override
             public void run() {
-                m_activityDelegate.showSoftwareKeyboard(top, left, width, height, inputHints);
+                m_activityDelegate.showSoftwareKeyboard(x, y, width, height, inputHints);
             }
         });
     }

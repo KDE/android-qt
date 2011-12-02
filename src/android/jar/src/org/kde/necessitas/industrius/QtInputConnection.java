@@ -52,7 +52,6 @@ class QtExtractedText
 
 class QtNativeInputConnection
 {
-    static native boolean clearMetaKeyStates(int states);
     static native boolean commitText(String text, int newCursorPosition);
     static native boolean commitCompletion(String text, int position);
     static native boolean deleteSurroundingText(int leftLength, int rightLength);
@@ -71,144 +70,6 @@ class QtNativeInputConnection
     static native boolean paste();
 }
 
-class QtEditable implements android.text.Editable
-{
-    private static final String TAG = "Qt";
-    StringBuilder m_text= new StringBuilder();
-    private InputFilter[] m_filters;
-
-    @Override
-    public char charAt(int index) {
-        return m_text.charAt(index);
-    }
-
-    @Override
-    public int length() {
-        return m_text.length();
-    }
-
-    @Override
-    public CharSequence subSequence(int start, int end) {
-        return m_text.subSequence(start, end);
-    }
-
-    @Override
-    public void getChars(int start, int end, char[] dest, int destoff) {
-        m_text.getChars(start, end, dest, destoff);
-    }
-
-    @Override
-    public void removeSpan(Object what) {
-        Log.i(TAG, "removeSpan Not implemented "+what.toString());
-
-    }
-
-    @Override
-    public void setSpan(Object what, int start, int end, int flags) {
-        Log.i(TAG, "setSpan Not implemented "+what.toString()+"start "+start+" end "+end+" flags "+flags);
-    }
-
-    @Override
-    public int getSpanEnd(Object tag) {
-        Log.i(TAG, "getSpanEnd Not implemented "+tag.toString());
-        return 0;
-    }
-
-    @Override
-    public int getSpanFlags(Object tag) {
-        Log.i(TAG, "getSpanFlags Not implemented "+tag.toString());
-        return 0;
-    }
-
-    @Override
-    public int getSpanStart(Object tag) {
-        Log.i(TAG, "getSpanStart Not implemented "+tag.toString());
-        return 0;
-    }
-
-    @Override
-    public <T> T[] getSpans(int start, int end, Class<T> type) {
-        Log.i(TAG, "getSpans Not implemented ");
-        return null;
-    }
-
-    @Override
-    public int nextSpanTransition(int start, int limit, @SuppressWarnings("rawtypes") Class type) {
-        Log.i(TAG, "nextSpanTransition Not implemented ");
-        return 0;
-    }
-
-    @Override
-    public Editable append(CharSequence text) {
-        m_text.append(text);
-        return this;
-    }
-
-    @Override
-    public Editable append(char text) {
-        m_text.append(text);
-        return this;
-    }
-
-    @Override
-    public Editable append(CharSequence text, int start, int end) {
-        m_text.append(text, start, end);
-        return this;
-    }
-
-    @Override
-    public void clear() {
-        m_text.setLength(0);
-    }
-
-    @Override
-    public void clearSpans() {
-        // TODO Auto-generated method stub
-
-    }
-
-    @Override
-    public Editable delete(int st, int en) {
-        m_text.delete(st, en);
-        return this;
-    }
-
-    @Override
-    public InputFilter[] getFilters() {
-        return m_filters;
-    }
-
-    @Override
-    public Editable insert(int where, CharSequence text) {
-        m_text.insert(where, text);
-        return this;
-    }
-
-    @Override
-    public Editable insert(int where, CharSequence text, int start, int end) {
-        m_text.insert(where, text, start, end);
-        return this;
-    }
-
-    @Override
-    public Editable replace(int st, int en, CharSequence text) {
-        m_text.replace(st, en, text.toString());
-        return this;
-    }
-
-    @Override
-    public Editable replace(int st, int en, CharSequence source, int start,
-            int end) {
-        m_text.replace(st, en, source.toString().substring(start, end));
-        return this;
-    }
-
-    @Override
-    public void setFilters(InputFilter[] filters) {
-        m_filters = filters;
-    }
-}
-
 public class QtInputConnection extends BaseInputConnection
 {
     private static final int ID_SELECT_ALL = android.R.id.selectAll;
@@ -222,11 +83,9 @@ public class QtInputConnection extends BaseInputConnection
     private static final int ID_ADD_TO_DICTIONARY = android.R.id.addToDictionary;
     View m_view;
 
-    QtEditable m_editable = new QtEditable();
-
-    public QtInputConnection(View targetView, boolean fullEditor)
+    public QtInputConnection(View targetView)
     {
-        super(targetView, fullEditor);
+        super(targetView, true);
         m_view = targetView;
     }
 
@@ -238,11 +97,6 @@ public class QtInputConnection extends BaseInputConnection
     @Override
     public boolean endBatchEdit() {
         return true;
-    }
-
-    @Override
-    public boolean clearMetaKeyStates(int states) {
-        return QtNativeInputConnection.clearMetaKeyStates(states);
     }
 
     @Override
@@ -271,14 +125,16 @@ public class QtInputConnection extends BaseInputConnection
     }
 
     @Override
-    public Editable getEditable() {
-        return null;//m_editable;
-    }
-
-    @Override
     public ExtractedText getExtractedText(ExtractedTextRequest request, int flags) {
-        return super.getExtractedText(request, flags);
-        //return QtNativeInputConnection.getExtractedText(request, flags);
+        QtExtractedText qExtractedText = QtNativeInputConnection.getExtractedText(request.hintMaxChars, request.hintMaxLines, flags);
+        ExtractedText extractedText = new ExtractedText();
+        extractedText.partialEndOffset = qExtractedText.partialEndOffset;
+        extractedText.partialStartOffset = qExtractedText.partialStartOffset;
+        extractedText.selectionEnd = qExtractedText.selectionEnd;
+        extractedText.selectionStart = qExtractedText.selectionStart;
+        extractedText.startOffset = qExtractedText.startOffset;
+        extractedText.text = qExtractedText.text;
+        return extractedText;
     }
 
     public CharSequence getSelectedText(int flags) {
@@ -319,13 +175,14 @@ public class QtInputConnection extends BaseInputConnection
             return true;
 
         case ID_ADD_TO_DICTIONARY:
-            String word = m_editable.subSequence(0, m_editable.length()).toString();
-            if (word != null) {
-                Intent i = new Intent("com.android.settings.USER_DICTIONARY_INSERT");
-                i.putExtra("word", word);
-                i.setFlags(i.getFlags() | Intent.FLAG_ACTIVITY_NEW_TASK);
-                m_view.getContext().startActivity(i);
-            }
+// TODO
+//            String word = m_editable.subSequence(0, m_editable.length()).toString();
+//            if (word != null) {
+//                Intent i = new Intent("com.android.settings.USER_DICTIONARY_INSERT");
+//                i.putExtra("word", word);
+//                i.setFlags(i.getFlags() | Intent.FLAG_ACTIVITY_NEW_TASK);
+//                m_view.getContext().startActivity(i);
+//            }
             return true;
         }
         return super.performContextMenuAction(id);

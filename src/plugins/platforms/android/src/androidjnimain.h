@@ -44,13 +44,18 @@ class QAndroidPlatformIntegration;
 
 namespace QtAndroid
 {
+    typedef union {
+        JNIEnv* nativeEnvironment;
+        void* venv;
+    } UnionJNIEnvToVoid;
+
     void setAndroidPlatformIntegration(QAndroidPlatformIntegration * androidGraphicsSystem);
     void setQtThread(QThread * thread);
 
     void setFullScreen(bool fullScreen);
 
     // Software keyboard support
-    void showSoftwareKeyboard();
+    void showSoftwareKeyboard(int top, int left, int width, int height, int inputHints);
     void hideSoftwareKeyboard();
     // Software keyboard support
 
@@ -62,6 +67,7 @@ namespace QtAndroid
 #endif
 
     JavaVM * javaVM();
+    jclass findClass(const QString & className, JNIEnv * env);
     AAssetManager * assetManager();
     jclass applicationClass();
 }

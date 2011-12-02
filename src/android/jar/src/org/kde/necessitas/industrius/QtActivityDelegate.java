@@ -44,6 +44,7 @@ import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.KeyCharacterMap;
 import android.view.KeyEvent;
+import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
 
@@ -107,25 +108,93 @@ public class QtActivityDelegate
             m_activity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
         }
     }
+    // case status
+    private final int ImhNoAutoUppercase=0x2;
+    private final int ImhPreferUppercase=0x8;
+    private final int ImhPreferLowercase=0x10;
+    private final int ImhUppercaseOnly=0x40000;
+    private final int ImhLowercaseOnly=0x80000;
 
-    public void showSoftwareKeyboard(int top, int left, int width, int height, int inputHints)
+    // options
+    private final int ImhNoPredictiveText=0x20;
+
+    // layout
+    private final int ImhHiddenText=0x1;
+    private final int ImhPreferNumbers=0x4;
+    private final int ImhDigitsOnly=0x10000;
+    private final int ImhFormattedNumbersOnly=0x20000;
+    private final int ImhDialableCharactersOnly=0x100000;
+    private final int ImhEmailCharactersOnly=0x200000;
+    private final int ImhUrlCharactersOnly=0x400000;
+
+    public void showSoftwareKeyboard(int x, int y, int width, int height, int inputHints)
     {
         if (m_imm == null)
             return;
+        if (height>m_surface.getHeight()*2/3)
+            m_activity.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_UNCHANGED | WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
+        else
+            m_activity.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_UNCHANGED | WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN);
+
+        int initialCapsMode = 0;
+        int imeOptions = android.view.inputmethod.EditorInfo.IME_ACTION_DONE;
+        int inputType = android.text.InputType.TYPE_CLASS_TEXT;
+        if ( ((inputHints & ImhNoAutoUppercase) !=0 || (inputHints & ImhPreferUppercase) !=0 )
+                && (inputHints & ImhLowercaseOnly) ==0 )
+            initialCapsMode = android.text.TextUtils.CAP_MODE_SENTENCES;
+
+        if ( (inputHints & ImhUppercaseOnly) != 0 )
+            initialCapsMode = android.text.TextUtils.CAP_MODE_CHARACTERS;
+
+        if ( (inputHints & ImhHiddenText) != 0 )
+            inputType = android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD;
+        if ( (inputHints & ImhPreferNumbers) != 0 )
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER;
+        if ( (inputHints & ImhDigitsOnly) != 0 )
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER;
+        if ( (inputHints & ImhFormattedNumbersOnly) != 0 )
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER
+                        |android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+                        |android.text.InputType.TYPE_NUMBER_FLAG_SIGNED;
+        if ( (inputHints & ImhDialableCharactersOnly) != 0 )
+            inputType = android.text.InputType.TYPE_CLASS_PHONE;
+        if ( (inputHints & ImhEmailCharactersOnly) != 0 )
+            inputType = android.text.InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS;
+        if ( (inputHints & ImhUrlCharactersOnly) != 0 )
+        {
+            inputType = android.text.InputType.TYPE_TEXT_VARIATION_URI;
+            imeOptions = android.view.inputmethod.EditorInfo.IME_ACTION_GO;
+        }
+
+        if ( (inputHints & ImhNoPredictiveText) != 0 )
+            inputType |= 0x00080000;//android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS;
+
+        m_editText.setInitialCapsMode(initialCapsMode);
+        m_editText.setImeOptions(imeOptions);
+        m_editText.setInputType(inputType);
+
         m_layout.removeView(m_editText);
-        m_layout.addView(m_editText, new QtLayout.LayoutParams(width, height, top, left));
+        m_layout.addView(m_editText, new QtLayout.LayoutParams(width, height, x, y));
+        m_editText.bringToFront();
         m_editText.requestFocus();
-        m_imm.restartInput(m_editText);
         m_editText.postDelayed(new Runnable() {
             @Override
             public void run() {
-                m_imm.showSoftInput(m_editText, 0);
+                m_imm.restartInput(m_editText);
+                m_editText.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        m_imm.showSoftInput(m_editText, 0);
+                    }
+                }, 25);
             }
-        }, 50);
+        }, 25);
     }
 
     public void hideSoftwareKeyboard()
     {
+        if (m_imm == null)
+            return;
         m_imm.hideSoftInputFromWindow(m_editText.getWindowToken(), 0);
     }
 
@@ -140,7 +209,7 @@ public class QtActivityDelegate
 
         m_activity = activity;
         QtNative.setActivity(m_activity, this);
-
+        QtNative.setClassLoader(classLoader);
         if (loaderParams.containsKey(STATIC_INIT_CLASSES_KEY))
             for(String className: loaderParams.getStringArrayList(STATIC_INIT_CLASSES_KEY))
             {
@@ -158,7 +227,6 @@ public class QtActivityDelegate
 
         QtNative.loadQtLibraries(loaderParams.getStringArrayList(NATIVE_LIBRARIES_KEY));
         QtNative.loadBundledLibraries(loaderParams.getStringArrayList(BUNDLED_LIBRARIES_KEY), QtNativeLibrariesDir.nativeLibrariesDir(m_activity));
-
 
         // if the applications is debuggable and it has a native debug request
         if ( /*(ai.flags&ApplicationInfo.FLAG_DEBUGGABLE) != 0
@@ -242,9 +310,11 @@ public class QtActivityDelegate
         m_layout=new QtLayout(m_activity);
         m_surface = new QtSurface(m_activity, 0);
         m_editText = new QtEditText(m_activity);
-        InputMethodManager m_imm = (InputMethodManager)m_activity.getSystemService(Context.INPUT_METHOD_SERVICE);
+        m_imm = (InputMethodManager)m_activity.getSystemService(Context.INPUT_METHOD_SERVICE);
         m_layout.addView(m_surface,0);
-        m_activity.setContentView(m_layout);
+        m_activity.setContentView(m_layout
+                , new ViewGroup.LayoutParams(ViewGroup.LayoutParams.FILL_PARENT,
+                        ViewGroup.LayoutParams.FILL_PARENT));
         m_layout.bringChildToFront(m_surface);
     }
 
@@ -340,12 +410,13 @@ public class QtActivityDelegate
         return true;
     }
 
-    public boolean dispatchKeyEvent(KeyEvent event) {
+    public boolean dispatchKeyEvent(KeyEvent event)
+    {
         if (m_started && event.getAction() == KeyEvent.ACTION_MULTIPLE &&
             event.getCharacters() != null &&
             event.getCharacters().length() == 1 &&
-            event.getKeyCode() == 0) {
-            Log.i(QtNative.QtTAG, "dispatchKeyEvent at MULTIPLE with one character: "+event.getCharacters());
+            event.getKeyCode() == 0)
+        {
             QtNative.keyDown(0, event.getCharacters().charAt(0), event.getMetaState());
             QtNative.keyUp(0, event.getCharacters().charAt(0), event.getMetaState());
         }

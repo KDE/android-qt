@@ -57,7 +57,7 @@ public class QtEditText extends View
         super(context);
         setFocusable(true);
         setFocusableInTouchMode(true);
-        m_inputConnection = new QtInputConnection(this, true);
+        m_inputConnection = new QtInputConnection(this);
     }
 
     @Override
@@ -65,6 +65,13 @@ public class QtEditText extends View
         outAttrs.inputType = m_inputType;
         outAttrs.imeOptions = m_imeOptions;
         outAttrs.initialCapsMode = m_initialCapsMode;
+        outAttrs.imeOptions |= EditorInfo.IME_FLAG_NO_EXTRACT_UI;
         return m_inputConnection;
     }
+// // DEBUG CODE
+//    @Override
+//    protected void onDraw(Canvas canvas) {
+//        canvas.drawARGB(127, 255, 0, 255);
+//        super.onDraw(canvas);
+//    }
 }
