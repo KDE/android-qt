@@ -684,10 +684,10 @@ static void keyDown(JNIEnv */*env*/, jobject /*thiz*/, jint key, jint unicode, j
     qDebug()<<"keyDown";
     Qt::KeyboardModifiers modifiers;
     if (modifier & 1)
-        modifiers|=Qt::AltModifier;
+        modifiers|=Qt::ShiftModifier;
 
     if (modifier & 2)
-        modifiers|=Qt::ShiftModifier;
+        modifiers|=Qt::AltModifier;
 
     if (modifier & 4)
         modifiers|=Qt::MetaModifier;
@@ -708,10 +708,10 @@ static void keyUp(JNIEnv */*env*/, jobject /*thiz*/, jint key, jint unicode, jin
     qDebug()<<"keyUp";
     Qt::KeyboardModifiers modifiers;
     if (modifier & 1)
-        modifiers|=Qt::AltModifier;
+        modifiers|=Qt::ShiftModifier;
 
     if (modifier & 2)
-        modifiers|=Qt::ShiftModifier;
+        modifiers|=Qt::AltModifier;
 
     if (modifier & 4)
         modifiers|=Qt::MetaModifier;
