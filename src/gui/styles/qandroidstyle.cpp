@@ -4056,7 +4056,7 @@ void QAndroidStyle::drawComplexControl(ComplexControl control, const QStyleOptio
                 QBrush baseBrush = qMapBrushToRect(option->palette.base(), filledRect);
                 painter->setBrushOrigin(filledRect.topLeft());
                 painter->fillRect(filledRect.adjusted(1, 1, -1, -1), baseBrush);
-                qt_android_draw_frame(painter, option->rect, option, QFrame::Sunken);        
+                qt_android_draw_frame(painter, option->rect, option, QFrame::Sunken);
             } else {
                 d->drawPartialFrame(painter,
                                     option,
@@ -5376,6 +5376,9 @@ int QAndroidStyle::styleHint(StyleHint hint, const QStyleOption *option, const Q
 {
     int ret = 0;
     switch (hint) {
+    case SH_RequestSoftwareInputPanel:
+        ret =  RSIP_OnMouseClick;
+        break;
     case SH_WindowFrame_Mask:
         ret = 1;
         if (QStyleHintReturnMask *mask = qstyleoption_cast<QStyleHintReturnMask *>(returnData)) {

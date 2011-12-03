@@ -100,7 +100,7 @@ void *QAndroidPlatformNativeInterface::nativeResourceForWidget(const QByteArray 
 QAndroidPlatformIntegration::QAndroidPlatformIntegration()
 {
     m_androidPlatformNativeInterface =  new QAndroidPlatformNativeInterface();
-
+    QApplication::setStyle("android");
 #ifdef ANDROID_PLUGIN_OPENGL
     qDebug() << "QAndroidPlatformIntegration::QAndroidPlatformIntegration():  creating QAndroidEglFSScreen => Using OpenGL painting";
     m_primaryScreen = new QAndroidEglFSScreen(EGL_DEFAULT_DISPLAY);
