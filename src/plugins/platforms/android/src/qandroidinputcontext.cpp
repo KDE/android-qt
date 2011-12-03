@@ -120,7 +120,11 @@ static jboolean setComposingText(JNIEnv * env, jobject /*thiz*/, jstring text, j
 {
     if (!m_androidInputContext)
         return JNI_FALSE;
-    return m_androidInputContext->setComposingText(env->GetStringUTFChars(text, 0), newCursorPosition);
+    jboolean isCopy;
+    const jchar * jstr = env->GetStringChars(text, &isCopy);
+    QString str((const QChar*)jstr,  env->GetStringLength(text));
+    env->ReleaseStringChars(text, jstr);
+    return m_androidInputContext->setComposingText(str, newCursorPosition);
 }
 
 static jboolean setSelection(JNIEnv */*env*/, jobject /*thiz*/, jint start, jint end)
@@ -314,6 +318,9 @@ bool QAndroidInputContext::filterEvent( const QEvent * event )
     {
         QtAndroid::hideSoftwareKeyboard();
         return true;
+    } else if ( (event->type() == QEvent::KeyPress || event->type() == QEvent::KeyRelease) && isComposing() )
+    {
+        finishComposingText();
     }
     return QInputContext::filterEvent(event);
 }
@@ -429,6 +436,7 @@ jboolean QAndroidInputContext::setComposingText(const QString & text, jint newCu
     QWidget * w = focusWidget();
     if (!w)
         return JNI_FALSE;
+    newCursorPosition+=text.length()-1;
     int cursorPos = w->inputMethodQuery(Qt::ImCursorPosition).toInt();
     m_composingText=text;
     QList<QInputMethodEvent::Attribute> attributes;
