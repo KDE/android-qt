@@ -5271,12 +5271,13 @@ if [ "$XPLATFORM_SYMBIAN_SBSV2" = "no" ]; then
         if "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/ipc_posix "ipc_posix" $L_FLAGS $I_FLAGS $l_FLAGS ; then
             QCONFIG_FLAGS="$QCONFIG_FLAGS QT_POSIX_IPC"
         else
-        if "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/ipc_android "ipc_android" $L_FLAGS $I_FLAGS $l_FLAGS ; then
-            QT_CONFIG="$QT_CONFIG ashmem"
-        else
-            QCONFIG_FLAGS="$QCONFIG_FLAGS QT_NO_SYSTEMSEMAPHORE QT_NO_SHAREDMEMORY"
-            if [ "$PLATFORM_QWS" = "yes" ]; then
-                QCONFIG_FLAGS="$QCONFIG_FLAGS QT_NO_SEMAPHORE QT_NO_QWS_MULTIPROCESS QT_NO_QWS_SHARE_FONTS"
+            if "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/ipc_android "ipc_android" $L_FLAGS $I_FLAGS $l_FLAGS ; then
+                QT_CONFIG="$QT_CONFIG ashmem"
+            else
+                QCONFIG_FLAGS="$QCONFIG_FLAGS QT_NO_SYSTEMSEMAPHORE QT_NO_SHAREDMEMORY"
+                if [ "$PLATFORM_QWS" = "yes" ]; then
+                    QCONFIG_FLAGS="$QCONFIG_FLAGS QT_NO_SEMAPHORE QT_NO_QWS_MULTIPROCESS QT_NO_QWS_SHARE_FONTS"
+                fi
             fi
         fi
     fi
