@@ -249,7 +249,12 @@ QAbstractFileEngine * AndroidAssetsFileEngineHandler::create ( const QString & f
     if (fileName[0]==QChar(QLatin1Char('/')))
         asset=AAssetManager_open(m_assetManager, fileName.toUtf8().constData()+1, AASSET_MODE_BUFFER);
     else
-        asset=AAssetManager_open(m_assetManager, fileName.toUtf8().constData(), AASSET_MODE_BUFFER);
+    {
+        if (fileName.startsWith(QLatin1String("file://")))
+            asset=AAssetManager_open(m_assetManager, fileName.toUtf8().constData()+7, AASSET_MODE_BUFFER);
+        else
+            asset=AAssetManager_open(m_assetManager, fileName.toUtf8().constData(), AASSET_MODE_BUFFER);
+    }
     if (asset)
         return new AndroidAbstractFileEngine(asset, fileName);
 
@@ -259,7 +264,12 @@ QAbstractFileEngine * AndroidAssetsFileEngineHandler::create ( const QString & f
     if (fileName[0]==QChar(QLatin1Char('/')))
         dirName = fileName.mid(1, fileName.size()-2);
     else
-        dirName = fileName.left(fileName.size()-1);
+    {
+        if (fileName.startsWith(QLatin1String("file://")))
+            dirName = fileName.mid(7,fileName.size()-8);
+        else
+            dirName = fileName.left(fileName.size()-1);
+    }
 
     AAssetDir* assetDir;
     assetDir=AAssetManager_openDir(m_assetManager, dirName.toUtf8().constData());
