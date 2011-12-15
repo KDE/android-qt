@@ -136,6 +136,7 @@ private:
 private Q_SLOTS:
     void ensureInputCapabilitiesChanged();
     void translateInputWidget();
+    void ensureWidgetVisibility();
 
     // From MCoeFepAwareTextEditor
 public:
@@ -161,6 +162,8 @@ private:
     void enableSymbianCcpuSupport();
     void changeCBA(bool showCopyAndOrPaste);
     void copyOrCutTextToClipboard(const char *operation);
+    void getScreenCoordinatesForFepX(TPoint& aLeftSideOfBaseLine, TInt& aHeight, TInt& aAscent,
+            TInt aDocumentPosition) const;
 
     //From MEikCcpuEditor interface
 public:
@@ -204,10 +207,12 @@ private:
     QBasicTimer m_tempPreeditStringTimeout;
     bool m_hasTempPreeditString;
     QString m_cachedPreeditString;
+    int m_cachedCursorAndAnchorPosition;
 
     int m_splitViewResizeBy;
     Qt::WindowStates m_splitViewPreviousWindowStates;
     QRectF m_transformation;
+    QGraphicsItem *m_splitViewPreviousFocusItem; //can't use QPointer<> since QGraphicsItem is not a QObject.
 
     CAknCcpuSupport *m_ccpu;
     QAction *m_copyAction;
@@ -220,6 +225,7 @@ private:
 
 Q_GUI_EXPORT void qt_s60_setPartialScreenInputMode(bool enable);
 Q_GUI_EXPORT void qt_s60_setPartialScreenAutomaticTranslation(bool enable);
+Q_GUI_EXPORT void qt_s60_setEditorFlags(int flags);
 
 QT_END_NAMESPACE
 

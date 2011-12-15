@@ -1157,7 +1157,6 @@ void QGraphicsItemPrivate::setParentItemHelper(QGraphicsItem *newParent, const Q
             if (q_ptr == fsi || q_ptr->isAncestorOf(fsi)) {
                 parentFocusScopeItem = fsi;
                 p->d_ptr->focusScopeItem = 0;
-                fsi->d_ptr->focusScopeItemChange(false);
             }
             break;
         }
@@ -1260,6 +1259,10 @@ void QGraphicsItemPrivate::setParentItemHelper(QGraphicsItem *newParent, const Q
     dirtySceneTransform = 1;
     if (!inDestructor && (transformData || (newParent && newParent->d_ptr->transformData)))
         transformChanged();
+
+    // Reparenting is finished, now safe to notify the previous focusScopeItem about changes
+    if (parentFocusScopeItem)
+      parentFocusScopeItem->d_ptr->focusScopeItemChange(false);
 
     // Restore the sub focus chain.
     if (subFocusItem) {
@@ -2237,7 +2240,8 @@ bool QGraphicsItem::isVisible() const
     returned. \a parent can be 0, in which case this function will return
     whether the item is visible to the scene or not.
 
-    An item may not be visible to its ancestors even if isVisible() is true. If
+    An item may not be visible to its ancestors even if isVisible() is true. It
+    may also be visible to its ancestors even if isVisible() is false. If
     any ancestor is hidden, the item itself will be implicitly hidden, in which
     case this function will return false.
 
@@ -2245,15 +2249,16 @@ bool QGraphicsItem::isVisible() const
 */
 bool QGraphicsItem::isVisibleTo(const QGraphicsItem *parent) const
 {
-    if (!d_ptr->visible)
+    const QGraphicsItem *p = this;
+    if (d_ptr->explicitlyHidden)
         return false;
-    if (parent == this)
-        return true;
-    if (parentItem() && parentItem()->isVisibleTo(parent))
-        return true;
-    if (!parent && !parentItem())
-        return true;
-    return false;
+    do {
+        if (p == parent)
+            return true;
+        if (p->d_ptr->explicitlyHidden)
+            return false;
+    } while ((p = p->d_ptr->parent));
+    return parent == 0;
 }
 
 /*!
@@ -8868,7 +8873,7 @@ QPainterPath QGraphicsEllipseItem::shape() const
         return path;
     if (d->spanAngle != 360 * 16) {
         path.moveTo(d->rect.center());
-        path.arcTo(d->rect, d->startAngle / 16.0, d->spanAngle / 16.0);
+        path.arcTo(d->rect, d->startAngle / qreal(16.0), d->spanAngle / qreal(16.0));
     } else {
         path.addEllipse(d->rect);
     }

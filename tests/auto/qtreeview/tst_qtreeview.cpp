@@ -45,6 +45,7 @@
 
 #include <QtTest/QtTest>
 #include <QtGui/QtGui>
+#include <private/qabstractitemview_p.h>
 #include "../../shared/util.h"
 
 //TESTED_CLASS=
@@ -112,6 +113,7 @@ struct PublicView : public QTreeView
 
     inline QStyleOptionViewItem viewOptions() const { return QTreeView::viewOptions(); }
     inline int sizeHintForColumn(int column) const { return QTreeView::sizeHintForColumn(column); }
+    QAbstractItemViewPrivate* aiv_priv() { return static_cast<QAbstractItemViewPrivate*>(d_ptr.data()); }
 };
 
 class tst_QTreeView : public QObject
@@ -2903,6 +2905,10 @@ void tst_QTreeView::styleOptionViewItem()
 {
     class MyDelegate : public QStyledItemDelegate
     {
+        static QString posToString(QStyleOptionViewItemV4::ViewItemPosition pos) {
+            static const char* s_pos[] = { "Invalid", "Beginning", "Middle", "End", "OnlyOne" };
+            return s_pos[pos];
+        }
         public:
             void paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index ) const
             {
@@ -2919,16 +2925,16 @@ void tst_QTreeView::styleOptionViewItem()
                 QCOMPARE(!(opt.features & QStyleOptionViewItemV2::HasCheckIndicator), !opt.text.contains("Checkable"));
 
                 if (opt.text.contains("Beginning"))
-                    QCOMPARE(opt.viewItemPosition, QStyleOptionViewItemV4::Beginning);
+                    QCOMPARE(posToString(opt.viewItemPosition), posToString(QStyleOptionViewItemV4::Beginning));
 
                 if (opt.text.contains("Middle"))
-                    QCOMPARE(opt.viewItemPosition, QStyleOptionViewItemV4::Middle);
+                    QCOMPARE(posToString(opt.viewItemPosition), posToString(QStyleOptionViewItemV4::Middle));
 
                 if (opt.text.contains("End"))
-                    QCOMPARE(opt.viewItemPosition, QStyleOptionViewItemV4::End);
+                    QCOMPARE(posToString(opt.viewItemPosition), posToString(QStyleOptionViewItemV4::End));
 
                 if (opt.text.contains("OnlyOne"))
-                    QCOMPARE(opt.viewItemPosition, QStyleOptionViewItemV4::OnlyOne);
+                    QCOMPARE(posToString(opt.viewItemPosition), posToString(QStyleOptionViewItemV4::OnlyOne));
 
                 if (opt.text.contains("Checked"))
                     QCOMPARE(opt.checkState, Qt::Checked);
@@ -2947,47 +2953,51 @@ void tst_QTreeView::styleOptionViewItem()
             bool allCollapsed;
     };
 
-    QTreeView view;
+    PublicView view;
     QStandardItemModel model;
     view.setModel(&model);
     MyDelegate delegate;
     view.setItemDelegate(&delegate);
     model.appendRow(QList<QStandardItem*>()
-        << new QStandardItem("Beginning") <<  new QStandardItem("Middle") << new QStandardItem("Middle") << new QStandardItem("End") );
+        << new QStandardItem("Beginning") << new QStandardItem("Hidden") << new QStandardItem("Middle") << new QStandardItem("Middle") << new QStandardItem("End") );
     QStandardItem *par1 = new QStandardItem("Beginning HasChildren");
     model.appendRow(QList<QStandardItem*>()
-        << par1 <<  new QStandardItem("Middle HasChildren") << new QStandardItem("Middle HasChildren") << new QStandardItem("End HasChildren") );
+        << par1 << new QStandardItem("Hidden") << new QStandardItem("Middle HasChildren") << new QStandardItem("Middle HasChildren") << new QStandardItem("End HasChildren") );
     model.appendRow(QList<QStandardItem*>()
-        << new QStandardItem("OnlyOne") <<  new QStandardItem("Assert") << new QStandardItem("Assert") << new QStandardItem("Assert") );
+        << new QStandardItem("OnlyOne") << new QStandardItem("Hidden") << new QStandardItem("Assert") << new QStandardItem("Assert") << new QStandardItem("Assert") );
     QStandardItem *checkable = new QStandardItem("Checkable");
     checkable->setCheckable(true);
     QStandardItem *checked = new QStandardItem("Checkable Checked");
-    checkable->setCheckable(true);
+    checked->setCheckable(true);
     checked->setCheckState(Qt::Checked);
     model.appendRow(QList<QStandardItem*>()
-        << new QStandardItem("Beginning") <<  checkable << checked << new QStandardItem("End") );
+        << new QStandardItem("Beginning") << new QStandardItem("Hidden") << checkable << checked << new QStandardItem("End") );
     model.appendRow(QList<QStandardItem*>()
-        << new QStandardItem("Beginning Last") <<  new QStandardItem("Middle Last") << new QStandardItem("Middle Last") << new QStandardItem("End Last") );
+        << new QStandardItem("Beginning Last") << new QStandardItem("Hidden") << new QStandardItem("Middle Last") << new QStandardItem("Middle Last") << new QStandardItem("End Last") );
 
     par1->appendRow(QList<QStandardItem*>()
-        << new QStandardItem("Beginning") <<  new QStandardItem("Middle") << new QStandardItem("Middle") << new QStandardItem("End") );
+        << new QStandardItem("Beginning") << new QStandardItem("Hidden") << new QStandardItem("Middle") << new QStandardItem("Middle") << new QStandardItem("End") );
     QStandardItem *par2 = new QStandardItem("Beginning HasChildren");
     par1->appendRow(QList<QStandardItem*>()
-        << par2 <<  new QStandardItem("Middle HasChildren") << new QStandardItem("Middle HasChildren") << new QStandardItem("End HasChildren") );
+        << par2 << new QStandardItem("Hidden") << new QStandardItem("Middle HasChildren") << new QStandardItem("Middle HasChildren") << new QStandardItem("End HasChildren") );
     par2->appendRow(QList<QStandardItem*>()
-        << new QStandardItem("Beginning Last") <<  new QStandardItem("Middle Last") << new QStandardItem("Middle Last") << new QStandardItem("End Last") );
+        << new QStandardItem("Beginning Last") << new QStandardItem("Hidden") << new QStandardItem("Middle Last") << new QStandardItem("Middle Last") << new QStandardItem("End Last") );
 
     QStandardItem *par3 = new QStandardItem("Beginning Last");
     par1->appendRow(QList<QStandardItem*>()
-        << par3 <<  new QStandardItem("Middle Last") << new QStandardItem("Middle Last") << new QStandardItem("End Last") );
+        << par3 << new QStandardItem("Hidden") << new QStandardItem("Middle Last") << new QStandardItem("Middle Last") << new QStandardItem("End Last") );
     par3->appendRow(QList<QStandardItem*>()
-        << new QStandardItem("Assert") <<  new QStandardItem("Assert") << new QStandardItem("Assert") << new QStandardItem("Asser") );
+        << new QStandardItem("Assert") << new QStandardItem("Hidden") << new QStandardItem("Assert") << new QStandardItem("Assert") << new QStandardItem("Asser") );
     view.setRowHidden(0, par3->index(), true);
     par1->appendRow(QList<QStandardItem*>()
-        << new QStandardItem("Assert") <<  new QStandardItem("Assert") << new QStandardItem("Assert") << new QStandardItem("Asser") );
+        << new QStandardItem("Assert") << new QStandardItem("Hidden") << new QStandardItem("Assert") << new QStandardItem("Assert") << new QStandardItem("Asser") );
     view.setRowHidden(3, par1->index(), true);
 
+    view.setColumnHidden(1, true);
+    const int visibleColumns = 4;
+    const int modelColumns = 5;
 
+    view.header()->swapSections(2, 3);
     view.setFirstColumnSpanned(2, QModelIndex(), true);
     view.setAlternatingRowColors(true);
 
@@ -3006,6 +3016,12 @@ void tst_QTreeView::styleOptionViewItem()
     QApplication::processEvents();
     QTRY_VERIFY(delegate.count >= 4);
 
+    // test that the rendering of drag pixmap sets the correct options too (QTBUG-15834)
+    delegate.count = 0;
+    QItemSelection sel(model.index(0,0), model.index(0,modelColumns-1));
+    QRect rect;
+    view.aiv_priv()->renderToPixmap(sel.indexes(), &rect);
+    QTRY_VERIFY(delegate.count == visibleColumns);
 
     //test dynamic models
     {

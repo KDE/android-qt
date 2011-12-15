@@ -298,6 +298,12 @@ void MessageEditor::editorCreated(QTextEdit *te)
     }
 }
 
+void MessageEditor::editorDestroyed()
+{
+    if (m_selectionHolder == sender())
+        resetSelection();
+}
+
 void MessageEditor::fixTabOrder()
 {
     m_tabOrderTimer.start(0);
@@ -345,9 +351,13 @@ static void clearSelection(QTextEdit *t)
 void MessageEditor::selectionChanged(QTextEdit *te)
 {
     if (te != m_selectionHolder) {
-        if (m_selectionHolder)
+        if (m_selectionHolder) {
             clearSelection(m_selectionHolder);
+            disconnect(this, SLOT(editorDestroyed()));
+        }
         m_selectionHolder = (te->textCursor().hasSelection() ? te : 0);
+        if (FormatTextEdit *fte = qobject_cast<FormatTextEdit*>(m_selectionHolder))
+            connect(fte, SIGNAL(editorDestroyed()), SLOT(editorDestroyed()));
         updateCanCutCopy();
     }
 }
@@ -364,6 +374,7 @@ void MessageEditor::resetSelection()
 {
     if (m_selectionHolder) {
         clearSelection(m_selectionHolder);
+        disconnect(this, SLOT(editorDestroyed()));
         m_selectionHolder = 0;
         updateCanCutCopy();
     }

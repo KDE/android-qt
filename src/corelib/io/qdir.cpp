@@ -1877,7 +1877,10 @@ QString QDir::currentPath()
 
     Under non-Windows operating systems the \c HOME environment
     variable is used if it exists, otherwise the path returned by the
-    rootPath(). On Symbian always the same as the path returned by the rootPath().
+    rootPath().
+
+    On Symbian this typically returns "c:/data",
+    i.e. the same as native PathInfo::PhoneMemoryRootPath().
 
     \sa home(), currentPath(), rootPath(), tempPath()
 */
@@ -1941,9 +1944,8 @@ QString QDir::tempPath()
 /*!
     Returns the absolute path of the root directory.
 
-    For Unix operating systems this returns "/". For Windows file
-    systems this normally returns "c:/". On Symbian this typically returns
-    "c:/data", i.e. the same as native PathInfo::PhoneMemoryRootPath().
+    For Unix operating systems this returns "/". For Windows and Symbian file
+    systems this normally returns "c:/". I.E. the root of the system drive.
 
     \sa root(), drives(), currentPath(), homePath(), tempPath()
 */

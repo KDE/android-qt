@@ -181,7 +181,10 @@ bool QGLContext::chooseContext(const QGLContext* shareContext) // almost same as
         d->ownsEglContext = true;
         d->eglContext->setApi(QEgl::OpenGL);
 
-        if (!QSymbianGraphicsSystemEx::hasBCM2727()) {
+        // Allow apps to override ability to use multisampling by setting an environment variable. Eg:
+        //   qputenv("QT_SYMBIAN_DISABLE_GL_MULTISAMPLE", "1");
+        // Added to allow camera app to start with limited memory.
+        if (!QSymbianGraphicsSystemEx::hasBCM2727() && !qgetenv("QT_SYMBIAN_DISABLE_GL_MULTISAMPLE").toInt()) {
             // Most likely we have hw support for multisampling
             // so let's enable it.
             d->glFormat.setSampleBuffers(1);
@@ -259,7 +262,7 @@ bool QGLContext::chooseContext(const QGLContext* shareContext) // almost same as
     return true;
 }
 
-void QGLWidget::resizeEvent(QResizeEvent *)
+void QGLWidget::resizeEvent(QResizeEvent *e)
 {
     Q_D(QGLWidget);
     if (!isValid())
@@ -270,17 +273,18 @@ void QGLWidget::resizeEvent(QResizeEvent *)
     if (this == qt_gl_share_widget())
         return;
 
-    if (QGLContext::currentContext())
-        doneCurrent();
-
-    // Symbian needs to recreate the surface on resize.
-    d->recreateEglSurface();
+    if (!d->surfaceSizeInitialized || e->oldSize() != e->size()) {
+        // On Symbian we need to recreate the surface on resize.
+        d->recreateEglSurface();
+        d->surfaceSizeInitialized = true;
+    }
 
     makeCurrent();
+
     if (!d->glcx->initialized())
         glInit();
+
     resizeGL(width(), height());
-    //handle overlay
 }
 
 const QGLContext* QGLWidget::overlayContext() const
@@ -363,6 +367,9 @@ void QGLWidgetPrivate::recreateEglSurface()
     WId currentId = q->winId();
 
     if (glcx->d_func()->eglSurface != EGL_NO_SURFACE) {
+        if (glcx == QGLContext::currentContext())
+            glcx->doneCurrent();
+
         eglDestroySurface(glcx->d_func()->eglContext->display(),
                                                 glcx->d_func()->eglSurface);
     }

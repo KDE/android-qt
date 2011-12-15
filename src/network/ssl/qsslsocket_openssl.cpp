@@ -254,7 +254,11 @@ bool QSslSocketBackendPrivate::initSslContext()
 init_context:
     switch (configuration.protocol) {
     case QSsl::SslV2:
+#ifndef OPENSSL_NO_SSL2
         ctx = q_SSL_CTX_new(client ? q_SSLv2_client_method() : q_SSLv2_server_method());
+#else
+        ctx = 0; // SSL 2 not supported by the system, but chosen deliberately -> error
+#endif
         break;
     case QSsl::SslV3:
         ctx = q_SSL_CTX_new(client ? q_SSLv3_client_method() : q_SSLv3_server_method());
@@ -285,12 +289,37 @@ init_context:
         return false;
     }
 
-    // Enable all bug workarounds.
-    if (configuration.protocol == QSsl::TlsV1SslV3 || configuration.protocol == QSsl::SecureProtocols) {
-        q_SSL_CTX_set_options(ctx, SSL_OP_ALL|SSL_OP_NO_SSLv2);
-    } else {
-        q_SSL_CTX_set_options(ctx, SSL_OP_ALL);
-    }
+    // Enable bug workarounds.
+    long options;
+    if (configuration.protocol == QSsl::TlsV1SslV3 || configuration.protocol == QSsl::SecureProtocols)
+        options = SSL_OP_ALL|SSL_OP_NO_SSLv2;
+    else
+        options = SSL_OP_ALL;
+
+    // This option is disabled by default, so we need to be able to clear it
+    if (configuration.sslOptions & QSsl::SslOptionDisableEmptyFragments)
+        options |= SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS;
+    else
+        options &= ~SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS;
+
+#ifdef SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION
+    // This option is disabled by default, so we need to be able to clear it
+    if (configuration.sslOptions & QSsl::SslOptionDisableLegacyRenegotiation)
+        options &= ~SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION;
+    else
+        options |= SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION;
+#endif
+
+#ifdef SSL_OP_NO_TICKET
+    if (configuration.sslOptions & QSsl::SslOptionDisableSessionTickets)
+        options |= SSL_OP_NO_TICKET;
+#endif
+#ifdef SSL_OP_NO_COMPRESSION
+    if (configuration.sslOptions & QSsl::SslOptionDisableCompression)
+        options |= SSL_OP_NO_COMPRESSION;
+#endif
+
+    q_SSL_CTX_set_options(ctx, options);
 
     // Initialize ciphers
     QByteArray cipherString;
@@ -419,7 +448,9 @@ init_context:
             tlsHostName = hostName;
         QByteArray ace = QUrl::toAce(tlsHostName);
         // only send the SNI header if the URL is valid and not an IP
-        if (!ace.isEmpty() && !QHostAddress().setAddress(tlsHostName)) {
+        if (!ace.isEmpty()
+            && !QHostAddress().setAddress(tlsHostName)
+            && !(configuration.sslOptions & QSsl::SslOptionDisableServerNameIndication)) {
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L
             if (!q_SSL_ctrl(ssl, SSL_CTRL_SET_TLSEXT_HOSTNAME, TLSEXT_NAMETYPE_host_name, ace.data()))
 #else

@@ -91,16 +91,18 @@ public:
     QStringList clientPlugins;
     bool gotHello;
     QString waitingForMsgFromService;
+    bool waitingForMsgSucceeded;
 
 private:
     // private slot
     void _q_deliverMessage(const QString &serviceName, const QByteArray &message);
-    static QDeclarativeDebugServerConnection *loadConnectionPlugin(const QString &pluginName);
+    static QDeclarativeDebugServerConnection *loadConnectionPlugin(QPluginLoader *loader, const QString &pluginName);
 };
 
 QDeclarativeDebugServerPrivate::QDeclarativeDebugServerPrivate() :
     connection(0),
-    gotHello(false)
+    gotHello(false),
+    waitingForMsgSucceeded(false)
 {
 }
 
@@ -118,7 +120,7 @@ void QDeclarativeDebugServerPrivate::advertisePlugins()
 }
 
 QDeclarativeDebugServerConnection *QDeclarativeDebugServerPrivate::loadConnectionPlugin(
-    const QString &pluginName)
+        QPluginLoader *loader, const QString &pluginName)
 {
 #ifndef QT_NO_LIBRARY
     QStringList pluginCandidates;
@@ -135,17 +137,17 @@ QDeclarativeDebugServerConnection *QDeclarativeDebugServerPrivate::loadConnectio
     }
 
     foreach (const QString &pluginPath, pluginCandidates) {
-        QPluginLoader loader(pluginPath);
-        if (!loader.load()) {
+        loader->setFileName(pluginPath);
+        if (!loader->load()) {
             continue;
         }
         QDeclarativeDebugServerConnection *connection = 0;
-        if (QObject *instance = loader.instance())
+        if (QObject *instance = loader->instance())
             connection = qobject_cast<QDeclarativeDebugServerConnection*>(instance);
 
         if (connection)
             return connection;
-        loader.unload();
+        loader->unload();
     }
 #endif
     return 0;
@@ -200,8 +202,9 @@ QDeclarativeDebugServer *QDeclarativeDebugServer::instance()
             if (ok) {
                 server = new QDeclarativeDebugServer();
 
+                QPluginLoader *loader = new QPluginLoader(server);
                 QDeclarativeDebugServerConnection *connection
-                        = QDeclarativeDebugServerPrivate::loadConnectionPlugin(pluginName);
+                        = QDeclarativeDebugServerPrivate::loadConnectionPlugin(loader, pluginName);
                 if (connection) {
                     server->d_func()->connection = connection;
 
@@ -315,7 +318,7 @@ void QDeclarativeDebugServer::receiveMessage(const QByteArray &message)
             if (d->waitingForMsgFromService == name) {
                 // deliver directly so that it is delivered before waitForMessage is returning.
                 d->_q_deliverMessage(name, message);
-                d->waitingForMsgFromService.clear();
+                d->waitingForMsgSucceeded = true;
             } else {
                 // deliver message in next event loop run.
                 // Fixes the case that the service does start it's own event loop ...,
@@ -409,7 +412,9 @@ bool QDeclarativeDebugServer::waitForMessage(QDeclarativeDebugService *service)
 
     do {
         d->connection->waitForMessage();
-    } while (!d->waitingForMsgFromService.isEmpty());
+    } while (!d->waitingForMsgSucceeded);
+    d->waitingForMsgSucceeded = false;
+    d->waitingForMsgFromService.clear();
     return true;
 }
 

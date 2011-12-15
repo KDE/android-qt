@@ -130,6 +130,11 @@ FormatTextEdit::FormatTextEdit(QWidget *parent)
     m_highlighter = new MessageHighlighter(this);
 }
 
+FormatTextEdit::~FormatTextEdit()
+{
+    emit editorDestroyed();
+}
+
 void FormatTextEdit::setEditable(bool editable)
 {
     // save default frame style
