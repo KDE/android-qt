@@ -127,6 +127,19 @@ public class QtActivityDelegate
     private final int ImhEmailCharactersOnly=0x200000;
     private final int ImhUrlCharactersOnly=0x400000;
 
+    public void resetSoftwareKeyboard()
+    {
+        if (m_imm == null)
+            return;
+        m_editText.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                m_imm.restartInput(m_editText);
+            }
+        }, 5);
+    }
+
+
     public void showSoftwareKeyboard(int x, int y, int width, int height, int inputHints)
     {
         if (m_imm == null)
@@ -167,7 +180,10 @@ public class QtActivityDelegate
         }
 
         if ( (inputHints & ImhNoPredictiveText) != 0 )
-            inputType |= 0x00080000;//android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS;
+        {
+            //android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS | android.text.InputType.TYPE_CLASS_TEXT;
+            inputType = android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD;
+        }
 
         m_editText.setInitialCapsMode(initialCapsMode);
         m_editText.setImeOptions(imeOptions);
@@ -180,15 +196,15 @@ public class QtActivityDelegate
         m_editText.postDelayed(new Runnable() {
             @Override
             public void run() {
-                m_imm.restartInput(m_editText);
+                m_imm.showSoftInput(m_editText, 0);
                 m_editText.postDelayed(new Runnable() {
                     @Override
                     public void run() {
-                        m_imm.showSoftInput(m_editText, 0);
+                        m_imm.restartInput(m_editText);
                     }
-                }, 25);
+                }, 5);
             }
-        }, 25);
+        }, 5);
     }
 
     public void hideSoftwareKeyboard()

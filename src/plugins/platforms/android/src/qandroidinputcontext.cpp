@@ -297,10 +297,31 @@ QString QAndroidInputContext::language()
     return qgetenv("LANG");
 }
 
-void QAndroidInputContext::reset()
+void QAndroidInputContext::clear()
 {
     m_composingText.clear();
     m_extractedText.clear();
+}
+
+void QAndroidInputContext::reset()
+{
+    clear();
+    if (focusWidget())
+        QtAndroid::resetSoftwareKeyboard();
+    else
+        QtAndroid::hideSoftwareKeyboard();
+}
+
+void QAndroidInputContext::update()
+{
+    reset();
+}
+
+void QAndroidInputContext::setFocusWidget( QWidget *w )
+{
+    QInputContext::setFocusWidget( w );
+    if (!w)
+        reset();
 }
 
 bool QAndroidInputContext::filterEvent( const QEvent * event )
@@ -351,11 +372,11 @@ jboolean QAndroidInputContext::deleteSurroundingText(jint leftLength, jint right
 jboolean QAndroidInputContext::finishComposingText()
 {
     if (!focusWidget())
-        return JNI_FALSE;
+        return JNI_TRUE;
     QInputMethodEvent event;
     event.setCommitString(m_composingText);
     QMetaObject::invokeMethod(this, "sendEvent", Qt::AutoConnection, Q_ARG(QInputMethodEvent, event));
-    reset();
+    clear();
     return JNI_TRUE;
 }
 

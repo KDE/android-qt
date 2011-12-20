@@ -397,6 +397,16 @@ public class QtNative
         });
     }
 
+    private static void resetSoftwareKeyboard()
+    {
+        runAction(new Runnable() {
+            @Override
+            public void run() {
+                m_activityDelegate.resetSoftwareKeyboard();
+            }
+        });
+    }
+
     private static void hideSoftwareKeyboard()
     {
         runAction(new Runnable() {
