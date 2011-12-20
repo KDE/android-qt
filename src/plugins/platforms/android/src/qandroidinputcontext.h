@@ -64,7 +64,10 @@ public:
     virtual QString identifierName ();
     virtual bool isComposing () const;
     virtual QString language ();
+    void clear();
     virtual void reset ();
+    virtual void update ();
+    virtual void setFocusWidget( QWidget *w );
     virtual bool filterEvent ( const QEvent * event );
 
     //---------------//

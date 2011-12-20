@@ -101,6 +101,7 @@ static volatile bool m_pauseApplication;
 
 // Software keyboard support
 static jmethodID m_showSoftwareKeyboardMethodID=0;
+static jmethodID m_resetSoftwareKeyboardMethodID=0;
 static jmethodID m_hideSoftwareKeyboardMethodID=0;
 // Software keyboard support
 
@@ -235,6 +236,19 @@ namespace QtAndroid
         }
         qDebug()<<"showSoftwareKeyboard";
         env->CallStaticVoidMethod(m_applicationClass, m_showSoftwareKeyboardMethodID, left, top, width, height, inputHints);
+        m_javaVM->DetachCurrentThread();
+    }
+
+    void resetSoftwareKeyboard()
+    {
+        JNIEnv* env;
+        if (m_javaVM->AttachCurrentThread(&env, NULL)<0)
+        {
+            qCritical()<<"AttachCurrentThread failed";
+            return;
+        }
+        qDebug()<<"resetSoftwareKeyboard";
+        env->CallStaticVoidMethod(m_applicationClass, m_resetSoftwareKeyboardMethodID);
         m_javaVM->DetachCurrentThread();
     }
 
@@ -796,6 +810,7 @@ static int registerNativeMethods(JNIEnv* env, const char* className,
     }
     m_redrawSurfaceMethodID = env->GetStaticMethodID(m_applicationClass, "redrawSurface", "(IIII)V");
     m_showSoftwareKeyboardMethodID = env->GetStaticMethodID(m_applicationClass, "showSoftwareKeyboard", "(IIIII)V");
+    m_resetSoftwareKeyboardMethodID = env->GetStaticMethodID(m_applicationClass, "resetSoftwareKeyboard", "()V");
     m_hideSoftwareKeyboardMethodID = env->GetStaticMethodID(m_applicationClass, "hideSoftwareKeyboard", "()V");
     m_setFullScreenMethodID = env->GetStaticMethodID(m_applicationClass, "setFullScreen", "(Z)V");
 
