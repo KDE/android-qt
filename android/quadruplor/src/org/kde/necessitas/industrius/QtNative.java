@@ -45,6 +45,10 @@ public class QtNative extends Application
     private static int m_oldx, m_oldy;
     private static final int m_moveThreshold = 0;
 
+    public static ClassLoader classLoader()
+    {
+        return m_mainActivity.getClassLoader();
+    }
 
     public static Activity activity()
     {
@@ -303,7 +307,9 @@ public class QtNative extends Application
     }
 
 
-    private static void showSoftwareKeyboard()
+    private static void showSoftwareKeyboard(final int x, final int y
+                                        , final int width, final int height
+                                        , final int inputHints )
     {
         runAction(new Runnable() {
             @Override
@@ -311,6 +317,10 @@ public class QtNative extends Application
                 m_mainActivity.showSoftwareKeyboard();
             }
         });
+    }
+
+    private static void resetSoftwareKeyboard()
+    {
     }
 
     private static void hideSoftwareKeyboard()
