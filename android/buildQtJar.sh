@@ -13,7 +13,7 @@ function createJar
 }
 
 mkdir -p $2
-TEMP_FOLDER=`mktemp -d`
+TEMP_FOLDER=`mktemp -d tmp.XXXXXXXXXX`
 pushd $TEMP_FOLDER
 
 for apiLevel in 4 7 8 14
