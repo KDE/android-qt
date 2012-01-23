@@ -157,7 +157,7 @@ public class QtApplication extends Application
     @Override
     public void onTerminate() {
         if (m_delegateObject != null && m_delegateMethods.containsKey("onTerminate"))
-            invokeDelegate(m_delegateMethods.get("onTerminate"));
+            invokeDelegateMethod(m_delegateMethods.get("onTerminate").get(0));
         super.onTerminate();
     }
 
