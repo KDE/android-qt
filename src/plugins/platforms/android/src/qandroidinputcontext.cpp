@@ -383,17 +383,14 @@ jboolean QAndroidInputContext::finishComposingText()
 jint QAndroidInputContext::getCursorCapsMode(jint /*reqModes*/)
 {
     QWidget * w = focusWidget();
-    jint res = CAP_MODE_SENTENCES;
+    jint res = 0;
     if (!w)
         return res;
 
     const int qtInputMethodHints = w->inputMethodHints();
-    if ( (qtInputMethodHints & Qt::ImhNoAutoUppercase)
-          || (qtInputMethodHints & Qt::ImhPreferLowercase) )
-        res = 0;
 
     if ( qtInputMethodHints & Qt::ImhPreferUppercase )
-        res = CAP_MODE_WORDS;
+        res = CAP_MODE_SENTENCES;
 
     if ( qtInputMethodHints & Qt::ImhUppercaseOnly)
         res = CAP_MODE_CHARACTERS;
