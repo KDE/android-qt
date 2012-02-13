@@ -42,8 +42,8 @@ if [ "$OSTYPE_MAJOR" = "msys" ]; then
 	NDK_PLATFORM=4
 else
 	if [ "$OSTYPE_MAJOR" = "darwin" ]; then
-		PLATFORM="-platform macx-g++42"
-		NDK_ROOT=/usr/local/android/android-ndk-r5b
+		PLATFORM="-platform macx-g++"
+		NDK_ROOT=/usr/local/android/android-ndk-r6b
 		NDK_HOST=darwin-x86
 		NDK_PLATFORM=4
 	fi
