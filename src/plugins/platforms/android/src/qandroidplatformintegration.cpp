@@ -67,7 +67,7 @@ public:
 
         if(!QFile::exists(fontpath)) {
             qFatal("QFontDatabase: Cannot find font directory %s - is Qt installed correctly?",
-                   qPrintable(fontpath));
+                qPrintable(fontpath));
         }
 
         QDir dir(fontpath, QLatin1String("*.ttf"));
@@ -151,6 +151,11 @@ QPlatformDesktopService * QAndroidPlatformIntegration::platformDesktopService()
     return m_androidPlatformDesktopService;
 }
 
+QPlatformMenu * QAndroidPlatformIntegration::platformMenu()
+{
+    return this;
+}
+
 void QAndroidPlatformIntegration::setDefaultDisplayMetrics(int gw, int gh, int sw, int sh)
 {
     m_defaultGeometryWidth=gw;
@@ -164,6 +169,7 @@ void QAndroidPlatformIntegration::setDefaultDesktopSize(int gw, int gh)
     m_defaultGeometryWidth=gw;
     m_defaultGeometryHeight=gh;
 }
+
 
 QPixmapData *QAndroidPlatformIntegration::createPixmapData(QPixmapData::PixelType type) const
 {
@@ -187,8 +193,8 @@ QWindowSurface *QAndroidPlatformIntegration::createWindowSurface(QWidget *widget
 QPlatformWindow *QAndroidPlatformIntegration::createPlatformWindow(QWidget *widget, WId /*winId*/) const
 {
 #ifdef ANDROID_PLUGIN_OPENGL
-        Q_ASSERT(dynamic_cast<QAndroidEglFSScreen*>(m_primaryScreen) != 0);
-        return  new QAndroidEglFSWindow(widget, dynamic_cast<QAndroidEglFSScreen*>(m_primaryScreen));
+    Q_ASSERT(dynamic_cast<QAndroidEglFSScreen*>(m_primaryScreen) != 0);
+    return new QAndroidEglFSWindow(widget, dynamic_cast<QAndroidEglFSScreen*>(m_primaryScreen));
 #else
     QFbWindow *w = new QFbWindow(widget);
     dynamic_cast<QFbScreen*>(m_primaryScreen)->addWindow(w);
@@ -236,5 +242,39 @@ void QAndroidPlatformIntegration::surfaceChanged()
         QMetaObject::invokeMethod(m_primaryScreen, "surfaceChanged", Qt::AutoConnection);
 }
 #endif
+
+void QAndroidPlatformIntegration::showMenuBar(const QList<QAction*> & menuBarActionList)
+{
+#warning FIXME Not thread safe !!!
+    m_menuBarActionList = menuBarActionList;
+    QtAndroid::showOptionsMenu();
+}
+
+void QAndroidPlatformIntegration::hideMenuBar()
+{
+    QtAndroid::hideOptionsMenu();
+}
+
+void QAndroidPlatformIntegration::showMenu(const QList<QAction*> & menuActionList)
+{
+#warning FIXME Not thread safe !!!
+    m_menuActionList = menuActionList;
+    QtAndroid::showContextMenu();
+}
+
+void QAndroidPlatformIntegration::hideMenu()
+{
+    QtAndroid::hideContextMenu();
+}
+
+const QList<QAction*> & QAndroidPlatformIntegration::menuBarActionList()
+{
+    return m_menuBarActionList;
+}
+
+const QList<QAction*> & QAndroidPlatformIntegration::menuActionList()
+{
+    return m_menuActionList;
+}
 
 QT_END_NAMESPACE

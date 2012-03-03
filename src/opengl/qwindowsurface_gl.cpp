@@ -203,6 +203,9 @@ public:
             }
 #endif
             widget->resize(1, 1);
+#ifdef Q_OS_ANDROID
+            widget->lower();
+#endif
 
             // We don't need this internal widget to appear in QApplication::topLevelWidgets()
             if (QWidgetPrivate::allWidgets)

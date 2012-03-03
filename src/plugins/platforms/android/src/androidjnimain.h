@@ -41,6 +41,8 @@ class QRect;
 class QPoint;
 class QThread;
 class QAndroidPlatformIntegration;
+class QMenuBar;
+class QMenu;
 
 namespace QtAndroid
 {
@@ -59,6 +61,14 @@ namespace QtAndroid
     void resetSoftwareKeyboard();
     void hideSoftwareKeyboard();
     // Software keyboard support
+
+    // Menu support
+    void showOptionsMenu();
+    void hideOptionsMenu();
+
+    void showContextMenu();
+    void hideContextMenu();
+    // Menu support
 
 
 #ifndef ANDROID_PLUGIN_OPENGL

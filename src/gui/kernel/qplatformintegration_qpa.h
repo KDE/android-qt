@@ -62,6 +62,7 @@ class QPlatformFontDatabase;
 class QPlatformClipboard;
 class QPlatformNativeInterface;
 class QPlatformDesktopService;
+class QPlatformMenu;
 
 class Q_GUI_EXPORT QPlatformIntegration
 {
@@ -103,6 +104,7 @@ public:
 // System hooks
     virtual QPlatformDesktopService * platformDesktopService();
 
+    virtual QPlatformMenu * platformMenu();
 };
 
 QT_END_NAMESPACE

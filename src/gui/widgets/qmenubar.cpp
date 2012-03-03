@@ -81,6 +81,11 @@ extern bool qt_wince_is_mobile(); //defined in qguifunctions_wce.cpp
 #include <private/qsoftkeymanager_p.h>
 #endif
 
+#ifdef Q_OS_ANDROID
+#include <private/qapplication_p.h>
+#include <QPlatformMenu>
+#endif
+
 QT_BEGIN_NAMESPACE
 
 class QMenuBarExtension : public QToolButton
@@ -780,6 +785,9 @@ void QMenuBarPrivate::init()
     cornerWidgetToolBar = 0;
     cornerWidgetContainer = 0;
 #endif
+#ifdef Q_OS_ANDROID
+    q->hide();
+#endif
     handleReparent();
     q->setMouseTracking(q->style()->styleHint(QStyle::SH_MenuBar_MouseTracking, 0, q));
 
@@ -1109,7 +1117,7 @@ void QMenuBar::setVisible(bool visible)
     Q_D(QMenuBar);
     d->platformMenuBar->setVisible(visible);
 #else
-#if defined(Q_WS_MAC) || defined(Q_OS_WINCE) || defined(Q_WS_S60)
+#if defined(Q_WS_MAC) || defined(Q_OS_WINCE) || defined(Q_WS_S60) || defined(Q_OS_ANDROID)
     if (isNativeMenuBar()) {
         if (!visible)
             QWidget::setVisible(false);
@@ -1463,6 +1471,9 @@ void QMenuBarPrivate::handleReparent()
     }
 #endif // QT_SOFTKEYS_ENABLED
 #endif // Q_WS_S60
+#ifdef Q_OS_ANDROID
+    q->hide();
+#endif
 }
 
 #ifdef QT3_SUPPORT
@@ -1534,6 +1545,14 @@ bool QMenuBar::event(QEvent *e)
     switch (e->type()) {
     case QEvent::KeyPress: {
         QKeyEvent *ke = (QKeyEvent*)e;
+#ifdef Q_OS_ANDROID
+        if (ke->key()==Qt::Key_Menu)
+        {
+            QPlatformMenu * pm = QApplicationPrivate::platformIntegration()->platformMenu();
+            if (pm)
+                pm->showMenuBar(actions());
+        }
+#endif
 #if 0
         if(!d->keyboardState) { //all keypresses..
             d->setCurrentAction(0);
@@ -1709,7 +1728,7 @@ QRect QMenuBar::actionGeometry(QAction *act) const
 QSize QMenuBar::minimumSizeHint() const
 {
     Q_D(const QMenuBar);
-#if defined(Q_WS_MAC) || defined(Q_WS_WINCE) || defined(Q_WS_S60) || defined(Q_WS_X11)
+#if defined(Q_WS_MAC) || defined(Q_WS_WINCE) || defined(Q_WS_S60) || defined(Q_WS_X11) || defined(Q_OS_ANDROID)
     const bool as_gui_menubar = !isNativeMenuBar();
 #else
     const bool as_gui_menubar = true;
@@ -1771,7 +1790,7 @@ QSize QMenuBar::minimumSizeHint() const
 QSize QMenuBar::sizeHint() const
 {
     Q_D(const QMenuBar);
-#if defined(Q_WS_MAC) || defined(Q_WS_WINCE) || defined(Q_WS_S60) || defined(Q_WS_X11)
+#if defined(Q_WS_MAC) || defined(Q_WS_WINCE) || defined(Q_WS_S60) || defined(Q_WS_X11) || defined(Q_OS_ANDROID)
     const bool as_gui_menubar = !isNativeMenuBar();
 #else
     const bool as_gui_menubar = true;
@@ -1836,7 +1855,7 @@ QSize QMenuBar::sizeHint() const
 int QMenuBar::heightForWidth(int) const
 {
     Q_D(const QMenuBar);
-#if defined(Q_WS_MAC) || defined(Q_WS_WINCE) || defined(Q_WS_S60) || defined(Q_WS_X11)
+#if defined(Q_WS_MAC) || defined(Q_WS_WINCE) || defined(Q_WS_S60) || defined(Q_WS_X11) || defined(Q_OS_ANDROID)
     const bool as_gui_menubar = !isNativeMenuBar();
 #else
     const bool as_gui_menubar = true;

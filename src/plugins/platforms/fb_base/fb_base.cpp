@@ -44,6 +44,7 @@
 #include <qdebug.h>
 #include <qbitmap.h>
 #include <QPlatformCursor>
+#include <QApplication>
 #include <QWindowSystemInterface>
 #include <androidjnimain.h>
 
@@ -308,6 +309,7 @@ void QFbScreen::addWindow(QFbWindow *surface)
     surface->mScreens.append(this);
     invalidateRectCache();
     setDirty(surface->geometry());
+    QApplication::setActiveWindow(topWindow());
 }
 
 void QFbScreen::removeWindow(QFbWindow * surface)
@@ -316,6 +318,7 @@ void QFbScreen::removeWindow(QFbWindow * surface)
     surface->mScreens.removeOne(this);
     invalidateRectCache();
     setDirty(surface->geometry());
+    QApplication::setActiveWindow(topWindow());
 }
 
 void QFbWindow::raise()
@@ -337,6 +340,7 @@ void QFbScreen::raise(QPlatformWindow * surface)
     windowStack.move(index, 0);
     invalidateRectCache();
     setDirty(s->geometry());
+    QApplication::setActiveWindow(topWindow());
 }
 
 void QFbWindow::lower()
@@ -358,6 +362,7 @@ void QFbScreen::lower(QPlatformWindow * surface)
     windowStack.move(index, windowStack.size() - 1);
     invalidateRectCache();
     setDirty(s->geometry());
+    QApplication::setActiveWindow(topWindow());
 }
 
 QWidget * QFbScreen::topWindow()

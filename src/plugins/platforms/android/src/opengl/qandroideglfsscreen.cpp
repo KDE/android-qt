@@ -290,6 +290,44 @@ QAndroidEglFSPlatformContext *QAndroidEglFSScreen::platformContext() const
     return m_platformContext;
 }
 
+void QAndroidEglFSScreen::addWindow(QPlatformWindow *window)
+{
+    windowStack.prepend(window);
+    QApplication::setActiveWindow(topWindow());
+}
+
+void QAndroidEglFSScreen::removeWindow(QPlatformWindow * window)
+{
+    windowStack.removeOne(window);
+    QApplication::setActiveWindow(topWindow());
+}
+
+void QAndroidEglFSScreen::raise(QPlatformWindow * window)
+{
+    int index = windowStack.indexOf(window);
+    if (index <= 0)
+        return;
+    windowStack.move(index, 0);
+    QApplication::setActiveWindow(topWindow());
+}
+
+void QAndroidEglFSScreen::lower(QPlatformWindow * window)
+{
+    int index = windowStack.indexOf(window);
+    if (index == -1 || index == (windowStack.size() - 1))
+        return;
+    windowStack.move(index, windowStack.size() - 1);
+    QApplication::setActiveWindow(topWindow());
+}
+
+QWidget * QAndroidEglFSScreen::topWindow()
+{
+    foreach (QPlatformWindow * platformWindow, windowStack )
+        if ( platformWindow->widget()->windowType()==Qt::Window || platformWindow->widget()->windowType()==Qt::Dialog )
+            return platformWindow->widget();
+    return 0;
+}
+
 void QAndroidEglFSScreen::surfaceChanged()
 {
     if (!m_platformContext)

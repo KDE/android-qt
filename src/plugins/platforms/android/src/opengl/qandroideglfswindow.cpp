@@ -54,8 +54,14 @@ QAndroidEglFSWindow::QAndroidEglFSWindow(QWidget *w, QAndroidEglFSScreen *screen
 #ifdef QEGL_EXTRA_DEBUG
     qWarning("QEglWindow %p: %p %p 0x%x\n", this, w, screen, uint(m_winid));
 #endif
+    if (w->isTopLevel())
+        m_screen->addWindow(this);
 }
 
+QAndroidEglFSWindow::~QAndroidEglFSWindow()
+{
+    m_screen->removeWindow(this);
+}
 
 void QAndroidEglFSWindow::setGeometry(const QRect &)
 {
@@ -72,6 +78,16 @@ void QAndroidEglFSWindow::setGeometry(const QRect &)
 WId QAndroidEglFSWindow::winId() const
 {
     return m_winid;
+}
+
+void QAndroidEglFSWindow::raise()
+{
+    m_screen->raise(this);
+}
+
+void QAndroidEglFSWindow::lower()
+{
+    m_screen->lower(this);
 }
 
 Qt::WindowFlags QAndroidEglFSWindow::setWindowFlags(Qt::WindowFlags type)

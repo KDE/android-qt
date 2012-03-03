@@ -44,9 +44,13 @@ import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.KeyCharacterMap;
 import android.view.KeyEvent;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
+import android.view.Menu;
+import android.view.MenuItem;
 
 public class QtActivityDelegate
 {
@@ -54,7 +58,12 @@ public class QtActivityDelegate
     private Method m_super_onRestoreInstanceState = null;
     private Method m_super_onRetainNonConfigurationInstance = null;
     private Method m_super_onSaveInstanceState = null;
+    private Method m_super_onKeyDown = null;
+    private Method m_super_onKeyUp = null;
     private Method m_super_dispatchKeyEvent = null;
+    private Method m_super_onCreateOptionsMenu = null;
+    private Method m_super_onPrepareOptionsMenu = null;
+    private Method m_super_onOptionsItemSelected = null;
 
     private static final String NATIVE_LIBRARIES_KEY="native.libraries";
     private static final String BUNDLED_LIBRARIES_KEY="bundled.libraries";
@@ -274,7 +283,12 @@ public class QtActivityDelegate
             m_super_onRestoreInstanceState = m_activity.getClass().getMethod("super_onRestoreInstanceState", Bundle.class);
             m_super_onRetainNonConfigurationInstance = m_activity.getClass().getMethod("super_onRetainNonConfigurationInstance");
             m_super_onSaveInstanceState = m_activity.getClass().getMethod("super_onSaveInstanceState", Bundle.class);
+            m_super_onKeyDown = m_activity.getClass().getMethod("super_onKeyDown", Integer.TYPE, KeyEvent.class);
+            m_super_onKeyUp = m_activity.getClass().getMethod("super_onKeyUp", Integer.TYPE, KeyEvent.class);
             m_super_dispatchKeyEvent = m_activity.getClass().getMethod("super_dispatchKeyEvent", KeyEvent.class);
+            m_super_onCreateOptionsMenu = m_activity.getClass().getMethod("super_onCreateOptionsMenu", Menu.class);
+            m_super_onPrepareOptionsMenu = m_activity.getClass().getMethod("super_onPrepareOptionsMenu", Menu.class);
+            m_super_onOptionsItemSelected = m_activity.getClass().getMethod("super_onOptionsItemSelected", MenuItem.class);
         } catch (Exception e) {
             e.printStackTrace();
             return false;
@@ -325,6 +339,7 @@ public class QtActivityDelegate
         }
         m_layout=new QtLayout(m_activity);
         m_surface = new QtSurface(m_activity, 0);
+        m_activity.registerForContextMenu(m_surface);
         m_editText = new QtEditText(m_activity);
         m_imm = (InputMethodManager)m_activity.getSystemService(Context.INPUT_METHOD_SERVICE);
         m_layout.addView(m_surface,0);
@@ -400,6 +415,7 @@ public class QtActivityDelegate
     {
         if (!m_started)
             return false;
+
         m_metaState = MetaKeyKeyListener.handleKeyDown(m_metaState, keyCode, event);
         int c = event.getUnicodeChar(MetaKeyKeyListener.getMetaState(m_metaState));
         int lc=c;
@@ -421,6 +437,7 @@ public class QtActivityDelegate
     {
         if (!m_started)
             return false;
+
         m_metaState = MetaKeyKeyListener.handleKeyUp(m_metaState, keyCode, event);
         QtNative.keyUp(keyCode, event.getUnicodeChar(), event.getMetaState());
         return true;
@@ -443,5 +460,32 @@ public class QtActivityDelegate
             e.printStackTrace();
         }
         return false;
+    }
+
+    public boolean onCreateOptionsMenu(Menu menu)
+    {
+        QtNative.createOptionsMenu(menu);
+        try {
+            return (Boolean) m_super_onPrepareOptionsMenu.invoke(m_activity, menu);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public boolean onPrepareOptionsMenu(Menu menu)
+    {
+        QtNative.prepareOptionsMenu(menu);
+        try {
+            return (Boolean) m_super_onPrepareOptionsMenu.invoke(m_activity, menu);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public boolean onOptionsItemSelected(MenuItem item)
+    {
+        return QtNative.optionsItemSelected(item.getGroupId(), item.getItemId());
     }
 }

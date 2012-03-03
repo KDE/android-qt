@@ -831,12 +831,20 @@ void QApplicationPrivate::processKeyEvent(QWindowSystemInterfacePrivate::KeyEven
     if (!focusW) {
         focusW = e->widget.data();
     }
-    if (!focusW)
+    if (!focusW
+        #ifdef Q_OS_ANDROID
+            || (e->keyType == QEvent::KeyRelease && e->key == Qt::Key_Close) || e->key == Qt::Key_Menu
+        #endif
+            )
         focusW = QApplication::activeWindow();
 
     //qDebug() << "handleKeyEvent" << hex << e->key() << e->modifiers() << e->text() << "widget" << focusW;
 
-    if (!focusW)
+    if (!focusW
+        #ifdef Q_OS_ANDROID
+            && e->keyType != QEvent::KeyRelease && e->key != Qt::Key_Close
+        #endif
+            )
         return;
     if (app_do_modal && !qt_try_modal(focusW, e->keyType))
         return;
@@ -847,7 +855,40 @@ void QApplicationPrivate::processKeyEvent(QWindowSystemInterfacePrivate::KeyEven
         QApplication::sendSpontaneousEvent(focusW, &ev);
     } else {
         QKeyEvent ev(e->keyType, e->key, e->modifiers, e->unicode, e->repeat, e->repeatCount);
-        QApplication::sendSpontaneousEvent(focusW, &ev);
+#ifdef Q_OS_ANDROID
+        if ((e->keyType == QEvent::KeyRelease && e->key == Qt::Key_Close) || e->key == Qt::Key_Menu)
+        {
+            if (e->key == Qt::Key_Menu)
+            {
+                QObject * menuObject=focusW;
+                foreach (QObject* obj, focusW->children())
+                    if (obj->inherits("QMenuBar"))
+                    {
+                        menuObject = obj;
+                        break;
+                    }
+                QApplication::sendEvent(menuObject, &ev);
+            }
+            else
+            {
+                if (!focusW)
+                    qApp->quit();
+                else
+                {
+                    QApplication::sendEvent(focusW, &ev);
+                    if (!ev.isAccepted() && e->key == Qt::Key_Close)
+                    {
+                        if (focusW)
+                            focusW->close();
+                        else
+                            qApp->quit();
+                    }
+                }
+            }
+        }
+        else
+#endif
+            QApplication::sendSpontaneousEvent(focusW, &ev);
     }
 }
 

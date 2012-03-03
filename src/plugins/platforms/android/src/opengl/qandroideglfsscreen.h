@@ -68,6 +68,12 @@ public:
 
     QAndroidEglFSPlatformContext *platformContext() const;
 
+    void removeWindow(QPlatformWindow * window);
+    void addWindow(QPlatformWindow * window);
+    void raise(QPlatformWindow * window);
+    void lower(QPlatformWindow * window);
+    QWidget * topWindow();
+
 public slots:
     void surfaceChanged();
     void updateTLWindows();
@@ -90,6 +96,8 @@ private:
     EGLDisplay m_display;
     EGLSurface m_windowSurface;
     EGLConfig  m_config;
+    QList<QPlatformWindow *> windowStack;
+
 };
 
 QT_END_NAMESPACE

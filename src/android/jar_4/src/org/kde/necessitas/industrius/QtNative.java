@@ -35,6 +35,7 @@ import android.content.Intent;
 import android.net.Uri;
 import android.util.Log;
 import android.view.MotionEvent;
+import android.view.Menu;
 
 public class QtNative
 {
@@ -324,6 +325,16 @@ public class QtNative
         });
     }
 
+    private static void resetSoftwareKeyboard()
+    {
+        runAction(new Runnable() {
+            @Override
+            public void run() {
+                m_activityDelegate.resetSoftwareKeyboard();
+            }
+        });
+    }
+
     private static void hideSoftwareKeyboard()
     {
         runAction(new Runnable() {
@@ -341,6 +352,50 @@ public class QtNative
             public void run() {
                 m_activityDelegate.setFullScreen(fullScreen);
                 updateWindow();
+            }
+        });
+    }
+
+    private static void showOptionsMenu()
+    {
+        runAction(new Runnable() {
+            @Override
+            public void run() {
+                if (m_activity != null)
+                    m_activity.openOptionsMenu();
+            }
+        });
+    }
+
+    private static void hideOptionsMenu()
+    {
+        runAction(new Runnable() {
+            @Override
+            public void run() {
+                if (m_activity != null)
+                    m_activity.closeOptionsMenu();
+            }
+        });
+    }
+
+    private static void showContextMenu()
+    {
+        runAction(new Runnable() {
+            @Override
+            public void run() {
+                if (m_activity != null)
+                    m_activity.openContextMenu(m_activityDelegate.getQtSurface());
+            }
+        });
+    }
+
+    private static void hideContextMenu()
+    {
+        runAction(new Runnable() {
+            @Override
+            public void run() {
+                if (m_activity != null)
+                    m_activity.closeContextMenu();
             }
         });
     }
@@ -375,4 +430,10 @@ public class QtNative
     // window methods
     public static native void updateWindow();
     // window methods
+
+        // options menu methods
+    public static native void createOptionsMenu(Menu menu);
+    public static native boolean prepareOptionsMenu(Menu menu);
+    public static native boolean optionsItemSelected(int groupId, int itemId);
+    // options menu methods
 }

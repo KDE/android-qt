@@ -93,8 +93,8 @@ private slots:
     virtual void sendEvent(const QInputMethodEvent &event);
 
 private:
-     ExtractedText m_extractedText;
-     QString m_composingText;
+    ExtractedText m_extractedText;
+    QString m_composingText;
 };
 
 #endif // ANDROIDINPUTCONTEXT_H

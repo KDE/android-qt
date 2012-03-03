@@ -53,9 +53,11 @@ class QAndroidEglFSWindow : public QPlatformWindow
 {
 public:
     QAndroidEglFSWindow(QWidget *w, QAndroidEglFSScreen *screen);
-
+    ~QAndroidEglFSWindow();
     void setGeometry(const QRect &);
     WId winId() const;
+    virtual void raise();
+    virtual void lower();
     virtual Qt::WindowFlags setWindowFlags(Qt::WindowFlags type);
     virtual Qt::WindowFlags windowFlags() const;
     QPlatformGLContext *glContext() const;

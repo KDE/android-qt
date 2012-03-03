@@ -220,6 +220,7 @@ qpa {
                 kernel/qplatformscreen_qpa.h \
                 kernel/qplatformintegrationfactory_qpa_p.h \
                 kernel/qplatformintegrationplugin_qpa.h \
+                kernel/qplatformmenu_qpa.h \
                 kernel/qplatformwindow_qpa.h \
                 kernel/qplatformwindowformat_qpa.h \
                 kernel/qplatformglcontext_qpa.h \

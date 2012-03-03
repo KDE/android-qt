@@ -29,6 +29,7 @@
 #define QANDROIDPLATFORMINTERATION_H
 
 #include <QPlatformIntegration>
+#include <QPlatformMenu>
 #include <QPlatformNativeInterface>
 #include <jni.h>
 
@@ -43,7 +44,7 @@ public:
     virtual void *nativeResourceForWidget(const QByteArray &resource, QWidget *widget);
 };
 
-class QAndroidPlatformIntegration : public QPlatformIntegration
+class QAndroidPlatformIntegration : public QPlatformIntegration, public QPlatformMenu
 {
     friend class QAndroidPlatformScreen;
     friend class QAndroidEglFSScreen;
@@ -65,13 +66,21 @@ public:
     QPlatformFontDatabase *fontDatabase() const;
     virtual QPlatformNativeInterface *nativeInterface() const;
     virtual QPlatformDesktopService * platformDesktopService();
+    virtual QPlatformMenu * platformMenu();
     virtual bool hasCapability(Capability cap) const;
-
     void pauseApp();
     void resumeApp();
     static void setDefaultDisplayMetrics(int gw, int gh, int sw, int sh);
     static void setDefaultDesktopSize(int gw, int gh);
 
+    virtual void showMenuBar(const QList<QAction*> & menuBarActionList);
+    virtual void hideMenuBar();
+
+    virtual void showMenu(const QList<QAction*> & menuActionList);
+    virtual void hideMenu();
+
+    virtual const QList<QAction*> & menuBarActionList();
+    virtual const QList<QAction*> & menuActionList();
 private:
     QThread * m_mainThread;
     QPlatformScreen *m_primaryScreen;
@@ -82,8 +91,8 @@ private:
     QPainter *compositePainter;
     QAndroidPlatformNativeInterface * m_androidPlatformNativeInterface;
     QAndroidPlatformDesktopService * m_androidPlatformDesktopService;
-
-
+    QList<QAction*> m_menuBarActionList;
+    QList<QAction*> m_menuActionList;
 
 #ifdef ANDROID_PLUGIN_OPENGL
 public:

@@ -231,6 +231,10 @@ QPlatformDesktopService * QPlatformIntegration::platformDesktopService()
     return ds;
 }
 
+QPlatformMenu * QPlatformIntegration::platformMenu()
+{
+    return 0;
+}
 
 
 QT_END_NAMESPACE

@@ -52,7 +52,7 @@ static jboolean commitText(JNIEnv *env, jobject /*thiz*/, jstring text, jint new
     QString str((const QChar*)jstr,  env->GetStringLength(text));
     env->ReleaseStringChars(text, jstr);
     return m_androidInputContext->commitText( str
-                                              , newCursorPosition );
+                                            , newCursorPosition );
 }
 
 static jboolean deleteSurroundingText(JNIEnv */*env*/, jobject /*thiz*/, jint leftLength, jint rightLength)
@@ -459,9 +459,9 @@ jboolean QAndroidInputContext::setComposingText(const QString & text, jint newCu
     m_composingText=text;
     QList<QInputMethodEvent::Attribute> attributes;
     attributes.append(QInputMethodEvent::Attribute(QInputMethodEvent::Cursor,
-                                                   cursorPos+newCursorPosition,
-                                                   1,
-                                                   QVariant()));
+                                                cursorPos+newCursorPosition,
+                                                1,
+                                                QVariant()));
     QInputMethodEvent event(m_composingText, attributes);
     QMetaObject::invokeMethod(this, "sendEvent", Qt::AutoConnection, Q_ARG(QInputMethodEvent, event));
     return JNI_TRUE;
@@ -472,9 +472,9 @@ jboolean QAndroidInputContext::setSelection(jint start, jint end)
     finishComposingText();
     QList<QInputMethodEvent::Attribute> attributes;
     attributes.append(QInputMethodEvent::Attribute(QInputMethodEvent::Selection,
-                                                   end,
-                                                   start,
-                                                   QVariant()));
+                                                end,
+                                                start,
+                                                QVariant()));
     QInputMethodEvent event(QString(), attributes);
     QMetaObject::invokeMethod(this, "sendEvent", Qt::AutoConnection, Q_ARG(QInputMethodEvent, event));
     return JNI_TRUE;

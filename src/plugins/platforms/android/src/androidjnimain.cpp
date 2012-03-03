@@ -42,6 +42,9 @@
 #include <QWindowSystemInterface>
 #include <QApplication>
 #include <QTouchEvent>
+#include <QMainWindow>
+#include <QAction>
+#include <QMenu>
 
 #include <qabstracteventdispatcher.h>
 
@@ -63,6 +66,7 @@ static jclass m_applicationClass  = NULL;
 static jobject m_classLoaderObject = NULL;
 static jmethodID m_loadClassMethodID = NULL;
 static AAssetManager* m_assetManager = NULL;
+static jobject m_resourcesObj;
 
 
 #ifndef ANDROID_PLUGIN_OPENGL
@@ -91,11 +95,10 @@ static QMutex m_surfaceMutex;
 static QSemaphore m_pauseApplicationSemaphore;
 static QMutex m_pauseApplicationMutex;
 
-static QAndroidPlatformIntegration * m_androidGraphicsSystem=0;
+static QAndroidPlatformIntegration * m_androidPlatformIntegration=0;
 static int m_desktopWidthPixels=0, m_desktopHeightPixels=0;
 static const char * const QtNativeClassPathName = "org/kde/necessitas/industrius/QtNative";
 static const char * const ContextWrapperClassPathName = "android/content/ContextWrapper";
-
 
 static volatile bool m_pauseApplication;
 
@@ -104,6 +107,13 @@ static jmethodID m_showSoftwareKeyboardMethodID=0;
 static jmethodID m_resetSoftwareKeyboardMethodID=0;
 static jmethodID m_hideSoftwareKeyboardMethodID=0;
 // Software keyboard support
+
+// Menu support
+static jmethodID m_showOptionsMenuMethodID=0;
+static jmethodID m_hideOptionsMenuMethodID=0;
+static jmethodID m_showContextMenuMethodID=0;
+static jmethodID m_hideContextMenuMethodID=0;
+// Menu support
 
 static jmethodID m_setFullScreenMethodID=0;
 
@@ -190,7 +200,7 @@ namespace QtAndroid
         for (unsigned y=0;y<height;y++)
             memcpy(screenBits+y*sbpl+sposx*bpp,
                     imageBits+y*ibpl+iposx*bpp,
-                   width*bpp);
+                width*bpp);
         AndroidBitmap_unlockPixels(env, m_surface);
 
         env->CallStaticVoidMethod(m_applicationClass, m_redrawSurfaceMethodID,
@@ -222,7 +232,7 @@ namespace QtAndroid
     void setAndroidPlatformIntegration(QAndroidPlatformIntegration * androidGraphicsSystem)
     {
         m_surfaceMutex.lock();
-        m_androidGraphicsSystem=androidGraphicsSystem;
+        m_androidPlatformIntegration=androidGraphicsSystem;
         m_surfaceMutex.unlock();
     }
 
@@ -286,7 +296,7 @@ namespace QtAndroid
     jclass findClass(const QString & className, JNIEnv* env)
     {
         return (jclass)env->CallObjectMethod(m_classLoaderObject, m_loadClassMethodID
-                                              , env->NewString((jchar*)className.constData(), (jsize)className.length()));
+                                            , env->NewString((jchar*)className.constData(), (jsize)className.length()));
     }
 
     AAssetManager * assetManager()
@@ -299,6 +309,65 @@ namespace QtAndroid
         return m_applicationClass;
     }
 
+    void showOptionsMenu()
+    {
+        JNIEnv* env;
+        if (m_javaVM->AttachCurrentThread(&env, NULL)<0)
+        {
+            qCritical()<<"AttachCurrentThread failed";
+            return;
+        }
+        if (!m_showOptionsMenuMethodID)
+            m_showOptionsMenuMethodID=env->GetStaticMethodID(m_applicationClass, "showOptionsMenu", "()V");
+        qDebug()<<"showOptionsMenu";
+        env->CallStaticVoidMethod(m_applicationClass, m_showOptionsMenuMethodID);
+        m_javaVM->DetachCurrentThread();
+    }
+
+    void hideOptionsMenu()
+    {
+        JNIEnv* env;
+        if (m_javaVM->AttachCurrentThread(&env, NULL)<0)
+        {
+            qCritical()<<"AttachCurrentThread failed";
+            return;
+        }
+        if (!m_hideOptionsMenuMethodID)
+            m_hideOptionsMenuMethodID=env->GetStaticMethodID(m_applicationClass, "hideOptionsMenu", "()V");
+        qDebug()<<"hideOptionsMenu";
+        env->CallStaticVoidMethod(m_applicationClass, m_hideOptionsMenuMethodID);
+        m_javaVM->DetachCurrentThread();
+    }
+
+    void showContextMenu()
+    {
+        JNIEnv* env;
+        if (m_javaVM->AttachCurrentThread(&env, NULL)<0)
+        {
+            qCritical()<<"AttachCurrentThread failed";
+            return;
+        }
+        if (!m_showContextMenuMethodID)
+            m_showContextMenuMethodID=env->GetStaticMethodID(m_applicationClass, "showContextMenu", "()V");
+        qDebug()<<"showContextMenu";
+        env->CallStaticVoidMethod(m_applicationClass, m_showContextMenuMethodID);
+        m_javaVM->DetachCurrentThread();
+    }
+
+    void hideContextMenu()
+    {
+        JNIEnv* env;
+        if (m_javaVM->AttachCurrentThread(&env, NULL)<0)
+        {
+            qCritical()<<"AttachCurrentThread failed";
+            return;
+        }
+        if (!m_hideContextMenuMethodID)
+            m_hideContextMenuMethodID=env->GetStaticMethodID(m_applicationClass, "hideContextMenu", "()V");
+        qDebug()<<"hideContextMenu";
+        env->CallStaticVoidMethod(m_applicationClass, m_hideContextMenuMethodID);
+        m_javaVM->DetachCurrentThread();
+    }
 }
 
 static jboolean startQtAndroidPlugin(JNIEnv* /*env*/, jobject /*object*//*, jobject applicationAssetManager*/)
@@ -310,7 +379,7 @@ static jboolean startQtAndroidPlugin(JNIEnv* /*env*/, jobject /*object*//*, jobj
     m_waitForWindow=false;
 #endif
 
-    m_androidGraphicsSystem=0;
+    m_androidPlatformIntegration=0;
     m_androidAssetsFileEngineHandler = new AndroidAssetsFileEngineHandler();
 
 #ifdef ANDROID_PLUGIN_OPENGL
@@ -324,8 +393,8 @@ static void pauseQtApp(JNIEnv */*env*/, jobject /*thiz*/)
 {
     m_surfaceMutex.lock();
     m_pauseApplicationMutex.lock();
-    if (m_androidGraphicsSystem)
-        m_androidGraphicsSystem->pauseApp();
+    if (m_androidPlatformIntegration)
+        m_androidPlatformIntegration->pauseApp();
     m_pauseApplication=true;
     m_pauseApplicationMutex.unlock();
     m_surfaceMutex.unlock();
@@ -335,8 +404,8 @@ static void resumeQtApp(JNIEnv */*env*/, jobject /*thiz*/)
 {
     m_surfaceMutex.lock();
     m_pauseApplicationMutex.lock();
-    if (m_androidGraphicsSystem)
-        m_androidGraphicsSystem->resumeApp();
+    if (m_androidPlatformIntegration)
+        m_androidPlatformIntegration->resumeApp();
 
     if (m_pauseApplication)
         m_pauseApplicationSemaphore.release();
@@ -356,7 +425,7 @@ static void quitQtAndroidPlugin(JNIEnv* env, jclass /*clazz*/)
 #else
     Q_UNUSED(env);
 #endif
-    m_androidGraphicsSystem=0;
+    m_androidPlatformIntegration=0;
     delete m_androidAssetsFileEngineHandler;
 }
 
@@ -403,10 +472,10 @@ static void setSurface(JNIEnv *env, jobject /*thiz*/, jobject jSurface)
     qDebug()<<"setSurface"<<ANativeWindow_fromSurface(env, jSurface)<<(EGLNativeWindowType)env->GetIntField(jSurface, m_surfaceFieldID);
     if (m_waitForWindow)
         m_waitForWindowSemaphore.release();
-    if (m_androidGraphicsSystem)
+    if (m_androidPlatformIntegration)
     {
         m_surfaceMutex.unlock();
-        m_androidGraphicsSystem->surfaceChanged();
+        m_androidPlatformIntegration->surfaceChanged();
     }
     else
         m_surfaceMutex.unlock();
@@ -425,50 +494,50 @@ static void destroySurface(JNIEnv * env, jobject /*thiz*/)
 }
 
 static void setDisplayMetrics(JNIEnv* /*env*/, jclass /*clazz*/,
-                              jint /*widthPixels*/, jint /*heightPixels*/,
-                              jint desktopWidthPixels, jint desktopHeightPixels,
-                              jdouble xdpi, jdouble ydpi)
+                            jint /*widthPixels*/, jint /*heightPixels*/,
+                            jint desktopWidthPixels, jint desktopHeightPixels,
+                            jdouble xdpi, jdouble ydpi)
 {
     m_desktopWidthPixels=desktopWidthPixels;
     m_desktopHeightPixels=desktopHeightPixels;
 
-    if (!m_androidGraphicsSystem)
+    if (!m_androidPlatformIntegration)
         QAndroidPlatformIntegration::setDefaultDisplayMetrics(desktopWidthPixels,desktopHeightPixels,
                                                                 qRound((double)desktopWidthPixels  / xdpi * 25.4 ),
                                                                 qRound((double)desktopHeightPixels / ydpi * 25.4 ));
     else
     {
-        m_androidGraphicsSystem->setDisplayMetrics(qRound((double)desktopWidthPixels  / xdpi * 25.4 ),
-                                                   qRound((double)desktopHeightPixels / ydpi * 25.4 ));
-        m_androidGraphicsSystem->setDesktopSize(desktopWidthPixels, desktopHeightPixels);
+        m_androidPlatformIntegration->setDisplayMetrics(qRound((double)desktopWidthPixels  / xdpi * 25.4 ),
+                                                qRound((double)desktopHeightPixels / ydpi * 25.4 ));
+        m_androidPlatformIntegration->setDesktopSize(desktopWidthPixels, desktopHeightPixels);
     }
 }
 
 static void mouseDown(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/, jint x, jint y)
 {
     QPoint globalPos(x,y);
-    QWidget *tlw = m_androidGraphicsSystem?m_androidGraphicsSystem->getPrimaryScreen()->topLevelAt(globalPos):0;
+    QWidget *tlw = m_androidPlatformIntegration?m_androidPlatformIntegration->getPrimaryScreen()->topLevelAt(globalPos):0;
     QPoint localPos=tlw?globalPos-tlw->pos():globalPos;
     QWindowSystemInterface::handleMouseEvent(tlw, localPos, globalPos
-                                             , Qt::MouseButtons(Qt::LeftButton));
+                                            , Qt::MouseButtons(Qt::LeftButton));
 }
 
 static void mouseUp(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/, jint x, jint y)
 {
     QPoint globalPos(x,y);
-    QWidget *tlw = m_androidGraphicsSystem?m_androidGraphicsSystem->getPrimaryScreen()->topLevelAt(globalPos):0;
+    QWidget *tlw = m_androidPlatformIntegration?m_androidPlatformIntegration->getPrimaryScreen()->topLevelAt(globalPos):0;
     QPoint localPos=tlw?globalPos-tlw->pos():globalPos;
     QWindowSystemInterface::handleMouseEvent(tlw, localPos, globalPos
-                                             , Qt::MouseButtons(Qt::NoButton));
+                                            , Qt::MouseButtons(Qt::NoButton));
 }
 
 static void mouseMove(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/, jint x, jint y)
 {
     QPoint globalPos(x,y);
-    QWidget *tlw = m_androidGraphicsSystem?m_androidGraphicsSystem->getPrimaryScreen()->topLevelAt(globalPos):0;
+    QWidget *tlw = m_androidPlatformIntegration?m_androidPlatformIntegration->getPrimaryScreen()->topLevelAt(globalPos):0;
     QPoint localPos=tlw?globalPos-tlw->pos():globalPos;
     QWindowSystemInterface::handleMouseEvent(tlw, localPos, globalPos
-                                             , Qt::MouseButtons(Qt::LeftButton));
+                                            , Qt::MouseButtons(Qt::LeftButton));
 }
 
 static void touchBegin(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/)
@@ -501,9 +570,9 @@ static void touchAdd(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/, jint id,
     touchPoint.isPrimary=primary;
     touchPoint.state=state;
     touchPoint.area=QRectF(x-((double)m_desktopWidthPixels*size)/2,
-                           y-((double)m_desktopHeightPixels*size)/2,
-                           (double)m_desktopWidthPixels*size,
-                           (double)m_desktopHeightPixels*size);
+                        y-((double)m_desktopHeightPixels*size)/2,
+                        (double)m_desktopWidthPixels*size,
+                        (double)m_desktopHeightPixels*size);
     m_touchPoints.push_back(touchPoint);
 }
 
@@ -706,15 +775,7 @@ static void keyDown(JNIEnv */*env*/, jobject /*thiz*/, jint key, jint unicode, j
     if (modifier & 4)
         modifiers|=Qt::MetaModifier;
 
-    int mappedKey=mapAndroidKey(key);
-//    if (mappedKey==Qt::Key_Close)
-//    {
-//        qDebug()<<"handleCloseEvent";
-//        QWindowSystemInterface::handleCloseEvent(QApplication::topLevelWidgets().last());
-//    }
-//    else
-    // sometimes this method doesn't wakeup the loop, report this issue to nokia !!!
-    QWindowSystemInterface::handleKeyEvent(0, QEvent::KeyPress, mappedKey, modifiers, QChar(unicode),true);
+    QWindowSystemInterface::handleKeyEvent(0, QEvent::KeyPress, mapAndroidKey(key), modifiers, QChar(unicode),true);
 }
 
 static void keyUp(JNIEnv */*env*/, jobject /*thiz*/, jint key, jint unicode, jint modifier)
@@ -730,22 +791,7 @@ static void keyUp(JNIEnv */*env*/, jobject /*thiz*/, jint key, jint unicode, jin
     if (modifier & 4)
         modifiers|=Qt::MetaModifier;
 
-    int mappedKey=mapAndroidKey(key);
-    if (mappedKey==Qt::Key_Close)
-    {
-        if(!m_androidGraphicsSystem || !qApp)
-            return;
-        qApp->quit();
-//        qDebug()<<"handleCloseEvent"<<m_androidGraphicsSystem->getPrimaryScreen()->topWindow()<<qApp->activeWindow();
-//#warning FIXME
-//        // sometimes qApp->activeWindow() is null, it should never be null when you have at least one widget visible, report this issue to nokia !!!
-//        // how to reproduce it ?
-//        // create a dialog, create another dialog form previous dialog, close the last dialog.
-//        QWindowSystemInterface::handleCloseEvent(qApp->activeWindow()?qApp->activeWindow():m_androidGraphicsSystem->getPrimaryScreen()->topWindow());
-    }
-    else
-        // sometimes this method doesn't wakeup the loop, report this issue to nokia !!!
-        QWindowSystemInterface::handleKeyEvent(0, QEvent::KeyRelease, mapAndroidKey(key), modifiers, QChar(unicode),true);
+    QWindowSystemInterface::handleKeyEvent(0, QEvent::KeyRelease, mapAndroidKey(key), modifiers, QChar(unicode),true);
 }
 
 static void lockSurface(JNIEnv */*env*/, jobject /*thiz*/)
@@ -760,11 +806,192 @@ static void unlockSurface(JNIEnv */*env*/, jobject /*thiz*/)
 
 static void updateWindow(JNIEnv */*env*/, jobject /*thiz*/)
 {
-    if(!m_androidGraphicsSystem ||  !qApp)
+    if(!m_androidPlatformIntegration ||  !qApp)
         return;
 
     foreach(QWidget * w, qApp->topLevelWidgets())
         w->update();
+}
+
+static jclass s_menuClass = NULL;
+static jmethodID s_menu_add = NULL;
+static jmethodID s_menu_addSubMenu = NULL;
+static jmethodID s_menu_removeGroup = NULL;
+static jmethodID s_menuitem_setCheckable = NULL;
+static jmethodID s_menuitem_setChecked = NULL;
+static jmethodID s_menuitem_setEnabled = NULL;
+static jmethodID s_menuitem_setVisible = NULL;
+static jmethodID s_menuitem_setIcon = NULL;
+static const jint menuGroupId = 1234;
+static QList<QWeakPointer<QAction> > menuActionList;
+
+static jclass s_bitmapClass = NULL;
+static jmethodID s_bitmap_create = NULL;
+static jobject s_bitmap_config = NULL;
+
+static jclass s_bitmapDrawableClass = NULL;
+static jmethodID s_bitmapDrawable_init = NULL;
+
+static void createOptionsMenu(JNIEnv *env, jobject /*thiz*/, jobject /*menu*/)
+{
+    if (s_menuClass)
+        return;
+
+    jclass clazz = env->FindClass("android/view/Menu");
+    if (!clazz) {
+        __android_log_print(ANDROID_LOG_FATAL, "Qt", "Failed to find android.view.Menu class");
+        return;
+    }
+    s_menuClass = static_cast<jclass>(env->NewGlobalRef(clazz));
+    env->DeleteLocalRef(clazz);
+
+    s_menu_add = env->GetMethodID(s_menuClass, "add", "(IIILjava/lang/CharSequence;)Landroid/view/MenuItem;");
+    s_menu_addSubMenu = env->GetMethodID(s_menuClass, "addSubMenu", "(IIILjava/lang/CharSequence;)Landroid/view/SubMenu;");
+    s_menu_removeGroup = env->GetMethodID(s_menuClass, "removeGroup", "(I)V");
+
+    clazz = env->FindClass("android/view/MenuItem");
+    if (!clazz) {
+        __android_log_print(ANDROID_LOG_FATAL, "Qt", "Failed to find android.view.MenuItem class");
+        return;
+    }
+    s_menuitem_setCheckable = env->GetMethodID(clazz, "setCheckable", "(Z)Landroid/view/MenuItem;");
+    s_menuitem_setChecked = env->GetMethodID(clazz, "setChecked", "(Z)Landroid/view/MenuItem;");
+    s_menuitem_setEnabled = env->GetMethodID(clazz, "setEnabled", "(Z)Landroid/view/MenuItem;");
+    s_menuitem_setVisible = env->GetMethodID(clazz, "setVisible", "(Z)Landroid/view/MenuItem;");
+    s_menuitem_setIcon = env->GetMethodID(clazz, "setIcon", "(Landroid/graphics/drawable/Drawable;)Landroid/view/MenuItem;");
+
+    clazz = env->FindClass("android/graphics/Bitmap");
+    if (!clazz) {
+        __android_log_print(ANDROID_LOG_FATAL, "Qt", "Failed to find android.graphics.Bitmap class");
+        return;
+    }
+    s_bitmapClass = static_cast<jclass>(env->NewGlobalRef(clazz));
+    env->DeleteLocalRef(clazz);
+    s_bitmap_create = env->GetStaticMethodID(s_bitmapClass, "createBitmap", "(IILandroid/graphics/Bitmap$Config;)Landroid/graphics/Bitmap;");
+    if (!s_bitmap_create) {
+        __android_log_print(ANDROID_LOG_FATAL, "Qt", "Failed to find android.graphics.Bitmap.createBitmap");
+        return;
+    }
+
+    clazz = env->FindClass("android/graphics/Bitmap$Config");
+    jfieldID rgb8888FieldID = env->GetStaticFieldID(clazz, "ARGB_8888", "Landroid/graphics/Bitmap$Config;");
+    s_bitmap_config = env->NewGlobalRef(env->GetStaticObjectField(clazz, rgb8888FieldID));
+    if (!s_bitmap_config) {
+        __android_log_print(ANDROID_LOG_FATAL, "Qt", "Failed to find android/graphics/Bitmap$Config: ARGB_8888");
+        return;
+    }
+
+    clazz = env->FindClass("android/graphics/drawable/BitmapDrawable");
+    if (!clazz) {
+        __android_log_print(ANDROID_LOG_FATAL, "Qt", "Failed to find android.graphics.drawable.BitmapDrawable class");
+        return;
+    }
+    s_bitmapDrawableClass = static_cast<jclass>(env->NewGlobalRef(clazz));
+    env->DeleteLocalRef(clazz);
+    s_bitmapDrawable_init = env->GetMethodID(s_bitmapDrawableClass, "<init>", "(Landroid/content/res/Resources;Landroid/graphics/Bitmap;)V");
+    if (!s_bitmap_create) {
+        __android_log_print(ANDROID_LOG_FATAL, "Qt", "Failed to find android.graphics.drawable.BitmapDrawable.<init>");
+        return;
+    }
+}
+
+static void addActionToMenu(JNIEnv *env, jobject menu, QAction* action)
+{
+    QString txt = action->text();
+    jstring str = env->NewString(reinterpret_cast<const jchar*>(txt.data()), txt.length());
+    QWeakPointer<QAction> wp(action);
+    jint id = menuActionList.indexOf(wp);
+    if (id < 0) {
+        id = menuActionList.size();
+        menuActionList.append(wp);
+    }
+
+    jobject menuitem = env->CallObjectMethod(menu, s_menu_add, menuGroupId, id, jint(0) /*order*/, str);
+    if (!action->isVisible()) {
+        env->DeleteLocalRef(env->CallObjectMethod(menuitem, s_menuitem_setVisible, JNI_FALSE));
+    }
+    if (!action->isEnabled()) {
+        env->DeleteLocalRef(env->CallObjectMethod(menuitem, s_menuitem_setEnabled, JNI_FALSE));
+    }
+    if (action->isCheckable()) {
+        env->DeleteLocalRef(env->CallObjectMethod(menuitem, s_menuitem_setCheckable, JNI_TRUE));
+    }
+    if (action->isChecked()) {
+        env->DeleteLocalRef(env->CallObjectMethod(menuitem, s_menuitem_setChecked, JNI_TRUE));
+    }
+    if (!action->icon().isNull()) {
+#define BM_SZ 32
+        QImage im = action->icon().pixmap(BM_SZ).toImage().convertToFormat(QImage::Format_ARGB32);
+        jobject bitmap = env->CallStaticObjectMethod(s_bitmapClass, s_bitmap_create, BM_SZ, BM_SZ, s_bitmap_config);
+
+        int ret;
+        AndroidBitmapInfo  info;
+        if ((ret = AndroidBitmap_getInfo(env, bitmap, &info)) < 0) {
+            __android_log_print(ANDROID_LOG_FATAL,"Qt","AndroidBitmap_getInfo() failed ! error=%d", ret);
+            return;
+        }
+
+        void* pixels;
+        if ((ret = AndroidBitmap_lockPixels(env, bitmap, &pixels)) < 0) {
+            __android_log_print(ANDROID_LOG_FATAL,"Qt","AndroidBitmap_lockPixels() failed ! error=%d", ret);
+        }
+        memcpy(pixels, im.constBits(), im.byteCount());
+        AndroidBitmap_unlockPixels(env, bitmap);
+
+        jobject bitmapDrawable = env->NewObject(s_bitmapDrawableClass, s_bitmapDrawable_init, m_resourcesObj, bitmap);
+        env->DeleteLocalRef(env->CallObjectMethod(menuitem, s_menuitem_setIcon, bitmapDrawable));
+        env->DeleteLocalRef(bitmap);
+        env->DeleteLocalRef(bitmapDrawable);
+    }
+    env->DeleteLocalRef(menuitem);
+    env->DeleteLocalRef(str);
+}
+
+static jboolean prepareOptionsMenu(JNIEnv *env, jobject /*thiz*/, jobject menu)
+{
+    // remove all actions from the menu first
+    env->CallVoidMethod(menu, s_menu_removeGroup, menuGroupId);
+
+    if (!m_androidPlatformIntegration)
+            return JNI_FALSE;
+
+    const QList<QAction*> & actions = m_androidPlatformIntegration->menuBarActionList();
+
+    // and add actions to menu
+    foreach (QAction* action, actions)
+    {
+        QMenu *subMenu = action->menu();
+        if (subMenu)
+        {
+            QString txt = action->text();
+            jstring str = env->NewString(reinterpret_cast<const jchar*>(txt.data()), txt.length());
+            jobject submenu =  env->CallObjectMethod(menu, s_menu_addSubMenu, menuGroupId, jint(-1), jint(0) , str);
+            env->DeleteLocalRef(str);
+
+            foreach (QAction* subAction, subMenu->actions())
+                addActionToMenu(env, submenu, subAction);
+
+            env->DeleteLocalRef(submenu);
+        }
+        else
+            addActionToMenu(env, menu, action);
+    }
+    return JNI_TRUE;
+}
+
+static jboolean optionsItemSelected(JNIEnv */*env*/, jobject /*thiz*/, jint groupId, jint itemId)
+{
+    updateWindow(0,0);
+    if (groupId == menuGroupId)
+    {
+        if (itemId < 0 || itemId >= menuActionList.size())
+            return JNI_FALSE;
+        QAction* action = menuActionList[itemId].data();
+        if (action)
+            QMetaObject::invokeMethod(action, "trigger", Qt::AutoConnection);
+        return JNI_TRUE;
+    }
+    return JNI_FALSE;
 }
 
 static JNINativeMethod methods[] = {
@@ -786,12 +1013,15 @@ static JNINativeMethod methods[] = {
     {"mouseUp", "(III)V", (void *)mouseUp},
     {"mouseMove", "(III)V", (void *)mouseMove},
     {"keyDown", "(III)V", (void *)keyDown},
-    {"keyUp", "(III)V", (void *)keyUp}
+    {"keyUp", "(III)V", (void *)keyUp},
+    {"createOptionsMenu", "(Landroid/view/Menu;)V", (void *)createOptionsMenu},
+    {"prepareOptionsMenu", "(Landroid/view/Menu;)Z", (void *)prepareOptionsMenu},
+    {"optionsItemSelected", "(II)Z", (void *)optionsItemSelected}
 };
 
 /*
- * Register several native methods for one class.
- */
+* Register several native methods for one class.
+*/
 static int registerNativeMethods(JNIEnv* env, const char* className,
     JNINativeMethod* gMethods, int numMethods)
 {
@@ -837,13 +1067,15 @@ static int registerNativeMethods(JNIEnv* env, const char* className,
     methodID=env->GetMethodID(clazz, "getAssets", "()Landroid/content/res/AssetManager;");
     m_assetManager=AAssetManager_fromJava(env, env->CallObjectMethod(activityObject, methodID));
 
+    methodID=env->GetMethodID(clazz, "getResources", "()Landroid/content/res/Resources;");
+    m_resourcesObj=env->NewGlobalRef(env->CallObjectMethod(activityObject, methodID));
 
     return JNI_TRUE;
 }
 
 /*
- * Register native methods for all classes we know about.
- */
+* Register native methods for all classes we know about.
+*/
 static int registerNatives(JNIEnv* env)
 {
     if (!registerNativeMethods(env, QtNativeClassPathName, methods, sizeof(methods) / sizeof(methods[0])))
