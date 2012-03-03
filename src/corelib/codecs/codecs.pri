@@ -25,6 +25,7 @@ unix|win32-g++ {
         contains(QT_CONFIG,iconv) {
                 HEADERS += codecs/qiconvcodec_p.h
                 SOURCES += codecs/qiconvcodec.cpp
+                blackberry-*-qcc:LIBS_PRIVATE *= -liconv
         } else:contains(QT_CONFIG,gnu-libiconv) {
                 HEADERS += codecs/qiconvcodec_p.h
                 SOURCES += codecs/qiconvcodec.cpp

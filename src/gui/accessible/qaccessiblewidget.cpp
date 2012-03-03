@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -888,12 +888,15 @@ bool QAccessibleWidget::doAction(int action, int child, const QVariantList &para
     if (action == SetFocus || action == DefaultAction) {
         if (child || !widget()->isEnabled())
             return false;
-        if (widget()->focusPolicy() != Qt::NoFocus)
-            widget()->setFocus();
-        else if (widget()->isWindow())
-            widget()->activateWindow();
-        else
+
+        if ((widget()->focusPolicy() == Qt::NoFocus) && (!widget()->isWindow()))
             return false;
+
+        if (!widget()->isWindow())
+            widget()->setFocus();
+
+        widget()->activateWindow();
+
         return true;
     } else if (action > 0) {
         if (QAction *act = widget()->actions().value(action - 1)) {
@@ -937,7 +940,7 @@ QAccessible::State QAccessibleWidget::state(int child) const
     QWidget *w = widget();
     if (w->testAttribute(Qt::WA_WState_Visible) == false)
         state |= Invisible;
-    if (w->focusPolicy() != Qt::NoFocus && w->isActiveWindow())
+    if (w->focusPolicy() != Qt::NoFocus)
         state |= Focusable;
     if (w->hasFocus())
         state |= Focused;

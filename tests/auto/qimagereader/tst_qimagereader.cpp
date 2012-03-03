@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -870,7 +870,7 @@ void tst_QImageReader::animatedGif()
     }
 }
 
-// http://bugreports.qt.nokia.com/browse/QTBUG-6696
+// http://bugreports.qt-project.org/browse/QTBUG-6696
 // Check the count of images in various call orders...
 void tst_QImageReader::gifImageCount()
 {

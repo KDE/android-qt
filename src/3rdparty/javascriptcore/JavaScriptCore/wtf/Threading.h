@@ -73,6 +73,8 @@
 #include <windows.h>
 #elif OS(DARWIN)
 #include <libkern/OSAtomic.h>
+#elif OS(QNX)
+#include <atomic.h>
 #elif COMPILER(GCC) && !OS(SYMBIAN)
 #if (__GNUC__ > 4) || ((__GNUC__ == 4) && (__GNUC_MINOR__ >= 2))
 #ifdef ANDROID
@@ -236,6 +238,12 @@ inline int atomicDecrement(int volatile* addend) { return InterlockedDecrement(r
 inline int atomicIncrement(int volatile* addend) { return OSAtomicIncrement32Barrier(const_cast<int*>(addend)); }
 inline int atomicDecrement(int volatile* addend) { return OSAtomicDecrement32Barrier(const_cast<int*>(addend)); }
 
+
+#elif OS(QNX)
+
+// component functions take and return unsigned
+inline int atomicIncrement(int volatile* addend) { return (int) atomic_add_value((unsigned volatile*)addend, 1); }
+inline int atomicDecrement(int volatile* addend) { return (int) atomic_sub_value((unsigned volatile*)addend, 1); }
 #elif COMPILER(GCC) && !CPU(SPARC64) && !OS(SYMBIAN) // sizeof(_Atomic_word) != sizeof(int) on sparc64 gcc
 #define WTF_USE_LOCKFREE_THREADSAFESHARED 1
 

@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -46,10 +46,12 @@
 #include "qthreadstorage.h"
 #include "qthread_p.h"
 #include <private/qsystemerror_p.h>
+#include <private/qcore_symbian_p.h>
 
 #include <sched.h>
 #include <hal.h>
 #include <hal_data.h>
+#include <e32math.h>
 
 // You only find these enumerations on Symbian^3 onwards, so we need to provide our own
 // to remain compatible with older releases. They won't be called by pre-Sym^3 SDKs.
@@ -335,18 +337,26 @@ void *QThreadPrivate::start(void *arg)
     // ### TODO: allow the user to create a custom event dispatcher
     createEventDispatcher(data);
 
-    emit thr->started();
     TRAPD(err, {
         try {
+            emit thr->started();
             thr->run();
         } catch (const std::exception& ex) {
             qWarning("QThreadPrivate::start: Thread exited on exception %s", ex.what());
+            User::Leave(KErrGeneral);   // leave to force cleanup stack cleanup
         }
     });
     if (err)
         qWarning("QThreadPrivate::start: Thread exited on leave %d", err);
 
-    QThreadPrivate::finish(arg);
+    // finish emits signals which should be wrapped in a trap for Symbian code, but otherwise ignore leaves and exceptions.
+    TRAP(err, {
+        try {
+            QThreadPrivate::finish(arg);
+        } catch (const std::exception& ex) {
+            User::Leave(KErrGeneral);   // leave to force cleanup stack cleanup
+        }
+    });
 
     delete cleanup;
 
@@ -509,7 +519,21 @@ void QThread::start(Priority priority)
         // operations like file I/O fail, so we increase it by default.
         d->stackSize = 0x14000; // Maximum stack size on Symbian.
 
-    int code = d->data->symbian_thread_handle.Create(KNullDesC, (TThreadFunction) QThreadPrivate::start, d->stackSize, NULL, this);
+    int code = KErrAlreadyExists;
+    QString objName = objectName();
+    TPtrC objNamePtr(qt_QString2TPtrC(objName));
+    TName name;
+    objNamePtr.Set(objNamePtr.Left(qMin(objNamePtr.Length(), name.MaxLength() - 16)));
+    const int MaxRetries = 10;
+    for (int i=0; i<MaxRetries && code == KErrAlreadyExists; i++) {
+        // generate a thread name using a similar method to libpthread in Symbian
+        // a named thread can be opened from another process
+        name.Zero();
+        name.Append(objNamePtr);
+        name.AppendNumFixedWidth(int(this), EHex, 8);
+        name.AppendNumFixedWidth(Math::Random(), EHex, 8);
+        code = d->data->symbian_thread_handle.Create(name, (TThreadFunction) QThreadPrivate::start, d->stackSize, NULL, this);
+    }
     if (code == KErrNone) {
         d->thread_id = d->data->symbian_thread_handle.Id();
         TThreadPriority symPriority = calculateSymbianPriority(priority);

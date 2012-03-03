@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -233,8 +233,10 @@ QAccessibleInterface *AccessibleFactory::create(const QString &classname, QObjec
 #endif
     } else if (classname == QLatin1String("QLabel") || classname == QLatin1String("QLCDNumber")) {
         iface = new QAccessibleDisplay(widget);
+#ifndef QT_NO_GROUPBOX
     } else if (classname == QLatin1String("QGroupBox")) {
-        iface = new QAccessibleDisplay(widget, Grouping);
+        iface = new QAccessibleGroupBox(widget);
+#endif
     } else if (classname == QLatin1String("QStatusBar")) {
         iface = new QAccessibleWidgetEx(widget, StatusBar);
 #ifndef QT_NO_PROGRESSBAR

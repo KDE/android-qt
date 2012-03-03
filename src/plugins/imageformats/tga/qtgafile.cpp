@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -162,7 +162,7 @@ QTgaFile::QTgaFile(QIODevice *device)
     bool validDepth = (bitsPerPixel == 16 || bitsPerPixel == 24 || bitsPerPixel == 32);
     if (!validDepth)
     {
-        mErrorMessage = QObject::tr("Image dpeth not valid");
+        mErrorMessage = QObject::tr("Image depth not valid");
     }
     int curPos = mDevice->pos();
     int fileBytes = mDevice->size();

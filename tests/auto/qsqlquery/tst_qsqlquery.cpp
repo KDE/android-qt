@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -219,10 +219,8 @@ private slots:
     void sqlite_constraint_data() { generic_data("QSQLITE"); }
     void sqlite_constraint();
 
-#if 0
-    void benchmark_data() { generic_data(); }
-    void benchmark();
-#endif
+    void sqlite_real_data() { generic_data("QSQLITE"); }
+    void sqlite_real();
 
 private:
     // returns all database connections
@@ -3280,35 +3278,32 @@ void tst_QSqlQuery::sqlite_constraint()
     QCOMPARE(q.lastError().databaseText(), QLatin1String("Raised Abort successfully"));
 }
 
-#if 0
-void tst_QSqlQuery::benchmark()
+void tst_QSqlQuery::sqlite_real()
 {
-    QFETCH( QString, dbName );
-    QSqlDatabase db = QSqlDatabase::database( dbName );
-    CHECK_DATABASE( db );
-    if ( tst_Databases::getMySqlVersion( db ).section( QChar('.'), 0, 0 ).toInt()<5 )
-        QSKIP( "Test requires MySQL >= 5.0", SkipSingle );
+    QFETCH(QString, dbName);
+    QSqlDatabase db = QSqlDatabase::database(dbName);
+    CHECK_DATABASE(db);
+    const QString tableName(qTableName("sqliterealtype", __FILE__));
+    tst_Databases::safeDropTable( db, tableName );
 
     QSqlQuery q(db);
-    const QString tableName(qTableName("benchmark", __FILE__));
+    QVERIFY_SQL(q, exec("CREATE TABLE " + tableName + " (id INTEGER, realVal REAL)"));
+    QVERIFY_SQL(q, exec("INSERT INTO " + tableName + " (id, realVal) VALUES (1, 2.3)"));
+    QVERIFY_SQL(q, exec("SELECT realVal FROM " + tableName));
+    QVERIFY(q.next());
+    QCOMPARE(q.value(0).toDouble(), 2.3);
+    QCOMPARE(q.record().field(0).type(), QVariant::Double);
 
-    tst_Databases::safeDropTable( db, tableName );
+    q.prepare("INSERT INTO " + tableName + " (id, realVal) VALUES (?, ?)");
+    QVariant var((double)5.6);
+    q.addBindValue(4);
+    q.addBindValue(var);
+    QVERIFY_SQL(q, exec());
 
-    QVERIFY_SQL(q, exec("CREATE TABLE "+tableName+"(\n"
-                        "MainKey INT NOT NULL,\n"
-                        "OtherTextCol VARCHAR(45) NOT NULL,\n"
-                        "PRIMARY KEY(`MainKey`))"));
-
-    int i=1;
-
-    QBENCHMARK {
-        QVERIFY_SQL(q, exec("INSERT INTO "+tableName+" VALUES("+QString::number(i)+", \"Value"+QString::number(i)+"\")"));
-        i++;
-    }
-
-    tst_Databases::safeDropTable( db, tableName );
+    QVERIFY_SQL(q, exec("SELECT realVal FROM " + tableName + " WHERE ID=4"));
+    QVERIFY(q.next());
+    QCOMPARE(q.value(0).toDouble(), 5.6);
 }
-#endif
 
 QTEST_MAIN( tst_QSqlQuery )
 #include "tst_qsqlquery.moc"

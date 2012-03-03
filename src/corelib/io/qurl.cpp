@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -4190,6 +4190,7 @@ QString QUrlPrivate::createErrorString()
     Constructs a URL by parsing \a url. \a url is assumed to be in human
     readable representation, with no percent encoding. QUrl will automatically
     percent encode all characters that are not allowed in a URL.
+    The default parsing mode is TolerantMode.
 
     Example:
 
@@ -4211,6 +4212,7 @@ QUrl::QUrl(const QString &url) : d(0)
     \overload
 
     Parses the \a url using the parser mode \a parsingMode.
+    The default parsing mode is TolerantMode.
 
     \sa setUrl()
 */
@@ -6167,12 +6169,19 @@ QUrl QUrl::fromLocalFile(const QString &localFile)
     returned value in the form found on SMB networks (for example,
     "//servername/path/to/file.txt").
 
+    If this is a relative URL, in Qt 4.x this function returns the path to
+    maintain backward compatability. This will change from 5.0 onwards. Then
+    the path is returned only for URLs where the scheme is "file", and for
+    all other URLs an empty string is returned.
+
     \sa fromLocalFile(), isLocalFile()
 */
 QString QUrl::toLocalFile() const
 {
+    if (!d) return QString();
+
     // the call to isLocalFile() also ensures that we're parsed
-    if (!isLocalFile())
+    if (!isLocalFile() && !d->scheme.isEmpty())
         return QString();
 
     QString tmp;

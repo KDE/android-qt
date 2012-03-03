@@ -50,4 +50,5 @@ xmlpatternsxqts.depends = xmlpatternssdk
            xmlpatternssdk \
            xmlpatternsxqts \
            xmlpatternsxslts \
+           xmlpatternsschemats \
 

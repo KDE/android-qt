@@ -17,3 +17,5 @@ SUBDIRS=\
            qscriptvalueiterator
 
 android: SUBDIRS -= qscriptcontext
+!contains(QT_CONFIG, private_tests): SUBDIRS -= \
+           qscriptcontext \

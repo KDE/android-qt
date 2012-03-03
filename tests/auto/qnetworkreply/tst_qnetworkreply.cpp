@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -380,8 +380,14 @@ private Q_SLOTS:
     void httpAbort();
 
     void dontInsertPartialContentIntoTheCache();
+    void authenticationCacheAfterCancel_data();
+    void authenticationCacheAfterCancel();
+    void authenticationWithDifferentRealm();
     void synchronousAuthenticationCache();
     void pipelining();
+
+    void closeDuringDownload_data();
+    void closeDuringDownload();
 
     // NOTE: This test must be last!
     void parentingRepliesToTheApp();
@@ -2784,12 +2790,21 @@ void tst_QNetworkReply::ioGetFromHttpWithAuth_data()
 {
     QTest::addColumn<QUrl>("url");
     QTest::addColumn<QByteArray>("expectedData");
+    QTest::addColumn<int>("expectedAuth");
 
     QFile reference(SRCDIR "/rfc3252.txt");
     reference.open(QIODevice::ReadOnly);
     QByteArray referenceData = reference.readAll();
-    QTest::newRow("basic") << QUrl("http://" + QtNetworkSettings::serverName() + "/qtest/rfcs-auth/rfc3252.txt") << referenceData;
-    QTest::newRow("digest") << QUrl("http://" + QtNetworkSettings::serverName() + "/qtest/auth-digest/") << QByteArray("digest authentication successful\n");
+    QTest::newRow("basic") << QUrl("http://" + QtNetworkSettings::serverName() + "/qtest/rfcs-auth/rfc3252.txt") << referenceData << 1;
+    QTest::newRow("digest") << QUrl("http://" + QtNetworkSettings::serverName() + "/qtest/auth-digest/") << QByteArray("digest authentication successful\n") << 1;
+    //if url contains username & password, then it should be used
+    QTest::newRow("basic-in-url") << QUrl("http://httptest:httptest@" + QtNetworkSettings::serverName() + "/qtest/rfcs-auth/rfc3252.txt") << referenceData << 0;
+    QTest::newRow("digest-in-url") << QUrl("http://httptest:httptest@" + QtNetworkSettings::serverName() + "/qtest/auth-digest/") << QByteArray("digest authentication successful\n") << 0;
+    // if url contains incorrect credentials, expect QNAM to ask for good ones (even if cached - matches behaviour of browsers)
+    QTest::newRow("basic-bad-user-in-url") << QUrl("http://baduser:httptest@" + QtNetworkSettings::serverName() + "/qtest/rfcs-auth/rfc3252.txt") << referenceData << 3;
+    QTest::newRow("basic-bad-password-in-url") << QUrl("http://httptest:wrong@" + QtNetworkSettings::serverName() + "/qtest/rfcs-auth/rfc3252.txt") << referenceData << 3;
+    QTest::newRow("digest-bad-user-in-url") << QUrl("http://baduser:httptest@" + QtNetworkSettings::serverName() + "/qtest/auth-digest/") << QByteArray("digest authentication successful\n") << 3;
+    QTest::newRow("digest-bad-password-in-url") << QUrl("http://httptest:wrong@" + QtNetworkSettings::serverName() + "/qtest/auth-digest/") << QByteArray("digest authentication successful\n") << 3;
 }
 
 void tst_QNetworkReply::ioGetFromHttpWithAuth()
@@ -2800,6 +2815,7 @@ void tst_QNetworkReply::ioGetFromHttpWithAuth()
 
     QFETCH(QUrl, url);
     QFETCH(QByteArray, expectedData);
+    QFETCH(int, expectedAuth);
     QNetworkRequest request(url);
     {
         QNetworkReplyPtr reply1 = manager.get(request);
@@ -2828,7 +2844,8 @@ void tst_QNetworkReply::ioGetFromHttpWithAuth()
         QCOMPARE(reader1.data, expectedData);
         QCOMPARE(reader2.data, expectedData);
 
-        QCOMPARE(authspy.count(), 1);
+        QCOMPARE(authspy.count(), (expectedAuth ? 1 : 0));
+        expectedAuth = qMax(0, expectedAuth - 1);
     }
 
     // rinse and repeat:
@@ -2848,7 +2865,8 @@ void tst_QNetworkReply::ioGetFromHttpWithAuth()
         QCOMPARE(reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt(), 200);
         QCOMPARE(reader.data, expectedData);
 
-        QCOMPARE(authspy.count(), 0);
+        QCOMPARE(authspy.count(), (expectedAuth ? 1 : 0));
+        expectedAuth = qMax(0, expectedAuth - 1);
     }
 
     // now check with synchronous calls:
@@ -2860,14 +2878,45 @@ void tst_QNetworkReply::ioGetFromHttpWithAuth()
         QSignalSpy authspy(&manager, SIGNAL(authenticationRequired(QNetworkReply*,QAuthenticator*)));
         QNetworkReplyPtr replySync = manager.get(request);
         QVERIFY(replySync->isFinished()); // synchronous
-        QCOMPARE(authspy.count(), 0);
+        if (expectedAuth) {
+            // bad credentials in a synchronous request should just fail
+            QCOMPARE(replySync->error(), QNetworkReply::AuthenticationRequiredError);
+        } else {
+            QCOMPARE(authspy.count(), 0);
 
-        // we cannot use a data reader here, since that connects to the readyRead signal,
-        // just use readAll()
+            // we cannot use a data reader here, since that connects to the readyRead signal,
+            // just use readAll()
 
-        // the only thing we check here is that the auth cache was used when using synchronous requests
-        QCOMPARE(replySync->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt(), 200);
-        QCOMPARE(replySync->readAll(), expectedData);
+            // the only thing we check here is that the auth cache was used when using synchronous requests
+            QCOMPARE(replySync->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt(), 200);
+            QCOMPARE(replySync->readAll(), expectedData);
+        }
+    }
+
+    // check that credentials are used from cache if the same url is requested without credentials
+    {
+        url.setUserInfo(QString());
+        request.setUrl(url);
+        request.setAttribute(
+                QNetworkRequest::SynchronousRequestAttribute,
+                true);
+
+        QSignalSpy authspy(&manager, SIGNAL(authenticationRequired(QNetworkReply*,QAuthenticator*)));
+        QNetworkReplyPtr replySync = manager.get(request);
+        QVERIFY(replySync->isFinished()); // synchronous
+        if (expectedAuth) {
+            // bad credentials in a synchronous request should just fail
+            QCOMPARE(replySync->error(), QNetworkReply::AuthenticationRequiredError);
+        } else {
+            QCOMPARE(authspy.count(), 0);
+
+            // we cannot use a data reader here, since that connects to the readyRead signal,
+            // just use readAll()
+
+            // the only thing we check here is that the auth cache was used when using synchronous requests
+            QCOMPARE(replySync->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt(), 200);
+            QCOMPARE(replySync->readAll(), expectedData);
+        }
     }
 }
 
@@ -6026,6 +6075,221 @@ void tst_QNetworkReply::qtbug4121unknownAuthentication()
     QCOMPARE(reply->error(), QNetworkReply::AuthenticationRequiredError);
 }
 
+void tst_QNetworkReply::authenticationCacheAfterCancel_data()
+{
+    QTest::addColumn<QNetworkProxy>("proxy");
+    QTest::addColumn<bool>("proxyAuth");
+    QTest::addColumn<QUrl>("url");
+    for (int i = 0; i < proxies.count(); ++i) {
+        QTest::newRow("http" + proxies.at(i).tag) << proxies.at(i).proxy << proxies.at(i).requiresAuthentication << QUrl("http://" + QtNetworkSettings::serverName() + "/qtest/rfcs-auth/rfc3252.txt");
+#ifndef QT_NO_OPENSSL
+        QTest::newRow("https" + proxies.at(i).tag) << proxies.at(i).proxy << proxies.at(i).requiresAuthentication << QUrl("https://" + QtNetworkSettings::serverName() + "/qtest/rfcs-auth/rfc3252.txt");
+#endif
+    }
+}
+
+class AuthenticationCacheHelper : public QObject
+{
+    Q_OBJECT
+public:
+    AuthenticationCacheHelper()
+    {}
+public slots:
+    void proxyAuthenticationRequired(const QNetworkProxy &, QAuthenticator *auth)
+    {
+        if (!proxyPassword.isNull()) {
+            auth->setUser(proxyUserName);
+            auth->setPassword(proxyPassword);
+            //clear credentials, if they are asked again, they were bad
+            proxyUserName.clear();
+            proxyPassword.clear();
+        }
+    }
+    void authenticationRequired(QNetworkReply*,QAuthenticator *auth)
+    {
+        if (!httpPassword.isNull()) {
+            auth->setUser(httpUserName);
+            auth->setPassword(httpPassword);
+            //clear credentials, if they are asked again, they were bad
+            httpUserName.clear();
+            httpPassword.clear();
+        }
+    }
+public:
+    QString httpUserName;
+    QString httpPassword;
+    QString proxyUserName;
+    QString proxyPassword;
+};
+
+/* Purpose of this test is to check credentials are cached correctly.
+ - If user cancels authentication dialog (i.e. nothing is set to the QAuthenticator by the callback) then this is not cached
+ - if user supplies a wrong password, then this is not cached
+ - if user supplies a correct user/password combination then this is cached
+
+ Test is checking both the proxyAuthenticationRequired and authenticationRequired signals.
+ */
+void tst_QNetworkReply::authenticationCacheAfterCancel()
+{
+    QFETCH(QNetworkProxy, proxy);
+    QFETCH(bool, proxyAuth);
+    QFETCH(QUrl, url);
+    QNetworkAccessManager manager;
+#ifndef QT_NO_OPENSSL
+    connect(&manager, SIGNAL(sslErrors(QNetworkReply*,QList<QSslError>)),
+            SLOT(sslErrors(QNetworkReply*,QList<QSslError>)));
+#endif
+    manager.setProxy(proxy);
+    QSignalSpy authSpy(&manager, SIGNAL(authenticationRequired(QNetworkReply*,QAuthenticator*)));
+    QSignalSpy proxyAuthSpy(&manager, SIGNAL(proxyAuthenticationRequired(const QNetworkProxy &, QAuthenticator *)));
+
+    AuthenticationCacheHelper helper;
+    connect(&manager, SIGNAL(proxyAuthenticationRequired(const QNetworkProxy &, QAuthenticator *)), &helper, SLOT(proxyAuthenticationRequired(const QNetworkProxy &, QAuthenticator *)));
+    connect(&manager, SIGNAL(authenticationRequired(QNetworkReply*,QAuthenticator*)), &helper, SLOT(authenticationRequired(QNetworkReply*,QAuthenticator*)));
+
+    QNetworkRequest request(url);
+    QNetworkReplyPtr reply;
+    if (proxyAuth) {
+        //should fail due to no credentials
+        reply = manager.get(request);
+        connect(reply, SIGNAL(finished()), &QTestEventLoop::instance(), SLOT(exitLoop()), Qt::QueuedConnection);
+        QTestEventLoop::instance().enterLoop(10);
+        QVERIFY(!QTestEventLoop::instance().timeout());
+
+        QCOMPARE(reply->error(), QNetworkReply::ProxyAuthenticationRequiredError);
+        QCOMPARE(authSpy.count(), 0);
+        QCOMPARE(proxyAuthSpy.count(), 1);
+        proxyAuthSpy.clear();
+
+        //should fail due to bad credentials
+        helper.proxyUserName = "qsockstest";
+        helper.proxyPassword = "badpassword";
+        reply = manager.get(request);
+        connect(reply, SIGNAL(finished()), &QTestEventLoop::instance(), SLOT(exitLoop()), Qt::QueuedConnection);
+        QTestEventLoop::instance().enterLoop(10);
+        QVERIFY(!QTestEventLoop::instance().timeout());
+
+        QEXPECT_FAIL("http+socksauth", "QTBUG-23136 - danted accepts bad authentication but blocks the connection", Continue);
+        QEXPECT_FAIL("https+socksauth", "QTBUG-23136 - danted accepts bad authentication but blocks the connection", Continue);
+
+        QCOMPARE(reply->error(), QNetworkReply::ProxyAuthenticationRequiredError);
+        QCOMPARE(authSpy.count(), 0);
+        QVERIFY(proxyAuthSpy.count() > 0);
+        proxyAuthSpy.clear();
+
+        //QTBUG-23136 workaround
+        if (proxy.port() == 1081) {
+#ifdef QT_BUILD_INTERNAL
+            QNetworkAccessManagerPrivate::clearCache(&manager);
+#else
+            return; //XFAIL result above
+#endif
+        }
+
+        //next proxy auth should succeed, due to correct credentials
+        helper.proxyUserName = "qsockstest";
+        helper.proxyPassword = "password";
+    }
+
+    //should fail due to no credentials
+    reply = manager.get(request);
+    connect(reply, SIGNAL(finished()), &QTestEventLoop::instance(), SLOT(exitLoop()), Qt::QueuedConnection);
+    QTestEventLoop::instance().enterLoop(10);
+    QVERIFY(!QTestEventLoop::instance().timeout());
+
+    QCOMPARE(reply->error(), QNetworkReply::AuthenticationRequiredError);
+    QVERIFY(authSpy.count() > 0);
+    authSpy.clear();
+    if (proxyAuth) {
+        QVERIFY(proxyAuthSpy.count() > 0);
+        proxyAuthSpy.clear();
+    }
+
+    //should fail due to bad credentials
+    helper.httpUserName = "baduser";
+    helper.httpPassword = "badpassword";
+    reply = manager.get(request);
+    connect(reply, SIGNAL(finished()), &QTestEventLoop::instance(), SLOT(exitLoop()), Qt::QueuedConnection);
+    QTestEventLoop::instance().enterLoop(10);
+    QVERIFY(!QTestEventLoop::instance().timeout());
+
+    QCOMPARE(reply->error(), QNetworkReply::AuthenticationRequiredError);
+    QVERIFY(authSpy.count() > 0);
+    authSpy.clear();
+    if (proxyAuth) {
+        //should be supplied from cache
+        QCOMPARE(proxyAuthSpy.count(), 0);
+        proxyAuthSpy.clear();
+    }
+
+    //next auth should succeed, due to correct credentials
+    helper.httpUserName = "httptest";
+    helper.httpPassword = "httptest";
+
+    reply = manager.get(request);
+    connect(reply, SIGNAL(finished()), &QTestEventLoop::instance(), SLOT(exitLoop()), Qt::QueuedConnection);
+    QTestEventLoop::instance().enterLoop(10);
+    QVERIFY(!QTestEventLoop::instance().timeout());
+
+    QCOMPARE(reply->error(), QNetworkReply::NoError);
+    QVERIFY(authSpy.count() > 0);
+    authSpy.clear();
+    if (proxyAuth) {
+        //should be supplied from cache
+        QCOMPARE(proxyAuthSpy.count(), 0);
+        proxyAuthSpy.clear();
+    }
+
+    //next auth should use cached credentials
+    reply = manager.get(request);
+    connect(reply, SIGNAL(finished()), &QTestEventLoop::instance(), SLOT(exitLoop()), Qt::QueuedConnection);
+    QTestEventLoop::instance().enterLoop(10);
+    QVERIFY(!QTestEventLoop::instance().timeout());
+
+    QCOMPARE(reply->error(), QNetworkReply::NoError);
+    //should be supplied from cache
+    QCOMPARE(authSpy.count(), 0);
+    authSpy.clear();
+    if (proxyAuth) {
+        //should be supplied from cache
+        QCOMPARE(proxyAuthSpy.count(), 0);
+        proxyAuthSpy.clear();
+    }
+
+}
+
+void tst_QNetworkReply::authenticationWithDifferentRealm()
+{
+    AuthenticationCacheHelper helper;
+    QNetworkAccessManager manager;
+#ifndef QT_NO_OPENSSL
+    connect(&manager, SIGNAL(sslErrors(QNetworkReply*,QList<QSslError>)),
+            SLOT(sslErrors(QNetworkReply*,QList<QSslError>)));
+#endif
+    connect(&manager, SIGNAL(proxyAuthenticationRequired(const QNetworkProxy &, QAuthenticator *)), &helper, SLOT(proxyAuthenticationRequired(const QNetworkProxy &, QAuthenticator *)));
+    connect(&manager, SIGNAL(authenticationRequired(QNetworkReply*,QAuthenticator*)), &helper, SLOT(authenticationRequired(QNetworkReply*,QAuthenticator*)));
+
+    helper.httpUserName = "httptest";
+    helper.httpPassword = "httptest";
+
+    QNetworkRequest request(QUrl("http://" + QtNetworkSettings::serverName() + "/qtest/rfcs-auth/rfc3252.txt"));
+    QNetworkReply* reply = manager.get(request);
+    connect(reply, SIGNAL(finished()), &QTestEventLoop::instance(), SLOT(exitLoop()), Qt::QueuedConnection);
+    QTestEventLoop::instance().enterLoop(10);
+    QVERIFY(!QTestEventLoop::instance().timeout());
+    QCOMPARE(reply->error(), QNetworkReply::NoError);
+
+    helper.httpUserName = "httptest";
+    helper.httpPassword = "httptest";
+
+    request.setUrl(QUrl("http://" + QtNetworkSettings::serverName() + "/qtest/auth-digest/"));
+    reply = manager.get(request);
+    connect(reply, SIGNAL(finished()), &QTestEventLoop::instance(), SLOT(exitLoop()), Qt::QueuedConnection);
+    QTestEventLoop::instance().enterLoop(10);
+    QVERIFY(!QTestEventLoop::instance().timeout());
+    QCOMPARE(reply->error(), QNetworkReply::NoError);
+}
+
 class QtBug13431Helper : public QObject {
     Q_OBJECT
 public:
@@ -6221,7 +6485,7 @@ void tst_QNetworkReply::synchronousRequest()
     // workaround for HTTPS requests: add self-signed server cert to list of CA certs,
     // since we cannot react to the sslErrors() signal
     // to fix this properly we would need to have an ignoreSslErrors() method in the
-    // QNetworkRequest, see http://bugreports.qt.nokia.com/browse/QTBUG-14774
+    // QNetworkRequest, see http://bugreports.qt-project.org/browse/QTBUG-14774
     if (url.scheme() == "https") {
         QSslConfiguration sslConf;
         QList<QSslCertificate> certs = QSslCertificate::fromPath(SRCDIR "/certs/qt-test-server-cacert.pem");
@@ -6483,6 +6747,27 @@ void tst_QNetworkReply::pipeliningHelperSlot() {
         QTestEventLoop::instance().exitLoop();
         QVERIFY2(pipeliningWasUsed, "pipelining was not used in any of the replies when trying to test pipelining");
     }
+}
+
+void tst_QNetworkReply::closeDuringDownload_data()
+{
+    QTest::addColumn<QUrl>("url");
+    QTest::newRow("http") << QUrl("http://" + QtNetworkSettings::serverName() + "/bigfile");
+    QTest::newRow("ftp") << QUrl("ftp://" + QtNetworkSettings::serverName() + "/qtest/bigfile");
+}
+
+void tst_QNetworkReply::closeDuringDownload()
+{
+    QFETCH(QUrl, url);
+    QNetworkRequest request(url);
+    QNetworkReply* reply = manager.get(request);
+    connect(reply, SIGNAL(readyRead()), &QTestEventLoop::instance(), SLOT(exitLoop()));
+    QTestEventLoop::instance().enterLoop(10);
+    QVERIFY(!QTestEventLoop::instance().timeout());
+    connect(reply, SIGNAL(finished()), &QTestEventLoop::instance(), SLOT(exitLoop()));
+    reply->close();
+    reply->deleteLater();
+    QTest::qWait(1000); //cancelling ftp takes some time, this avoids a warning caused by test's cleanup() destroying the connection cache before the abort is finished
 }
 
 // NOTE: This test must be last testcase in tst_qnetworkreply!

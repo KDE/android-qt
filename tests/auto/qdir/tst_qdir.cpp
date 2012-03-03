@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -299,6 +299,12 @@ void tst_QDir::mkdir_data()
     QDir dir;
     for (int i = 0; i < dirs.count(); ++i)
         dir.rmpath(dirs.at(i));
+
+#ifdef Q_OS_SYMBIAN
+    // testing for directories that exist, but which we cannot necessarily create
+    QTest::newRow("symbian0") << QString::fromLatin1("C:/private") << true;
+    QTest::newRow("symbian1") << QString::fromLatin1("C:/private/E0340002") << true;
+#endif
 }
 
 void tst_QDir::mkdir()

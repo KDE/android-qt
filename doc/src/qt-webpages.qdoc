@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -33,11 +33,11 @@
     \title Qt Homepage
 */
 /*!
-    \externalpage http://bugreports.qt.nokia.com
+    \externalpage http://bugreports.qt-project.org
     \title Qt Bug Tracker
 */
 /*!
-    \externalpage http://bugreports.qt.nokia.com
+    \externalpage http://bugreports.qt-project.org
     \title Bug Report Form
 */
 /*!
@@ -137,7 +137,7 @@
     \title Qt Quarterly
 */
 /*!
-    \externalpage http://bugreports.qt.nokia.com
+    \externalpage http://bugreports.qt-project.org
     \title Task Tracker
 */
 /*!

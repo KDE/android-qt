@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -68,6 +68,10 @@ public:
     virtual ~QVGImagePool();
 
     static QVGImagePool *instance();
+
+    // This function can be used from system-specific graphics system
+    // plugins to alter the image allocation strategy.
+    static void setImagePool(QVGImagePool *pool);
 
     // Create a new VGImage from the pool with the specified parameters
     // that is not associated with a pixmap.  The VGImage is returned to
