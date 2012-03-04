@@ -49,8 +49,6 @@ import android.view.MenuItem;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
-import android.view.Menu;
-import android.view.MenuItem;
 
 public class QtActivityDelegate
 {

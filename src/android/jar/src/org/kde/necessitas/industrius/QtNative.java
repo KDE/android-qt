@@ -36,7 +36,6 @@ import android.net.Uri;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MotionEvent;
-import android.view.Menu;
 
 
 public class QtNative

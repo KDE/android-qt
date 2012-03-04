@@ -33,6 +33,8 @@ import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.KeyCharacterMap;
 import android.view.KeyEvent;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.Window;
 import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
@@ -219,6 +221,10 @@ public class QtActivity extends Activity {
         imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, InputMethodManager.HIDE_IMPLICIT_ONLY );
     }
 
+    public void resetSoftwareKeyboard()
+    {
+    }
+
     public void hideSoftwareKeyboard()
     {
         if (softwareKeyboardIsVisible)
@@ -278,4 +284,31 @@ public class QtActivity extends Activity {
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
     }
+
+/*    public boolean onCreateOptionsMenu(Menu menu)
+    {
+        QtNative.createOptionsMenu(menu);
+        try {
+            return onPrepareOptionsMenu(menu);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public boolean onPrepareOptionsMenu(Menu menu)
+    {
+        QtNative.prepareOptionsMenu(menu);
+        try {
+            return (Boolean) onPrepareOptionsMenu(menu);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public boolean onOptionsItemSelected(MenuItem item)
+    {
+        return QtNative.optionsItemSelected(item.getGroupId(), item.getItemId());
+    }*/
 }

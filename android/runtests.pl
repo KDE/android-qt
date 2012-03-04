@@ -232,12 +232,12 @@ foreach(split("\n",$testsFiles))
         if (needsOpenGl("$temp_dir/libtst_$application.so"))
         {
              startTest("/data/local/qt/plugins/platforms/android/libandroidGL-$sdk_api.so:/data/data/$packageName/app_files/libtst_$application.so", 1
-                        , "$output_name.xml") or die "Can't run $application stopping tests ...\n";
+                        , "$output_name.xml") or warn "Can't run $application ...\n";
         }
         else
         {
              startTest("/data/local/qt/plugins/platforms/android/libandroid-$sdk_api.so:/data/data/$packageName/app_files/libtst_$application.so", 0
-                        , "$output_name.xml") or die "Can't run $application stopping tests ...\n";
+                        , "$output_name.xml") or warn "Can't run $application stopping tests ...\n";
         }
     }
     else
