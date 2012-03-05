@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -294,7 +294,7 @@ void tst_QDeclarativeDebug::initTestCase()
     qRegisterMetaType<QDeclarativeDebugWatch::State>();
     qmlRegisterType<NonScriptProperty>("Test", 1, 0, "NonScriptPropertyElement");
 
-    QTest::ignoreMessage(QtWarningMsg, "QDeclarativeDebugServer: Waiting for connection on port 3768...");
+    QTest::ignoreMessage(QtDebugMsg, "QDeclarativeDebugServer: Waiting for connection on port 3768...");
     m_engine = new QDeclarativeEngine(this);
 
     QList<QByteArray> qml;
@@ -375,7 +375,7 @@ void tst_QDeclarativeDebug::initTestCase()
     m_conn = new QDeclarativeDebugConnection(this);
     m_conn->connectToHost("127.0.0.1", 3768);
 
-    QTest::ignoreMessage(QtWarningMsg, "QDeclarativeDebugServer: Connection established");
+    QTest::ignoreMessage(QtDebugMsg, "QDeclarativeDebugServer: Connection established");
     bool ok = m_conn->waitForConnected();
     QVERIFY(ok);
     QTRY_VERIFY(QDeclarativeDebugService::hasDebuggingClient());

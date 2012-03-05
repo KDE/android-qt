@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -1902,11 +1902,11 @@ void tst_QTextEdit::selectionChanged()
     QCOMPARE(selectionChangedSpy.count(), 3);
 
     QTest::keyClick(ed, Qt::Key_Right);
-    QCOMPARE(ed->textCursor().position(), 5);
+    QCOMPARE(ed->textCursor().position(), 4);
     QCOMPARE(selectionChangedSpy.count(), 4);
 
     QTest::keyClick(ed, Qt::Key_Right);
-    QCOMPARE(ed->textCursor().position(), 6);
+    QCOMPARE(ed->textCursor().position(), 5);
     QCOMPARE(selectionChangedSpy.count(), 4);
 }
 
@@ -1968,7 +1968,7 @@ void tst_QTextEdit::setText()
 }
 
 QT_BEGIN_NAMESPACE
-extern void qt_setQtEnableTestFont(bool value);
+extern Q_AUTOTEST_EXPORT void qt_setQtEnableTestFont(bool value);
 QT_END_NAMESPACE
 
 void tst_QTextEdit::fullWidthSelection_data()

@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -243,13 +243,18 @@ void QS60Data::controlVisibilityChanged(CCoeControl *control, bool visible)
                 QApplicationPrivate *d = QApplicationPrivate::instance();
                 d->emitAboutToUseGpuResources();
 
-                if (backingStore.data()) {
+                // (Re)create the backing store and force repaint if we have no
+                // backing store already, or EGL surface cration failed on last attempt.
+                if (backingStore.data() && !S60->eglSurfaceCreationError) {
                     backingStore.registerWidget(widget);
                 } else {
+                    S60->eglSurfaceCreationError = false;
                     backingStore.create(window);
                     backingStore.registerWidget(widget);
                     qt_widget_private(widget)->invalidateBuffer(widget->rect());
                     widget->repaint();
+                    if (S60->eglSurfaceCreationError)
+                        backingStore.unregisterWidget(widget);
                 }
             } else {
                 QApplicationPrivate *d = QApplicationPrivate::instance();
@@ -552,11 +557,13 @@ void QSymbianControl::ConstructL(bool isWindowOwning, bool desktop)
         // the control's window
         qwidget->d_func()->createExtra();
 
-        SetFocusing(true);
-        m_longTapDetector = QLongTapTimer::NewL(this);
-        m_doubleClickTimer.invalidate();
+        if (!qwidget->d_func()->isGLGlobalShareWidget) {
+            SetFocusing(true);
+            m_longTapDetector = QLongTapTimer::NewL(this);
+            m_doubleClickTimer.invalidate();
 
-        DrawableWindow()->SetPointerGrab(ETrue);
+            DrawableWindow()->SetPointerGrab(ETrue);
+        }
     }
 
 #ifdef Q_SYMBIAN_TRANSITION_EFFECTS
@@ -590,25 +597,27 @@ void QSymbianControl::ConstructL(bool isWindowOwning, bool desktop)
 
 QSymbianControl::~QSymbianControl()
 {
-    // Ensure backing store is deleted before the top-level
-    // window is destroyed
-    QT_TRY {
-        qt_widget_private(qwidget)->topData()->backingStore.destroy();
-    } QT_CATCH(const std::exception&) {
-        // ignore exceptions, nothing can be done
-    }
-
-    if (S60->curWin == this)
-        S60->curWin = 0;
-    if (!QApplicationPrivate::is_app_closing) {
+    if (!qwidget->d_func()->isGLGlobalShareWidget) { // GLGlobalShareWidget doesn't interact with scene
+        // Ensure backing store is deleted before the top-level
+        // window is destroyed
         QT_TRY {
-            setFocusSafely(false);
+            qt_widget_private(qwidget)->topData()->backingStore.destroy();
         } QT_CATCH(const std::exception&) {
             // ignore exceptions, nothing can be done
         }
+
+        if (S60->curWin == this)
+            S60->curWin = 0;
+        if (!QApplicationPrivate::is_app_closing) {
+            QT_TRY {
+                setFocusSafely(false);
+            } QT_CATCH(const std::exception&) {
+                // ignore exceptions, nothing can be done
+            }
+        }
+        S60->appUi()->RemoveFromStack(this);
+        delete m_longTapDetector;
     }
-    S60->appUi()->RemoveFromStack(this);
-    delete m_longTapDetector;
 }
 
 void QSymbianControl::setWidget(QWidget *w)
@@ -826,7 +835,8 @@ void QSymbianControl::HandlePointerEventL(const TPointerEvent& pEvent)
                 const TPointerEvent *pointerEvent = eventData.Pointer(i);
                 const TAdvancedPointerEvent *advEvent = pointerEvent->AdvancedPointerEvent();
                 if (!advEvent || advEvent->PointerNumber() == 0) {
-                    m_longTapDetector->PointerEventL(*pointerEvent);
+                    if (m_longTapDetector)
+                        m_longTapDetector->PointerEventL(*pointerEvent);
                     QT_TRYCATCH_LEAVING(HandlePointerEvent(*pointerEvent));
                 }
             }
@@ -843,8 +853,8 @@ void QSymbianControl::HandlePointerEventL(const TPointerEvent& pEvent)
         }
     }
 #endif
-
-    m_longTapDetector->PointerEventL(pEvent);
+    if (m_longTapDetector)
+        m_longTapDetector->PointerEventL(pEvent);
     QT_TRYCATCH_LEAVING(HandlePointerEvent(pEvent));
 }
 
@@ -1324,8 +1334,29 @@ TCoeInputCapabilities QSymbianControl::InputCapabilities() const
 }
 #endif
 
-void QSymbianControl::Draw(const TRect& controlRect) const
+void QSymbianControl::Draw(const TRect& aRect) const
 {
+    int leaveCode = 0;
+    int exceptionCode = 0;
+    // Implementation of CCoeControl::Draw() must never leave or throw exception.
+    // In native Symbian code this is considered a fatal error, and it causes
+    // process termination.
+    TRAP(leaveCode, QT_TRYCATCH_ERROR(exceptionCode, doDraw(aRect)));
+    if (leaveCode)
+        qWarning() << "QSymbianControl::doDraw leaved with code " << leaveCode;
+    else if (exceptionCode)
+        qWarning() << "QSymbianControl::doDraw threw exception with code " << exceptionCode;
+}
+
+void QSymbianControl::doDraw(const TRect& controlRect) const
+{
+    // Bail out immediately, if we don't have a drawing surface. Surface is attempted to be recreated
+    // when this application becomes visible for the next time.
+    if (S60->eglSurfaceCreationError) {
+        qWarning() << "QSymbianControl::doDraw: EGL surface creation has failed, abort";
+        return;
+    }
+
     // Set flag to avoid calling DrawNow in window surface
     QWidget *window = qwidget->window();
     Q_ASSERT(window);
@@ -1535,6 +1566,10 @@ void QSymbianControl::FocusChanged(TDrawNow /* aDrawNow */)
         if (m_ignoreFocusChanged || (qwidget->windowType() & Qt::WindowType_Mask) == Qt::Desktop)
             return;
 
+        // just in case
+        if (qwidget->d_func()->isGLGlobalShareWidget)
+            return;
+
 #ifdef Q_WS_S60
         if (S60->splitViewLastWidget)
             return;
@@ -1710,7 +1745,8 @@ void QSymbianControl::HandleResourceChange(int resourceType)
 }
 void QSymbianControl::CancelLongTapTimer()
 {
-    m_longTapDetector->Cancel();
+    if (m_longTapDetector)
+        m_longTapDetector->Cancel();
 }
 
 TTypeUid::Ptr QSymbianControl::MopSupplyObject(TTypeUid id)
@@ -1723,6 +1759,9 @@ TTypeUid::Ptr QSymbianControl::MopSupplyObject(TTypeUid id)
 
 void QSymbianControl::setFocusSafely(bool focus)
 {
+    if (qwidget->d_func()->isGLGlobalShareWidget)
+        return;
+
     // The stack hack in here is very unfortunate, but it is the only way to ensure proper
     // focus in Symbian. If this is not executed, the control which happens to be on
     // the top of the stack may randomly be assigned focus by Symbian, for example
@@ -1907,6 +1946,14 @@ void qt_init(QApplicationPrivate * /* priv */, int)
     TSecureId securId = me.SecureId();
     S60->uid = securId.operator TUid();
 
+#ifdef QT_SYMBIAN_HAVE_AKNTRANSEFFECT_H
+    // Notify uiaccelerator, that we are qt application. This info is used for
+    // decision making how startup effects are shown.
+    GfxTransEffect::BeginFullScreen(AknTransEffect::ENone,
+        TRect(0, 0, 0, 0),
+        AknTransEffect::EParameterAvkonInternal,
+        AknTransEffect::GfxTransParam(S60->uid, KQtAppExitFlag));
+#endif
     // enable focus events - used to re-enable mouse after focus changed between mouse and non mouse app,
     // and for dimming behind modal windows
     S60->windowGroup().EnableFocusChangeEvents();

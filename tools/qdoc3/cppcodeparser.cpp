@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -698,15 +698,6 @@ Node *CppCodeParser::processTopicCommand(const Doc& doc,
             if (path.size() > 1) {
                 path.pop_back();
                 usedNamespaces.insert(path.join("::"));
-            }
-        }
-
-        if (command == COMMAND_CLASS) {
-            if (paths.size() > 1) {
-                if (!paths[1].endsWith(".h")) {
-                    ClassNode* cnode = static_cast<ClassNode*>(node);
-                    cnode->setQmlElement(paths[1]);
-                }
             }
         }
         return node;

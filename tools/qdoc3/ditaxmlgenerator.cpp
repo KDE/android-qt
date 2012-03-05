@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -3492,7 +3492,8 @@ void DitaXmlGenerator::writeText(const QString& markedCode,
                                 addLink(link, arg);
                             }
                             else {
-                                link = arg.toString();
+                                //Encountered in snippets for example. Where the text should not be a link.
+                                writeCharacters(arg.toString());
                             }
                         }
                         else {

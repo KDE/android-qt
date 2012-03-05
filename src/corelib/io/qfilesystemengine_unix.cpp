@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -174,7 +174,7 @@ QFileSystemEntry QFileSystemEngine::canonicalName(const QFileSystemEntry &entry,
     if (entry.isEmpty() || entry.isRoot())
         return entry;
 
-#if !defined(Q_OS_MAC) && _POSIX_VERSION < 200809L
+#if !defined(Q_OS_MAC) && !defined(Q_OS_QNX) && _POSIX_VERSION < 200809L
     // realpath(X,0) is not supported
     Q_UNUSED(data);
     return QFileSystemEntry(slowCanonicalized(absoluteName(entry).filePath()));

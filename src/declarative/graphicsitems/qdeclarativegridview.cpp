@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -208,7 +208,6 @@ public:
     }
 
     void mirrorChange() {
-        Q_Q(QDeclarativeGridView);
         regenerate();
     }
 
@@ -2849,7 +2848,7 @@ void QDeclarativeGridView::itemsInserted(int modelIndex, int count)
     bool addedVisible = false;
     QList<FxGridItem*> added;
     int i = 0;
-    while (i < insertCount && rowPos <= to + d->rowSize()*(d->columns - (colPos/d->colSize()))/qreal(d->columns)) {
+    while (i < insertCount && rowPos <= to + d->rowSize()*(d->columns - (colPos/d->colSize()))/qreal(d->columns+1)) {
         if (!addedVisible) {
             d->scheduleLayout();
             addedVisible = true;

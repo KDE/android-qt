@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -132,7 +132,7 @@ void QLineEditPrivate::_q_editFocusChange(bool e)
 void QLineEditPrivate::_q_selectionChanged()
 {
     Q_Q(QLineEdit);
-    if (!control->text().isEmpty() && control->preeditAreaText().isEmpty()) {
+    if (control->preeditAreaText().isEmpty()) {
         QStyleOptionFrameV2 opt;
         q->initStyleOption(&opt);
         bool showCursor = control->hasSelectedText() ?
@@ -142,6 +142,9 @@ void QLineEditPrivate::_q_selectionChanged()
     }
 
     emit q->selectionChanged();
+#ifndef QT_NO_ACCESSIBILITY
+    QAccessible::updateAccessibility(q, 0, QAccessible::TextSelectionChanged);
+#endif
 }
 
 void QLineEditPrivate::_q_updateNeeded(const QRect &rect)

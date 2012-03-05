@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -186,22 +186,23 @@ QGLGraphicsSystem::QGLGraphicsSystem(bool useX11GL)
 class QGLGlobalShareWidget
 {
 public:
-    QGLGlobalShareWidget() : widget(0), initializing(false) {
+    QGLGlobalShareWidget() : widget(0), init(false) {
         created = true;
     }
 
     QGLWidget *shareWidget() {
-        if (!initializing && !widget && !cleanedUp) {
-            initializing = true;
+        if (!init && !widget && !cleanedUp) {
+            init = true;
             widget = new QGLWidget(QGLFormat(QGL::SingleBuffer | QGL::NoDepthBuffer | QGL::NoStencilBuffer));
 #ifdef Q_OS_SYMBIAN
             if (!widget->context()->isValid()) {
                 delete widget;
                 widget = 0;
-                initializing = false;
+                init = false;
                 return 0;
             }
 #endif
+
             widget->resize(1, 1);
 #ifdef Q_OS_ANDROID
             widget->lower();
@@ -210,7 +211,7 @@ public:
             // We don't need this internal widget to appear in QApplication::topLevelWidgets()
             if (QWidgetPrivate::allWidgets)
                 QWidgetPrivate::allWidgets->remove(widget);
-            initializing = false;
+            init = false;
         }
         return widget;
     }
@@ -237,12 +238,17 @@ public:
         cleanedUp = false;
     }
 
+    bool initializing()
+    {
+        return init;
+    }
+
     static bool cleanedUp;
     static bool created;
 
 private:
     QGLWidget *widget;
-    bool initializing;
+    bool init;
 };
 
 bool QGLGlobalShareWidget::cleanedUp = false;
@@ -273,6 +279,13 @@ void qt_destroy_gl_share_widget()
 {
     if (QGLGlobalShareWidget::created)
         _qt_gl_share_widget()->destroy();
+}
+
+bool qt_initializing_gl_share_widget()
+{
+    if (QGLGlobalShareWidget::created)
+        return _qt_gl_share_widget()->initializing();
+    return false;
 }
 
 const QGLContext *qt_gl_share_context()
@@ -688,6 +701,11 @@ void QGLWindowSurface::flush(QWidget *widget, const QRegion &rgn, const QPoint &
             }
 
             QGLContext *ctx = reinterpret_cast<QGLContext *>(parent->d_func()->extraData()->glContext);
+#ifdef Q_OS_SYMBIAN
+            if (!ctx)
+                return;
+#endif
+
             if (widget != window()) {
                 if (initializeOffscreenTexture(window()->size()))
                     qWarning() << "QGLWindowSurface: Flushing to native child widget, may lead to significant performance loss";

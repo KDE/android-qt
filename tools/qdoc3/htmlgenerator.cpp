@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -759,6 +759,8 @@ int HtmlGenerator::generateAtom(const Atom *atom,
                 out() << "<img src=\"" << protectEnc(fileName) << "\"";
                 if (!text.isEmpty())
                     out() << " alt=\"" << protectEnc(text) << "\"";
+                else
+                    out() << " alt=\"\"";
                 out() << " />";
                 helpProjectWriter->addExtraFile(fileName);
                 if ((relative->type() == Node::Fake) &&

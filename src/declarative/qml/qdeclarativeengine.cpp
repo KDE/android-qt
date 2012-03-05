@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -1089,7 +1089,7 @@ QDeclarativeDebuggingEnabler::QDeclarativeDebuggingEnabler()
 {
 #ifndef QDECLARATIVE_NO_DEBUG_PROTOCOL
     if (!QDeclarativeEnginePrivate::qml_debugging_enabled) {
-        qWarning("Qml debugging is enabled. Only use this in a safe environment!");
+        qDebug("Qml debugging is enabled. Only use this in a safe environment!");
     }
     QDeclarativeEnginePrivate::qml_debugging_enabled = true;
 #endif

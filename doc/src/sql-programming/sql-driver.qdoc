@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -495,7 +495,7 @@
     \snippet doc/src/snippets/code/doc_src_sql-driver.qdoc 15
 
     Users of MinGW may wish to consult the following online document:
-    \l{Compiling PostgreSQL On Native Win32 FAQ}.
+    \l{PostgreSQL MinGW/Native Windows}.
 
     \bold{Note:} This database plugin is not supported for Windows CE.
 

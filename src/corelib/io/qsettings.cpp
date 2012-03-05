@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -790,6 +790,9 @@ bool QSettingsPrivate::iniUnescapedStringList(const QByteArray &str, int from, i
                                               QString &stringResult, QStringList &stringListResult,
                                               QTextCodec *codec)
 {
+#ifdef QT_NO_TEXTCODE
+    Q_UNUSED(codec);
+#endif
     static const char escapeCodes[][2] =
     {
         { 'a', '\a' },

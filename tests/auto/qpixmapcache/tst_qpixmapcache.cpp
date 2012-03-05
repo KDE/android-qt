@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -499,7 +499,7 @@ void tst_QPixmapCache::pixmapKey()
 }
 
 QT_BEGIN_NAMESPACE
-extern int q_QPixmapCache_keyHashSize();
+extern Q_AUTOTEST_EXPORT int q_QPixmapCache_keyHashSize();
 QT_END_NAMESPACE
 
 void tst_QPixmapCache::noLeak()

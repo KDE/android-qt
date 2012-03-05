@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -1270,7 +1270,6 @@ bool QDeclarativeTextInput::event(QEvent* ev)
 void QDeclarativeTextInput::geometryChanged(const QRectF &newGeometry,
                                   const QRectF &oldGeometry)
 {
-    Q_D(QDeclarativeTextInput);
     if (newGeometry.width() != oldGeometry.width()) {
         updateSize();
         updateCursorRectangle();

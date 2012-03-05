@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -2076,11 +2076,17 @@ QString Configure::defaultTo(const QString &option)
         && option == "SQL_OCI")
         return "no";
 
-    if (option == "SYNCQT"
-        && (!QFile::exists(sourcePath + "/bin/syncqt") ||
-            !QFile::exists(sourcePath + "/bin/syncqt.bat")))
-        return "no";
-
+    //Run syncqt for shadow build and developer build and sources from git
+    if (option == "SYNCQT") {
+        if ((buildPath != sourcePath)
+            || (dictionary["BUILDDEV"] == "yes")
+            || QDir(sourcePath + "/.git").exists())
+            return "yes";
+        if (!QFile::exists(sourcePath + "/bin/syncqt")
+            || !QFile::exists(sourcePath + "/bin/syncqt.bat")
+            || QDir(buildPath + "/include").exists())
+            return "no";
+    }
     return "yes";
 }
 
@@ -2666,6 +2672,9 @@ void Configure::generateOutputVars()
     qmakeConfig += dictionary[ "BUILD" ];
     dictionary[ "QMAKE_OUTDIR" ] = dictionary[ "BUILD" ];
 
+    if (dictionary["MSVC_MP"] == "yes")
+        qmakeConfig += "msvc_mp";
+
     if (dictionary[ "SHARED" ] == "yes") {
         QString version = dictionary[ "VERSION" ];
         if (!version.isEmpty()) {
@@ -2786,6 +2795,8 @@ void Configure::generateOutputVars()
 
     // We currently have no switch for QtSvg, so add it unconditionally.
     qtConfig += "svg";
+    // We currently have no switch for QtConcurrent, so add it unconditionally.
+    qtConfig += "concurrent";
 
     // Add config levels --------------------------------------------
     QStringList possible_configs = QStringList()
@@ -2917,7 +2928,7 @@ void Configure::generateCachefile()
         for (QStringList::Iterator var = qmakeVars.begin(); var != qmakeVars.end(); ++var) {
             cacheStream << (*var) << endl;
         }
-        cacheStream << "CONFIG         += " << qmakeConfig.join(" ") << " incremental msvc_mp create_prl link_prl depend_includepath QTDIR_build" << endl;
+        cacheStream << "CONFIG         += " << qmakeConfig.join(" ") << " incremental create_prl link_prl depend_includepath QTDIR_build" << endl;
 
         QStringList buildParts;
         buildParts << "libs" << "tools" << "examples" << "demos" << "docs" << "translations";
@@ -2980,8 +2991,6 @@ void Configure::generateCachefile()
 
         if (dictionary[ "LTCG" ] == "yes")
             configStream << " ltcg";
-        if (dictionary[ "MSVC_MP" ] == "yes")
-            configStream << " msvc_mp";
         if (dictionary[ "STL" ] == "yes")
             configStream << " stl";
         if (dictionary[ "EXCEPTIONS" ] == "yes")

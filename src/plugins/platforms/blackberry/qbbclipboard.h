@@ -1,10 +1,11 @@
 /****************************************************************************
 **
-** Copyright (C) 2009 Nokia Corporation and/or its subsidiary(-ies).
-** All rights reserved.
-** Contact: Nokia Corporation (qt-info@nokia.com)
+** Copyright (C) 2011 - 2012 Research In Motion
 **
-** This file is part of the qmake spec of the Qt Toolkit.
+** Contact: Research In Motion <blackberry-qt@qnx.com>
+** Contact: Klarälvdalens Datakonsult AB <info@kdab.com>
+**
+** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
 ** GNU Lesser General Public License Usage
@@ -27,9 +28,6 @@
 ** Public License version 3.0 requirements will be met:
 ** http://www.gnu.org/copyleft/gpl.html.
 **
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
 **
 **
 **
@@ -39,4 +37,28 @@
 **
 ****************************************************************************/
 
-#include "../../integrity-ghs/qplatformdefs.h"
+#ifndef QBBCLIPBOARD_H
+#define QBBCLIPBOARD_H
+
+#ifndef QT_NO_CLIPBOARD
+#include <QtGui/QPlatformClipboard>
+#include <QMimeData>
+
+QT_BEGIN_NAMESPACE
+
+class QBBClipboard : public QPlatformClipboard
+{
+public:
+    QBBClipboard();
+    virtual ~QBBClipboard();
+    virtual QMimeData *mimeData(QClipboard::Mode mode = QClipboard::Clipboard);
+    virtual void setMimeData(QMimeData *data, QClipboard::Mode mode = QClipboard::Clipboard);
+private:
+    QMimeData *mMimeData;
+    void readClipboardBuff(const char *type);
+};
+
+QT_END_NAMESPACE
+
+#endif //QT_NO_CLIPBOAR
+#endif //QBBCLIPBOARD_H

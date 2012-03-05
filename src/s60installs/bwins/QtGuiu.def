@@ -13360,7 +13360,7 @@ EXPORTS
 	?qt_static_metacall@QGraphicsItemAnimation@@CAXPAVQObject@@W4Call@QMetaObject@@HPAPAX@Z @ 13359 NONAME ; void QGraphicsItemAnimation::qt_static_metacall(class QObject *, enum QMetaObject::Call, int, void * *)
 	??0QRasterWindowSurface@@QAE@PAVQWidget@@_N@Z @ 13360 NONAME ; QRasterWindowSurface::QRasterWindowSurface(class QWidget *, bool)
 	?brushChanged@QBlitterPaintEngine@@UAEXXZ @ 13361 NONAME ; void QBlitterPaintEngine::brushChanged(void)
-	?clip@QBlitterPaintEngine@@UAEXABVQRect@@W4ClipOperation@Qt@@@Z @ 13362 NONAME ; void QBlitterPaintEngine::clip(class QRect const &, enum Qt::ClipOperation)
+	?clip@QBlitterPaintEngine@@UAEXABVQRect@@W4ClipOperation@Qt@@@Z @ 13362 NONAME ABSENT ; void QBlitterPaintEngine::clip(class QRect const &, enum Qt::ClipOperation)
 	?staticMetaObjectExtraData@QGraphicsWidget@@0UQMetaObjectExtraData@@B @ 13363 NONAME ; struct QMetaObjectExtraData const QGraphicsWidget::staticMetaObjectExtraData
 	?qt_static_metacall@QSessionManager@@CAXPAVQObject@@W4Call@QMetaObject@@HPAPAX@Z @ 13364 NONAME ; void QSessionManager::qt_static_metacall(class QObject *, enum QMetaObject::Call, int, void * *)
 	?qt_static_metacall@QTabWidget@@CAXPAVQObject@@W4Call@QMetaObject@@HPAPAX@Z @ 13365 NONAME ; void QTabWidget::qt_static_metacall(class QObject *, enum QMetaObject::Call, int, void * *)
@@ -13459,7 +13459,7 @@ EXPORTS
 	?staticMetaObjectExtraData@QDateTimeEdit@@0UQMetaObjectExtraData@@B @ 13458 NONAME ; struct QMetaObjectExtraData const QDateTimeEdit::staticMetaObjectExtraData
 	?mimeTypes@QAbstractProxyModel@@UBE?AVQStringList@@XZ @ 13459 NONAME ; class QStringList QAbstractProxyModel::mimeTypes(void) const
 	?mapSelectionToSource@QIdentityProxyModel@@UBE?AVQItemSelection@@ABV2@@Z @ 13460 NONAME ; class QItemSelection QIdentityProxyModel::mapSelectionToSource(class QItemSelection const &) const
-	?createState@QBlitterPaintEngine@@UBEPAVQPainterState@@PAV2@@Z @ 13461 NONAME ; class QPainterState * QBlitterPaintEngine::createState(class QPainterState *) const
+	?createState@QBlitterPaintEngine@@UBEPAVQPainterState@@PAV2@@Z @ 13461 NONAME ABSENT ; class QPainterState * QBlitterPaintEngine::createState(class QPainterState *) const
 	??1QIdentityProxyModel@@UAE@XZ @ 13462 NONAME ; QIdentityProxyModel::~QIdentityProxyModel(void)
 	?qt_static_metacall@QDoubleValidator@@CAXPAVQObject@@W4Call@QMetaObject@@HPAPAX@Z @ 13463 NONAME ; void QDoubleValidator::qt_static_metacall(class QObject *, enum QMetaObject::Call, int, void * *)
 	?removeItem@QGraphicsGridLayout@@QAEXPAVQGraphicsLayoutItem@@@Z @ 13464 NONAME ; void QGraphicsGridLayout::removeItem(class QGraphicsLayoutItem *)
@@ -13477,7 +13477,7 @@ EXPORTS
 	?removeRows@QIdentityProxyModel@@UAE_NHHABVQModelIndex@@@Z @ 13476 NONAME ; bool QIdentityProxyModel::removeRows(int, int, class QModelIndex const &)
 	?staticMetaObjectExtraData@QPixmapDropShadowFilter@@0UQMetaObjectExtraData@@B @ 13477 NONAME ; struct QMetaObjectExtraData const QPixmapDropShadowFilter::staticMetaObjectExtraData
 	?staticMetaObjectExtraData@QGridLayout@@0UQMetaObjectExtraData@@B @ 13478 NONAME ; struct QMetaObjectExtraData const QGridLayout::staticMetaObjectExtraData
-	?raster@QBlitterPaintEngine@@ABEPAVQRasterPaintEngine@@XZ @ 13479 NONAME ; class QRasterPaintEngine * QBlitterPaintEngine::raster(void) const
+	?raster@QBlitterPaintEngine@@ABEPAVQRasterPaintEngine@@XZ @ 13479 NONAME ABSENT ; class QRasterPaintEngine * QBlitterPaintEngine::raster(void) const
 	?sort@QAbstractProxyModel@@UAEXHW4SortOrder@Qt@@@Z @ 13480 NONAME ; void QAbstractProxyModel::sort(int, enum Qt::SortOrder)
 	?getClusterLength@QTextEngine@@AAEHPAGPBUHB_CharAttributes@@HHHPAH@Z @ 13481 NONAME ; int QTextEngine::getClusterLength(unsigned short *, struct HB_CharAttributes const *, int, int, int, int *)
 	?staticMetaObjectExtraData@QPlainTextEdit@@0UQMetaObjectExtraData@@B @ 13482 NONAME ; struct QMetaObjectExtraData const QPlainTextEdit::staticMetaObjectExtraData
@@ -13562,7 +13562,7 @@ EXPORTS
 	?qt_static_metacall@QAbstractButton@@CAXPAVQObject@@W4Call@QMetaObject@@HPAPAX@Z @ 13561 NONAME ; void QAbstractButton::qt_static_metacall(class QObject *, enum QMetaObject::Call, int, void * *)
 	?staticMetaObjectExtraData@QTextDocument@@0UQMetaObjectExtraData@@B @ 13562 NONAME ; struct QMetaObjectExtraData const QTextDocument::staticMetaObjectExtraData
 	?setSourceModel@QIdentityProxyModel@@UAEXPAVQAbstractItemModel@@@Z @ 13563 NONAME ; void QIdentityProxyModel::setSourceModel(class QAbstractItemModel *)
-	?clip@QBlitterPaintEngine@@UAEXABVQRegion@@W4ClipOperation@Qt@@@Z @ 13564 NONAME ; void QBlitterPaintEngine::clip(class QRegion const &, enum Qt::ClipOperation)
+	?clip@QBlitterPaintEngine@@UAEXABVQRegion@@W4ClipOperation@Qt@@@Z @ 13564 NONAME ABSENT ; void QBlitterPaintEngine::clip(class QRegion const &, enum Qt::ClipOperation)
 	?subPixelPositionForX@QTextureGlyphCache@@QBE?AUQFixed@@U2@@Z @ 13565 NONAME ; struct QFixed QTextureGlyphCache::subPixelPositionForX(struct QFixed) const
 	?addFile@QZipWriter@@QAEXABVQString@@PAVQIODevice@@@Z @ 13566 NONAME ; void QZipWriter::addFile(class QString const &, class QIODevice *)
 	?hasAlphaChannel@QBlittablePixmapData@@UBE_NXZ @ 13567 NONAME ; bool QBlittablePixmapData::hasAlphaChannel(void) const
@@ -13677,7 +13677,7 @@ EXPORTS
 	?staticMetaObjectExtraData@QDrag@@0UQMetaObjectExtraData@@B @ 13676 NONAME ; struct QMetaObjectExtraData const QDrag::staticMetaObjectExtraData
 	?qt_static_metacall@QProxyModel@@CAXPAVQObject@@W4Call@QMetaObject@@HPAPAX@Z @ 13677 NONAME ; void QProxyModel::qt_static_metacall(class QObject *, enum QMetaObject::Call, int, void * *)
 	?staticMetaObjectExtraData@QWidgetResizeHandler@@0UQMetaObjectExtraData@@B @ 13678 NONAME ; struct QMetaObjectExtraData const QWidgetResizeHandler::staticMetaObjectExtraData
-	?state@QBlitterPaintEngine@@QBEPBVQPainterState@@XZ @ 13679 NONAME ; class QPainterState const * QBlitterPaintEngine::state(void) const
+	?state@QBlitterPaintEngine@@QBEPBVQPainterState@@XZ @ 13679 NONAME ABSENT ; class QPainterState const * QBlitterPaintEngine::state(void) const
 	?qt_static_metacall@QGroupBox@@CAXPAVQObject@@W4Call@QMetaObject@@HPAPAX@Z @ 13680 NONAME ; void QGroupBox::qt_static_metacall(class QObject *, enum QMetaObject::Call, int, void * *)
 	?qt_static_metacall@QTextObject@@CAXPAVQObject@@W4Call@QMetaObject@@HPAPAX@Z @ 13681 NONAME ; void QTextObject::qt_static_metacall(class QObject *, enum QMetaObject::Call, int, void * *)
 	?staticMetaObjectExtraData@QScrollBar@@0UQMetaObjectExtraData@@B @ 13682 NONAME ; struct QMetaObjectExtraData const QScrollBar::staticMetaObjectExtraData
@@ -13767,7 +13767,7 @@ EXPORTS
 	?qt_static_metacall@QInputContext@@CAXPAVQObject@@W4Call@QMetaObject@@HPAPAX@Z @ 13766 NONAME ; void QInputContext::qt_static_metacall(class QObject *, enum QMetaObject::Call, int, void * *)
 	?qt_static_metacall@QColumnView@@CAXPAVQObject@@W4Call@QMetaObject@@HPAPAX@Z @ 13767 NONAME ; void QColumnView::qt_static_metacall(class QObject *, enum QMetaObject::Call, int, void * *)
 	?cursorMoveStyle@QLineEdit@@QBE?AW4CursorMoveStyle@Qt@@XZ @ 13768 NONAME ; enum Qt::CursorMoveStyle QLineEdit::cursorMoveStyle(void) const
-	?clip@QBlitterPaintEngine@@UAEXABVQVectorPath@@W4ClipOperation@Qt@@@Z @ 13769 NONAME ; void QBlitterPaintEngine::clip(class QVectorPath const &, enum Qt::ClipOperation)
+	?clip@QBlitterPaintEngine@@UAEXABVQVectorPath@@W4ClipOperation@Qt@@@Z @ 13769 NONAME ABSENT ; void QBlitterPaintEngine::clip(class QVectorPath const &, enum Qt::ClipOperation)
 	?qt_static_metacall@QSizeGrip@@CAXPAVQObject@@W4Call@QMetaObject@@HPAPAX@Z @ 13770 NONAME ; void QSizeGrip::qt_static_metacall(class QObject *, enum QMetaObject::Call, int, void * *)
 	?staticMetaObjectExtraData@QFileDialog@@0UQMetaObjectExtraData@@B @ 13771 NONAME ; struct QMetaObjectExtraData const QFileDialog::staticMetaObjectExtraData
 	?qt_static_metacall@QCalendarWidget@@CAXPAVQObject@@W4Call@QMetaObject@@HPAPAX@Z @ 13772 NONAME ; void QCalendarWidget::qt_static_metacall(class QObject *, enum QMetaObject::Call, int, void * *)
@@ -13835,7 +13835,7 @@ EXPORTS
 	?qt_static_metacall@QTapGesture@@CAXPAVQObject@@W4Call@QMetaObject@@HPAPAX@Z @ 13834 NONAME ; void QTapGesture::qt_static_metacall(class QObject *, enum QMetaObject::Call, int, void * *)
 	?staticMetaObjectExtraData@QIntValidator@@0UQMetaObjectExtraData@@B @ 13835 NONAME ; struct QMetaObjectExtraData const QIntValidator::staticMetaObjectExtraData
 	?qt_static_metacall@QInputDialog@@CAXPAVQObject@@W4Call@QMetaObject@@HPAPAX@Z @ 13836 NONAME ; void QInputDialog::qt_static_metacall(class QObject *, enum QMetaObject::Call, int, void * *)
-	?clip@QBlitterPaintEngine@@QAEPBVQClipData@@XZ @ 13837 NONAME ; class QClipData const * QBlitterPaintEngine::clip(void)
+	?clip@QBlitterPaintEngine@@QAEPBVQClipData@@XZ @ 13837 NONAME ABSENT ; class QClipData const * QBlitterPaintEngine::clip(void)
 	?cancelPasswordEchoTimer@QLineControl@@AAEXXZ @ 13838 NONAME ; void QLineControl::cancelPasswordEchoTimer(void)
 	?qt_static_metacall@QStylePlugin@@CAXPAVQObject@@W4Call@QMetaObject@@HPAPAX@Z @ 13839 NONAME ; void QStylePlugin::qt_static_metacall(class QObject *, enum QMetaObject::Call, int, void * *)
 	?setNumberSuffix@QTextListFormat@@QAEXABVQString@@@Z @ 13840 NONAME ; void QTextListFormat::setNumberSuffix(class QString const &)
@@ -13853,7 +13853,7 @@ EXPORTS
 	?unmarkRasterOverlay@QBlittablePixmapData@@QAEXABVQRectF@@@Z @ 13852 NONAME ; void QBlittablePixmapData::unmarkRasterOverlay(class QRectF const &)
 	?collapse@QTreeViewPrivate@@QAEXH_N@Z @ 13853 NONAME ; void QTreeViewPrivate::collapse(int, bool)
 	?trUtf8@QIdentityProxyModel@@SA?AVQString@@PBD0H@Z @ 13854 NONAME ; class QString QIdentityProxyModel::trUtf8(char const *, char const *, int)
-	?brushOriginChanged@QBlitterPaintEngine@@UAEXXZ @ 13855 NONAME ; void QBlitterPaintEngine::brushOriginChanged(void)
+	?brushOriginChanged@QBlitterPaintEngine@@UAEXXZ @ 13855 NONAME ABSENT; void QBlitterPaintEngine::brushOriginChanged(void)
 	?openFile@QFileOpenEvent@@QBE_NAAVQFile@@V?$QFlags@W4OpenModeFlag@QIODevice@@@@@Z @ 13856 NONAME ; bool QFileOpenEvent::openFile(class QFile &, class QFlags<enum QIODevice::OpenModeFlag>) const
 	??0QApplicationPrivate@@QAE@AAHPAPADW4Type@QApplication@@H@Z @ 13857 NONAME ; QApplicationPrivate::QApplicationPrivate(int &, char * *, enum QApplication::Type, int)
 	?qt_static_metacall@QSound@@CAXPAVQObject@@W4Call@QMetaObject@@HPAPAX@Z @ 13858 NONAME ; void QSound::qt_static_metacall(class QObject *, enum QMetaObject::Call, int, void * *)
@@ -13957,7 +13957,7 @@ EXPORTS
 	?qt_static_metacall@QInternalMimeData@@CAXPAVQObject@@W4Call@QMetaObject@@HPAPAX@Z @ 13956 NONAME ; void QInternalMimeData::qt_static_metacall(class QObject *, enum QMetaObject::Call, int, void * *)
 	?qt_static_metacall@QGesture@@CAXPAVQObject@@W4Call@QMetaObject@@HPAPAX@Z @ 13957 NONAME ; void QGesture::qt_static_metacall(class QObject *, enum QMetaObject::Call, int, void * *)
 	?hasFormatHelper@QInternalMimeData@@SA_NABVQString@@PBVQMimeData@@@Z @ 13958 NONAME ; bool QInternalMimeData::hasFormatHelper(class QString const &, class QMimeData const *)
-	?state@QBlitterPaintEngine@@QAEPAVQPainterState@@XZ @ 13959 NONAME ; class QPainterState * QBlitterPaintEngine::state(void)
+	?state@QBlitterPaintEngine@@QAEPAVQPainterState@@XZ @ 13959 NONAME ABSENT ; class QPainterState * QBlitterPaintEngine::state(void)
 	?penChanged@QBlitterPaintEngine@@UAEXXZ @ 13960 NONAME ; void QBlitterPaintEngine::penChanged(void)
 	??0QFileOpenEvent@@QAE@ABVRFile@@@Z @ 13961 NONAME ; QFileOpenEvent::QFileOpenEvent(class RFile const &)
 	?staticMetaObjectExtraData@QStackedLayout@@0UQMetaObjectExtraData@@B @ 13962 NONAME ; struct QMetaObjectExtraData const QStackedLayout::staticMetaObjectExtraData
@@ -13997,4 +13997,6 @@ EXPORTS
 	?setReceiveNativePaintEvents@QSymbianGraphicsSystemHelper@@SAXPAVQWidget@@_N@Z @ 13996 NONAME ; void QSymbianGraphicsSystemHelper::setReceiveNativePaintEvents(class QWidget *, bool)
 	?setNativePaintMode@QSymbianGraphicsSystemHelper@@SAXPAVCCoeControl@@W4NativePaintMode@1@@Z @ 13997 NONAME ; void QSymbianGraphicsSystemHelper::setNativePaintMode(class CCoeControl *, enum QSymbianGraphicsSystemHelper::NativePaintMode)
 	?setIgnoreFocusChanged@QSymbianGraphicsSystemHelper@@SAXPAVQWidget@@_N@Z @ 13998 NONAME ; void QSymbianGraphicsSystemHelper::setIgnoreFocusChanged(class QWidget *, bool)
+	?inputContextBeingCreated@QApplicationPrivate@@2_NA @ 13999 NONAME ; bool QApplicationPrivate::inputContextBeingCreated
+	?releaseCachedGpuResources@QSymbianGraphicsSystemHelper@@SAXXZ @ 14000 NONAME ; void QSymbianGraphicsSystemHelper::releaseCachedGpuResources(void)
 

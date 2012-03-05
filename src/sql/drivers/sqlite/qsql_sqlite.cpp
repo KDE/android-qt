@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -84,6 +84,7 @@ static QVariant::Type qGetColumnType(const QString &tpName)
         return QVariant::Int;
     if (typeName == QLatin1String("double")
         || typeName == QLatin1String("float")
+        || typeName == QLatin1String("real")
         || typeName.startsWith(QLatin1String("numeric")))
         return QVariant::Double;
     if (typeName == QLatin1String("blob"))

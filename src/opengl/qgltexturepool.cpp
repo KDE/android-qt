@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -47,7 +47,7 @@ QT_BEGIN_NAMESPACE
 
 Q_OPENGL_EXPORT extern QGLWidget* qt_gl_share_widget();
 
-Q_GLOBAL_STATIC(QGLTexturePool, qt_gl_texture_pool)
+static QGLTexturePool *qt_gl_texture_pool = 0;
 
 class QGLTexturePoolPrivate
 {
@@ -69,7 +69,9 @@ QGLTexturePool::~QGLTexturePool()
 
 QGLTexturePool *QGLTexturePool::instance()
 {
-    return qt_gl_texture_pool();
+    if (!qt_gl_texture_pool)
+        qt_gl_texture_pool = new QGLTexturePool();
+    return qt_gl_texture_pool;
 }
 
 GLuint QGLTexturePool::createTexture(GLenum target,

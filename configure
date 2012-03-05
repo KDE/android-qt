@@ -1,7 +1,7 @@
 #!/bin/sh -x
 #############################################################################
 ##
-## Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
+## Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
 ## All rights reserved.
 ## Contact: Nokia Corporation (qt-info@nokia.com)
 ##
@@ -5716,8 +5716,8 @@ fi
 
 # auto-detect iconv(3) support
 if [ "$CFG_ICONV" != "no" ]; then
-    if [ "$PLATFORM_QWS" = "yes" -o "$PLATFORM_QPA" = "yes" ]; then
-	CFG_ICONV=no
+    if [ "$PLATFORM_QWS" = "yes" ] || [ "$PLATFORM_QPA" = "yes" -a "$CFG_ICONV" = "auto" ]; then
+        CFG_ICONV=no
     elif "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" "$OPT_VERBOSE" "$relpath" "$outpath" "config.tests/unix/iconv" "POSIX iconv" $L_FLAGS $I_FLAGS $l_FLAGS $MAC_CONFIG_TEST_COMMANDLINE; then
         CFG_ICONV=yes
     elif "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" "$OPT_VERBOSE" "$relpath" "$outpath" "config.tests/unix/sun-libiconv" "SUN libiconv" $L_FLAGS $I_FLAGS $l_FLAGS $MAC_CONFIG_TEST_COMMANDLINE; then
@@ -7732,6 +7732,8 @@ CFG_CONCURRENT="yes"
 if [ "$canBuildQtConcurrent" = "no" ]; then
     QCONFIG_FLAGS="$QCONFIG_FLAGS QT_NO_CONCURRENT"
     CFG_CONCURRENT="no"
+else
+    QT_CONFIG="$QT_CONFIG concurrent"
 fi
 
 if [ "$CFG_XMLPATTERNS" = "yes" -a "$CFG_EXCEPTIONS" = "no" ]; then
@@ -9213,10 +9215,6 @@ for file in .projects .projects.3; do
             SPEC=$XQMAKESPEC ;;
         *s60main/s60main.pro)
             if [ "$CFG_NOPROCESS" = "yes" ] || [ "$XPLATFORM_SYMBIAN" != "yes" ]; then
-                continue
-            fi;;
-        *activeqt/*)
-            if [ "$PLATFORM" = "win32-g++" ] || [ "$XPLATFORM" = "win32-g++" ]; then
                 continue
             fi;;
         *examples/activeqt/*) continue ;;

@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -61,7 +61,9 @@
 #define _WIN32_WINNT  0x500
 #include <qt_windows.h>
 #include <qlibrary.h>
+#ifndef Q_OS_WINCE
 #include <lm.h>
+#endif
 #endif
 #include <qplatformdefs.h>
 #include <qdebug.h>
@@ -1435,7 +1437,7 @@ void tst_QFileInfo::ntfsJunctionPointsAndSymlinks_data()
     QString junction = "junction_pwd";
     FileSystem::createNtfsJunction(target, junction);
     QFileInfo targetInfo(target);
-    QTest::newRow("junction_pwd") << junction << true << targetInfo.absoluteFilePath() << targetInfo.canonicalFilePath();
+    QTest::newRow("junction_pwd") << junction << false << QString() << QString();
 
     QFileInfo fileInJunction(targetInfo.absoluteFilePath().append("/file"));
     QFile file(fileInJunction.absoluteFilePath());
@@ -1448,7 +1450,7 @@ void tst_QFileInfo::ntfsJunctionPointsAndSymlinks_data()
     junction = "junction_root";
     FileSystem::createNtfsJunction(target, junction);
     targetInfo.setFile(target);
-    QTest::newRow("junction_root") << junction << true << targetInfo.absoluteFilePath() << targetInfo.canonicalFilePath();
+    QTest::newRow("junction_root") << junction << false << QString() << QString();
 
     //Mountpoint
     typedef BOOLEAN (WINAPI *PtrGetVolumeNameForVolumeMountPointW)(LPCWSTR, LPWSTR, DWORD);
@@ -1463,7 +1465,7 @@ void tst_QFileInfo::ntfsJunctionPointsAndSymlinks_data()
         junction = "mountpoint";
         rootVolume.replace("\\\\?\\","\\??\\");
         FileSystem::createNtfsJunction(rootVolume, junction);
-        QTest::newRow("mountpoint") << junction << true <<  QDir::fromNativeSeparators(rootPath) << QDir::rootPath();
+        QTest::newRow("mountpoint") << junction << false << QString() << QString();
     }
 }
 
@@ -1476,8 +1478,10 @@ void tst_QFileInfo::ntfsJunctionPointsAndSymlinks()
 
     QFileInfo fi(path);
     QCOMPARE(fi.isSymLink(), isSymLink);
-    QCOMPARE(fi.symLinkTarget(), linkTarget);
-    QCOMPARE(fi.canonicalFilePath(), canonicalFilePath);
+    if (isSymLink) {
+        QCOMPARE(fi.symLinkTarget(), linkTarget);
+        QCOMPARE(fi.canonicalFilePath(), canonicalFilePath);
+    }
 }
 
 void tst_QFileInfo::brokenShortcut()

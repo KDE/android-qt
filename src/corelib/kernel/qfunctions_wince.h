@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -80,7 +80,12 @@ QT_END_HEADER
 errno_t qt_wince_getenv_s(size_t*, char*, size_t, const char*);
 errno_t qt_wince__putenv_s(const char*, const char*);
 
+// Std --------------------------------------------------------------
 #ifdef __cplusplus // have this as tiff plugin is written in C
+namespace std {
+    template <class T> inline T floor(const T& a) {return ::floor(a);}
+}
+
 extern "C" {
 #endif
 
@@ -182,6 +187,16 @@ FILE   *qt_wince_fdopen(int handle, const char *mode);
 void    qt_wince_rewind( FILE *stream );
 int     qt_wince___fileno(FILE *);
 FILE   *qt_wince_tmpfile( void );
+
+//For zlib we need these helper functions, but they break the build when
+//set globally, so just set them for zlib use
+#ifdef ZLIB_H
+#define open qt_wince_open
+#define close qt_wince__close
+#define lseek qt_wince__lseek
+#define read qt_wince__read
+#define write qt_wince__write
+#endif
 
 int qt_wince__mkdir(const char *dirname);
 int qt_wince__rmdir(const char *dirname);
