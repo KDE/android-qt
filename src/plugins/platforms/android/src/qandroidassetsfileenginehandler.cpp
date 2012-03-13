@@ -43,8 +43,6 @@ public:
             m_items<<fileName;
         m_index = -1;
         m_path = path;
-        if (!m_path.endsWith(QChar(QLatin1Char('/'))))
-            m_path+="/";
     }
 
     virtual QFileInfo currentFileInfo() const
@@ -98,6 +96,8 @@ public:
         m_assetFile = 0;
         m_assetDir = asset;
         m_fileName =  fileName;
+        if (!m_fileName.endsWith(QChar(QLatin1Char('/'))))
+            m_fileName+="/";
     }
 
     ~AndroidAbstractFileEngine()
@@ -245,33 +245,30 @@ QAbstractFileEngine * AndroidAssetsFileEngineHandler::create ( const QString & f
     if(fileName.isEmpty())
         return 0;
 
-    int chop = 1;
-    if (!fileName.endsWith(QChar('/'))) {
-        AAsset* asset;
-        if (fileName[0]==QChar(QLatin1Char('/')))
-            asset=AAssetManager_open(m_assetManager, fileName.toUtf8().constData()+1, AASSET_MODE_BUFFER);
-        else
-        {
-            if (fileName.startsWith(QLatin1String("file://")))
-                asset=AAssetManager_open(m_assetManager, fileName.toUtf8().constData()+7, AASSET_MODE_BUFFER);
-            else
-                asset=AAssetManager_open(m_assetManager, fileName.toUtf8().constData(), AASSET_MODE_BUFFER);
-        }
-        if (asset)
-            return new AndroidAbstractFileEngine(asset, fileName);
-
-        chop = 0;
-    }
-
-    QString dirName;
+    AAsset* asset;
     if (fileName[0]==QChar(QLatin1Char('/')))
-        dirName = fileName.mid(1, fileName.size()-1-chop);
+        asset=AAssetManager_open(m_assetManager, fileName.toUtf8().constData()+1, AASSET_MODE_BUFFER);
     else
     {
         if (fileName.startsWith(QLatin1String("file://")))
-            dirName = fileName.mid(7,fileName.size()-7-chop);
+            asset=AAssetManager_open(m_assetManager, fileName.toUtf8().constData()+7, AASSET_MODE_BUFFER);
         else
-            dirName = fileName.left(fileName.size()-chop);
+            asset=AAssetManager_open(m_assetManager, fileName.toUtf8().constData(), AASSET_MODE_BUFFER);
+    }
+    if (asset)
+        return new AndroidAbstractFileEngine(asset, fileName);
+
+    if (!fileName.endsWith(QChar(QLatin1Char('/'))))
+        return 0;
+    QString dirName;
+    if (fileName[0]==QChar(QLatin1Char('/')))
+        dirName = fileName.mid(1, fileName.size()-2);
+    else
+    {
+        if (fileName.startsWith(QLatin1String("file://")))
+            dirName = fileName.mid(7,fileName.size()-8);
+        else
+            dirName = fileName.left(fileName.size()-1);
     }
 
     AAssetDir* assetDir;
