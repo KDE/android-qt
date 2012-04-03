@@ -95,7 +95,6 @@ SUBDIRS=\
    qurl \
    quuid \
    qvarlengtharray \
-   qvector \
    qwaitcondition \
    qwineventnotifier \
    qwritelocker \
@@ -113,7 +112,7 @@ symbian:SUBDIRS -= \
    qtconcurrentiteratekernel \
    qtconcurrentmap \
    qtconcurrentrun \
-   qtconcurrentthreadengine \
+   qtconcurrentthreadengine
 
-!android: SUBDIRS += qpluginloader
-
+!android: SUBDIRS += qpluginloader \
+                     qvector

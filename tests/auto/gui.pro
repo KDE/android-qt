@@ -207,7 +207,8 @@ SUBDIRS=\
     qx11info \
 
 android:SUBDIRS -= qfile \
-                   qtipc
+                   qtipc \
+                   qlist
 
 win32:SUBDIRS -= qtextpiecetable
 

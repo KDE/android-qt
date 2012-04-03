@@ -812,7 +812,7 @@ static void updateWindow(JNIEnv */*env*/, jobject /*thiz*/)
     foreach(QWidget * w, qApp->topLevelWidgets())
         w->update();
 
-    m_androidGraphicsSystem->getPrimaryScreen()->setDirty(m_androidGraphicsSystem->getPrimaryScreen()->geometry());
+    m_androidPlatformIntegration->getPrimaryScreen()->setDirty(m_androidPlatformIntegration->getPrimaryScreen()->geometry());
 }
 
 static jclass s_menuClass = NULL;

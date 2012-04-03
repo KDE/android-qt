@@ -42,6 +42,7 @@
 
 #include <QtTest/QtTest>
 #include <qvector.h>
+#include <vector>
 
 //TESTED_CLASS=
 //TESTED_FILES=corelib/tools/qregexp.h corelib/tools/qregexp.cpp

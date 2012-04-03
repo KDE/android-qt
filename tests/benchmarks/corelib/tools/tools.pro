@@ -15,4 +15,5 @@ SUBDIRS = \
 
 !*g++*: SUBDIRS -= qstring
 android: SUBDIRS -= qregexp \
-                    qstringlist
+                    qstringlist \
+                    qvector
