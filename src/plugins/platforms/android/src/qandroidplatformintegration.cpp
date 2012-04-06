@@ -198,11 +198,7 @@ QPlatformWindow *QAndroidPlatformIntegration::createPlatformWindow(QWidget *widg
 #else
     QFbWindow *w = new QFbWindow(widget);
     dynamic_cast<QFbScreen*>(m_primaryScreen)->addWindow(w);
-    qDebug()<<"createPlatformWindow"<<widget->isFullScreen();
-    if (widget->isFullScreen())
-        QtAndroid::setFullScreen(true);
-    else
-        QtAndroid::setFullScreen(false);
+    QtAndroid::setFullScreen(widget);
     return w;
 #endif
 }

@@ -275,7 +275,7 @@ namespace QtAndroid
         m_javaVM->DetachCurrentThread();
     }
 
-    void setFullScreen(bool fullScreen)
+    void setFullScreen(QWidget * widget)
     {
         JNIEnv* env;
         if (m_javaVM->AttachCurrentThread(&env, NULL)<0)
@@ -283,6 +283,15 @@ namespace QtAndroid
             qCritical()<<"AttachCurrentThread failed";
             return;
         }
+        bool fullScreen = widget->isFullScreen();
+        if (!fullScreen)
+            foreach(QWidget * w, qApp->topLevelWidgets())
+            {
+                fullScreen |= w->isFullScreen();
+                if (fullScreen)
+                    break;
+            }
+
         qDebug()<<"setFullScreen"<<fullScreen;
         env->CallStaticVoidMethod(m_applicationClass, m_setFullScreenMethodID, fullScreen);
         m_javaVM->DetachCurrentThread();

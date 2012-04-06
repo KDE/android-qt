@@ -43,6 +43,7 @@ class QThread;
 class QAndroidPlatformIntegration;
 class QMenuBar;
 class QMenu;
+class QWidget;
 
 namespace QtAndroid
 {
@@ -54,7 +55,7 @@ namespace QtAndroid
     void setAndroidPlatformIntegration(QAndroidPlatformIntegration * androidGraphicsSystem);
     void setQtThread(QThread * thread);
 
-    void setFullScreen(bool fullScreen);
+    void setFullScreen(QWidget * widget);
 
     // Software keyboard support
     void showSoftwareKeyboard(int top, int left, int width, int height, int inputHints);

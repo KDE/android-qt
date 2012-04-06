@@ -520,7 +520,7 @@ Qt::WindowFlags QFbWindow::setWindowFlags(Qt::WindowFlags type)
         ++i;
     }
 
-    QtAndroid::setFullScreen(widget()->isFullScreen());
+    QtAndroid::setFullScreen(widget());
     return flags;
 }
 

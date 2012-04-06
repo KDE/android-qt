@@ -96,7 +96,7 @@ Qt::WindowFlags QAndroidEglFSWindow::setWindowFlags(Qt::WindowFlags type)
     if (!widget()->isFullScreen() && flags != Qt::Popup && flags != Qt::Tool && flags != Qt::ToolTip && flags != Qt::SplashScreen)
          widget()->setWindowState(widget()->windowState() | Qt::WindowMaximized);
 
-    QtAndroid::setFullScreen(widget()->isFullScreen());
+    QtAndroid::setFullScreen(widget());
     return flags;
 }
 
