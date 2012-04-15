@@ -821,7 +821,8 @@ static void updateWindow(JNIEnv */*env*/, jobject /*thiz*/)
     foreach(QWidget * w, qApp->topLevelWidgets())
         w->update();
 
-    m_androidPlatformIntegration->getPrimaryScreen()->setDirty(m_androidPlatformIntegration->getPrimaryScreen()->geometry());
+    QPlatformScreen * screen = m_androidPlatformIntegration->getPrimaryScreen();
+    QMetaObject::invokeMethod(screen, "setDirty", Qt::QueuedConnection, Q_ARG(QRect,screen->geometry()));
 }
 
 static jclass s_menuClass = NULL;

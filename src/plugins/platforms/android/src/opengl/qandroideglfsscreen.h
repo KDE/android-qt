@@ -79,6 +79,7 @@ public slots:
     void updateTLWindows();
     virtual void setGeometry(QRect rect);
     virtual void setPhysicalSize(QSize size);
+    virtual void setDirty(const QRect &rect);
 
 protected:
 

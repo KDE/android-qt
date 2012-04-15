@@ -167,8 +167,6 @@ public:
     virtual void setFormat(QImage::Format format);
 
 
-    virtual void setDirty(const QRect &rect);
-
     virtual void removeWindow(QFbWindow * surface);
     virtual void addWindow(QFbWindow * surface);
     virtual void raise(QPlatformWindow * surface);
@@ -182,6 +180,8 @@ public:
 public slots:
     virtual void setGeometry(QRect rect);
     virtual void setPhysicalSize(QSize size);
+    virtual void setDirty(const QRect &rect);
+
 
 protected:
     QList<QFbWindow *> windowStack;

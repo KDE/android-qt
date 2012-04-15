@@ -253,6 +253,11 @@ void QAndroidEglFSScreen::setPhysicalSize(QSize size)
     mPhysicalSize = size;
 }
 
+void QAndroidEglFSScreen::setDirty(const QRect &rect)
+{
+    QPlatformScreen::setDirty(rect);
+}
+
 void QAndroidEglFSScreen::updateTLWindows()
 {
     foreach(QWidget * w, qApp->topLevelWidgets())
