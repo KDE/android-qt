@@ -85,6 +85,8 @@ public class QtActivityDelegate
     private boolean m_quitApp = true;
     private Process m_debuggerProcess=null; // debugger process
 
+    public boolean m_keyboardIsVisible=false;
+    public boolean m_keyboardIsHiding=false;
 
     public QtLayout getQtLayout()
     {
@@ -204,14 +206,16 @@ public class QtActivityDelegate
             @Override
             public void run() {
                 m_imm.showSoftInput(m_editText, 0);
+                m_keyboardIsVisible=true;
+                m_keyboardIsHiding=false;
                 m_editText.postDelayed(new Runnable() {
                     @Override
                     public void run() {
                         m_imm.restartInput(m_editText);
                     }
-                }, 5);
+                }, 25);
             }
-        }, 5);
+        }, 15);
     }
 
     public void hideSoftwareKeyboard()
@@ -219,6 +223,8 @@ public class QtActivityDelegate
         if (m_imm == null)
             return;
         m_imm.hideSoftInputFromWindow(m_editText.getWindowToken(), 0);
+        m_keyboardIsVisible=false;
+        m_keyboardIsHiding=false;
     }
 
     public boolean loadApplication(Activity activity, ClassLoader classLoader, Bundle loaderParams)
@@ -435,6 +441,13 @@ public class QtActivityDelegate
     {
         if (!m_started)
             return false;
+
+        if (keyCode == KeyEvent.KEYCODE_BACK && m_keyboardIsVisible)
+        {
+            if (!m_keyboardIsHiding)
+                hideSoftwareKeyboard();
+            return true;
+        }
 
         m_metaState = MetaKeyKeyListener.handleKeyUp(m_metaState, keyCode, event);
         QtNative.keyUp(keyCode, event.getUnicodeChar(), event.getMetaState());

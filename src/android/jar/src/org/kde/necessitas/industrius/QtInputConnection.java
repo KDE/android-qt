@@ -82,40 +82,61 @@ public class QtInputConnection extends BaseInputConnection
     private static final int ID_SWITCH_INPUT_METHOD = android.R.id.switchInputMethod;
     private static final int ID_ADD_TO_DICTIONARY = android.R.id.addToDictionary;
     View m_view;
-
+    boolean m_closing;
     public QtInputConnection(View targetView)
     {
         super(targetView, true);
         m_view = targetView;
+        m_closing = false;
     }
 
     @Override
     public boolean beginBatchEdit() {
+        m_closing = false;
         return true;
     }
 
     @Override
     public boolean endBatchEdit() {
+        m_closing = false;
         return true;
     }
 
     @Override
     public boolean commitCompletion(CompletionInfo text) {
+        m_closing = false;
         return QtNativeInputConnection.commitCompletion(text.getText().toString(), text.getPosition());
     }
 
     @Override
     public boolean commitText(CharSequence text, int newCursorPosition) {
+        m_closing = false;
         return QtNativeInputConnection.commitText(text.toString(), newCursorPosition);
     }
 
     @Override
     public boolean deleteSurroundingText(int leftLength, int rightLength) {
+        m_closing = false;
         return QtNativeInputConnection.deleteSurroundingText(leftLength, rightLength);
     }
 
     @Override
     public boolean finishComposingText() {
+        if (m_closing)
+        {
+            QtNative.activityDelegate().m_keyboardIsHiding=true;
+            m_view.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    if (QtNative.activityDelegate().m_keyboardIsHiding)
+                        QtNative.activityDelegate().m_keyboardIsVisible=false;
+                }
+            }, 5000); // it seems finishComposingText comes musch faster than onKeyUp event,
+                      // so we must delay hide notification
+            m_closing = false;
+        }
+        else
+            m_closing = true;
         return QtNativeInputConnection.finishComposingText();
     }
 
