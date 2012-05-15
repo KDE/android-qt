@@ -78,6 +78,7 @@ public class QtActivity extends Activity
 {
     private final static int MINISTRO_INSTALL_REQUEST_CODE = 0xf3ee; // request code used to know when Ministro instalation is finished
     private static final int MINISTRO_API_LEVEL=1; // Ministro api level (check IMinistro.aidl file)
+    private static final int NECESSITAS_API_LEVEL=2; // Necessitas api level used by platform plugin
     private static final String QT_PROVIDER="necessitas";
     private static final int QT_VERSION=0x040800; // Qt version 4.8.00 check http://doc.trolltech.com/4.8/qtglobal.html#QT_VERSION
 
@@ -90,6 +91,7 @@ public class QtActivity extends Activity
     private static final String ENVIRONMENT_VARIABLES_KEY="environment.variables";
     private static final String APPLICATION_PARAMETERS_KEY="application.parameters";
     private static final String BUNDLED_LIBRARIES_KEY="bundled.libraries";
+    private static final String NECESSITAS_API_LEVEL_KEY="necessitas.api.level";
 
     /// Ministro server parameter keys
     private static final String REQUIRED_MODULES_KEY="required.modules";
@@ -130,6 +132,7 @@ public class QtActivity extends Activity
             if ( m_activityInfo.metaData.containsKey("android.app.lib_name") )
                 libs.add(m_activityInfo.metaData.getString("android.app.lib_name"));
             loaderParams.putStringArrayList(BUNDLED_LIBRARIES_KEY, libs);
+            loaderParams.putInt(NECESSITAS_API_LEVEL_KEY, NECESSITAS_API_LEVEL);
 
             // load and start QtLoader class
             m_classLoader = new DexClassLoader(loaderParams.getString(DEX_PATH_KEY) // .jar/.apk files

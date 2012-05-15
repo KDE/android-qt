@@ -68,6 +68,7 @@ public class QtActivityDelegate
     private static final String ENVIRONMENT_VARIABLES_KEY="environment.variables";
     private static final String APPLICATION_PARAMETERS_KEY="application.parameters";
     private static final String STATIC_INIT_CLASSES_KEY="static.init.classes";
+    private static final String NECESSITAS_API_LEVEL_KEY="necessitas.api.level";
 
     private static String m_environmentVariables = null;
     private static String m_applicationParameters = null;
@@ -297,12 +298,17 @@ public class QtActivityDelegate
             e.printStackTrace();
             return false;
         }
+
+        int necessitasApiLevel=1;
+        if (loaderParams.containsKey(NECESSITAS_API_LEVEL_KEY))
+            necessitasApiLevel=loaderParams.getInt(NECESSITAS_API_LEVEL_KEY);
+
         m_environmentVariables=loaderParams.getString(ENVIRONMENT_VARIABLES_KEY);
-        final String homePath="HOME="+m_activity.getFilesDir().getAbsolutePath()+"\tTMPDIR="+m_activity.getFilesDir().getAbsolutePath();
+        final String additionalEnvironmentVariables="NECESSITAS_API_LEVEL="+necessitasApiLevel+"\tHOME="+m_activity.getFilesDir().getAbsolutePath()+"\tTMPDIR="+m_activity.getFilesDir().getAbsolutePath();
         if (m_environmentVariables != null && m_environmentVariables.length()>0)
-            m_environmentVariables=homePath+"\t"+m_environmentVariables;
+            m_environmentVariables=additionalEnvironmentVariables+"\t"+m_environmentVariables;
         else
-            m_environmentVariables=homePath;
+            m_environmentVariables=additionalEnvironmentVariables;
 
         m_applicationParameters=loaderParams.getString(APPLICATION_PARAMETERS_KEY);
         return true;

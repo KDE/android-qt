@@ -47,7 +47,7 @@ public:
 
     virtual QFileInfo currentFileInfo() const
     {
-        return QFileInfo(QFile(currentFilePath()));
+        return QFileInfo(currentFilePath());
     }
 
     virtual QString currentFileName() const
@@ -103,6 +103,8 @@ public:
     ~AndroidAbstractFileEngine()
     {
         close();
+        if (m_assetDir)
+            AAssetDir_close(m_assetDir);
     }
 
     virtual bool open(QIODevice::OpenMode openMode)
@@ -118,12 +120,6 @@ public:
         {
             AAsset_close(m_assetFile);
             m_assetFile = 0;
-            return true;
-        }
-        if (m_assetDir)
-        {
-            AAssetDir_close(m_assetDir);
-            m_assetDir = 0;
             return true;
         }
         return false;
@@ -213,6 +209,8 @@ public:
         if ( file == m_fileName )
             return;
         m_fileName = file;
+        if (!m_fileName.endsWith(QChar(QLatin1Char('/'))))
+            m_fileName+="/";
         close();
     }
 
@@ -233,6 +231,7 @@ private:
 AndroidAssetsFileEngineHandler::AndroidAssetsFileEngineHandler()
 {
     m_assetManager = QtAndroid::assetManager();
+    m_necessitasApiLevel = -1;
 }
 
 AndroidAssetsFileEngineHandler::~AndroidAssetsFileEngineHandler()
@@ -244,41 +243,80 @@ QAbstractFileEngine * AndroidAssetsFileEngineHandler::create ( const QString & f
 {
     if(fileName.isEmpty())
         return 0;
+    if (-1 == m_necessitasApiLevel)
+        m_necessitasApiLevel = qgetenv("NECESSITAS_API_LEVEL").toInt();
 
-    AAsset* asset;
-    if (fileName[0]==QChar(QLatin1Char('/')))
-        asset=AAssetManager_open(m_assetManager, fileName.toUtf8().constData()+1, AASSET_MODE_BUFFER);
+    if (m_necessitasApiLevel>1)
+    {
+        int prefixSize=0;
+        if (fileName.startsWith(QLatin1String(":/")))
+            prefixSize=2;
+        else
+        {
+            if (fileName.startsWith(QLatin1String("qrc:/")))
+                prefixSize=5;
+            else
+                return 0;
+        }
+
+        path.clear();
+        if (!fileName.endsWith(QLatin1Char('/')))
+        {
+            path = fileName.toUtf8();
+            AAsset* asset=AAssetManager_open(m_assetManager, path.constData()+prefixSize, AASSET_MODE_BUFFER);
+            if (asset)
+                return new AndroidAbstractFileEngine(asset, fileName);
+        }
+
+        if (!path.size())
+             path = fileName.left(fileName.length()-1).toUtf8();
+
+        AAssetDir* assetDir=AAssetManager_openDir(m_assetManager, path.constData()+prefixSize);
+        if (assetDir)
+        {
+            if (AAssetDir_getNextFileName(assetDir))
+                return new AndroidAbstractFileEngine(assetDir, fileName);
+            else
+                AAssetDir_close(assetDir);
+        }
+    }
     else
     {
-        if (fileName.startsWith(QLatin1String("file://")))
-            asset=AAssetManager_open(m_assetManager, fileName.toUtf8().constData()+7, AASSET_MODE_BUFFER);
+        AAsset* asset;
+        if (fileName[0]==QChar(QLatin1Char('/')))
+            asset=AAssetManager_open(m_assetManager, fileName.toUtf8().constData()+1, AASSET_MODE_BUFFER);
         else
-            asset=AAssetManager_open(m_assetManager, fileName.toUtf8().constData(), AASSET_MODE_BUFFER);
-    }
-    if (asset)
-        return new AndroidAbstractFileEngine(asset, fileName);
+        {
+            if (fileName.startsWith(QLatin1String("file://")))
+                asset=AAssetManager_open(m_assetManager, fileName.toUtf8().constData()+7, AASSET_MODE_BUFFER);
+            else
+                asset=AAssetManager_open(m_assetManager, fileName.toUtf8().constData(), AASSET_MODE_BUFFER);
+        }
+        if (asset)
+            return new AndroidAbstractFileEngine(asset, fileName);
 
-    if (!fileName.endsWith(QChar(QLatin1Char('/'))))
-        return 0;
-    QString dirName;
-    if (fileName[0]==QChar(QLatin1Char('/')))
-        dirName = fileName.mid(1, fileName.size()-2);
-    else
-    {
-        if (fileName.startsWith(QLatin1String("file://")))
-            dirName = fileName.mid(7,fileName.size()-8);
+        if (!fileName.endsWith(QChar(QLatin1Char('/'))))
+            return 0;
+        QString dirName;
+        if (fileName[0]==QChar(QLatin1Char('/')))
+            dirName = fileName.mid(1, fileName.size()-2);
         else
-            dirName = fileName.left(fileName.size()-1);
-    }
+        {
+            if (fileName.startsWith(QLatin1String("file://")))
+                dirName = fileName.mid(7,fileName.size()-8);
+            else
+                dirName = fileName.left(fileName.size()-1);
+        }
 
-    AAssetDir* assetDir;
-    assetDir=AAssetManager_openDir(m_assetManager, dirName.toUtf8().constData());
-    if (assetDir)
-    {
-        if (AAssetDir_getNextFileName(assetDir))
-            return new AndroidAbstractFileEngine(assetDir, fileName);
-        else
-            AAssetDir_close(assetDir);
+        AAssetDir* assetDir;
+        assetDir=AAssetManager_openDir(m_assetManager, dirName.toUtf8().constData());
+        if (assetDir)
+        {
+            if (AAssetDir_getNextFileName(assetDir))
+                return new AndroidAbstractFileEngine(assetDir, fileName);
+            else
+                AAssetDir_close(assetDir);
+        }
     }
     return 0;
 }

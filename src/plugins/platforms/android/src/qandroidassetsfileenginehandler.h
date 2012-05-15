@@ -40,6 +40,8 @@ public:
 
 private:
     AAssetManager * m_assetManager;
+    mutable QByteArray path;
+    mutable int m_necessitasApiLevel;
 };
 
 #endif // QANDROIDASSETSFILEENGINEHANDLER_H

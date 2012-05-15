@@ -53,7 +53,7 @@ public class QtActivity extends Activity {
         QtNative.loadQtLibraries(libs);
         // start application
 
-        final String envPaths="HOME="+getDir("files", MODE_WORLD_WRITEABLE).getAbsolutePath()+
+        final String envPaths="NECESSITAS_API_LEVEL=2\tHOME="+getDir("files", MODE_WORLD_WRITEABLE).getAbsolutePath()+
                             "\tTMPDIR="+getDir("files", MODE_WORLD_WRITEABLE).getAbsolutePath()+
                             "\tCACHE_PATH="+getDir("files", MODE_WORLD_WRITEABLE).getAbsolutePath();
         if (environment != null && environment.length()>0)
