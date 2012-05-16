@@ -152,8 +152,9 @@ sub killProcess
 sub startTest
 {
     my $libs = shift;
+    my $mainLib = shift;
     my $openGL = ((shift)?"true":"false");
-    system("$adb_tool $device_serial shell am start -n $intentName --ez needsOpenGl $openGL --es extra_libs \"$libs\""); # start intent
+    system("$adb_tool $device_serial shell am start -n $intentName --ez needsOpenGl $openGL --es extra_libs \"$libs\" --es lib_name \"$mainLib\""); # start intent
     #wait to start
     return 0 unless(waitForProcess($packageName,1,10));
     #wait to stop
@@ -206,7 +207,7 @@ pushd($tests_dir);
 system("make distclean") if ($make_clean);
 system("$qmake_path -r") == 0 or die "Can't run qmake\n"; #exec qmake
 system("make -j$jobs") == 0 or warn "Can't build all tests\n"; #exec make
-my $testsFiles=`find -name libtst_*.so`; # only tests
+my $testsFiles=`find . -name libtst_*.so`; # only tests
 foreach(split("\n",$testsFiles))
 {
     chomp; #remove white spaces
@@ -231,12 +232,12 @@ foreach(split("\n",$testsFiles))
     {
         if (needsOpenGl("$temp_dir/libtst_$application.so"))
         {
-             startTest("/data/local/qt/plugins/platforms/android/libandroidGL-$sdk_api.so:/data/data/$packageName/app_files/libtst_$application.so", 1
+             startTest("/data/local/qt/plugins/platforms/android/libandroidGL-$sdk_api.so", "/data/data/$packageName/app_files/libtst_$application.so", 1
                         , "$output_name.xml") or warn "Can't run $application ...\n";
         }
         else
         {
-             startTest("/data/local/qt/plugins/platforms/android/libandroid-$sdk_api.so:/data/data/$packageName/app_files/libtst_$application.so", 0
+             startTest("/data/local/qt/plugins/platforms/android/libandroid-$sdk_api.so", "/data/data/$packageName/app_files/libtst_$application.so", 0
                         , "$output_name.xml") or warn "Can't run $application stopping tests ...\n";
         }
     }

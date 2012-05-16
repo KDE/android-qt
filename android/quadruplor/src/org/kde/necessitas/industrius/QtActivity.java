@@ -48,7 +48,7 @@ public class QtActivity extends Activity {
     private boolean m_started = false;
     private QtSurface m_surface=null;
     private boolean m_usesGL = false;
-    private void loadQtLibs(String [] libs, String environment, String params)
+    private void loadQtLibs(String [] libs, String environment, String params, String mainLib, String nativeLibDir) throws Exception
     {
         QtNative.loadQtLibraries(libs);
         // start application
@@ -67,7 +67,7 @@ public class QtActivity extends Activity {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
-        QtNative.startApplication(params, environment);
+        QtNative.startApplication(params, environment, mainLib, nativeLibDir);
         m_surface.applicationStarted( m_usesGL );
         m_started = true;
     }
@@ -84,6 +84,8 @@ public class QtActivity extends Activity {
             for(int i=0;i<qtLibs.length;i++)
                 libraryList.add("/data/local/qt/lib/lib"+qtLibs[i]+".so");
 
+            String mainLib=null;
+            String nativeLibDir=null;
             if (getIntent().getExtras() != null)
             {
                 if (getIntent().getExtras().containsKey("extra_libs"))
@@ -91,6 +93,16 @@ public class QtActivity extends Activity {
                     String extra_libs=getIntent().getExtras().getString("extra_libs");
                     for (String lib : extra_libs.split(":"))
                         libraryList.add(lib);
+                }
+                if (getIntent().getExtras().containsKey("lib_name"))
+                {
+                    mainLib=getIntent().getExtras().getString("lib_name");
+                    int slash=mainLib.lastIndexOf("/");
+                    if (slash >= 0) {
+                        nativeLibDir=mainLib.substring(0, slash+1);
+                        mainLib=mainLib.substring(slash+1+3, mainLib.length()-3); //remove lib and .so
+                    } else
+                        nativeLibDir = "";
                 }
 
                 if (getIntent().getExtras().containsKey("needsOpenGl"))
@@ -108,7 +120,7 @@ public class QtActivity extends Activity {
             }
             String[] libs=new String[libraryList.size()];
             libs=libraryList.toArray(libs);
-            loadQtLibs(libs,"QML_IMPORT_PATH=/data/local/qt/imports\tQT_PLUGIN_PATH=/data/local/qt/plugins", "-xml\t-silent\t-o\toutput.xml");
+            loadQtLibs(libs,"QML_IMPORT_PATH=/data/local/qt/imports\tQT_PLUGIN_PATH=/data/local/qt/plugins", "-xml\t-silent\t-o\toutput.xml",mainLib,nativeLibDir);
         }
         catch (Exception e)
         {

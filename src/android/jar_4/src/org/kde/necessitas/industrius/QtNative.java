@@ -166,10 +166,15 @@ public class QtNative
         }
     }
 
-    public static boolean startApplication(String params, String environment)
+    public static boolean startApplication(String params, String environment, String mainLibrary, String nativeLibraryDir) throws Exception
     {
+        File f = new File(nativeLibraryDir+"lib"+mainLibrary+".so");
+        if (!f.exists())
+            throw new Exception("Can't find main library '" + mainLibrary + "'");
+
         if (params == null)
             params = "-platform\tandroid";
+
         boolean res=false;
         synchronized (m_mainActivityMutex)
         {
@@ -182,7 +187,7 @@ public class QtNative
                             m_displayMetricsYDpi);
             if (params.length()>0)
                 params="\t"+params;
-            startQtApp("QtApp"+params, environment);
+            startQtApplication(f.getAbsolutePath()+"\t"+params, environment);
             m_started=true;
         }
         return res;
@@ -235,6 +240,7 @@ public class QtNative
         }
     }
     // application methods
+    public static native void startQtApplication(String params, String env);
     public static native void startQtApp(String params, String env);
     public static native void pauseQtApp();
     public static native void resumeQtApp();

@@ -154,25 +154,29 @@ public class QtNative extends Application
         }
     }
 
-    public static void startApplication(String params, String environment)
+    public static boolean startApplication(String params, String environment, String mainLibrary, String nativeLibraryDir) throws Exception
     {
+        File f = new File(nativeLibraryDir+"lib"+mainLibrary+".so");
+        if (!f.exists())
+            throw new Exception("Can't find main library '" + mainLibrary + "'");
+
         if (params == null)
             params = "-platform\tandroid";
 
+        boolean res=false;
         synchronized (m_mainActivityMutex)
         {
-            startQtAndroidPlugin();
+            res=startQtAndroidPlugin();
             setDisplayMetrics(m_displayMetricsScreenWidthPixels,
                             m_displayMetricsScreenHeightPixels,
                             m_displayMetricsDesktopWidthPixels,
                             m_displayMetricsDesktopHeightPixels,
                             m_displayMetricsXDpi,
                             m_displayMetricsYDpi);
-            if (params.length()>0)
-                params="\t"+params;
-            startQtApp("QtApp"+params, environment);
+            startQtApplication(f.getAbsolutePath()+"\t"+params, environment);
             m_started=true;
         }
+        return res;
     }
 
     public static void setApplicationDisplayMetrics(int screenWidthPixels,
@@ -222,7 +226,7 @@ public class QtNative extends Application
         }
     }
     // application methods
-    public static native void startQtApp(String params,String env);
+    public static native void startQtApplication(String params, String env);
     public static native void pauseQtApp();
     public static native void resumeQtApp();
     public static native boolean startQtAndroidPlugin();

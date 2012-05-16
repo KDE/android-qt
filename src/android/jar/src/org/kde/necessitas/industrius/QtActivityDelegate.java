@@ -30,6 +30,7 @@ package org.kde.necessitas.industrius;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Iterator;
 
 import android.app.Activity;
@@ -65,6 +66,7 @@ public class QtActivityDelegate
 
     private static final String NATIVE_LIBRARIES_KEY="native.libraries";
     private static final String BUNDLED_LIBRARIES_KEY="bundled.libraries";
+    private static final String MAIN_LIBRARY_KEY="main.library";
     private static final String ENVIRONMENT_VARIABLES_KEY="environment.variables";
     private static final String APPLICATION_PARAMETERS_KEY="application.parameters";
     private static final String STATIC_INIT_CLASSES_KEY="static.init.classes";
@@ -74,7 +76,7 @@ public class QtActivityDelegate
     private static String m_applicationParameters = null;
 
 
-//    private int m_id=-1;
+    private String m_mainLib;
     private long m_metaState;
     private int m_lastChar=0;
     private boolean m_fullScreen = false;
@@ -256,7 +258,12 @@ public class QtActivityDelegate
             }
 
         QtNative.loadQtLibraries(loaderParams.getStringArrayList(NATIVE_LIBRARIES_KEY));
-        QtNative.loadBundledLibraries(loaderParams.getStringArrayList(BUNDLED_LIBRARIES_KEY), QtNativeLibrariesDir.nativeLibrariesDir(m_activity));
+        ArrayList<String> libraries = loaderParams.getStringArrayList(BUNDLED_LIBRARIES_KEY);
+        QtNative.loadBundledLibraries(libraries, QtNativeLibrariesDir.nativeLibrariesDir(m_activity));
+        m_mainLib = loaderParams.getString(MAIN_LIBRARY_KEY);
+        // older apps provide the main library as the last bundled library; look for this if the main library isn't provided
+        if (null == m_mainLib && libraries.size()>0)
+            m_mainLib = libraries.get(libraries.size()-1);
 
         // if the applications is debuggable and it has a native debug request
         if ( /*(ai.flags&ApplicationInfo.FLAG_DEBUGGABLE) != 0
@@ -321,8 +328,11 @@ public class QtActivityDelegate
         {
             if (null == m_surface)
                 onCreate(null);
+            String nativeLibraryDir = QtNativeLibrariesDir.nativeLibrariesDir(m_activity);
             m_surface.applicationStarted( QtNative.startApplication(m_applicationParameters
-                                                                , m_environmentVariables));
+                                                                , m_environmentVariables
+                                                                , m_mainLib
+                                                                , nativeLibraryDir));
             m_started = true;
             return true;
         } catch (Exception e) {

@@ -77,10 +77,10 @@ import android.view.ActionMode.Callback;
 public class QtActivity extends Activity
 {
     private final static int MINISTRO_INSTALL_REQUEST_CODE = 0xf3ee; // request code used to know when Ministro instalation is finished
-    private static final int MINISTRO_API_LEVEL=1; // Ministro api level (check IMinistro.aidl file)
+    private static final int MINISTRO_API_LEVEL=2; // Ministro api level (check IMinistro.aidl file)
     private static final int NECESSITAS_API_LEVEL=2; // Necessitas api level used by platform plugin
     private static final String QT_PROVIDER="necessitas";
-    private static final int QT_VERSION=0x040800; // Qt version 4.8.00 check http://doc.trolltech.com/4.8/qtglobal.html#QT_VERSION
+    private static final int QT_VERSION=0x040801; // Qt version 4.8.00 check http://qt-project.org/doc/qt-4.8/qtglobal.html#QT_VERSION
 
     private static final String ERROR_CODE_KEY="error.code";
     private static final String ERROR_MESSAGE_KEY="error.message";
@@ -91,6 +91,7 @@ public class QtActivity extends Activity
     private static final String ENVIRONMENT_VARIABLES_KEY="environment.variables";
     private static final String APPLICATION_PARAMETERS_KEY="application.parameters";
     private static final String BUNDLED_LIBRARIES_KEY="bundled.libraries";
+    private static final String MAIN_LIBRARY_KEY="main.library";
     private static final String NECESSITAS_API_LEVEL_KEY="necessitas.api.level";
 
     /// Ministro server parameter keys
@@ -99,6 +100,11 @@ public class QtActivity extends Activity
     private static final String QT_PROVIDER_KEY="qt.provider";
     private static final String MINIMUM_MINISTRO_API_KEY="minimum.ministro.api";
     private static final String MINIMUM_QT_VERSION_KEY="minimum.qt.version";
+    private static final String REPOSITORIES="3rd.party.repositories"; // needs MINISTRO_API_LEVEL >=2 !!!
+                                                                       // Use this key to specify any 3rd party repositories urls
+                                                                       // Ministro will download these repositories into thier
+                                                                       // own folders, check http://community.kde.org/Necessitas/Ministro
+                                                                       // for more details.
     /// Ministro server parameter keys
 
     private ActivityInfo m_activityInfo = null; // activity info object, used to access the libs and the strings
@@ -124,13 +130,17 @@ public class QtActivity extends Activity
                 return;
             }
 
-            // add all bundled libs to loader params
+            // add all bundled Qt libs to loader params
             ArrayList<String> libs = new ArrayList<String>();
             if ( m_activityInfo.metaData.containsKey("android.app.bundled_libs_resource_id") )
                 libs.addAll(Arrays.asList(getResources().getStringArray(m_activityInfo.metaData.getInt("android.app.bundled_libs_resource_id"))));
 
-            if ( m_activityInfo.metaData.containsKey("android.app.lib_name") )
-                libs.add(m_activityInfo.metaData.getString("android.app.lib_name"));
+            String libName = null;
+            if ( m_activityInfo.metaData.containsKey("android.app.lib_name") ) {
+                libName = m_activityInfo.metaData.getString("android.app.lib_name");
+                loaderParams.putString(MAIN_LIBRARY_KEY, libName); //main library contains main() function
+            }
+
             loaderParams.putStringArrayList(BUNDLED_LIBRARIES_KEY, libs);
             loaderParams.putInt(NECESSITAS_API_LEVEL_KEY, NECESSITAS_API_LEVEL);
 
@@ -148,6 +158,10 @@ public class QtActivity extends Activity
                 throw new Exception("");
 
             QtApplication.setQtActivityDelegate(qtLoader);
+
+            // now load the application library so it's accessible from this class loader
+            if (libName != null)
+                System.loadLibrary(libName);
 
             Method startAppMethod=qtLoader.getClass().getMethod("startApplication");
             if (!(Boolean)startAppMethod.invoke(qtLoader))
@@ -185,6 +199,7 @@ public class QtActivity extends Activity
                     parameters.putInt(MINIMUM_MINISTRO_API_KEY, MINISTRO_API_LEVEL);
                     parameters.putString(QT_PROVIDER_KEY, QT_PROVIDER);
                     parameters.putInt(MINIMUM_QT_VERSION_KEY, QT_VERSION);
+                    // parameters.putStringArray(REPOSITORIES, null);
                     m_service.requestLoader(m_ministroCallback, parameters);
                 }
             } catch (RemoteException e) {

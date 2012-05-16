@@ -26,6 +26,8 @@
 */
 
 #include <android/log.h>
+#include <dlfcn.h>
+#include <jni.h>
 #include <pthread.h>
 #include <qcoreapplication.h>
 #include <qimage.h>
@@ -35,7 +37,7 @@
 #include <qmutex.h>
 #include <qdebug.h>
 #include <qglobal.h>
-#include <jni.h>
+#include <stdlib.h>
 
 #include "androidjnimain.h"
 #include "qandroidplatformintegration.h"
@@ -67,6 +69,11 @@ static jobject m_classLoaderObject = NULL;
 static jmethodID m_loadClassMethodID = NULL;
 static AAssetManager* m_assetManager = NULL;
 static jobject m_resourcesObj;
+
+extern "C" typedef int (*Main)(int, char **); //use the standard main method to start the application
+static Main m_main = NULL;
+static void* m_mainLibraryHnd = NULL;
+static QList<QByteArray> m_applicationParams;
 
 
 #ifndef ANDROID_PLUGIN_OPENGL
@@ -396,6 +403,83 @@ static jboolean startQtAndroidPlugin(JNIEnv* /*env*/, jobject /*object*//*, jobj
 #else
     return false;
 #endif
+}
+
+static void * startMainMethod(void * /*data*/)
+{
+    char **  params;
+    params=(char**)malloc(sizeof(char*)*m_applicationParams.length());
+    for (int i=0;i<m_applicationParams.size();i++)
+        params[i]= (char*)m_applicationParams[i].constData();
+
+    int ret = m_main(m_applicationParams.length(), params);
+
+    qDebug()<<"MainMethod finished, it's time to cleanup";
+    free(params);
+    Q_UNUSED(ret);
+
+    if (m_mainLibraryHnd) {
+        int res = dlclose(m_mainLibraryHnd);
+        if (res < 0)
+            qWarning()<<"dlclose failed:"<<dlerror();
+    }
+
+    JNIEnv* env;
+    if (m_javaVM->AttachCurrentThread(&env, NULL)<0)
+    {
+        qCritical()<<"AttachCurrentThread failed";
+        return false;
+    }
+    if (m_applicationClass){
+        jmethodID quitApp = env->GetStaticMethodID(m_applicationClass, "quitApp", "()V");
+        env->CallStaticVoidMethod(m_applicationClass, quitApp);
+    }
+    m_javaVM->DetachCurrentThread();
+    return NULL;
+}
+
+static jboolean startQtApplication(JNIEnv* env, jobject /*object*/, jstring paramsString, jstring environmentString)
+{
+    m_mainLibraryHnd = NULL;
+    const char * nativeString = env->GetStringUTFChars(environmentString, 0);
+    QByteArray string=nativeString;
+    env->ReleaseStringUTFChars(environmentString, nativeString);
+    m_applicationParams=string.split('\t');
+    foreach (string, m_applicationParams)
+        if (putenv(string.constData()))
+            qWarning()<<"Can't set environment"<<string;
+
+    nativeString = env->GetStringUTFChars(paramsString, 0);
+    string=nativeString;
+    env->ReleaseStringUTFChars(paramsString, nativeString);
+
+    m_applicationParams=string.split('\t');
+
+    // Go home
+    QDir::setCurrent(QDir::homePath());
+
+    //look for main()
+    if (m_applicationParams.length()) {
+        //obtain a handle to the main library (the library that contains the main() function).
+        // this library should already be loaded, and calling dlopen() will just return a reference to it.
+        m_mainLibraryHnd = dlopen(m_applicationParams.first().data(), 0);
+        if (m_mainLibraryHnd == NULL) {
+            qCritical()<<"dlopen failed:"<<dlerror();
+            return false;
+        }
+        m_main = (Main)dlsym(m_mainLibraryHnd, "main");
+    } else {
+        qWarning()<<"No main library was specified; searching entire process (this is slow!)";
+        m_main = (Main)dlsym(RTLD_DEFAULT, "main");
+    }
+    if (!m_main) {
+        qCritical()<<"dlsym failed:"<<dlerror();
+        qCritical()<<"Could not find main method";
+        return false;
+    }
+
+    pthread_t appThread;
+    return pthread_create(&appThread, NULL, startMainMethod, NULL)==0;
 }
 
 static void pauseQtApp(JNIEnv */*env*/, jobject /*thiz*/)
@@ -1008,6 +1092,7 @@ static jboolean optionsItemSelected(JNIEnv */*env*/, jobject /*thiz*/, jint grou
 
 static JNINativeMethod methods[] = {
     {"startQtAndroidPlugin", "()Z", (void *)startQtAndroidPlugin},
+    {"startQtApplication", "(Ljava/lang/String;Ljava/lang/String;)V", (void *)startQtApplication},
     {"pauseQtApp", "()V", (void *)pauseQtApp},
     {"resumeQtApp", "()V", (void *)resumeQtApp},
     {"quitQtAndroidPlugin", "()V", (void *)quitQtAndroidPlugin},

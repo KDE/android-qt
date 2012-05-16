@@ -188,7 +188,6 @@ for(QTLIB, $$list($$lower($$unique(QT)))) {
         contains(TEMPLATE, ".*app") {
             !CONFIG(android_app) {
                !contains(TARGET, ".so"): TARGET = lib$${TARGET}.so
-               CONFIG(android_qtmain): SOURCES += $$[QT_INSTALL_PREFIX]/src/android/cpp/qtmain_android.cpp
                QMAKE_LFLAGS += -Wl,--no-undefined -Wl,-z,noexecstack -shared -Wl,-soname,$$TARGET
 
                contains(NDK_ROOT, ".*r6")|contains(NDK_ROOT, ".*r5.*")|contains(NDK_ROOT, ".*r5") {
