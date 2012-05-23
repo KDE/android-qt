@@ -262,7 +262,7 @@ public class QtSystemInfo
         String imsi="";
         if(m_telephonyManager.getSubscriberId()!=null)
         {
-            imsi=m_telephonyManager.getDeviceId();
+            imsi=m_telephonyManager.getSubscriberId();
         }
         else
         {
