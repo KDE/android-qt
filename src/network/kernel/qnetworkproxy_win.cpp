@@ -376,7 +376,8 @@ QList<QNetworkProxy> QNetworkProxyFactory::systemProxyForQuery(const QNetworkPro
         // url could be empty, e.g. from QNetworkProxy::applicationProxy(), that's fine,
         // we'll still ask for the proxy.
         // But for a file url, we know we don't need one.
-        if (url.scheme() == QLatin1String("file") || url.scheme() == QLatin1String("qrc"))
+        if (url.scheme() == QLatin1String("file") || url.scheme() == QLatin1String("qrc")
+                || url.scheme() == QLatin1String("assets"))
             return sp->defaultResult;
         if (query.queryType() != QNetworkProxyQuery::UrlRequest) {
             // change the scheme to https, maybe it'll work

@@ -248,16 +248,10 @@ QAbstractFileEngine * AndroidAssetsFileEngineHandler::create ( const QString & f
 
     if (m_necessitasApiLevel>1)
     {
-        int prefixSize=0;
-        if (fileName.startsWith(QLatin1String(":/")))
-            prefixSize=2;
-        else
-        {
-            if (fileName.startsWith(QLatin1String("qrc:/")))
-                prefixSize=5;
-            else
-                return 0;
-        }
+        if (!fileName.startsWith(QLatin1String("assets:/")))
+            return 0;
+
+        int prefixSize=8;
 
         path.clear();
         if (!fileName.endsWith(QLatin1Char('/')))

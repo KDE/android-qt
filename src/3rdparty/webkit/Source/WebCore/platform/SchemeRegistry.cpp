@@ -39,6 +39,9 @@ static URLSchemesMap& localURLSchemes()
 #endif
 #if PLATFORM(QT)
         localSchemes.add("qrc");
+# ifdef ANDROID
+        localSchemes.add("assets");
+# endif
 #endif
     }
 

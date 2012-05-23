@@ -1260,6 +1260,15 @@ QString QDeclarativeEnginePrivate::urlToLocalFileOrQrc(const QUrl& url)
             return QLatin1Char(':') + url.path();
         return QString();
     }
+    else
+    {
+        if ( url.scheme().compare(QLatin1String("assets"), Qt::CaseInsensitive) == 0 )
+        {
+            if (url.authority().isEmpty())
+                return QLatin1String("assets:") + url.path();
+            return QString();
+        }
+    }
     return url.toLocalFile();
 }
 

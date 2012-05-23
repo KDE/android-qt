@@ -148,7 +148,6 @@ QFbScreen::QFbScreen() : cursor(0), mGeometry(), mDepth(16), mFormat(QImage::For
 
 void QFbScreen::setGeometry(QRect rect)
 {
-    qDebug()<<"QFbScreen::setGeometry"<<rect;
     delete compositePainter;
     compositePainter = 0;
     delete mScreenImage;
@@ -166,7 +165,6 @@ void QFbScreen::setDepth(int depth)
 
 void QFbScreen::setPhysicalSize(QSize size)
 {
-    qDebug()<<"QFbScreen::setPhysicalSize"<<size;
     mPhysicalSize = size;
 }
 

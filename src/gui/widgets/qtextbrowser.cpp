@@ -154,7 +154,12 @@ QString QTextBrowserPrivate::findFile(const QUrl &name) const
     if (name.scheme() == QLatin1String("qrc"))
         fileName = QLatin1String(":/") + name.path();
     else
-        fileName = name.toLocalFile();
+    {
+        if (name.scheme() == QLatin1String("assets"))
+            fileName = QLatin1String("assets:") + name.path();
+        else
+            fileName = name.toLocalFile();
+    }
 
     if (QFileInfo(fileName).isAbsolute())
         return fileName;
@@ -218,10 +223,12 @@ void QTextBrowserPrivate::_q_activateAnchor(const QString &href)
     if ((openExternalLinks
          && url.scheme() != QLatin1String("file")
          && url.scheme() != QLatin1String("qrc")
+         && url.scheme() != QLatin1String("assets")
          && !url.isRelative())
         || (url.isRelative() && !currentURL.isRelative()
             && currentURL.scheme() != QLatin1String("file")
-            && currentURL.scheme() != QLatin1String("qrc"))) {
+            && currentURL.scheme() != QLatin1String("qrc")
+            && currentURL.scheme() != QLatin1String("assets"))) {
         QDesktopServices::openUrl(url);
         return;
     }
