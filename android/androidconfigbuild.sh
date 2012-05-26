@@ -13,7 +13,7 @@ DOWNLOAD_OPENSSL=1
 NDK_PLATFORM=5
 DEST_DIR_QT=$PWD
 PLATFORM="-platform linux-g++"
-NDK_ROOT=~/NecessitasQtSDK/android-ndk-r7b
+NDK_ROOT=~/necessitas/android-ndk
 NDK_HOST=linux-x86
 NDK_TOOLCHAIN_VERSION=4.4.3
 NDK_TOOLCHAIN_PREFIX=arm-linux-androideabi
@@ -203,7 +203,7 @@ if [ "$DOWNLOAD_OPENSSL" -eq "1" ]; then
 fi
 
 if [ "$DEBUG_QT" -eq "1" ]; then
-	CFGOPTIONS="${CFGOPTIONS} -debug "
+	CFGOPTIONS="${CFGOPTIONS} -debug -developer-build "
 	INSTSUFFIX="${INSTSUFFIX}D"
 else
 	CFGOPTIONS="${CFGOPTIONS} -release -reduce-relocations -reduce-exports "
