@@ -286,10 +286,6 @@ int QEventDispatcherUNIXPrivate::doSelect(QEventLoop::ProcessEventsFlags flags, 
         while (::read(thread_pipe[0], c, sizeof(c)) > 0)
             ;
 #endif
-        if (!wakeUps.testAndSetRelease(1, 0)) {
-            // hopefully, this is dead code
-            qWarning("QEventDispatcherUNIX: internal error, wakeUps.testAndSetRelease(1, 0) failed!");
-        }
         ++nevents;
     }
 
@@ -637,9 +633,8 @@ int QEventDispatcherUNIX::select(int nfds, fd_set *readfds, fd_set *writefds, fd
                                  timeval *timeout)
 {
     Q_D(QEventDispatcherUNIX);
-    if (1==d->goToSleep) // don't go to bed if someone just woked you up !
+    if (d->goToSleep==1) // don't go to bed if someone just woked you up !
         return qt_safe_select(nfds, readfds, writefds, exceptfds, timeout);
-    d->goToSleep = 1;
     return 0;
 }
 
@@ -896,6 +891,7 @@ bool QEventDispatcherUNIX::processEvents(QEventLoop::ProcessEventsFlags flags)
 {
     Q_D(QEventDispatcherUNIX);
     d->interrupt = false;
+    d->goToSleep.testAndSetAcquire(0,1);
 
     // we are awake, broadcast it
     emit awake();
@@ -947,11 +943,9 @@ bool QEventDispatcherUNIX::hasPendingEvents()
 void QEventDispatcherUNIX::wakeUp()
 {
     Q_D(QEventDispatcherUNIX);
-    if (d->wakeUps.testAndSetAcquire(0, 1)) {
-        char c = 0;
-        d->goToSleep=0;
-        qt_safe_write( d->thread_pipe[1], &c, 1 );
-    }
+    d->goToSleep.fetchAndStoreAcquire(0);
+    char c = 0;
+    qt_safe_write( d->thread_pipe[1], &c, 1 );
 }
 
 void QEventDispatcherUNIX::interrupt()

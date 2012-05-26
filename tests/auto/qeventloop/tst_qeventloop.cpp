@@ -884,7 +884,7 @@ namespace DeliverInDefinedOrder_QTBUG19637 {
 
 void tst_QEventLoop::deliverInDefinedOrder_QTBUG19637()
 {
-#ifdef Q_OS_SYMBIAN
+#if defined(Q_OS_SYMBIAN) || defined(Q_OS_ANDROID)
     QSKIP("Causes test suite to crash - see QTBUG-23974", SkipAll);
 #endif
     using namespace DeliverInDefinedOrder_QTBUG19637;
