@@ -36,6 +36,7 @@
 #include <QPlatformWindow>
 #include <QDir>
 #include <QApplication>
+#include <QCommonStyle>
 #include "qdesktopwidget.h"
 #include "qandroidplatformdesktopservice.h"
 
@@ -100,7 +101,13 @@ void *QAndroidPlatformNativeInterface::nativeResourceForWidget(const QByteArray 
 QAndroidPlatformIntegration::QAndroidPlatformIntegration()
 {
     m_androidPlatformNativeInterface =  new QAndroidPlatformNativeInterface();
-    QApplication::setStyle("android");
+    if (qgetenv("NECESSITAS_API_LEVEL").toInt()>1 && !qgetenv("MINISTRO_ANDROID_STYLE_PATH").isEmpty())
+    {
+        QApplication::setStyle(new QCommonStyle); // don't remove, it's used to set the default things (fonts, palette, etc)
+        QApplication::setStyle("android");
+    }
+    else
+        QApplication::setStyle("plastique");
 #ifdef ANDROID_PLUGIN_OPENGL
     qDebug() << "QAndroidPlatformIntegration::QAndroidPlatformIntegration():  creating QAndroidEglFSScreen => Using OpenGL painting";
     m_primaryScreen = new QAndroidEglFSScreen(EGL_DEFAULT_DISPLAY);

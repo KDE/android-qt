@@ -110,12 +110,13 @@ contains( styles, plastique ) {
 }
 
 contains( styles, android ) {
+       include(json/json.pri)
        HEADERS += styles/qandroidstyle.h
        SOURCES += styles/qandroidstyle.cpp
-       !contains( styles, windows ) {
-               message( android requires windows )
-               styles += windows
-               DEFINES+= QT_STYLE_WINDOWS
+       !contains( styles, plastique ) {
+               message( android requires plastique )
+               styles += plastique
+               DEFINES+= QT_STYLE_PLASTIQUE
        }
 } else {
        DEFINES += QT_NO_STYLE_ANDROID
