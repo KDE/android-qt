@@ -265,32 +265,6 @@ public class QtActivityDelegate
         if (null == m_mainLib && libraries.size()>0)
             m_mainLib = libraries.get(libraries.size()-1);
 
-        // if the applications is debuggable and it has a native debug request
-        if ( /*(ai.flags&ApplicationInfo.FLAG_DEBUGGABLE) != 0
-                &&*/ m_activity.getIntent().getExtras() != null
-                && m_activity.getIntent().getExtras().containsKey("native_debug")
-                && m_activity.getIntent().getExtras().getString("native_debug").equals("true"))
-        {
-            try
-            {
-                String packagePath=m_activity.getPackageManager().getApplicationInfo(m_activity.getPackageName(), PackageManager.GET_CONFIGURATIONS).dataDir+"/";
-                String gdbserverPath=m_activity.getIntent().getExtras().containsKey("gdbserver_path")?m_activity.getIntent().getExtras().getString("gdbserver_path"):packagePath+"lib/gdbserver ";
-                String socket=m_activity.getIntent().getExtras().containsKey("gdbserver_socket")?m_activity.getIntent().getExtras().getString("gdbserver_socket"):"+debug-socket";
-                // start debugger
-                m_debuggerProcess =Runtime.getRuntime().exec(gdbserverPath+socket+" --attach "+android.os.Process.myPid(),null, new File(packagePath));
-            }
-            catch (IOException ioe)
-            {
-                Log.e(QtNative.QtTAG,"Can't start debugger"+ioe.getMessage());
-            }
-            catch (SecurityException se)
-            {
-                Log.e(QtNative.QtTAG,"Can't start debugger"+se.getMessage());
-            } catch (NameNotFoundException e) {
-                Log.e(QtNative.QtTAG,"Can't start debugger"+e.getMessage());
-            }
-        }
-
         try {
             m_super_onRestoreInstanceState = m_activity.getClass().getMethod("super_onRestoreInstanceState", Bundle.class);
             m_super_onRetainNonConfigurationInstance = m_activity.getClass().getMethod("super_onRetainNonConfigurationInstance");
@@ -326,6 +300,32 @@ public class QtActivityDelegate
         // start application
         try
         {
+            // if the applications is debuggable and it has a native debug request
+            if ( /*(ai.flags&ApplicationInfo.FLAG_DEBUGGABLE) != 0
+                    &&*/ m_activity.getIntent().getExtras() != null
+                    && m_activity.getIntent().getExtras().containsKey("native_debug")
+                    && m_activity.getIntent().getExtras().getString("native_debug").equals("true"))
+            {
+                try
+                {
+                    String packagePath=m_activity.getPackageManager().getApplicationInfo(m_activity.getPackageName(), PackageManager.GET_CONFIGURATIONS).dataDir+"/";
+                    String gdbserverPath=m_activity.getIntent().getExtras().containsKey("gdbserver_path")?m_activity.getIntent().getExtras().getString("gdbserver_path"):packagePath+"lib/gdbserver ";
+                    String socket=m_activity.getIntent().getExtras().containsKey("gdbserver_socket")?m_activity.getIntent().getExtras().getString("gdbserver_socket"):"+debug-socket";
+                    // start debugger
+                    m_debuggerProcess =Runtime.getRuntime().exec(gdbserverPath+socket+" --attach "+android.os.Process.myPid(),null, new File(packagePath));
+                }
+                catch (IOException ioe)
+                {
+                    Log.e(QtNative.QtTAG,"Can't start debugger"+ioe.getMessage());
+                }
+                catch (SecurityException se)
+                {
+                    Log.e(QtNative.QtTAG,"Can't start debugger"+se.getMessage());
+                } catch (NameNotFoundException e) {
+                    Log.e(QtNative.QtTAG,"Can't start debugger"+e.getMessage());
+                }
+            }
+
             if (null == m_surface)
                 onCreate(null);
             String nativeLibraryDir = QtNativeLibrariesDir.nativeLibrariesDir(m_activity);
