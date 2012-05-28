@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2011 - 2012 Research In Motion
+** Copyright (C) 2012 Research In Motion
 **
 ** Contact: Research In Motion <blackberry-qt@qnx.com>
 ** Contact: Klarälvdalens Datakonsult AB <info@kdab.com>
@@ -37,35 +37,70 @@
 **
 ****************************************************************************/
 
-#ifndef QBBNAVIGATORTHREAD_H
-#define QBBNAVIGATORTHREAD_H
-
-#include <QThread>
+#include "qbbabstractvirtualkeyboard.h"
 
 QT_BEGIN_NAMESPACE
 
-class QBBScreen;
-
-class QBBNavigatorThread : public QThread
+QBBAbstractVirtualKeyboard::QBBAbstractVirtualKeyboard(QObject *parent)
+    : QObject(parent)
+    , mHeight(0)
+    , mKeyboardMode(Default)
+    , mVisible(false)
+    , mLanguageId(QString::fromLatin1("en"))
+    , mCountryId(QString::fromLatin1("US"))
 {
-public:
-    QBBNavigatorThread(QBBScreen& primaryScreen);
-    virtual ~QBBNavigatorThread();
+}
 
-protected:
-    virtual void run();
+void QBBAbstractVirtualKeyboard::setKeyboardMode(KeyboardMode mode)
+{
+    if (mode == mKeyboardMode)
+        return;
 
-private:
-    QBBScreen& mPrimaryScreen;
-    int mFd;
-    bool mQuit;
+    mKeyboardMode = mode;
 
-    void shutdown();
-    void parsePPS(const QByteArray &ppsData, QByteArray &msg, QByteArray &dat, QByteArray &id);
-    void replyPPS(const QByteArray &res, const QByteArray &id, const QByteArray &dat);
-    void handleMessage(const QByteArray &msg, const QByteArray &dat, const QByteArray &id);
-};
+    applyKeyboardMode(mode);
+}
+
+void QBBAbstractVirtualKeyboard::setVisible(bool visible)
+{
+    if (visible == mVisible)
+        return;
+
+    const int effectiveHeight = getHeight();
+
+    mVisible = visible;
+
+    if (effectiveHeight != getHeight())
+        emit heightChanged(getHeight());
+}
+
+void QBBAbstractVirtualKeyboard::setHeight(bool height)
+{
+    if (height == mHeight)
+        return;
+
+    const int effectiveHeight = getHeight();
+
+    mHeight = height;
+
+    if (effectiveHeight != getHeight())
+        emit heightChanged(getHeight());
+}
+
+void QBBAbstractVirtualKeyboard::setLanguage(const QString &language)
+{
+    if (language == mLanguageId)
+        return;
+
+    mLanguageId = language;
+}
+
+void QBBAbstractVirtualKeyboard::setCountry(const QString &country)
+{
+    if (country == mCountryId)
+        return;
+
+    mCountryId = country;
+}
 
 QT_END_NAMESPACE
-
-#endif // QBBNAVIGATORTHREAD_H

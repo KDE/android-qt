@@ -47,8 +47,13 @@
 QT_BEGIN_NAMESPACE
 
 class QBBEventThread;
-class QBBNavigatorThread;
+class QBBNavigatorEventHandler;
+class QBBNavigatorEventNotifier;
 class QBBLocaleThread;
+class QBBAbstractVirtualKeyboard;
+class QBBScreen;
+class QBBScreenEventHandler;
+class QBBNativeInterface;
 
 class QBBIntegration : public QPlatformIntegration
 {
@@ -61,6 +66,7 @@ public:
     virtual QPixmapData *createPixmapData(QPixmapData::PixelType type) const;
     virtual QPlatformWindow *createPlatformWindow(QWidget *widget, WId winId) const;
     virtual QWindowSurface *createWindowSurface(QWidget *widget, WId winId) const;
+    virtual QPlatformNativeInterface *nativeInterface() const;
 
     virtual QList<QPlatformScreen *> screens() const;
     virtual void moveToScreen(QWidget *window, int screen);
@@ -74,13 +80,24 @@ public:
 
     bool paintUsingOpenGL() const { return mPaintUsingOpenGL; }
 
+    QBBScreen *screenForWindow(screen_window_t window) const;
+
 private:
+    QBBScreen *primaryDisplay() const;
+    void createDisplays();
+    void destroyDisplays();
+
     screen_context_t mContext;
     QBBEventThread *mEventThread;
-    QBBNavigatorThread *mNavigatorThread;
+    QBBNavigatorEventHandler *mNavigatorEventHandler;
+    QBBNavigatorEventNotifier *mNavigatorEventNotifier;
     QBBLocaleThread *mLocaleThread;
     QPlatformFontDatabase *mFontDb;
+    QList<QPlatformScreen*> mScreens;
+    QBBScreenEventHandler *mScreenEventHandler;
     bool mPaintUsingOpenGL;
+    QBBAbstractVirtualKeyboard *mVirtualKeyboard;
+    QBBNativeInterface *mNativeInterface;
 };
 
 QT_END_NAMESPACE

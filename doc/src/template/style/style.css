@@ -1185,28 +1185,53 @@
         padding:0px;
     }
 
-        .content .alignedsummary
-        {
-          margin: 15px;
-        }
+    .content .alignedsummary
+    {
+        margin: 15px;
+    }
 
-        .details
-        {
-            text-align: left;
-            font-size: 80%;
-            color: blue
-        }
-        .variableName
-        {
-            font-family: courier;
-	    color: blue
-        }
-        .newStuff
-        {
-            text-align: left;
-            font-size: 80%;
-            color: red
-        }
+    .details
+    {
+        text-align: left;
+        font-size: 80%;
+        color: blue
+    }
+    .variableName
+    {
+        font-family: courier;
+        color: blue
+    }
+    .newStuff
+    {
+        text-align: left;
+        font-size: 80%;
+        color: red;
+    }
+
+    .naviNextPrevious > a.prevPage
+    {
+        background-image:url(../images/btn_prev_green.png);
+        background-repeat:no-repeat;
+        background-position:left;
+        padding-left:20px;
+        height:20px;
+    }
+
+    .naviNextPrevious > a.nextPage
+    {
+        background-image:url(../images/btn_next_green.png);
+        background-repeat:no-repeat;
+        background-position:right;
+        padding-right:20px;
+        height:20px;
+        float:right;
+    }
+
+    .naviNextPrevious + p
+    {
+        display:inline-block;
+        clear:both;
+    }
 
     .qmltype
     {

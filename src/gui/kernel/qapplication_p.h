@@ -455,8 +455,6 @@ public:
     static bool animate_toolbox;
     static bool widgetCount; // Coupled with -widgetcount switch
     static bool load_testability; // Coupled with -testability switch
-    static QString qmljs_debug_arguments; // a string containing arguments for js/qml debugging.
-    static QString qmljsDebugArgumentsString(); // access string from other libraries
 
 #ifdef Q_WS_MAC
     static bool native_modal_dialog_active;
@@ -507,7 +505,7 @@ public:
     static void reportGeometryChange(QWindowSystemInterfacePrivate::ScreenGeometryEvent *e);
 //    static void reportAvailableGeometryChange(int screenIndex);
     static void reportAvailableGeometryChange(QWindowSystemInterfacePrivate::ScreenAvailableGeometryEvent *e);
-
+    static void reportLocaleChange();
 #endif
 
 #ifdef Q_WS_QWS

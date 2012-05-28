@@ -1,10 +1,11 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** All rights reserved.
-** Contact: Nokia Corporation (qt-info@nokia.com)
+** Copyright (C) 2011 - 2012 Research In Motion
 **
-** This file is part of the Symbian application wrapper of the Qt Toolkit.
+** Contact: Research In Motion <blackberry-qt@qnx.com>
+** Contact: Klarälvdalens Datakonsult AB <info@kdab.com>
+**
+** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
 ** GNU Lesser General Public License Usage
@@ -27,9 +28,6 @@
 ** Public License version 3.0 requirements will be met:
 ** http://www.gnu.org/copyleft/gpl.html.
 **
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
 **
 **
 **
@@ -38,21 +36,40 @@
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
-#include <e32std.h>
-#include <qglobal.h>
 
-struct SStdEpocThreadCreateInfo;
+#ifndef QBBNAVIGATOREVENTNOTIFIER_H
+#define QBBNAVIGATOREVENTNOTIFIER_H
 
-Q_CORE_EXPORT TInt qt_symbian_SetupThreadHeap(TBool aNotFirst, SStdEpocThreadCreateInfo& aInfo);
+#include <QObject>
 
+QT_BEGIN_NAMESPACE
 
-/* \internal
- *
- * Uses link-time symbol preemption to capture a call from the application
- * startup. On return, there is some kind of heap allocator installed on the
- * thread.
-*/ 
-TInt UserHeap::SetupThreadHeap(TBool aNotFirst, SStdEpocThreadCreateInfo& aInfo)
+class QBBNavigatorEventHandler;
+class QSocketNotifier;
+
+class QBBNavigatorEventNotifier : public QObject
 {
-    return qt_symbian_SetupThreadHeap(aNotFirst, aInfo);
-}
+    Q_OBJECT
+public:
+    explicit QBBNavigatorEventNotifier(QBBNavigatorEventHandler *eventHandler, QObject *parent = 0);
+    ~QBBNavigatorEventNotifier();
+
+public Q_SLOTS:
+    void start();
+
+private Q_SLOTS:
+    void readData();
+
+private:
+    QBBNavigatorEventHandler *mEventHandler;
+    int mFd;
+    QSocketNotifier *mReadNotifier;
+
+    void parsePPS(const QByteArray &ppsData, QByteArray &msg, QByteArray &dat, QByteArray &id);
+    void replyPPS(const QByteArray &res, const QByteArray &id, const QByteArray &dat);
+    void handleMessage(const QByteArray &msg, const QByteArray &dat, const QByteArray &id);
+};
+
+QT_END_NAMESPACE
+
+#endif // QBBNAVIGATOREVENTNOTIFIER_H

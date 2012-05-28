@@ -40,29 +40,26 @@
 // #define QBBSCREEN_DEBUG
 
 #include "qbbscreen.h"
-#include "qbbvirtualkeyboard.h"
 #include "qbbrootwindow.h"
 #include "qbbwindow.h"
 
-#include <QUuid>
 #include <QDebug>
+#include <QtCore/QThread>
+#include <QtGui/QWindowSystemInterface>
 
 #include <errno.h>
 #include <unistd.h>
 
 QT_BEGIN_NAMESPACE
 
-#define MAGIC_ZORDER_FOR_NO_NAV     10
-
-QList<QPlatformScreen *> QBBScreen::sScreens;
-QList<QBBWindow*> QBBScreen::sChildren;
-
-QBBScreen::QBBScreen(screen_context_t context, screen_display_t display, bool primary)
+QBBScreen::QBBScreen(screen_context_t context, screen_display_t display, int screenIndex)
     : mContext(context),
       mDisplay(display),
       mPosted(false),
       mUsingOpenGL(false),
-      mPrimaryDisplay(primary)
+      mPrimaryDisplay(screenIndex == 0),
+      mKeyboardHeight(0),
+      mScreenIndex(screenIndex)
 {
 #if defined(QBBSCREEN_DEBUG)
     qDebug() << "QBBScreen::QBBScreen";
@@ -119,48 +116,7 @@ QBBScreen::~QBBScreen()
 #endif
 }
 
-/* static */
-void QBBScreen::createDisplays(screen_context_t context)
-{
-    // get number of displays
-    errno = 0;
-    int displayCount;
-    int result = screen_get_context_property_iv(context, SCREEN_PROPERTY_DISPLAY_COUNT, &displayCount);
-    if (result != 0) {
-        qFatal("QBBScreen: failed to query display count, errno=%d", errno);
-    }
-
-    // get all displays
-    errno = 0;
-    screen_display_t *displays = (screen_display_t *)alloca(sizeof(screen_display_t) * displayCount);
-    result = screen_get_context_property_pv(context, SCREEN_PROPERTY_DISPLAYS, (void **)displays);
-    if (result != 0) {
-        qFatal("QBBScreen: failed to query displays, errno=%d", errno);
-    }
-
-    for (int i=0; i<displayCount; i++) {
-#if defined(QBBSCREEN_DEBUG)
-        qDebug() << "QBBScreen::Creating screen for display " << i;
-#endif
-        QBBScreen *screen = new QBBScreen(context, displays[i], i==0);
-        sScreens.push_back(screen);
-    }
-}
-
-/* static */
-void QBBScreen::destroyDisplays()
-{
-    while (sScreens.length()) {
-        delete sScreens.front();
-        sScreens.pop_front();
-    }
-
-    // We're not managing the child windows anymore so we need to clear the list.
-    sChildren.clear();
-}
-
-/* static */
-int QBBScreen::defaultDepth()
+static int defaultDepth()
 {
     static int defaultDepth = 0;
     if (defaultDepth == 0) {
@@ -180,12 +136,41 @@ void QBBScreen::ensureDisplayCreated()
         mRootWindow = QSharedPointer<QBBRootWindow>(new QBBRootWindow(this));
 }
 
+void QBBScreen::newWindowCreated(screen_window_t window)
+{
+    Q_ASSERT(thread() == QThread::currentThread());
+    screen_display_t display = 0;
+    if (screen_get_window_property_pv(window, SCREEN_PROPERTY_DISPLAY, (void**)&display) != 0) {
+        qWarning("QBBScreen: Failed to get screen for window, errno=%d", errno);
+        return;
+    }
+
+    if (display == nativeDisplay()) {
+        // A window was created on this screen. If we don't know about this window yet, it means
+        // it was not created by Qt, but by some foreign library like the multimedia renderer, which
+        // creates an overlay window when playing a video.
+        // Treat all foreign windows as overlays here.
+        if (!findWindow(window))
+            addOverlayWindow(window);
+    }
+}
+
+void QBBScreen::windowClosed(screen_window_t window)
+{
+    Q_ASSERT(thread() == QThread::currentThread());
+    removeOverlayWindow(window);
+}
+
 QRect QBBScreen::availableGeometry() const
 {
     // available geometry = total geometry - keyboard
-    int keyboardHeight = QBBVirtualKeyboard::instance().getHeight();
     return QRect(mCurrentGeometry.x(), mCurrentGeometry.y(),
-                 mCurrentGeometry.width(), mCurrentGeometry.height() - keyboardHeight);
+                 mCurrentGeometry.width(), mCurrentGeometry.height() - mKeyboardHeight);
+}
+
+int QBBScreen::depth() const
+{
+    return defaultDepth();
 }
 
 /*!
@@ -237,7 +222,24 @@ void QBBScreen::setRotation(int rotation)
 
         // save new rotation
         mCurrentRotation = rotation;
+
+        // TODO: check if other screens are supposed to rotate as well and/or whether this depends
+        // on if clone mode is being used.
+        // Rotating only the primary screen is what we had in the navigator event handler before refactoring
+        if (mPrimaryDisplay)
+            QWindowSystemInterface::handleScreenGeometryChange(mScreenIndex);
     }
+}
+
+QBBWindow *QBBScreen::findWindow(screen_window_t windowHandle)
+{
+    Q_FOREACH (QBBWindow *window, mChildren) {
+        QBBWindow * const result = window->findWindow(windowHandle);
+        if (result)
+            return result;
+    }
+
+    return 0;
 }
 
 void QBBScreen::addWindow(QBBWindow* window)
@@ -246,11 +248,11 @@ void QBBScreen::addWindow(QBBWindow* window)
     qDebug() << "QBBScreen::addWindow=" << window;
 #endif
 
-    if (sChildren.contains(window))
+    if (mChildren.contains(window))
         return;
 
-    sChildren.push_back(window);
-    QBBScreen::updateHierarchy();
+    mChildren.push_back(window);
+    updateHierarchy();
 }
 
 void QBBScreen::removeWindow(QBBWindow* window)
@@ -259,8 +261,9 @@ void QBBScreen::removeWindow(QBBWindow* window)
     qDebug() << "QBBScreen::removeWindow=" << window;
 #endif
 
-    sChildren.removeAll(window);
-    QBBScreen::updateHierarchy();
+    const int numWindowsRemoved = mChildren.removeAll(window);
+    if (numWindowsRemoved > 0)
+        updateHierarchy();
 }
 
 void QBBScreen::raiseWindow(QBBWindow* window)
@@ -270,8 +273,8 @@ void QBBScreen::raiseWindow(QBBWindow* window)
 #endif
 
     removeWindow(window);
-    sChildren.push_back(window);
-    QBBScreen::updateHierarchy();
+    mChildren.push_back(window);
+    updateHierarchy();
 }
 
 void QBBScreen::lowerWindow(QBBWindow* window)
@@ -281,8 +284,8 @@ void QBBScreen::lowerWindow(QBBWindow* window)
 #endif
 
     removeWindow(window);
-    sChildren.push_front(window);
-    QBBScreen::updateHierarchy();
+    mChildren.push_front(window);
+    updateHierarchy();
 }
 
 void QBBScreen::updateHierarchy()
@@ -291,22 +294,25 @@ void QBBScreen::updateHierarchy()
     qDebug() << "QBBScreen::updateHierarchy";
 #endif
 
-    QList<QBBWindow*>::iterator it;
-    QList<QPlatformScreen *>::iterator sit;
-    QMap<QPlatformScreen *, int> map;
+    QList<QBBWindow*>::const_iterator it;
     int topZorder = 1; // root window is z-order 0, all "top" level windows are "above" it
 
-    for (sit = sScreens.begin(); sit != sScreens.end(); sit++)
-        map[*sit] = 0;
-
-    for (it = sChildren.begin(); it != sChildren.end(); it++) {
+    for (it = mChildren.constBegin(); it != mChildren.constEnd(); ++it) {
         (*it)->updateZorder(topZorder);
-        map[static_cast<QBBScreen*>((*it)->screen())] = 1;
+    }
+
+    topZorder++;
+    Q_FOREACH (screen_window_t overlay, mOverlays) {
+        // Do nothing when this fails. This can happen if we have stale windows in mOverlays,
+        // which in turn can happen because a window was removed but we didn't get a notification
+        // yet.
+        screen_set_window_property_iv(overlay, SCREEN_PROPERTY_ZORDER, &topZorder);
+        topZorder++;
     }
 
     // After a hierarchy update, we need to force a flush on all screens.
     // Right now, all screens share a context.
-    screen_flush_context( primaryDisplay()->mContext, 0 );
+    screen_flush_context( mContext, 0 );
 }
 
 void QBBScreen::onWindowPost(QBBWindow* window)
@@ -320,6 +326,29 @@ void QBBScreen::onWindowPost(QBBWindow* window)
         mRootWindow->post();
         mPosted = true;
     }
+}
+
+void QBBScreen::keyboardHeightChanged(int height)
+{
+    if (height == mKeyboardHeight)
+        return;
+
+    mKeyboardHeight = height;
+
+    QWindowSystemInterface::handleScreenAvailableGeometryChange(mScreenIndex);
+}
+
+void QBBScreen::addOverlayWindow(screen_window_t window)
+{
+    mOverlays.append(window);
+    updateHierarchy();
+}
+
+void QBBScreen::removeOverlayWindow(screen_window_t window)
+{
+    const int numOverlaysRemoved = mOverlays.removeAll(window);
+    if (numOverlaysRemoved > 0)
+        updateHierarchy();
 }
 
 QT_END_NAMESPACE

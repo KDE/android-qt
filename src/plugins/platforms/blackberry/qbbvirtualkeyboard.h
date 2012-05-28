@@ -40,59 +40,40 @@
 #ifndef VIRTUALKEYBOARD_H_
 #define VIRTUALKEYBOARD_H_
 
-#include <QtGui/QPlatformScreen>
-#include <QtGui/QWindowSystemInterface>
-#include <QThread>
+#include "qbbabstractvirtualkeyboard.h"
 
-#include <stddef.h>
-#include <vector>
-#include <string>
 #include <sys/pps.h>
 
 QT_BEGIN_NAMESPACE
 
-/* Shamelessly copied from the browser - this should be rewritten once we have a proper PPS wrapper class */
-class QBBVirtualKeyboard : QThread
-{
-public:
-    // NOTE:  Not all the following keyboard modes are currently used.
-    // Default - Regular Keyboard
-    // Url/Email - Enhanced keys for each types.
-    // Web - Regular keyboard with two blank keys, currently unused.
-    // NumPunc - Numbers & Punctionation, alternate to Symbol
-    // Symbol - All symbols, alternate to NumPunc, currently unused.
-    // Phone - Phone enhanced keyboard - currently unused as no alternate keyboard available to access a-zA-Z
-    // Pin - Keyboard for entering Pins (Hex values) currently unused.
-    //
-    // SPECIAL NOTE: Usage of NumPunc may have to be removed, ABC button is non-functional.
-    //
-    enum KeyboardMode { Default, Url, Email, Web, NumPunc, Symbol, Phone, Pin };
+class QSocketNotifier;
 
-    static QBBVirtualKeyboard& instance();
-    static void destroy();
+/* Shamelessly copied from the browser - this should be rewritten once we have a proper PPS wrapper class */
+class QBBVirtualKeyboard : public QBBAbstractVirtualKeyboard
+{
+    Q_OBJECT
+public:
+    QBBVirtualKeyboard();
+    ~QBBVirtualKeyboard();
 
     bool showKeyboard();
     bool hideKeyboard();
-    int  getHeight() { return mVisible ? mHeight : 0; }
-    void setKeyboardMode(KeyboardMode);
-    void notifyClientActiveStateChange(bool);
-    bool isVisible() const { return mVisible; }
-    QString languageId() const { return mLanguageId; }
-    QString countryId() const { return mCountryId; }
+
+public Q_SLOTS:
+    void start();
+
+protected:
+    void applyKeyboardMode(KeyboardMode mode);
+
+private Q_SLOTS:
+    void ppsDataReady();
 
 private:
-    QBBVirtualKeyboard();
-    virtual ~QBBVirtualKeyboard();
-
     pps_encoder_t          *mEncoder;
     pps_decoder_t          *mDecoder;
     char                   *mBuffer;
-    int                     mHeight;
     int                     mFd;
-    KeyboardMode            mKeyboardMode;
-    bool                    mVisible;
-    QString                 mLanguageId;
-    QString                 mCountryId;
+    QSocketNotifier        *mReadNotifier;
 
     // Path to keyboardManager in PPS.
     static const char  *sPPSPath;
@@ -101,12 +82,10 @@ private:
     // Will be called internally if needed.
     bool connect();
     void close();
-    void ppsDataReady();
     bool queryPPSInfo();
-    void handleKeyboardStateChangeMessage(bool visible);
     void handleKeyboardInfoMessage();
 
-    void applyKeyboardModeOptions();
+    void applyKeyboardModeOptions(KeyboardMode mode);
     void addDefaultModeOptions();
     void addUrlModeOptions();
     void addEmailModeOptions();
@@ -115,10 +94,6 @@ private:
     void addSymbolModeOptions();
     void addPhoneModeOptions();
     void addPinModeOptions();
-
-    // QThread overrides
-    virtual void run();
-
 };
 
 #endif /* VIRTUALKEYBOARD_H_ */

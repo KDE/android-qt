@@ -11,20 +11,25 @@ SOURCES =   main.cpp \
             qbbglwindowsurface.cpp \
             qbbinputcontext.cpp \
             qbbintegration.cpp \
-            qbbnavigatorthread.cpp \
+            qbbnavigatoreventhandler.cpp \
+            qbbnavigatoreventnotifier.cpp \
             qbbscreen.cpp \
             qbbwindow.cpp \
             qbbrasterwindowsurface.cpp \
             qbbvirtualkeyboard.cpp \
             qbbclipboard.cpp \
             qbblocalethread.cpp \
-            qbbrootwindow.cpp
+            qbbrootwindow.cpp \
+            qbbscreeneventhandler.cpp \
+            qbbabstractvirtualkeyboard.cpp \
+            qbbnativeinterface.cpp
 
 HEADERS =   qbbbuffer.h \
             qbbeventthread.h \
             qbbinputcontext.h \
             qbbintegration.h \
-            qbbnavigatorthread.h \
+            qbbnavigatoreventhandler.h \
+            qbbnavigatoreventnotifier.h \
             qbbglcontext.h \
             qbbglwindowsurface.h \
             qbbscreen.h \
@@ -33,7 +38,10 @@ HEADERS =   qbbbuffer.h \
             qbbvirtualkeyboard.h \
             qbbclipboard.h \
             qbblocalethread.h \
-            qbbrootwindow.h
+            qbbrootwindow.h \
+            qbbscreeneventhandler.h \
+            qbbabstractvirtualkeyboard.h \
+            qbbnativeinterface.h
 
 QMAKE_CXXFLAGS += -I./private
 

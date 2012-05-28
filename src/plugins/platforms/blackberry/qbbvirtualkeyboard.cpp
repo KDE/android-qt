@@ -37,11 +37,13 @@
 **
 ****************************************************************************/
 
-//#define QBBVIRTUALKEYBOARD_DEBUG
+#define QBBVIRTUALKEYBOARD_DEBUG
 
 #include "qbbvirtualkeyboard.h"
 
 #include <QDebug>
+#include <QSocketNotifier>
+#include <QtCore/private/qcore_unix_p.h>
 #include <QtGui/QApplication>
 #include <QtGui/QPlatformScreen>
 #include <QtGui/QPlatformWindow>
@@ -56,26 +58,22 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+
+QT_BEGIN_NAMESPACE
+
 const char  *QBBVirtualKeyboard::sPPSPath = "/pps/services/input/control?wait";
 const size_t QBBVirtualKeyboard::sBufferSize = 2048;
-
-static QBBVirtualKeyboard* s_instance = NULL;
 
 // Huge hack for keyboard shadow (see QNX PR 88400). Should be removed ASAP.
 #define KEYBOARD_SHADOW_HEIGHT 8
 
-QBBVirtualKeyboard::QBBVirtualKeyboard() :
-        mEncoder(NULL),
-        mDecoder(NULL),
-        mBuffer(NULL),
-        mHeight(0),
-        mFd(-1),
-        mKeyboardMode(Default),
-        mVisible(false),
-        mLanguageId(QString::fromLatin1("en")),
-        mCountryId(QString::fromLatin1("US"))
+QBBVirtualKeyboard::QBBVirtualKeyboard()
+    : mEncoder(0),
+      mDecoder(0),
+      mBuffer(0),
+      mFd(-1),
+      mReadNotifier(0)
 {
-    connect();
 }
 
 QBBVirtualKeyboard::~QBBVirtualKeyboard()
@@ -83,57 +81,46 @@ QBBVirtualKeyboard::~QBBVirtualKeyboard()
     close();
 }
 
-/* static */
-QBBVirtualKeyboard& QBBVirtualKeyboard::instance()
+void QBBVirtualKeyboard::start()
 {
-    if (!s_instance) {
-        s_instance = new QBBVirtualKeyboard();
-        s_instance->start();
-    }
+#ifdef QBBVIRTUALKEYBOARD_DEBUG
+    qDebug() << "QBB: starting keyboard event processing";
+#endif
 
-    return *s_instance;
+    if (!connect())
+        return;
 }
 
-/* static */
-void QBBVirtualKeyboard::destroy()
+void QBBVirtualKeyboard::applyKeyboardMode(KeyboardMode mode)
 {
-    if (s_instance) {
-        delete s_instance;
-        s_instance = 0;
-    }
+    applyKeyboardModeOptions(mode);
 }
 
 void QBBVirtualKeyboard::close()
 {
-    if (mFd) {
+    delete mReadNotifier;
+    mReadNotifier = 0;
+
+    if (mFd != -1) {
         // any reads will fail after we close the fd, which is basically what we want.
         ::close(mFd);
-    }
-
-    // Wait for the thread to die (should be immediate), then continue the cleanup.
-    wait();
-
-    if (mFd) {
         mFd = -1;
     }
 
-
-    if (mDecoder)
-    {
+    if (mDecoder) {
         pps_decoder_cleanup(mDecoder);
         delete mDecoder;
-        mDecoder = NULL;
+        mDecoder = 0;
     }
 
-    if (mEncoder)
-    {
+    if (mEncoder) {
         pps_encoder_cleanup(mEncoder);
         delete mEncoder;
-        mEncoder = NULL;
+        mEncoder = 0;
     }
 
     delete [] mBuffer;
-    mBuffer = NULL;
+    mBuffer = 0;
 }
 
 bool QBBVirtualKeyboard::connect()
@@ -148,8 +135,7 @@ bool QBBVirtualKeyboard::connect()
 
     errno = 0;
     mFd = ::open(sPPSPath, O_RDWR);
-    if (mFd == -1)
-    {
+    if (mFd == -1) {
         qCritical("QBBVirtualKeyboard: Unable to open \"%s\" for keyboard: %s (%d).",
                 sPPSPath, strerror(errno), errno);
         close();
@@ -165,7 +151,8 @@ bool QBBVirtualKeyboard::connect()
     if (!queryPPSInfo())
         return false;
 
-    start();
+    mReadNotifier = new QSocketNotifier(mFd, QSocketNotifier::Read);
+    QObject::connect(mReadNotifier, SIGNAL(activated(int)), this, SLOT(ppsDataReady()));
 
     return true;
 }
@@ -186,74 +173,56 @@ bool QBBVirtualKeyboard::queryPPSInfo()
     return true;
 }
 
-void QBBVirtualKeyboard::notifyClientActiveStateChange(bool active)
-{
-    if (!active)
-        hideKeyboard();
-}
-
-void QBBVirtualKeyboard::run()
-{
-    ppsDataReady();
-}
-
 void QBBVirtualKeyboard::ppsDataReady()
 {
-    forever {
-        ssize_t nread = read(mFd, mBuffer, sBufferSize - 1);
+    ssize_t nread = qt_safe_read(mFd, mBuffer, sBufferSize - 1);
 
 #ifdef QBBVIRTUALKEYBOARD_DEBUG
-        qDebug() << "QBB: keyboardMessage size: " << nread;
+    qDebug() << "QBB: keyboardMessage size: " << nread;
 #endif
-        if (nread < 0)
-            break;
-
-        // nread is the real space necessary, not the amount read.
-        if (static_cast<size_t>(nread) > sBufferSize - 1) {
-            qCritical("QBBVirtualKeyboard: Keyboard buffer size too short; need %u.", nread + 1);
-            break;
-        }
-
-        mBuffer[nread] = 0;
-        pps_decoder_parse_pps_str(mDecoder, mBuffer);
-        pps_decoder_push(mDecoder, NULL);
-#ifdef QBBVIRTUALKEYBOARD_DEBUG
-        pps_decoder_dump_tree(mDecoder, stderr);
-#endif
-
-        const char* value;
-        if (pps_decoder_get_string(mDecoder, "error", &value) == PPS_DECODER_OK) {
-            qCritical("QBBVirtualKeyboard: Keyboard PPS decoder error: %s", value ? value : "[null]");
-            continue;
-        }
-
-        if (pps_decoder_get_string(mDecoder, "msg", &value) == PPS_DECODER_OK) {
-            if (strcmp(value, "show") == 0) {
-                mVisible = true;
-                handleKeyboardStateChangeMessage(true);
-            } else if (strcmp(value, "hide") == 0) {
-                mVisible = false;
-                handleKeyboardStateChangeMessage(false);
-            } else if (strcmp(value, "info") == 0)
-                handleKeyboardInfoMessage();
-            else if (strcmp(value, "connect") == 0) { }
-            else
-                qCritical("QBBVirtualKeyboard: Unexpected keyboard PPS msg value: %s", value ? value : "[null]");
-        } else if (pps_decoder_get_string(mDecoder, "res", &value) == PPS_DECODER_OK) {
-            if (strcmp(value, "info") == 0)
-                handleKeyboardInfoMessage();
-            else
-                qCritical("QBBVirtualKeyboard: Unexpected keyboard PPS res value: %s", value ? value : "[null]");
-        } else
-            qCritical("QBBVirtualKeyboard: Unexpected keyboard PPS message type");
+    if (nread < 0) {
+        connect(); // reconnect
+        return;
     }
 
+    // nread is the real space necessary, not the amount read.
+    if (static_cast<size_t>(nread) > sBufferSize - 1) {
+        qCritical("QBBVirtualKeyboard: Keyboard buffer size too short; need %u.", nread + 1);
+        connect(); // reconnect
+        return;
+    }
+
+    mBuffer[nread] = 0;
+    pps_decoder_parse_pps_str(mDecoder, mBuffer);
+    pps_decoder_push(mDecoder, NULL);
 #ifdef QBBVIRTUALKEYBOARD_DEBUG
-    qDebug() << "QBB: exiting keyboard thread";
+    pps_decoder_dump_tree(mDecoder, stderr);
 #endif
 
-    if (mDecoder)
-        pps_decoder_cleanup(mDecoder);
+    const char* value;
+    if (pps_decoder_get_string(mDecoder, "error", &value) == PPS_DECODER_OK) {
+        qCritical("QBBVirtualKeyboard: Keyboard PPS decoder error: %s", value ? value : "[null]");
+        return;
+    }
+
+    if (pps_decoder_get_string(mDecoder, "msg", &value) == PPS_DECODER_OK) {
+        if (strcmp(value, "show") == 0)
+            setVisible(true);
+        else if (strcmp(value, "hide") == 0)
+            setVisible(false);
+        else if (strcmp(value, "info") == 0)
+            handleKeyboardInfoMessage();
+        else if (strcmp(value, "connect") == 0) { }
+        else
+            qCritical("QBBVirtualKeyboard: Unexpected keyboard PPS msg value: %s", value ? value : "[null]");
+    } else if (pps_decoder_get_string(mDecoder, "res", &value) == PPS_DECODER_OK) {
+        if (strcmp(value, "info") == 0)
+            handleKeyboardInfoMessage();
+        else
+            qCritical("QBBVirtualKeyboard: Unexpected keyboard PPS res value: %s", value ? value : "[null]");
+    } else {
+        qCritical("QBBVirtualKeyboard: Unexpected keyboard PPS message type");
+    }
 }
 
 void QBBVirtualKeyboard::handleKeyboardInfoMessage()
@@ -277,38 +246,21 @@ void QBBVirtualKeyboard::handleKeyboardInfoMessage()
         qCritical("QBBVirtualKeyboard: Keyboard PPS languageId field not found");
         return;
     }
-    mLanguageId = QString::fromLatin1(value);
+    setLanguage(QString::fromLatin1(value));
 
     if (pps_decoder_get_string(mDecoder, "countryId", &value) != PPS_DECODER_OK) {
         qCritical("QBBVirtualKeyboard: Keyboard PPS size countryId not found");
         return;
     }
-    mCountryId = QString::fromLatin1(value);
+    setCountry(QString::fromLatin1(value));
 
     // HUGE hack, should be removed ASAP.
     newHeight -= KEYBOARD_SHADOW_HEIGHT; // We want to ignore the 8 pixel shadow above the keyboard. (PR 88400)
-
-    if (newHeight != mHeight) {
-        mHeight = newHeight;
-        handleKeyboardStateChangeMessage(true);
-    }
+    setHeight(newHeight);
 
 #ifdef QBBVIRTUALKEYBOARD_DEBUG
-    qDebug() << "QBB: handleKeyboardInfoMessage size=" << mHeight << "languageId=" << mLanguageId << " countryId=" << mCountryId;
+    qDebug() << "QBB: handleKeyboardInfoMessage size=" << getHeight() << "languageId=" << languageId() << " countryId=" << countryId();
 #endif
-}
-
-void QBBVirtualKeyboard::handleKeyboardStateChangeMessage(bool visible)
-{
-
-#ifdef QBBVIRTUALKEYBOARD_DEBUG
-    qDebug() << "QBB: handleKeyboardStateChangeMessage " << visible;
-#endif
-
-    // TODO: What screen index should be used? I assume 0 here because it works, and
-    //       we do it for handleScreenGeometryChange elsewhere but since we have support
-    //       for more than one screen, that's not going to always work.
-    QWindowSystemInterface::handleScreenAvailableGeometryChange(0);
 }
 
 bool QBBVirtualKeyboard::showKeyboard()
@@ -323,7 +275,7 @@ bool QBBVirtualKeyboard::showKeyboard()
 
     // NOTE:  This must be done everytime the keyboard is shown even if there is no change because
     // hiding the keyboard wipes the setting.
-    applyKeyboardModeOptions();
+    applyKeyboardModeOptions(keyboardMode());
 
     pps_encoder_reset(mEncoder);
 
@@ -362,9 +314,9 @@ bool QBBVirtualKeyboard::hideKeyboard()
                 close();
                 return false;
             }
-        }
-        else
+        } else {
             return false;
+        }
     }
 
     pps_encoder_reset(mEncoder);
@@ -374,12 +326,7 @@ bool QBBVirtualKeyboard::hideKeyboard()
     return true;
 }
 
-void QBBVirtualKeyboard::setKeyboardMode(KeyboardMode mode)
-{
-    mKeyboardMode = mode;
-}
-
-void QBBVirtualKeyboard::applyKeyboardModeOptions()
+void QBBVirtualKeyboard::applyKeyboardModeOptions(KeyboardMode mode)
 {
     // Try to connect.
     if (mFd == -1 && !connect())
@@ -389,7 +336,7 @@ void QBBVirtualKeyboard::applyKeyboardModeOptions()
     pps_encoder_add_string(mEncoder, "msg", "options");
 
     pps_encoder_start_object(mEncoder, "dat");
-    switch (mKeyboardMode) {
+    switch (mode) {
     case Url:
         addUrlModeOptions();
         break;
@@ -411,7 +358,7 @@ void QBBVirtualKeyboard::applyKeyboardModeOptions()
     case Pin:
         addPinModeOptions();
         break;
-    case Default:
+    case Default: // fall through
     default:
         addDefaultModeOptions();
         break;
@@ -419,9 +366,8 @@ void QBBVirtualKeyboard::applyKeyboardModeOptions()
 
     pps_encoder_end_object(mEncoder);
 
-    if (::write(mFd, pps_encoder_buffer(mEncoder), pps_encoder_length(mEncoder)) == -1) {
+    if (::write(mFd, pps_encoder_buffer(mEncoder), pps_encoder_length(mEncoder)) == -1)
         close();
-    }
 
     pps_encoder_reset(mEncoder);
 }
@@ -473,3 +419,5 @@ void QBBVirtualKeyboard::addSymbolModeOptions()
     pps_encoder_add_string(mEncoder, "enter", "enter.default");
     pps_encoder_add_string(mEncoder, "type", "symbol");
 }
+
+QT_END_NAMESPACE

@@ -45,10 +45,12 @@
 
 QT_BEGIN_NAMESPACE
 
+class QBBAbstractVirtualKeyboard;
+
 class QBBInputContext : public QInputContext
 {
 public:
-    explicit QBBInputContext(QObject* parent = 0);
+    explicit QBBInputContext(QBBAbstractVirtualKeyboard &keyboard, QObject* parent = 0);
     ~QBBInputContext();
     QString identifierName() { return QString("BlackBerry IMF"); }
     QString language();
@@ -63,6 +65,7 @@ public:
 private:
     bool hasPhysicalKeyboard();
 
+    QBBAbstractVirtualKeyboard &mVirtualKeyboard;
 };
 
 QT_END_NAMESPACE

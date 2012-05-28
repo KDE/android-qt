@@ -1,10 +1,11 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** All rights reserved.
-** Contact: Nokia Corporation (qt-info@nokia.com)
+** Copyright (C) 2012 Research In Motion
 **
-** This file is part of the qmake spec of the Qt Toolkit.
+** Contact: Research In Motion <blackberry-qt@qnx.com>
+** Contact: Klarälvdalens Datakonsult AB <info@kdab.com>
+**
+** This file is part of the QtCore module of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
 ** GNU Lesser General Public License Usage
@@ -27,9 +28,6 @@
 ** Public License version 3.0 requirements will be met:
 ** http://www.gnu.org/copyleft/gpl.html.
 **
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
 **
 **
 **
@@ -39,4 +37,25 @@
 **
 ****************************************************************************/
 
-#include "../freebsd-g++/qplatformdefs.h"
+#ifndef QBBNATIVEINTERFACE_H
+#define QBBNATIVEINTERFACE_H
+
+#include <QtGui/QPlatformNativeInterface>
+
+QT_BEGIN_NAMESPACE
+
+class QBBIntegration;
+
+class QBBNativeInterface : public QPlatformNativeInterface
+{
+public:
+    explicit QBBNativeInterface(QBBIntegration *integration);
+    virtual void *nativeResourceForWidget(const QByteArray &resource, QWidget *widget);
+
+private:
+    QBBIntegration *mIntegration;
+};
+
+QT_END_NAMESPACE
+
+#endif

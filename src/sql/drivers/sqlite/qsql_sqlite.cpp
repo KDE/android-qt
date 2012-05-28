@@ -105,6 +105,7 @@ class QSQLiteDriverPrivate
 public:
     inline QSQLiteDriverPrivate() : access(0) {}
     sqlite3 *access;
+    QList <QSQLiteResult *> results;
 };
 
 
@@ -170,12 +171,37 @@ void QSQLiteResultPrivate::initColumns(bool emptyResultset)
         // must use typeName for resolving the type to match QSqliteDriver::record
         QString typeName = QString(reinterpret_cast<const QChar *>(
                     sqlite3_column_decltype16(stmt, i)));
-
-        int dotIdx = colName.lastIndexOf(QLatin1Char('.'));
-        QSqlField fld(colName.mid(dotIdx == -1 ? 0 : dotIdx + 1), qGetColumnType(typeName));
-
         // sqlite3_column_type is documented to have undefined behavior if the result set is empty
         int stp = emptyResultset ? -1 : sqlite3_column_type(stmt, i);
+
+        QVariant::Type fieldType;
+
+        if (!typeName.isEmpty()) {
+            fieldType = qGetColumnType(typeName);
+        } else {
+            // Get the proper type for the field based on stp value
+            switch (stp) {
+            case SQLITE_INTEGER:
+                fieldType = QVariant::Int;
+                break;
+            case SQLITE_FLOAT:
+                fieldType = QVariant::Double;
+                break;
+            case SQLITE_BLOB:
+                fieldType = QVariant::ByteArray;
+                break;
+            case SQLITE_TEXT:
+                fieldType = QVariant::String;
+                break;
+            case SQLITE_NULL:
+            default:
+                fieldType = QVariant::Invalid;
+                break;
+            }
+        }
+
+        int dotIdx = colName.lastIndexOf(QLatin1Char('.'));
+        QSqlField fld(colName.mid(dotIdx == -1 ? 0 : dotIdx + 1), fieldType);
         fld.setSqlType(stp);
         rInf.append(fld);
     }
@@ -287,10 +313,14 @@ QSQLiteResult::QSQLiteResult(const QSQLiteDriver* db)
 {
     d = new QSQLiteResultPrivate(this);
     d->access = db->d->access;
+    db->d->results.append(this);
 }
 
 QSQLiteResult::~QSQLiteResult()
 {
+    const QSQLiteDriver * sqlDriver = qobject_cast<const QSQLiteDriver *>(driver());
+    if (sqlDriver)
+        sqlDriver->d->results.removeOne(this);
     d->cleanup();
     delete d;
 }
@@ -554,6 +584,9 @@ bool QSQLiteDriver::open(const QString & db, const QString &, const QString &, c
 void QSQLiteDriver::close()
 {
     if (isOpen()) {
+        foreach (QSQLiteResult *result, d->results)
+            result->d->finalize();
+
         if (sqlite3_close(d->access) != SQLITE_OK)
             setLastError(qMakeError(d->access, tr("Error closing database"),
                                     QSqlError::ConnectionError));

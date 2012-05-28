@@ -47,6 +47,8 @@
 
 #if defined(Q_WS_QPA)
 #include "qdesktopservices_qpa.cpp"
+#elif defined(Q_OS_BLACKBERRY)
+#include "qdesktopservices_blackberry.cpp"
 #elif defined(Q_WS_QWS)
 #include "qdesktopservices_qws.cpp"
 #elif defined(Q_WS_X11)

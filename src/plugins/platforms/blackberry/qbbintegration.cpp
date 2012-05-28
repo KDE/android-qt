@@ -44,15 +44,18 @@
 #include "qbbeventthread.h"
 #include "qbbglcontext.h"
 #include "qbbglwindowsurface.h"
-#include "qbbnavigatorthread.h"
+#include "qbbnavigatoreventhandler.h"
+#include "qbbnavigatoreventnotifier.h"
 #include "qbbrasterwindowsurface.h"
 #include "qbbscreen.h"
+#include "qbbscreeneventhandler.h"
 #include "qbbwindow.h"
 #include "qbbvirtualkeyboard.h"
 #include "qgenericunixfontdatabase.h"
 #include "qbbclipboard.h"
 #include "qbbglcontext.h"
 #include "qbblocalethread.h"
+#include "qbbnativeinterface.h"
 
 #include "qapplication.h"
 #include <QtGui/private/qpixmap_raster_p.h>
@@ -63,12 +66,24 @@
 
 #include <errno.h>
 
+#if defined(Q_OS_BLACKBERRY)
+#include <bps/navigator.h>
+#endif
+
 QT_BEGIN_NAMESPACE
 
+Q_DECLARE_METATYPE(screen_window_t);
+
 QBBIntegration::QBBIntegration() :
+    mNavigatorEventHandler(new QBBNavigatorEventHandler()),
     mFontDb(new QGenericUnixFontDatabase()),
-    mPaintUsingOpenGL(getenv("QBB_USE_OPENGL") != NULL)
+    mScreenEventHandler(new QBBScreenEventHandler()),
+    mPaintUsingOpenGL(getenv("QBB_USE_OPENGL") != NULL),
+    mVirtualKeyboard(0),
+    mNativeInterface(new QBBNativeInterface(this))
 {
+    qRegisterMetaType<screen_window_t>();
+
     if (mPaintUsingOpenGL) {
         // Set default window API to OpenGL
         QPlatformWindowFormat format = QPlatformWindowFormat::defaultFormat();
@@ -86,16 +101,19 @@ QBBIntegration::QBBIntegration() :
         qFatal("QBB: failed to connect to composition manager, errno=%d", errno);
     }
 
+    // Create/start navigator event notifier
+    mNavigatorEventNotifier = new QBBNavigatorEventNotifier(mNavigatorEventHandler);
+
+    // delay invocation of start() to the time the event loop is up and running
+    // needed to have the QThread internals of the main thread properly initialized
+    QMetaObject::invokeMethod(mNavigatorEventNotifier, "start", Qt::QueuedConnection);
+
     // Create displays for all possible screens (which may not be attached)
-    QBBScreen::createDisplays(mContext);
+    createDisplays();
 
     // create/start event thread
-    mEventThread = new QBBEventThread(mContext, *QBBScreen::primaryDisplay());
+    mEventThread = new QBBEventThread(mContext, mScreenEventHandler);
     mEventThread->start();
-
-    // create/start navigator thread
-    mNavigatorThread = new QBBNavigatorThread(*QBBScreen::primaryDisplay());
-    mNavigatorThread->start();
 
 #ifdef QBBLOCALETHREAD_ENABLED
     // Start the locale change monitoring thread.
@@ -103,11 +121,23 @@ QBBIntegration::QBBIntegration() :
     mLocaleThread->start();
 #endif
 
+#if defined(Q_OS_BLACKBERRY)
+    bps_initialize();
+#endif
+
     // create/start the keyboard class.
-    QBBVirtualKeyboard::instance();
+    mVirtualKeyboard = new QBBVirtualKeyboard();
+
+    // delay invocation of start() to the time the event loop is up and running
+    // needed to have the QThread internals of the main thread properly initialized
+    QMetaObject::invokeMethod(mVirtualKeyboard, "start", Qt::QueuedConnection);
+
+    // TODO check if we need to do this for all screens or only the primary one
+    QObject::connect(mVirtualKeyboard, SIGNAL(heightChanged(int)),
+                     primaryDisplay(), SLOT(keyboardHeightChanged(int)));
 
     // Set up the input context
-    qApp->setInputContext(new QBBInputContext(qApp));
+    qApp->setInputContext(new QBBInputContext(*mVirtualKeyboard, qApp));
 }
 
 QBBIntegration::~QBBIntegration()
@@ -115,8 +145,12 @@ QBBIntegration::~QBBIntegration()
 #if defined(QBBINTEGRATION_DEBUG)
     qDebug() << "QBB: platform plugin shutdown begin";
 #endif
+
+
+    delete mNativeInterface;
+
     // destroy the keyboard class.
-    QBBVirtualKeyboard::destroy();
+    delete mVirtualKeyboard;
 
 #ifdef QBBLOCALETHREAD_ENABLED
     // stop/destroy the locale thread.
@@ -126,17 +160,24 @@ QBBIntegration::~QBBIntegration()
     // stop/destroy event thread
     delete mEventThread;
 
-    // stop/destroy navigator thread
-    delete mNavigatorThread;
+    // stop/destroy navigator event handling classes
+    delete mNavigatorEventNotifier;
+    delete mNavigatorEventHandler;
+
+    delete mScreenEventHandler;
 
     // destroy all displays
-    QBBScreen::destroyDisplays();
+    destroyDisplays();
 
     // close connection to QNX composition manager
     screen_destroy_context(mContext);
 
     // cleanup global OpenGL resources
     QBBGLContext::shutdown();
+
+#if defined(Q_OS_BLACKBERRY)
+    bps_shutdown();
+#endif
 
 #if defined(QBBINTEGRATION_DEBUG)
     qDebug() << "QBB: platform plugin shutdown end";
@@ -166,8 +207,7 @@ QPlatformWindow *QBBIntegration::createPlatformWindow(QWidget *widget, WId winId
 {
     Q_UNUSED(winId);
 
-    // New windows are created on the primary display.
-    return new QBBWindow(widget, mContext);
+    return new QBBWindow(widget, mContext, primaryDisplay());
 }
 
 QWindowSurface *QBBIntegration::createWindowSurface(QWidget *widget, WId winId) const
@@ -177,6 +217,11 @@ QWindowSurface *QBBIntegration::createWindowSurface(QWidget *widget, WId winId) 
         return new QBBGLWindowSurface(widget);
     else
         return new QBBRasterWindowSurface(widget);
+}
+
+QPlatformNativeInterface *QBBIntegration::nativeInterface() const
+{
+    return mNativeInterface;
 }
 
 void QBBIntegration::moveToScreen(QWidget *window, int screen)
@@ -189,7 +234,7 @@ void QBBIntegration::moveToScreen(QWidget *window, int screen)
     QBBWindow* platformWindow = static_cast<QBBWindow*>(window->platformWindow());
 
     // lookup platform screen by index
-    QBBScreen* platformScreen = static_cast<QBBScreen*>(QBBScreen::screens().at(screen));
+    QBBScreen* platformScreen = static_cast<QBBScreen*>(mScreens.at(screen));
 
     // move the platform window to the platform screen (this can fail when move to screen
     // is called before the window is actually created).
@@ -199,7 +244,7 @@ void QBBIntegration::moveToScreen(QWidget *window, int screen)
 
 QList<QPlatformScreen *> QBBIntegration::screens() const
 {
-    return QBBScreen::screens();
+    return mScreens;
 }
 
 #ifndef QT_NO_CLIPBOARD
@@ -213,9 +258,70 @@ QPlatformClipboard *QBBIntegration::clipboard() const
 }
 #endif
 
+
+QBBScreen *QBBIntegration::screenForWindow(screen_window_t window) const
+{
+    screen_display_t display = 0;
+    if (screen_get_window_property_pv(window, SCREEN_PROPERTY_DISPLAY, (void**)&display) != 0) {
+        qWarning("QBBIntegration: Failed to get screen for window, errno=%d", errno);
+        return 0;
+    }
+
+    Q_FOREACH (QPlatformScreen *screen, mScreens) {
+        QBBScreen * const bbScreen = static_cast<QBBScreen*>(screen);
+        if (bbScreen->nativeDisplay() == display)
+            return bbScreen;
+    }
+
+    return 0;
+}
+
+QBBScreen *QBBIntegration::primaryDisplay() const
+{
+    return static_cast<QBBScreen*>(mScreens.first());
+}
+
 void QBBIntegration::setCursorPos(int x, int y)
 {
     mEventThread->injectPointerMoveEvent(x, y);
+}
+
+void QBBIntegration::createDisplays()
+{
+    // get number of displays
+    errno = 0;
+    int displayCount;
+    int result = screen_get_context_property_iv(mContext, SCREEN_PROPERTY_DISPLAY_COUNT, &displayCount);
+    if (result != 0)
+        qFatal("QBBIntegration: failed to query display count, errno=%d", errno);
+
+    // get all displays
+    errno = 0;
+    screen_display_t *displays = (screen_display_t *)alloca(sizeof(screen_display_t) * displayCount);
+    result = screen_get_context_property_pv(mContext, SCREEN_PROPERTY_DISPLAYS, (void **)displays);
+    if (result != 0)
+        qFatal("QBBIntegration: failed to query displays, errno=%d", errno);
+
+    for (int i=0; i<displayCount; i++) {
+#if defined(QBBINTEGRATION_DEBUG)
+        qDebug() << "QBBIntegration: Creating screen for display " << i;
+#endif
+        QBBScreen *screen = new QBBScreen(mContext, displays[i], i);
+        mScreens.push_back(screen);
+
+        QObject::connect(mScreenEventHandler, SIGNAL(newWindowCreated(screen_window_t)),
+                         screen, SLOT(newWindowCreated(screen_window_t)));
+        QObject::connect(mScreenEventHandler, SIGNAL(windowClosed(screen_window_t)),
+                         screen, SLOT(windowClosed(screen_window_t)));
+
+        QObject::connect(mNavigatorEventHandler, SIGNAL(rotationChanged(int)), screen, SLOT(setRotation(int)));
+    }
+}
+
+void QBBIntegration::destroyDisplays()
+{
+    qDeleteAll(mScreens);
+    mScreens.clear();
 }
 
 QT_END_NAMESPACE

@@ -1,8 +1,9 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
-** All rights reserved.
-** Contact: Nokia Corporation (qt-info@nokia.com)
+** Copyright (C) 2012 Research In Motion
+**
+** Contact: Research In Motion <blackberry-qt@qnx.com>
+** Contact: Klarälvdalens Datakonsult AB <info@kdab.com>
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
 **
@@ -27,9 +28,6 @@
 ** Public License version 3.0 requirements will be met:
 ** http://www.gnu.org/copyleft/gpl.html.
 **
-** Other Usage
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
 **
 **
 **
@@ -39,30 +37,34 @@
 **
 ****************************************************************************/
 
-#ifndef __KERNEL_MODE__ 
+#include "qbbnativeinterface.h"
 
-const int MAXSMALLPAGEBITS = 68<<3;
-#define MINPAGEPOWER	PAGESHIFT+2
+#include "qbbintegration.h"
+#include "qbbscreen.h"
+#include <QtGui/QWidget>
+#include <screen/screen.h>
 
-struct paged_bitmap
+QT_BEGIN_NAMESPACE
+
+QBBNativeInterface::QBBNativeInterface(QBBIntegration *integration)
+    : mIntegration(integration)
 {
-	public:
-		inline paged_bitmap() : iBase(0), iNbits(0) {}
-		void Init(unsigned char* p, unsigned size, unsigned bit);
-//
-		inline unsigned char* Addr() const;
-		inline unsigned Size() const;
-//
-		inline void Set(unsigned ix, unsigned bit);
-		inline unsigned operator[](unsigned ix) const;
-		bool Is(unsigned ix, unsigned len, unsigned bit) const;
-		void Set(unsigned ix, unsigned len, unsigned val);
-		void Setn(unsigned ix, unsigned len, unsigned bit);
-		unsigned Bits(unsigned ix, unsigned len) const;	// little endian
-		int Find(unsigned start, unsigned bit) const;
-	private:
-		unsigned char* iBase;
-		unsigned iNbits;
-};
+}
 
-#endif  // __KERNEL_MODE__
+void *QBBNativeInterface::nativeResourceForWidget(const QByteArray &resource, QWidget *widget)
+{
+    if (resource == "windowGroup" && widget) {
+        const QWidget * const nativeWidget = widget->nativeParentWidget();
+        const screen_window_t window = reinterpret_cast<screen_window_t>(nativeWidget->winId());
+        const QBBScreen * const screen = mIntegration->screenForWindow(window);
+        if (screen) {
+            // We can't just call data() instead of constData() here, since that would detach
+            // and the lifetime of the char * would not be long enough. Therefore the const_cast.
+            return const_cast<char *>(screen->rootWindow()->groupName().constData());
+        }
+    }
+
+    return 0;
+}
+
+QT_END_NAMESPACE
