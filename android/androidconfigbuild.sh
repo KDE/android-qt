@@ -89,9 +89,9 @@ OPTIONS:
 
    -i      Install path. Default "$DEST_DIR_QT"
    -w      Download the OpenSSL sources from "$OPENSSL_URL and
-	   extract to "$OPENSSL_PREFIX"
-		   0 - don't download
-		   1 - download
+           extract to "$OPENSSL_PREFIX"
+              0 - don't download
+              1 - download
 EOF
 }
 
@@ -287,7 +287,7 @@ then
 		-nomake demos -no-multimedia -nomake examples -confirm-license \
 		$CFGOPTIONS -prefix $DEST_DIR_QT \
 		-openssl-source $OPENSSL_ROOT \
-		-script -no-webkit || exit 1
+		-script -webkit || exit 1
 fi
 
 # This should loop until make succeeds, Workaround for Cygwin/MSYS

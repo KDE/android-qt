@@ -67,7 +67,7 @@ public:
     virtual ResourceError blockedError(const ResourceRequest&) const = 0;
 #endif
 
-#if PLATFORM(ANDROID)
+#if PLATFORM(ANDROID) && !PLATFORM(QT)
     virtual MainResourceLoader* mainResourceLoader() const = 0;
     virtual FrameLoaderClient* frameLoaderClient() const = 0;
 #endif

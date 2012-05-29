@@ -274,8 +274,7 @@ inline void ThreadSpecific<T>::destroy(void* ptr)
 #elif PLATFORM(GTK)
     // See comment as above
     g_static_private_set(&data->owner->m_key, data, 0);
-#endif
-#if PLATFORM(QT)
+#elif PLATFORM(QT)
     // See comment as above
     data->owner->m_key.setLocalData(data);
 #endif

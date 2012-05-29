@@ -1,4 +1,4 @@
-#!/bin/sh -x
+#!/bin/sh
 #############################################################################
 ##
 ## Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
@@ -7671,8 +7671,10 @@ case "$XPLATFORM" in
                 canBuildWebKit="no"
                 ;;
 	    *)
-		canBuildWebKit="no"
-		canBuildQtXmlPatterns="no"
+        if [ "$XPLATFORM_ANDROID" != "yes" ]; then
+            canBuildWebKit="no"
+            canBuildQtXmlPatterns="no"
+        fi
 		;;
 	esac
 	;;

@@ -66,7 +66,7 @@
 #elif OS(DARWIN)
 #include <libkern/OSAtomic.h>
 #elif OS(ANDROID)
-#include <cutils/atomic.h>
+#include <sys/atomics.h>
 #elif OS(QNX)
 #include <atomic.h>
 #elif COMPILER(GCC) && !OS(SYMBIAN)
@@ -98,8 +98,8 @@ inline int atomicDecrement(int volatile* addend) { return OSAtomicDecrement32Bar
 
 #elif OS(ANDROID)
 
-inline int atomicIncrement(int volatile* addend) { return android_atomic_inc(addend); }
-inline int atomicDecrement(int volatile* addend) { return android_atomic_dec(addend); }
+inline int atomicIncrement(int volatile* addend) { return __atomic_inc(addend); }
+inline int atomicDecrement(int volatile* addend) { return __atomic_dec(addend); }
 
 #elif OS(QNX)
 

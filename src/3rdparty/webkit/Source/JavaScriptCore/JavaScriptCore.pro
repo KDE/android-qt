@@ -235,3 +235,11 @@ lessThan(QT_GCC_MAJOR_VERSION, 5) {
         }
     }
 }
+
+DEFINES += ANDROID_JSC_JIT arm
+!CONFIG(armeabi-v7a) {
+    QMAKE_CFLAGS_RELEASE -= -mthumb
+    QMAKE_CFLAGS_RELEASE += -marm
+    QMAKE_CXXFLAGS_RELEASE -= -mthumb
+    QMAKE_CXXFLAGS_RELEASE += -marm
+}
