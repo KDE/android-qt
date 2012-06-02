@@ -220,8 +220,8 @@ void NmakeMakefileGenerator::init()
         return;
     }
 
-    project->values("QMAKE_LIBS") += escapeFilePaths(project->values("LIBS"));
     project->values("QMAKE_LIBS_PRIVATE") += escapeFilePaths(project->values("LIBS_PRIVATE"));
+    project->values("QMAKE_LIBS") += escapeFilePaths(project->values("LIBS"));
     processVars();
 
     if (!project->values("RES_FILE").isEmpty()) {

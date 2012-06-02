@@ -50,5 +50,5 @@ symbian: {
 
 android: {
     #add whole gnu_stl library to QtCore
-    LIBS_PRIVATE += -L$$ANDROID_SOURCES_CXX_STL_LIBDIR -Wl,--whole-archive -lgnustl_static -Wl,--no-whole-archive
+    LIBS_PRIVATE += -Wl,--whole-archive -lgnustl_static -Wl,--no-whole-archive
 }

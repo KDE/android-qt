@@ -554,7 +554,7 @@ void VcprojGenerator::writeSubDirs(QTextStream &t)
                         }
 
                         // Add all unknown libs to the deps
-                        QStringList where = QStringList() << "QMAKE_LIBS" << "QMAKE_LIBS_PRIVATE";
+                        QStringList where = QStringList()<< "QMAKE_LIBS_PRIVATE" << "QMAKE_LIBS" ;
                         if(!tmp_proj.isEmpty("QMAKE_INTERNAL_PRL_LIBS"))
                             where = tmp_proj.variables()["QMAKE_INTERNAL_PRL_LIBS"];
                         for(QStringList::iterator wit = where.begin();
@@ -687,8 +687,8 @@ void VcprojGenerator::init()
 
     processVars();
 
-    project->values("QMAKE_LIBS") += escapeFilePaths(project->values("LIBS"));
     project->values("QMAKE_LIBS_PRIVATE") += escapeFilePaths(project->values("LIBS_PRIVATE"));
+    project->values("QMAKE_LIBS") += escapeFilePaths(project->values("LIBS"));
 
     if(!project->values("VERSION").isEmpty()) {
         QString version = project->values("VERSION")[0];
@@ -1447,8 +1447,8 @@ void VcprojGenerator::initExtraCompilerOutputs()
 void VcprojGenerator::initOld()
 {
     // $$QMAKE.. -> $$MSVCPROJ.. -------------------------------------
-    project->values("MSVCPROJ_LIBS") += project->values("QMAKE_LIBS");
     project->values("MSVCPROJ_LIBS") += project->values("QMAKE_LIBS_PRIVATE");
+    project->values("MSVCPROJ_LIBS") += project->values("QMAKE_LIBS");
     QStringList &incs = project->values("INCLUDEPATH");
     for(QStringList::Iterator incit = incs.begin(); incit != incs.end(); ++incit) {
         QString inc = (*incit);

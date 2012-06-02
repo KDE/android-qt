@@ -815,7 +815,7 @@ ProjectBuilderMakefileGenerator::writeMakeParts(QTextStream &t)
         QStringList &libdirs = project->values("QMAKE_PBX_LIBPATHS"),
               &frameworkdirs = project->values("QMAKE_FRAMEWORKPATH");
         QString libs[] = { "QMAKE_LFLAGS", "QMAKE_LIBDIR_FLAGS", "QMAKE_FRAMEWORKPATH_FLAGS",
-                           "QMAKE_LIBS", "QMAKE_LIBS_PRIVATE", QString() };
+                           "QMAKE_LIBS_PRIVATE", "QMAKE_LIBS", QString() };
         for(int i = 0; !libs[i].isNull(); i++) {
             tmp = project->values(libs[i]);
             for(int x = 0; x < tmp.count();) {
@@ -1301,8 +1301,8 @@ ProjectBuilderMakefileGenerator::writeMakeParts(QTextStream &t)
                                          + fixListForOutput("QMAKE_LFLAGS")
                                          + fixListForOutput("QMAKE_LIBDIR_FLAGS")
                                          + fixListForOutput("QMAKE_FRAMEWORKPATH_FLAGS")
-                                         + fixListForOutput("QMAKE_LIBS")
-                                         + fixListForOutput("QMAKE_LIBS_PRIVATE"),
+                                         + fixListForOutput("QMAKE_LIBS_PRIVATE")
+                                         + fixListForOutput("QMAKE_LIBS"),
                                          SettingsAsList, 6) << ";" << "\n";
     }
     if(!project->isEmpty("DESTDIR")) {
@@ -1558,8 +1558,8 @@ ProjectBuilderMakefileGenerator::writeMakeParts(QTextStream &t)
                                                              + fixListForOutput("QMAKE_LFLAGS")
                                                              + fixListForOutput("QMAKE_LIBDIR_FLAGS")
                                                              + fixListForOutput("QMAKE_FRAMEWORKPATH_FLAGS")
-                                                             + fixListForOutput("QMAKE_LIBS")
-                                                             + fixListForOutput("QMAKE_LIBS_PRIVATE"),
+                                                             + fixListForOutput("QMAKE_LIBS_PRIVATE")
+                                                             + fixListForOutput("QMAKE_LIBS"),
                                                              SettingsAsList, 6) << ";" << "\n";
                         }
                         {

@@ -310,15 +310,17 @@ fi
 
 if [ "$INSTALL_QT" = "1" ] ; then
 	make -f $MAKEFILE install
-	while [ "$?" != "0" ]
-	do
-		if [ -f /usr/break-make ]; then
-			echo "Detected break-make"
-			rm -f /usr/break-make
-			exit 1
-		fi
-		make -f $MAKEFILE install
-	done
+	if [ "$OSTYPE" = "msys" ] ; then
+		while [ "$?" != "0" ]
+		do
+			if [ -f /usr/break-make ]; then
+				echo "Detected break-make"
+				rm -f /usr/break-make
+				exit 1
+			fi
+			make -f $MAKEFILE install
+		done
+	fi
 	# Controversial - lets not do it...
 	# $SRC_DIR_QT/copy-private-headers.sh include $DEST_DIR_QT/private-headers
 fi

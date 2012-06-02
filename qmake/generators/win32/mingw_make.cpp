@@ -284,8 +284,8 @@ void MingwMakefileGenerator::init()
     }
 
     // LIBS defined in Profile comes first for gcc
-    project->values("QMAKE_LIBS") += escapeFilePaths(project->values("LIBS"));
     project->values("QMAKE_LIBS_PRIVATE") += escapeFilePaths(project->values("LIBS_PRIVATE"));
+    project->values("QMAKE_LIBS") += escapeFilePaths(project->values("LIBS"));
 
     QString targetfilename = project->values("TARGET").first();
     QStringList &configs = project->values("CONFIG");
@@ -372,11 +372,11 @@ void MingwMakefileGenerator::writeLibsPart(QTextStream &t)
         if(!project->values("QMAKE_LIBDIR").isEmpty())
             writeLibDirPart(t);
         if (project->isActiveConfig("rvct_linker")) {
-            t << var("QMAKE_LIBS") << ' '
-              << var("QMAKE_LIBS_PRIVATE") << endl;
+            t << var("QMAKE_LIBS_PRIVATE") << ' '
+              << var("QMAKE_LIBS") << endl;
         } else {
-            t << var("QMAKE_LIBS").replace(QRegExp("(\\slib|^lib)")," -l") << ' '
-              << var("QMAKE_LIBS_PRIVATE").replace(QRegExp("(\\slib|^lib)")," -l") << endl;
+            t << var("QMAKE_LIBS_PRIVATE").replace(QRegExp("(\\slib|^lib)")," -l") << ' '
+              << var("QMAKE_LIBS").replace(QRegExp("(\\slib|^lib)")," -l") << endl;
         }
     }
 }

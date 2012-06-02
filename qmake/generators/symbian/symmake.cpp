@@ -278,8 +278,8 @@ void SymbianMakefileGenerator::init()
     if (0 == project->values("QMAKESPEC").size())
         project->values("QMAKESPEC").append(qgetenv("QMAKESPEC"));
 
-    project->values("QMAKE_LIBS") += escapeFilePaths(project->values("LIBS"));
     project->values("QMAKE_LIBS_PRIVATE") += escapeFilePaths(project->values("LIBS_PRIVATE"));
+    project->values("QMAKE_LIBS") += escapeFilePaths(project->values("LIBS"));
 
     // Disallow renaming of bld.inf.
     project->values("MAKEFILE").clear();
