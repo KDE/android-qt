@@ -13,7 +13,7 @@ DOWNLOAD_OPENSSL=1
 NDK_PLATFORM=5
 DEST_DIR_QT=$PWD
 PLATFORM="-platform linux-g++"
-NDK_ROOT=~/necessitas/android-ndk
+NDK_ROOT=~/NecessitasQtSDK/android-ndk
 NDK_HOST=linux-x86
 NDK_TOOLCHAIN_VERSION=4.4.3
 NDK_TOOLCHAIN_PREFIX=arm-linux-androideabi
@@ -294,15 +294,17 @@ fi
 # couldn't commit heap memory error
 if [ "$BUILD_QT" = "1" ]; then
 	make -f $MAKEFILE -j 6 all QtJar
-	while [ "$?" != "0" ]
-	do
-		if [ -f /usr/break-make ]; then
-			echo "Detected break-make"
-			rm -f /usr/break-make
-			exit 1
-		fi
-		make -f $MAKEFILE -j 6 all QtJar
-	done
+	if [ "$OSTYPE" = "msys" ] ; then
+		while [ "$?" != "0" ]
+		do
+			if [ -f /usr/break-make ]; then
+				echo "Detected break-make"
+				rm -f /usr/break-make
+				exit 1
+			fi
+			make -f $MAKEFILE -j 6 all QtJar
+		done
+	fi
 fi
 
 

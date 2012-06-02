@@ -20,7 +20,7 @@ my $help = 0;
 my $make_clean = 0;
 my $deploy_qt = 0;
 my $time_out=400;
-my $android_sdk_dir = "$ENV{'HOME'}/necessitas/android-sdk";
+my $android_sdk_dir = "$ENV{'HOME'}/NecessitasQtSDK/android-sdk";
 my $ant_tool = `which ant`;
 chomp $ant_tool;
 my $strip_tool="";
@@ -46,8 +46,8 @@ system("$adb_tool devices") == 0 or die "No device found, please plug/start at l
 $device_serial = "-s $device_serial" if ($device_serial);
 $testsubset="/$testsubset" if ($testsubset);
 
-$strip_tool="$ENV{'HOME'}/necessitas/android-ndk/toolchains/arm-linux-androideabi-4.4.3/prebuilt/linux-x86/bin/arm-linux-androideabi-strip" unless($strip_tool);
-$readelf_tool="$ENV{'HOME'}/necessitas/android-ndk/toolchains/arm-linux-androideabi-4.4.3/prebuilt/linux-x86/bin/arm-linux-androideabi-readelf"  unless($readelf_tool);
+$strip_tool="$ENV{'HOME'}/NecessitasQtSDK/android-ndk/toolchains/arm-linux-androideabi-4.4.3/prebuilt/linux-x86/bin/arm-linux-androideabi-strip" unless($strip_tool);
+$readelf_tool="$ENV{'HOME'}/NecessitasQtSDK/android-ndk/toolchains/arm-linux-androideabi-4.4.3/prebuilt/linux-x86/bin/arm-linux-androideabi-readelf"  unless($readelf_tool);
 $readelf_tool="$readelf_tool -d -w ";
 
 sub dir
