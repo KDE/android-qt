@@ -280,6 +280,15 @@ public:
         AndroidDrawable * m_seekBarThumb;
     };
 
+    class AndroidSpinnerControl: public AndroidControl
+    {
+    public:
+        AndroidSpinnerControl(const QVariantMap &control, ItemType itemType);
+        virtual ~AndroidSpinnerControl(){}
+        virtual QRect subControlRect(const QStyleOptionComplex *option, SubControl sc,
+                                     const QWidget *widget = 0) const;
+    };
+
     typedef QList<AndroidItemStateInfo *> AndroidItemStateInfoList;
 
 public:

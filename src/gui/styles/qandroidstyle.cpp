@@ -134,7 +134,8 @@ QAndroidStyle::QAndroidStyle() :
             QApplication::setPalette(palette, qtClassName.toUtf8());
             // extract palette information
         }
-
+        QApplication::setPalette(QApplication::palette("simple_list_item"), "QListView");
+        QApplication::setFont(QApplication::font("simple_list_item"), "QListView");
         QAndroidStyle::ItemType itemType=qtControl(key);
         if (QC_UnknownType==itemType)
             continue;
@@ -152,6 +153,10 @@ QAndroidStyle::QAndroidStyle() :
 
         case QC_Slider:
             m_androidControlsHash[(int)itemType] = new AndroidSeekBarControl(item, itemType);
+            break;
+
+        case QC_Combobox:
+            m_androidControlsHash[(int)itemType] = new AndroidSpinnerControl(item, itemType);
             break;
 
         default:
@@ -376,7 +381,6 @@ QAndroidStyle::ItemType QAndroidStyle::qtControl(QStyle::SubElement subElement)
     }
 }
 
-
 void QAndroidStyle::drawPrimitive(PrimitiveElement pe, const QStyleOption *opt, QPainter *p,
                            const QWidget *w) const
 {
@@ -431,8 +435,8 @@ void QAndroidStyle::drawControl(QStyle::ControlElement element, const QStyleOpti
                 QMargins padding=it.value()->padding();
                 QStyleOptionComboBox copy (*comboboxOption);
                 copy.rect.adjust(padding.left(), padding.top(), -padding.right(), -padding.bottom());
-                p->setFont(qApp->font("simple_spinner_item"));
-                p->setPen(qApp->palette("simple_spinner_item").color(QPalette::Active, QPalette::Text));
+                p->setFont(QApplication::font("simple_spinner_item"));
+                p->setPen(QApplication::palette("QPushButton").color(QPalette::Active, QPalette::Text));
                 QCommonStyle::drawControl(CE_ComboBoxLabel, comboboxOption, p, w);
             }
             break;
@@ -1546,6 +1550,19 @@ QRect QAndroidStyle::AndroidSeekBarControl::subControlRect(const QStyleOptionCom
             return r;
     }
     return option->rect;
+}
+
+QAndroidStyle::AndroidSpinnerControl::AndroidSpinnerControl(const QVariantMap &control, QAndroidStyle::ItemType itemType)
+    :AndroidControl(control, itemType)
+{}
+
+QRect QAndroidStyle::AndroidSpinnerControl::subControlRect(const QStyleOptionComplex *option, SubControl sc,
+                                                           const QWidget *widget) const
+{
+    if (sc == QStyle::SC_ComboBoxListBoxPopup)
+        return option->rect;
+    else
+        return AndroidControl::subControlRect(option, sc, widget);
 }
 
 QT_END_NAMESPACE

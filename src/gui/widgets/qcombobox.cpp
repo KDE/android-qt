@@ -984,6 +984,11 @@ QComboBoxPrivateContainer* QComboBoxPrivate::viewContainer()
     container = new QComboBoxPrivateContainer(new QComboBoxListView(q), q);
     container->itemView()->setModel(model);
     container->itemView()->setTextElideMode(Qt::ElideMiddle);
+#ifdef Q_OS_ANDROID
+    QPalette p=container->itemView()->palette();
+    p.setBrush(QPalette::Background, q->palette().brush(QPalette::Background));
+    container->itemView()->setPalette(p);
+#endif
     updateDelegate(true);
     updateLayoutDirection();
     updateViewContainerPaletteAndOpacity();
