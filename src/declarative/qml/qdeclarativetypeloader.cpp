@@ -778,7 +778,11 @@ QString QDeclarativeTypeLoader::absoluteFilePath(const QString &path)
     StringSet *fileSet = 0;
     QHash<QString,StringSet*>::const_iterator it = m_importDirCache.find(dirPath);
     if (it == m_importDirCache.end()) {
+#ifdef Q_OS_ANDROID
+        StringSet *files = qmlFilesInDirectory(path.left(lastSlash+1));
+#else
         StringSet *files = qmlFilesInDirectory(path.left(lastSlash));
+#endif
         m_importDirCache.insert(dirPath, files);
         fileSet = files;
     } else {
