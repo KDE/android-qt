@@ -202,15 +202,14 @@ public:
                 return 0;
             }
 #endif
-
             widget->resize(1, 1);
-#ifdef Q_OS_ANDROID
-            widget->lower();
-#endif
 
             // We don't need this internal widget to appear in QApplication::topLevelWidgets()
             if (QWidgetPrivate::allWidgets)
                 QWidgetPrivate::allWidgets->remove(widget);
+#ifdef Q_OS_ANDROID
+            widget->lower();
+#endif
             init = false;
         }
         return widget;
@@ -254,7 +253,9 @@ private:
 bool QGLGlobalShareWidget::cleanedUp = false;
 bool QGLGlobalShareWidget::created = false;
 
+#ifndef Q_OS_ANDROID
 static void qt_cleanup_gl_share_widget();
+#endif
 Q_GLOBAL_STATIC_WITH_INITIALIZER(QGLGlobalShareWidget, _qt_gl_share_widget,
                                  {
                                     #ifndef Q_OS_ANDROID
@@ -262,11 +263,13 @@ Q_GLOBAL_STATIC_WITH_INITIALIZER(QGLGlobalShareWidget, _qt_gl_share_widget,
                                     #endif
                                  })
 
+#ifndef Q_OS_ANDROID
 static void qt_cleanup_gl_share_widget()
 {
     if (QGLGlobalShareWidget::created)
         _qt_gl_share_widget()->cleanup();
 }
+#endif
 
 QGLWidget* qt_gl_share_widget()
 {

@@ -128,8 +128,6 @@ void QAndroidEglFSPlatformContext::makeCurrent()
 }
 void QAndroidEglFSPlatformContext::doneCurrent()
 {
-    qDebug() << "void QEGLPlatformContext::doneCurrent()";
-
     QPlatformGLContext::doneCurrent();
 #ifdef QEGL_EXTRA_DEBUG
     qWarning("QEglContext::doneCurrent(): %p\n",this);

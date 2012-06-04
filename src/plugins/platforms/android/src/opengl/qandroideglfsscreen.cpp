@@ -289,9 +289,8 @@ QImage::Format QAndroidEglFSScreen::format() const
 
 QAndroidEglFSPlatformContext *QAndroidEglFSScreen::platformContext() const
 {
-    if (!m_platformContext) {
+    if (!m_platformContext)
         createAndSetPlatformContext();
-    }
     return m_platformContext;
 }
 
