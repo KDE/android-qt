@@ -1072,16 +1072,17 @@ const QAndroidStyle::AndroidDrawable* QAndroidStyle::AndroidStateDrawable::bestA
         uint cost = 0;
 
         int difference=(int)opt->state^state.first;
+
         if ( difference & QStyle::State_Active )
             cost += 1000;
 
         if ( difference & QStyle::State_Enabled)
             cost += 1000;
 
-        if ( m_itemType == QC_Button && difference & QStyle::State_Raised )
+        if ( (m_itemType == QC_Button || m_itemType == QC_EditText) && difference & QStyle::State_Raised )
             cost += 1000;
 
-        if ( m_itemType == QC_Button && difference & QStyle::State_Sunken )
+        if ( (m_itemType == QC_Button || m_itemType == QC_EditText) && (difference & QStyle::State_Sunken) )
             cost += 1000;
 
         if ( difference & QStyle::State_Off )
@@ -1155,7 +1156,7 @@ int QAndroidStyle::AndroidStateDrawable::extractState(const QVariantMap & value)
             continue;
         }
 
-        if (key==QLatin1String("backdroud") && val)
+        if (key==QLatin1String("backgroud") && val)
             return -1;
     }
     return state;
