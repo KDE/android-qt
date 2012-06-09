@@ -136,6 +136,8 @@ QAndroidStyle::QAndroidStyle() :
         }
         QApplication::setPalette(QApplication::palette("simple_list_item"), "QListView");
         QApplication::setFont(QApplication::font("simple_list_item"), "QListView");
+        QApplication::setPalette(QApplication::palette("simple_list_item"), "QAbstractItemView");
+        QApplication::setFont(QApplication::font("simple_list_item"), "QAbstractItemView");
         QAndroidStyle::ItemType itemType=qtControl(key);
         if (QC_UnknownType==itemType)
             continue;
@@ -1285,6 +1287,7 @@ QSize QAndroidStyle::AndroidControl::sizeFromContents(const QStyleOption *opt,
     QSize sz;
     if (const AndroidDrawable* drawable=m_background)
     {
+
         if (drawable->type() == State)
             drawable=static_cast<const AndroidStateDrawable*>(m_background)->bestAndroidStateMatch(opt);
         const QMargins & padding = drawable->padding();
@@ -1294,6 +1297,8 @@ QSize QAndroidStyle::AndroidControl::sizeFromContents(const QStyleOption *opt,
             sz=drawable->size();
     }
     sz+=contentsSize;
+    if (contentsSize.height()<opt->fontMetrics.height())
+        sz.setHeight(sz.height()+(opt->fontMetrics.height()-contentsSize.height()));
     if (sz.height()<m_minSize.height())
         sz.setHeight(m_minSize.height());
     if (sz.width()<m_minSize.width())

@@ -867,7 +867,10 @@ void QItemDelegate::drawBackground(QPainter *painter,
                                       ? QPalette::Normal : QPalette::Disabled;
             if (cg == QPalette::Normal && !(option.state & QStyle::State_Active))
                 cg = QPalette::Inactive;
-            painter->fillRect(option.rect.adjusted(1,1,-1,-1), QApplication::palette("simple_list_item").brush(cg, QPalette::Background));
+            QPen oldPen=painter->pen();
+            painter->setPen(QApplication::palette("simple_list_item").color(cg, QPalette::Foreground));
+            painter->drawLine(option.rect.topLeft(), option.rect.topRight());
+            painter->setPen(oldPen);
         }
 #endif
     }
@@ -903,6 +906,11 @@ void QItemDelegate::doLayout(const QStyleOptionViewItem &option,
         //if there is no text, we still want to have a decent height for the item sizeHint and the editor size
         textRect->setHeight(option.fontMetrics.height());
     }
+
+#ifdef Q_OS_ANDROID
+    if (textRect->height()<option.fontMetrics.height())
+        textRect->setHeight(option.fontMetrics.height());
+#endif
 
     QSize pm(0, 0);
     if (hasPixmap) {
