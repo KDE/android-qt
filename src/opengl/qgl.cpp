@@ -3224,7 +3224,7 @@ bool QGLContext::areSharing(const QGLContext *context1, const QGLContext *contex
 {
     if (!context1 || !context2)
         return false;
-    return context1->d_ptr->group == context2->d_ptr->group;
+    return (context1->d_ptr->platformContext==context2->d_ptr->platformContext || context1->d_ptr->group == context2->d_ptr->group);
 }
 
 /*!
