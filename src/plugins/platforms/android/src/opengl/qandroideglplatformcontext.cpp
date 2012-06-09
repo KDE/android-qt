@@ -77,7 +77,7 @@ QAndroidEglFSPlatformContext::QAndroidEglFSPlatformContext(EGLDisplay display, E
     }
 
     m_windowFormat = qt_qPlatformWindowFormatFromConfig(display,config);
-//    m_windowFormat.setSharedContext(this);
+    m_windowFormat.setSharedContext(this);
 }
 
 QAndroidEglFSPlatformContext::~QAndroidEglFSPlatformContext()
