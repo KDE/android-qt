@@ -1,3 +1,5 @@
+android:no_smp_safe:DEFINES+=Q_NO_SMP_SAFE_ATOMICS
+
 win32:HEADERS += arch/qatomic_windows.h \
                  arch/qatomic_generic.h
 

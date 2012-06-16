@@ -68,3 +68,4 @@ Q_CORE_EXPORT void qt_atomic_yield(int *count)
         *count = 0;
     }
 }
+QT_END_NAMESPACE
