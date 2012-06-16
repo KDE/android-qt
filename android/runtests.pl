@@ -205,7 +205,7 @@ reinstallQuadruplor;
 ########### build qt tests and benchmarks ###########
 pushd($tests_dir);
 system("make distclean") if ($make_clean);
-system("$qmake_path -r") == 0 or die "Can't run qmake\n"; #exec qmake
+system("$qmake_path CONFIG-=QTDIR_build -r") == 0 or die "Can't run qmake\n"; #exec qmake
 system("make -j$jobs") == 0 or warn "Can't build all tests\n"; #exec make
 my $testsFiles=`find . -name libtst_*.so`; # only tests
 foreach(split("\n",$testsFiles))
