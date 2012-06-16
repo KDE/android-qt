@@ -52,6 +52,7 @@
 
 QT_BEGIN_NAMESPACE
 
+#ifndef QT_NO_SYSTEMLOCALE
 static const char *getSystemLocale()
 {
 #if defined(Q_OS_QNX)
@@ -67,6 +68,7 @@ static const char *getSystemLocale()
     return qgetenv("LC_ALL");
 #endif
 }
+#endif
 
 #ifndef QT_NO_SYSTEMLOCALE
 struct QSystemLocaleData
