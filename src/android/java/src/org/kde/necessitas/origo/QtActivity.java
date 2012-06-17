@@ -100,12 +100,23 @@ public class QtActivity extends Activity
     private static final String QT_PROVIDER_KEY="qt.provider";
     private static final String MINIMUM_MINISTRO_API_KEY="minimum.ministro.api";
     private static final String MINIMUM_QT_VERSION_KEY="minimum.qt.version";
-    private static final String REPOSITORIES="3rd.party.repositories"; // needs MINISTRO_API_LEVEL >=2 !!!
+//    private static final String REPOSITORIES="3rd.party.repositories"; // needs MINISTRO_API_LEVEL >=2 !!!
                                                                        // Use this key to specify any 3rd party repositories urls
                                                                        // Ministro will download these repositories into thier
                                                                        // own folders, check http://community.kde.org/Necessitas/Ministro
                                                                        // for more details.
-    /// Ministro server parameter keys
+
+    private static final String APPLICATION_PARAMETERS=null; // use this variable to pass any parameters to your application,
+                                                             // the parameters must not contain any white spaces
+                                                             // and must be separated with "\t"
+                                                             // e.g "-param1\t-param2=value2\t-param3\tvalue3"
+
+    private static final String ENVIRONMENT_VARIABLES="QT_USE_ANDROID_NATIVE_STYLE=1\t";
+                                                             // use this variable to add any environment variables to your application.
+                                                             // the env vars must be separated with "\t"
+                                                             // e.g. "ENV_VAR1=1\tENV_VAR2=2\t"
+                                                             // Currently the following vars are used by the android plugin:
+                                                             // * QT_USE_ANDROID_NATIVE_STYLE - 0 if you don't want to use android style plugin, it will save a few ms at startup.
 
     private ActivityInfo m_activityInfo = null; // activity info object, used to access the libs and the strings
     private DexClassLoader m_classLoader = null; // loader object
@@ -199,6 +210,9 @@ public class QtActivity extends Activity
                     parameters.putInt(MINIMUM_MINISTRO_API_KEY, MINISTRO_API_LEVEL);
                     parameters.putString(QT_PROVIDER_KEY, QT_PROVIDER);
                     parameters.putInt(MINIMUM_QT_VERSION_KEY, QT_VERSION);
+                    parameters.putInt(ENVIRONMENT_VARIABLES_KEY, ENVIRONMENT_VARIABLES);
+                    if (null!=APPLICATION_PARAMETERS)
+                        parameters.putInt(APPLICATION_PARAMETERS_KEY, APPLICATION_PARAMETERS);
                     // parameters.putStringArray(REPOSITORIES, null);
                     m_service.requestLoader(m_ministroCallback, parameters);
                 }

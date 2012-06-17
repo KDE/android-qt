@@ -101,7 +101,9 @@ void *QAndroidPlatformNativeInterface::nativeResourceForWidget(const QByteArray 
 QAndroidPlatformIntegration::QAndroidPlatformIntegration()
 {
     m_androidPlatformNativeInterface =  new QAndroidPlatformNativeInterface();
-    if (qgetenv("NECESSITAS_API_LEVEL").toInt()>1 && !qgetenv("MINISTRO_ANDROID_STYLE_PATH").isEmpty())
+    if (qgetenv("QT_USE_ANDROID_NATIVE_STYLE").toInt()
+            && qgetenv("NECESSITAS_API_LEVEL").toInt()>1
+            && !qgetenv("MINISTRO_ANDROID_STYLE_PATH").isEmpty())
     {
         QApplication::setStyle(new QCommonStyle); // don't remove, it's used to set the default things (fonts, palette, etc)
         QApplication::setStyle("android");
