@@ -300,6 +300,7 @@ public class QtActivityDelegate
         // start application
         try
         {
+            // FIXME turn on debuggable check
             // if the applications is debuggable and it has a native debug request
             if ( /*(ai.flags&ApplicationInfo.FLAG_DEBUGGABLE) != 0
                     &&*/ m_activity.getIntent().getExtras() != null
@@ -324,6 +325,21 @@ public class QtActivityDelegate
                 } catch (NameNotFoundException e) {
                     Log.e(QtNative.QtTAG,"Can't start debugger"+e.getMessage());
                 }
+            }
+
+            if (/*(ai.flags&ApplicationInfo.FLAG_DEBUGGABLE) != 0
+                    &&*/ m_activity.getIntent().getExtras() != null
+                    && m_activity.getIntent().getExtras().containsKey("qml_debug")
+                    && m_activity.getIntent().getExtras().getString("qml_debug").equals("true"))
+            {
+                String qmljsdebugger;
+                if (m_activity.getIntent().getExtras().containsKey("qmljsdebugger")) {
+                    qmljsdebugger = m_activity.getIntent().getExtras().getString("qmljsdebugger");
+                    qmljsdebugger.replaceAll("\\s", ""); // remove whitespace for security
+                } else {
+                    qmljsdebugger = "port:3768";
+                }
+                m_applicationParameters += "\t-qmljsdebugger="+qmljsdebugger;
             }
 
             if (null == m_surface)
