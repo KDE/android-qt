@@ -18,7 +18,7 @@ NDK_HOST=linux-x86
 NDK_TOOLCHAIN_VERSION=4.4.3
 NDK_TOOLCHAIN_PREFIX=arm-linux-androideabi
 NDK_TOOLS_PREFIX=arm-linux-androideabi
-TARGET_ARCH=armeabi
+TARGET_ARCH=armeabi-v7a
 ANDROID_ARCHITECTURE=arm
 
 OSTYPE_MAJOR=${OSTYPE/%[0-9.]*/}
