@@ -210,9 +210,9 @@ public class QtActivity extends Activity
                     parameters.putInt(MINIMUM_MINISTRO_API_KEY, MINISTRO_API_LEVEL);
                     parameters.putString(QT_PROVIDER_KEY, QT_PROVIDER);
                     parameters.putInt(MINIMUM_QT_VERSION_KEY, QT_VERSION);
-                    parameters.putInt(ENVIRONMENT_VARIABLES_KEY, ENVIRONMENT_VARIABLES);
+                    parameters.putString(ENVIRONMENT_VARIABLES_KEY, ENVIRONMENT_VARIABLES);
                     if (null!=APPLICATION_PARAMETERS)
-                        parameters.putInt(APPLICATION_PARAMETERS_KEY, APPLICATION_PARAMETERS);
+                        parameters.putString(APPLICATION_PARAMETERS_KEY, APPLICATION_PARAMETERS);
                     // parameters.putStringArray(REPOSITORIES, null);
                     m_service.requestLoader(m_ministroCallback, parameters);
                 }
