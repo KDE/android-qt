@@ -315,7 +315,7 @@ public class QtActivity extends Activity
                                                             ?getIntent().getExtras().getString("loader_class_name")
                                                             :"org.kde.necessitas.industrius.QtActivityDelegate");
                 loaderParams.putStringArrayList(NATIVE_LIBRARIES_KEY, libraryList);
-                loaderParams.putString(ENVIRONMENT_VARIABLES_KEY,"QML_IMPORT_PATH=/data/local/qt/imports\tQT_PLUGIN_PATH=/data/local/qt/plugins");
+                loaderParams.putString(ENVIRONMENT_VARIABLES_KEY,"QML_IMPORT_PATH="+localPrefix+"/imports\tQT_PLUGIN_PATH="+localPrefix+"/plugins");
                 loaderParams.putString(APPLICATION_PARAMETERS_KEY,"-platform\tandroid");
                 loadApplication(loaderParams);
                 return;
