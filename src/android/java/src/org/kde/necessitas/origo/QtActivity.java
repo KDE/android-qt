@@ -118,6 +118,7 @@ public class QtActivity extends Activity
                                                              // Currently the following vars are used by the android plugin:
                                                              // * QT_USE_ANDROID_NATIVE_STYLE - 0 if you don't want to use android style plugin, it will save a few ms at startup.
 
+    private static final int INCOMPATIBLE_MINISTRO_VERSION=1; // Incompatible Ministro version. Ministro needs to be upgraded.
     private ActivityInfo m_activityInfo = null; // activity info object, used to access the libs and the strings
     private DexClassLoader m_classLoader = null; // loader object
     private String[] m_qtLibs = null; // required qt libs
@@ -127,8 +128,16 @@ public class QtActivity extends Activity
     {
         try
         {
-            if (loaderParams.getInt(ERROR_CODE_KEY) != 0)
-            { // fatal error, show the error and quit
+            final int errorCode = loaderParams.getInt(ERROR_CODE_KEY);
+            if (errorCode != 0)
+            {
+                if (errorCode == INCOMPATIBLE_MINISTRO_VERSION)
+                {
+                    downloadUpgradeMinistro(loaderParams.getString(ERROR_MESSAGE_KEY));
+                    return;
+                }
+
+                // fatal error, show the error and quit
                 AlertDialog errorDialog = new AlertDialog.Builder(QtActivity.this).create();
                 errorDialog.setMessage(loaderParams.getString(ERROR_MESSAGE_KEY));
                 errorDialog.setButton(getResources().getString(android.R.string.ok), new DialogInterface.OnClickListener() {
@@ -243,6 +252,35 @@ public class QtActivity extends Activity
         }
     };
 
+    private void downloadUpgradeMinistro(String msg)
+    {
+        AlertDialog.Builder downloadDialog = new AlertDialog.Builder(this);
+        downloadDialog.setMessage(msg);
+        downloadDialog.setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+                try
+                {
+                    Uri uri = Uri.parse("market://search?q=pname:org.kde.necessitas.ministro");
+                    Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+                    startActivityForResult(intent, MINISTRO_INSTALL_REQUEST_CODE);
+                }
+                catch (Exception e) {
+                    e.printStackTrace();
+                    ministroNotFound();
+                }
+            }
+        });
+
+        downloadDialog.setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+                QtActivity.this.finish();
+            }
+        });
+        downloadDialog.show();
+    }
+
     private void ministroNotFound()
     {
         AlertDialog errorDialog = new AlertDialog.Builder(QtActivity.this).create();
@@ -327,32 +365,10 @@ public class QtActivity extends Activity
             } catch (Exception e) {
                 if (firstStart)
                 {
-                    AlertDialog.Builder downloadDialog = new AlertDialog.Builder(this);
+                    String msg="This application requires Ministro service. Would you like to install it?";
                     if (m_activityInfo != null && m_activityInfo.metaData.containsKey("android.app.ministro_needed_msg"))
-                        downloadDialog.setMessage(m_activityInfo.metaData.getString("android.app.ministro_needed_msg"));
-                    downloadDialog.setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialogInterface, int i) {
-                            try
-                            {
-                                Uri uri = Uri.parse("market://search?q=pname:org.kde.necessitas.ministro");
-                                Intent intent = new Intent(Intent.ACTION_VIEW, uri);
-                                startActivityForResult(intent, MINISTRO_INSTALL_REQUEST_CODE);
-                            }
-                            catch (Exception e) {
-                                e.printStackTrace();
-                                ministroNotFound();
-                            }
-                        }
-                    });
-
-                    downloadDialog.setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialogInterface, int i) {
-                            QtActivity.this.finish();
-                        }
-                    });
-                    downloadDialog.show();
+                        msg=m_activityInfo.metaData.getString("android.app.ministro_needed_msg");
+                    downloadUpgradeMinistro(msg);
                 }
                 else
                 {
