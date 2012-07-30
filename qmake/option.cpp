@@ -125,9 +125,9 @@ static Option::QMAKE_MODE default_mode(QString progname)
     int s = progname.lastIndexOf(QDir::separator());
     if(s != -1)
         progname = progname.right(progname.length() - (s + 1));
-    if(progname == "qmakegen")
+    if ((progname == "qmakegen") || (progname == "qmakegen.exe"))
         return Option::QMAKE_GENERATE_PROJECT;
-    else if(progname == "qt-config")
+    else if ((progname == "qt-config") || (progname == "qt-config.exe"))
         return Option::QMAKE_QUERY_PROPERTY;
     return Option::QMAKE_GENERATE_MAKEFILE;
 }
