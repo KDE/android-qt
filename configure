@@ -255,6 +255,12 @@ else
     PLATFORM_MAC=no
 fi
 
+if [ "$OSTYPE" = "msys" ]; then
+    BUILD_ON_MSYS=yes
+else
+    BUILD_ON_MSYS=no
+fi
+
 #-----------------------------------------------------------------------------
 # Qt version detection
 #-----------------------------------------------------------------------------
@@ -2578,6 +2584,7 @@ if [ "$CFG_SILENT" = "yes" ]; then
     QMAKE_CONFIG="$QMAKE_CONFIG silent"
 fi
 
+
 # if the source tree is different from the build tree,
 # symlink or copy part of the sources
 if [ "$OPT_SHADOW" = "yes" ]; then
@@ -4871,7 +4878,30 @@ if true; then ###[ '!' -f "$outpath/bin/qmake" ];
 
     #mkspecs/default is used as a (gasp!) default mkspec so QMAKESPEC needn't be set once configured
     rm -rf mkspecs/default
-    ln -s `echo $XQMAKESPEC | sed "s,^${relpath}/mkspecs/,,"` mkspecs/default
+    if [ "$BUILD_ON_MSYS" = "yes" ]; then
+        # For mingw, mkspecs/default/qmake.conf contains a soft-link to the real file.
+        MKSPECSPLATFORM=$XPLATFORM
+        if [ "$MKSPECSPLATFORM" = "" ]; then
+            MKSPECSPLATFORM=$PLATFORM
+        fi
+        MKSPECSPREFIX=$QT_INSTALL_PREFIX
+        if [ $MKSPECSPREFIX = "" ]; then
+            MKSPECSPREFIX=$relpath
+        fi
+        mkdir -p mkspecs/default
+        cat > mkspecs/default/qmake.conf <<EOF
+QMAKESPEC_ORIGINAL=$MKSPECSPREFIX/mkspecs/$MKSPECSPLATFORM
+
+include(../$MKSPECSPLATFORM/qmake.conf)
+EOF
+        # Make sure that the soft-linked-to-file exists as it's needed
+        # during the build process.
+        mkdir -p $MKSPECSPREFIX/mkspecs/$MKSPECSPLATFORM
+        cp -rf mkspecs/$MKSPECSPLATFORM/* $MKSPECSPREFIX/mkspecs/$MKSPECSPLATFORM/
+    else
+        ln -s `echo $XQMAKESPEC | sed "s,^${relpath}/mkspecs/,,"` mkspecs/default
+    fi
+
     # fix makefiles
     for mkfile in GNUmakefile Makefile; do
         EXTRA_LFLAGS=
@@ -4881,7 +4911,11 @@ if true; then ###[ '!' -f "$outpath/bin/qmake" ];
 #           if which qmake >/dev/null 2>&1 && [ -f qmake/qmake.pro ]; then
 #               (cd qmake && qmake) >/dev/null 2>&1 && continue
 #           fi
-            in_mkfile="${mkfile}.unix"
+            if [ "$BUILD_ON_MSYS" = "yes" ]; then
+                in_mkfile="${mkfile}.win32-g++-sh"
+            else
+                in_mkfile="${mkfile}.unix"
+            fi
         fi
         in_mkfile="$relpath/qmake/$in_mkfile"
         mkfile="$outpath/qmake/$mkfile"
@@ -4965,6 +4999,10 @@ if true; then ###[ '!' -f "$outpath/bin/qmake" ];
 		EXTRA_CXXFLAGS="$EXTRA_CXXFLAGS \$(SDK_CFLAGS)"
 		EXTRA_LFLAGS="$EXTRA_LFLAGS \$(SDK_LFLAGS)"
             fi
+        fi
+        if [ "$BUILD_ON_MSYS" = "yes" ]; then
+            EXTRA_CFLAGS="-DUNICODE -static-libgcc"
+            EXTRA_CXXFLAGS="-DUNICODE -static-libgcc -static-libstdc++"
         fi
         [ "$CFG_EMBEDDED" != "no" ] && EXTRA_CFLAGS="$EXTRA_CFLAGS -DQWS"
         if [ '!' -z "$D_FLAGS" ]; then
