@@ -5700,6 +5700,10 @@ if [ "$CFG_ICONV" != "no" ]; then
     fi
 fi
 
+if [ "$PLATFORM_MINGW" = "yes" -o "$XPLATFORM_MINGW" = "yes" ] ; then
+    CFG_ICONV=gnu
+fi
+
 # auto-detect libdbus-1 support
 if [ "$CFG_DBUS" != "no" ]; then
     if [ -n "$PKG_CONFIG" ] && $PKG_CONFIG --atleast-version="$MIN_DBUS_1_VERSION" dbus-1 2>/dev/null; then
