@@ -1,0 +1,1 @@
+win32-g++*:QMAKE_CFLAGS += -mms-bitfields
