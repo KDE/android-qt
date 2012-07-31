@@ -83,7 +83,6 @@
 #include <stdint.h>
 #include <time.h>
 
-
 #if HAVE(ERRNO_H)
 #include <errno.h>
 #endif
@@ -106,6 +105,10 @@ extern "C" struct tm * localtime(const time_t *timer);
 #endif
 
 #define NaN std::numeric_limits<double>::quiet_NaN()
+
+#ifdef __MINGW32__
+inline double trunc(double num) { return num > 0 ? floor(num) : ceil(num); }
+#endif
 
 using namespace WTF;
 

@@ -56,6 +56,10 @@
 #include <runtime_array.h>
 #include <runtime_object.h>
 
+#ifdef __MINGW32__
+inline double trunc(double num) { return num > 0 ? floor(num) : ceil(num); }
+#endif
+
 // QtScript has these
 Q_DECLARE_METATYPE(QObjectList);
 Q_DECLARE_METATYPE(QList<int>);

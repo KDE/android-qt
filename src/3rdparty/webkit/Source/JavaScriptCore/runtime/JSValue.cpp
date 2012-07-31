@@ -34,6 +34,10 @@
 #include <wtf/MathExtras.h>
 #include <wtf/StringExtras.h>
 
+#ifdef __MINGW32__
+inline double trunc(double num) { return num > 0 ? floor(num) : ceil(num); }
+#endif
+
 namespace JSC {
 
 static const double D32 = 4294967296.0;
