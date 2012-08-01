@@ -3455,7 +3455,9 @@ if [ "$XPLATFORM_ANDROID" = "yes" ] ; then
     # Repeat what mkspecs for android does. This is horrible, but I can't see a way around it given what getQMakeConf does.
     NDK_TOOLCHAIN_PATH=$ANDROID_NDK_ROOT/toolchains/$ANDROID_NDK_TOOLCHAIN_PREFIX-$ANDROID_NDK_TOOLCHAIN_VERSION/prebuilt/$ANDROID_NDK_HOST
     NDK_TOOLCHAIN_PREFIX=arm-linux-androideabi
-    QMAKE_CONF_COMPILER=$(echo "$QMAKE_CONF_COMPILER" | sed 's:\$\$:\$:g')
+    # Replace all occourances of $$(EXAMPLE_VARIABLE) from qmake.conf with ${EXAMPLE_VARIABLE}
+    #  so we can eval it from shell script.
+    QMAKE_CONF_COMPILER=$(echo "$QMAKE_CONF_COMPILER" | sed 's:\$\$(\([a-zA-Z_]*\)):\${\1}:g')
 
     eval QMAKE_CONF_COMPILER=$QMAKE_CONF_COMPILER
     TEST_COMPILER="$QMAKE_CONF_COMPILER --sysroot=$ANDROID_NDK_ROOT/platforms/android-5/arch-arm/"
