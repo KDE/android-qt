@@ -11,7 +11,7 @@ endif
 #
 # specific stuff for mingw g++ make
 #
-CXX	    =	g++
+#CXX	    =	g++
 CFLAGS	    =	-c -o$@ -O \
 		-I. -Igenerators -Igenerators/unix \
 		-Igenerators/win32 -Igenerators/mac \

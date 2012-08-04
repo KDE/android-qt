@@ -2529,8 +2529,7 @@ fi
 if [ "$CFG_SILENT" = "yes" ]; then
     QMAKE_CONFIG="$QMAKE_CONFIG silent"
 fi
-
-if [ "$PLATFORM" = "win32-g++" -o "$XPLATFORM" = "win32-g++" ] && [ "$CFG_MS_BITFIELDS" = "yes" ]; then
+if [ "$PLATFORM" = "win32-g++" ] || [ "$XPLATFORM" = "win32-g++" ] || [ "$XPLATFORM" = "linux-mingw-w64-32-g++" ] && [ "$CFG_MS_BITFIELDS" = "yes" ]; then
     QMAKE_CONFIG="$QMAKE_CONFIG ms_bitfields"
 fi
 
@@ -8859,7 +8858,7 @@ if [ "$PLATFORM_MAC" = "yes" ]; then
 fi
 echo "ICD support ............ $CFG_ICD"
 echo "libICU support ......... $CFG_ICU"
-if [ "$PLATFORM" = "win32-g++" ] || [ "$XPLATFORM" = "win32-g++" ]; then
+if [ "$PLATFORM" = "win32-g++" ] || [ "$XPLATFORM" = "win32-g++" ] || [ "$XPLATFORM" = "linux-mingw-w64-32-g++" ] ; then
     echo "ms bitfields ........... $CFG_MS_BITFIELDS"
 fi
 echo

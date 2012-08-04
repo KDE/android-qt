@@ -282,6 +282,11 @@ void MingwMakefileGenerator::init()
     if (!project->values("RES_FILE").isEmpty()) {
         project->values("QMAKE_LIBS") += escapeFilePaths(project->values("RES_FILE"));
     }
+    if (project->isActiveConfig("plugin")) {
+        project->values("QMAKE_CFLAGS") += project->values("QMAKE_CFLAGS_PLUGIN");
+        project->values("QMAKE_CXXFLAGS") += project->values("QMAKE_CXXFLAGS_PLUGIN");
+        project->values("QMAKE_LFLAGS") += project->values("QMAKE_LFLAGS_PLUGIN");
+    }
 
     // LIBS defined in Profile comes first for gcc
     project->values("QMAKE_LIBS") += escapeFilePaths(project->values("LIBS"));
