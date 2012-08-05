@@ -1604,7 +1604,9 @@ while [ "$#" -gt 0 ]; do
         ;;
     xplatform)
         XPLATFORM="$VAL"
-        case `basename "$XPLATFORM"` in win32-g++*) XPLATFORM_MINGW=yes;; esac
+        case "$XPLATFORM" in win32-g++*) XPLATFORM_MINGW=yes;; esac
+        case "$XPLATFORM" in *mingw*) XPLATFORM_MINGW=yes;; esac
+        case "$XPLATFORM" in *integrity*) XPLATFORM_INTEGRITY=yes;; esac
         case "$XPLATFORM" in *symbian*) XPLATFORM_SYMBIAN=yes;; esac
         case "$XPLATFORM" in symbian-sbsv2) XPLATFORM_SYMBIAN_SBSV2=yes;; esac
         ;;
