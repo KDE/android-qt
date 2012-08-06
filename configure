@@ -2594,8 +2594,8 @@ fi
 if [ "$CFG_SILENT" = "yes" ]; then
     QMAKE_CONFIG="$QMAKE_CONFIG silent"
 fi
-if [ "$PLATFORM" = "win32-g++" ] || [ "$XPLATFORM" = "win32-g++" ] || [ "$XPLATFORM" = "linux-mingw-w64-32-g++" ] && [ "$CFG_MS_BITFIELDS" = "yes" ]; then
-    QMAKE_CONFIG="$QMAKE_CONFIG ms_bitfields"
+if [ "$PLATFORM" = "win32-g++" ] || [ "$XPLATFORM" = "win32-g++" ] || [ "$XPLATFORM" = "win32-g++-cross" ] && [ "$CFG_MS_BITFIELDS" = "yes" ]; then
+    QMAKE_CONFIG="$QMAKE_CONFIG ms_bitfields static_gcclibs"
 fi
 
 # if the source tree is different from the build tree,
@@ -8967,7 +8967,7 @@ if [ "$PLATFORM_MAC" = "yes" ]; then
 fi
 echo "ICD support ............ $CFG_ICD"
 echo "libICU support ......... $CFG_ICU"
-if [ "$PLATFORM" = "win32-g++" ] || [ "$XPLATFORM" = "win32-g++" ] || [ "$XPLATFORM" = "linux-mingw-w64-32-g++" ] ; then
+if [ "$PLATFORM" = "win32-g++" ] || [ "$XPLATFORM" = "win32-g++" ] || [ "$XPLATFORM" = "win32-g++-cross" ] ; then
     echo "ms bitfields ........... $CFG_MS_BITFIELDS"
 fi
 echo
