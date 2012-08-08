@@ -1,6 +1,6 @@
 CONFIG 	       += console qtinc
 CONFIG         -= qt
-win32-g++ {
+win32-g++|linux-mingw* {
     CONFIG += static
 }
 build_all:!build_pass {

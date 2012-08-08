@@ -1,6 +1,6 @@
 TEMPLATE        = subdirs
 
-!contains(QT_CONFIG, no-gui) {
+!cross_compile: !contains(QT_CONFIG, no-gui) {
     no-png {
         message("Some graphics-related tools are unavailable without PNG support")
     } else {

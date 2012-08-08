@@ -31,6 +31,18 @@ src_tools_idc.target = sub-idc
 # Special handling, depending on type of project, if it used debug/release or only has one configuration
 EXTRA_DEBUG_TARGETS =
 EXTRA_RELEASE_TARGETS =
+
+cross_compile {
+    sub_qmake_install.target = sub-qmake-install
+    sub_qmake_install.commands = $$QMAKE_MKDIR \${INSTALL_ROOT}$$[QT_INSTALL_BINS] &&
+    win32 : sub_qmake_install.commands += $$QMAKE_COPY $$QT_BUILD_TREE/bin/qmake.exe \${INSTALL_ROOT}$$[QT_INSTALL_BINS]/qmake.exe
+     else : sub_qmake_install.commands += $$QMAKE_COPY $$QT_BUILD_TREE/bin/qmake \${INSTALL_ROOT}$$[QT_INSTALL_BINS]/qmake
+
+    EXTRA_DEBUG_TARGETS = sub_qmake_install
+    EXTRA_RELEASE_TARGETS = sub_qmake_install
+    QMAKE_EXTRA_TARGETS += sub_qmake_install
+}
+
 !symbian {
     for(subname, TOOLS_SUBDIRS) {
         subdir = $$subname
