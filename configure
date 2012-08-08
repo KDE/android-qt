@@ -267,6 +267,7 @@ PLATFORM_X11=no
 PLATFORM_QWS=maybe
 PLATFORM_QPA=maybe
 BUILD_ON_MAC=no
+BUILD_ON_MSYS=no
 if [ -d /System/Library/Frameworks/Carbon.framework ]; then
     PLATFORM_MAC=maybe
     BUILD_ON_MAC=yes
@@ -921,7 +922,7 @@ CFG_NOPROCESS=no
 CFG_ICU=auto
 CFG_OPENSSL_SOURCE=
 CFG_MS_BITFIELDS=no
-
+CFG_CROSS_QMAKE=
 # initalize variables used for installation
 QT_INSTALL_PREFIX=
 QT_INSTALL_DOCS=
@@ -1238,17 +1239,22 @@ while [ "$#" -gt 0 ]; do
         VAL="$1"
         ;;
     -graphicssystem)
-	VAR="graphicssystem"
-	shift
-	VAL=$1
-	;;
+        VAR="graphicssystem"
+        shift
+        VAL=$1
+        ;;
     -runtimegraphicssystem)
-	VAR="runtimegraphicssystem"
-	shift
-	VAL=$1
-	;;
+        VAR="runtimegraphicssystem"
+        shift
+        VAL=$1
+        ;;
     -qtlibinfix)
         VAR="qtlibinfix"
+        shift
+        VAL="$1"
+        ;;
+    -cross-qmake)
+        VAR="cross-qmake"
         shift
         VAL="$1"
         ;;
@@ -2123,8 +2129,8 @@ while [ "$#" -gt 0 ]; do
     qdbus|dbus)
         if [ "$VAL" = "yes" ] || [ "$VAL" = "no" ] || [ "$VAL" = "linked" ]; then
             CFG_DBUS="$VAL"
-	elif [ "$VAL" = "runtime" ]; then
-	    CFG_DBUS="yes"
+        elif [ "$VAL" = "runtime" ]; then
+            CFG_DBUS="yes"
         else
             UNKNOWN_OPT=yes
         fi
@@ -2165,7 +2171,7 @@ while [ "$#" -gt 0 ]; do
         fi
         ;;
     openssl-source)
-	CFG_OPENSSL_SOURCE="$VAL"
+        CFG_OPENSSL_SOURCE="$VAL"
         ;;
     ptmalloc)
         if [ "$VAL" = "yes" ]; then
@@ -2229,7 +2235,7 @@ while [ "$#" -gt 0 ]; do
                 UNKNOWN_OPT=yes
             fi
         fi
-	;;
+        ;;
     declarative-debug)
         if [ "$VAL" = "yes" ]; then
             CFG_DECLARATIVE_DEBUG="yes"
@@ -2492,9 +2498,20 @@ while [ "$#" -gt 0 ]; do
             UNKNOWN_OPT=yes
         fi
         ;;
+    cross-qmake)
+        CFG_CROSS_QMAKE=$VAL
+        QT_CROSS_COMPILE=yes
+        ;;
     ms-bitfields)
         if [ "$VAL" = "yes" ] || [ "$VAL" = "no" ]; then
             CFG_MS_BITFIELDS="$VAL"
+        else
+            UNKNOWN_OPT=yes
+        fi
+        ;;
+    BUILD_ON_MSYS)
+        if [ "$VAL" = "yes" ] || [ "$VAL" = "no" ]; then
+            BUILD_ON_MSYS="$VAL"
         else
             UNKNOWN_OPT=yes
         fi
@@ -3040,7 +3057,7 @@ if [ -d "$XPLATFORM" ]; then
 else
   XQMAKESPEC="$relpath/mkspecs/${XPLATFORM}"
 fi
-if [ "$PLATFORM" != "$XPLATFORM" ]; then
+if [ "$PLATFORM" != "$XPLATFORM" ] || [ "$QT_CROSS_COMPILE" = "yes" ]; then
     QT_CROSS_COMPILE=yes
     QMAKE_CONFIG="$QMAKE_CONFIG cross_compile"
 fi
@@ -5455,12 +5472,12 @@ for _SQLDR in $CFG_SQL_AVAILABLE; do
         case $_SQLDR in
         mysql)
             if [ "$CFG_SQL_mysql" != "no" ]; then
-		[ -z "$CFG_MYSQL_CONFIG" ] && CFG_MYSQL_CONFIG=`"$WHICH" mysql_config`
+                [ -z "$CFG_MYSQL_CONFIG" ] && CFG_MYSQL_CONFIG=`"$WHICH" mysql_config`
                 if [ -x "$CFG_MYSQL_CONFIG" ]; then
                     QT_CFLAGS_MYSQL=`$CFG_MYSQL_CONFIG --include 2>/dev/null`
                     QT_LFLAGS_MYSQL_R=`$CFG_MYSQL_CONFIG --libs_r 2>/dev/null`
                     QT_LFLAGS_MYSQL=`$CFG_MYSQL_CONFIG --libs 2>/dev/null`
-		    QT_MYSQL_VERSION=`$CFG_MYSQL_CONFIG --version 2>/dev/null`
+                    QT_MYSQL_VERSION=`$CFG_MYSQL_CONFIG --version 2>/dev/null`
                     QT_MYSQL_VERSION_MAJOR=`echo $QT_MYSQL_VERSION | cut -d . -f 1`
                 fi
                 if [ -n "$QT_MYSQL_VERSION" ] && [ "$QT_MYSQL_VERSION_MAJOR" -lt 4 ]; then
@@ -5472,9 +5489,9 @@ for _SQLDR in $CFG_SQL_AVAILABLE; do
                         exit 101
                     else
                         CFG_SQL_mysql="no"
-			QT_LFLAGS_MYSQL=""
-			QT_LFLAGS_MYSQL_R=""
-			QT_CFLAGS_MYSQL=""
+                        QT_LFLAGS_MYSQL=""
+                        QT_LFLAGS_MYSQL_R=""
+                        QT_CFLAGS_MYSQL=""
                     fi
                 else
                     if "$unixtests/compile.test" "$XQMAKESPEC" "$QMAKE_CONFIG" $OPT_VERBOSE "$relpath" "$outpath" config.tests/unix/mysql_r "MySQL (thread-safe)" $QT_LFLAGS_MYSQL_R $L_FLAGS $QT_CFLAGS_MYSQL $I_FLAGS $l_FLAGS $MAC_CONFIG_TEST_COMMANDLINE; then
@@ -9080,11 +9097,15 @@ EXEC=""
 
 echo "Finding project files. Please wait..."
 if [ "$CFG_NOPROCESS" != "yes" ]; then
-    "$outpath/bin/qmake" -prl -r "${relpath}/projects.pro"
+    QMAKE_BIN="$outpath/bin/qmake"
+    if [ ! -z "$CFG_CROSS_QMAKE" ]; then
+        QMAKE_BIN="$CFG_CROSS_QMAKE"
+    fi
+    $QMAKE_BIN -prl -r "${relpath}/projects.pro"
     if [ -f "${relpath}/projects.pro" ]; then
         mkfile="${outpath}/Makefile"
         [ -f "$mkfile" ] && chmod +w "$mkfile"
-        QTDIR="$outpath" "$outpath/bin/qmake" -spec "$XQMAKESPEC" "${relpath}/projects.pro" -o "$mkfile"
+        QTDIR="$outpath" "$QMAKE_BIN" -spec "$XQMAKESPEC" "${relpath}/projects.pro" -o "$mkfile"
     fi
 fi
 
@@ -9270,9 +9291,11 @@ for file in .projects .projects.3; do
         fi
         QMAKE_SPEC_ARGS="-spec $SPEC"
         echo $ECHO_N "  for $a$ECHO_C"
-
         QMAKE="$outpath/bin/qmake"
-	QMAKE_ARGS="$QMAKE_SWITCHES $QMAKE_SPEC_ARGS"
+        if [ ! -z "$CFG_CROSS_QMAKE" ]; then
+            QMAKE="$CFG_CROSS_QMAKE"
+        fi
+        QMAKE_ARGS="$QMAKE_SWITCHES $QMAKE_SPEC_ARGS"
         if [ "$file" = ".projects.3" ]; then
             echo " (fast)"
 

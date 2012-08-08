@@ -282,6 +282,11 @@ void MingwMakefileGenerator::init()
     if (!project->values("RES_FILE").isEmpty()) {
         project->values("QMAKE_LIBS") += escapeFilePaths(project->values("RES_FILE"));
     }
+    if (project->isActiveConfig("plugin")) {
+        project->values("QMAKE_CFLAGS") += project->values("QMAKE_CFLAGS_PLUGIN");
+        project->values("QMAKE_CXXFLAGS") += project->values("QMAKE_CXXFLAGS_PLUGIN");
+        project->values("QMAKE_LFLAGS") += project->values("QMAKE_LFLAGS_PLUGIN");
+    }
 
     // LIBS defined in Profile comes first for gcc
     project->values("QMAKE_LIBS_PRIVATE") += escapeFilePaths(project->values("LIBS_PRIVATE"));
@@ -418,6 +423,7 @@ void MingwMakefileGenerator::writeObjectsPart(QTextStream &t)
                 ar_cmd = "ar";
             createArObjectScriptFile(ar_script_file, var("DEST_TARGET"), project->values("OBJECTS"));
             objectsLinkLine = ar_cmd + " -M < " + escapeFilePath(ar_script_file);
+            project->values("QMAKE_DISTCLEAN").append(ar_script_file);
         }
     } else {
         QString ld_script_file = var("QMAKE_LINK_OBJECT_SCRIPT") + "." + var("TARGET");
@@ -430,6 +436,7 @@ void MingwMakefileGenerator::writeObjectsPart(QTextStream &t)
         } else {
             createLdObjectScriptFile(ld_script_file, project->values("OBJECTS"));
             objectsLinkLine = escapeFilePath(ld_script_file);
+            project->values("QMAKE_DISTCLEAN").append(ld_script_file);
         }
     }
     Win32MakefileGenerator::writeObjectsPart(t);
@@ -471,7 +478,7 @@ void MingwMakefileGenerator::writeRcFilePart(QTextStream &t)
 
     if (!rc_file.isEmpty()) {
         t << escapeDependencyPath(var("RES_FILE")) << ": " << rc_file << "\n\t"
-          << var("QMAKE_RC") << " -i " << rc_file << " -o " << var("RES_FILE") 
+          << var("QMAKE_RC") << " -i " << rc_file << " -o " << var("RES_FILE")
           << " --include-dir=" << incPathStr << " $(DEFINES)" << endl << endl;
     }
 }

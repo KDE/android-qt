@@ -11,7 +11,7 @@ mac {
     QMAKE_LFLAGS += $$QMAKE_LFLAGS_STATIC_LIB
 }
 
-win32-g++ {
+win32-g++|linux-mingw* {
     contains(TEMPLATE, ".*app") : QMAKE_LFLAGS += -static-libgcc -static-libstdc++
 }
 
