@@ -884,6 +884,7 @@ l_FLAGS=
 QCONFIG_FLAGS=
 XPLATFORM=              # This seems to be the QMAKESPEC, like "linux-g++" or "symbian-gcce"
 XPLATFORM_MINGW=no      # Whether target platform is MinGW (win32-g++*)
+XPLATFORM_MAC=no        # Whether target platform is Mac (macx-g++*)
 XPLATFORM_INTEGRITY=no  # Whether target platform is INTEGRITY (*integrity*)
 XPLATFORM_SYMBIAN=no    # Whether target platform is SYMBIAN (*symbian*)
 XPLATFORM_SYMBIAN_SBSV2=no # Whether target platform is SYMBIAN_SBSV2 (symbian-sbsv2)
@@ -1527,7 +1528,7 @@ while [ "$#" -gt 0 ]; do
         PLATFORM_X11=yes
         ;;
     sdk)
-        if [ "$PLATFORM_MAC" = "yes" ]; then
+        if [ "$PLATFORM_MAC" = "yes" ] || [ "$XPLATFORM_MAC" = "yes" ] ; then
             CFG_SDK="$VAL"
         else
             UNKNOWN_OPT=yes
@@ -1579,7 +1580,7 @@ while [ "$#" -gt 0 ]; do
         ;;
 
     framework)
-        if [ "$PLATFORM_MAC" = "yes" ] || [ "$PLATFORM_QPA" = "yes" ]; then
+        if [ "$PLATFORM_MAC" = "yes" ] || [ "$XPLATFORM_MAC" = "yes" ] || [ "$PLATFORM_QPA" = "yes" ]; then
             CFG_FRAMEWORK="$VAL"
         else
             UNKNOWN_OPT=yes
@@ -1667,6 +1668,7 @@ while [ "$#" -gt 0 ]; do
         XPLATFORM="$VAL"
         case `basename "$XPLATFORM"` in win32-g++*) XPLATFORM_MINGW=yes;; esac
         case `basename "$XPLATFORM"` in *mingw*) XPLATFORM_MINGW=yes;; esac
+        case `basename "$XPLATFORM"` in *mac*) XPLATFORM_MAC=yes;; esac
         case "$XPLATFORM" in *integrity*) XPLATFORM_INTEGRITY=yes;; esac
         case "$XPLATFORM" in *symbian*) XPLATFORM_SYMBIAN=yes;; esac
         case "$XPLATFORM" in symbian-sbsv2) XPLATFORM_SYMBIAN_SBSV2=yes;; esac
@@ -2401,7 +2403,7 @@ while [ "$#" -gt 0 ]; do
         l_FLAGS="$l_FLAGS -l\"${VAL}\""
         ;;
     add_fpath)
-        if [ "$PLATFORM_MAC" = "yes" ]; then
+        if [ "$PLATFORM_MAC" = "yes" ] || [ "$XPLATFORM_MAC" = "yes" ] ; then
             L_FLAGS="$L_FLAGS -F\"${VAL}\""
             I_FLAGS="$I_FLAGS -F\"${VAL}\""
         else
@@ -2409,7 +2411,7 @@ while [ "$#" -gt 0 ]; do
         fi
         ;;
     add_framework)
-        if [ "$PLATFORM_MAC" = "yes" ]; then
+        if [ "$PLATFORM_MAC" = "yes" ] || [ "$XPLATFORM_MAC" = "yes" ]; then
             l_FLAGS="$l_FLAGS -framework \"${VAL}\""
         else
             UNKNOWN_OPT=yes
@@ -2576,7 +2578,7 @@ fi
 
 # detect build style
 if [ "$CFG_DEBUG" = "auto" ]; then
-    if [ "$PLATFORM_MAC" = "yes" -o "$XPLATFORM_MINGW" = "yes" ]; then
+    if [ "$PLATFORM_MAC" = "yes" -o "$XFPLATFORM_MAC" = "yes" -o "$XPLATFORM_MINGW" = "yes" ]; then
         CFG_DEBUG_RELEASE=yes
         CFG_DEBUG=yes
     elif [ "$CFG_DEV" = "yes" ]; then
@@ -3266,7 +3268,7 @@ elif [ "$XPLATFORM_INTEGRITY" = "yes" ]; then
     CFG_ARCH=integrity
 elif [ "$XPLATFORM_SYMBIAN" = "yes" ]; then
     CFG_ARCH=symbian
-elif [ "$PLATFORM_MAC" = "yes" ] || [ -z "$CFG_ARCH" ]; then
+elif [ "$PLATFORM_MAC" = "yes" ] || [ "$XPLATFORM_MAC" = "yes" ] || [ -z "$CFG_ARCH" ]; then
     CFG_ARCH=$CFG_HOST_ARCH
 fi
 
@@ -3359,7 +3361,7 @@ if [ ! -n "$PKG_CONFIG" ]; then
 fi
 
 # process CFG_MAC_ARCHS
-if [ "$PLATFORM_MAC" = "yes" ]; then
+if [ "$PLATFORM_MAC" = "yes" ] || [ "$XPLATFORM_MAC" = "yes" ]; then
 #   check -arch arguments for validity.
     ALLOWED="x86 ppc x86_64 ppc64 i386 arm armv6 armv7"
     # Save the list so we can re-write it using only valid values
@@ -3389,7 +3391,7 @@ if [ '!' -z "$CFG_SDK" ]; then
 fi
 
 # find the default framework value
-if [ "$PLATFORM_MAC" = "yes" ] && [ "$PLATFORM" != "macx-xlc" ]; then
+if [ "$PLATFORM_MAC" = "yes" ] || [ "$XPLATFORM_MAC" = "yes" ] && [ "$PLATFORM" != "macx-xlc" ]; then
     if [ "$CFG_FRAMEWORK" = "auto" ]; then
         CFG_FRAMEWORK="$CFG_SHARED"
     elif [ "$CFG_FRAMEWORK" = "yes" ] && [ "$CFG_SHARED" = "no" ]; then
@@ -3447,7 +3449,7 @@ elif [ "$CFG_PRECOMPILE" = "yes" ] && [ `echo "$CFG_MAC_ARCHS" | wc -w` -gt 1 ];
 fi
 
 #auto-detect DWARF2 on the mac
-if [ "$PLATFORM_MAC" = "yes" ] && [ "$CFG_MAC_DWARF2" = "auto" ]; then
+if [ "$PLATFORM_MAC" = "yes" ] || [ "$XPLATFORM_MAC" = "yes" ] && [ "$CFG_MAC_DWARF2" = "auto" ]; then
     if "$mactests/dwarf2.test" "$TEST_COMPILER" "$OPT_VERBOSE" "$mactests" ; then
         CFG_MAC_DWARF2=no
     else
@@ -3456,7 +3458,7 @@ if [ "$PLATFORM_MAC" = "yes" ] && [ "$CFG_MAC_DWARF2" = "auto" ]; then
 fi
 
 # auto-detect support for -Xarch on the mac
-if [ "$PLATFORM_MAC" = "yes" ] && [ "$CFG_MAC_XARCH" = "auto" ]; then
+if [ "$PLATFORM_MAC" = "yes" ] || [ "$XPLATFORM_MAC" = "yes" ] && [ "$CFG_MAC_XARCH" = "auto" ]; then
     if "$mactests/xarch.test" "$TEST_COMPILER" "$OPT_VERBOSE" "$mactests" ; then
         CFG_MAC_XARCH=no
     else
@@ -3521,14 +3523,14 @@ if [ "$PLATFORM_QWS" = "yes" ] && [ "$CFG_OPENGL" = "auto" ]; then
 fi
 
 # mac
-if [ "$PLATFORM_MAC" = "yes" ] && [ "$XPLATFORM_SYMBIAN" = "no" ]; then
+if [ "$PLATFORM_MAC" = "yes" ] || [ "$XPLATFORM_MAC" = "yes" ] && [ "$XPLATFORM_SYMBIAN" = "no" ]; then
     if [ "$CFG_OPENGL" = "auto" ] || [ "$CFG_OPENGL" = "yes" ]; then
         CFG_OPENGL=desktop
     fi
 fi
 
 # find the default framework value
-if [ "$PLATFORM_MAC" = "yes" ] && [ "$PLATFORM" != "macx-xlc" ]; then
+if [ "$PLATFORM_MAC" = "yes" ] || [ "$XPLATFORM_MAC" = "yes" ] && [ "$PLATFORM" != "macx-xlc" ]; then
     if [ "$CFG_FRAMEWORK" = "auto" ]; then
         CFG_FRAMEWORK="$CFG_SHARED"
     elif [ "$CFG_FRAMEWORK" = "yes" ] && [ "$CFG_SHARED" = "no" ]; then
@@ -3543,7 +3545,7 @@ fi
 
 # Print a warning if configure was called with the 10.4u SDK option on Snow Leopard
 # with the default mkspec. The 10.4u SDK does not support gcc 4.2.
-if [ "$PLATFORM_MAC" = "yes" ] && [ '!' -z "$CFG_SDK" ]; then
+if [ "$PLATFORM_MAC" = "yes" ] || [ "$XPLATFORM_MAC" = "yes" ] && [ '!' -z "$CFG_SDK" ]; then
     # get the darwin version. 10.0.0 and up means snow leopard.
     VERSION=`uname -r | tr '.' ' ' | awk '{print $1}'`
     if [ "$VERSION" -gt 9 ] && [ "$CFG_SDK" == "/Developer/SDKs/MacOSX10.4u.sdk/" ] && [ "$PLATFORM" == "macx-g++" ]; then
@@ -3561,9 +3563,9 @@ if [ -z "$CFG_BUILD_PARTS" ]; then
     CFG_BUILD_PARTS="$QT_DEFAULT_BUILD_PARTS"
 
     # don't build tools by default when cross-compiling
-    if [ "$PLATFORM" != "$XPLATFORM" ]; then
-	CFG_BUILD_PARTS=`echo "$CFG_BUILD_PARTS" | sed "s, tools,,g"`
-    fi
+#    if [ "$PLATFORM" != "$XPLATFORM" ]; then
+#	CFG_BUILD_PARTS=`echo "$CFG_BUILD_PARTS" | sed "s, tools,,g"`
+#    fi
 fi
 for nobuild in $CFG_NOBUILD_PARTS; do
     CFG_BUILD_PARTS=`echo "$CFG_BUILD_PARTS" | sed "s, $nobuild,,g"`
@@ -4338,7 +4340,7 @@ Qt/X11 only:
 EOF
 fi
 
-if [ "$PLATFORM_MAC" = "yes" ]; then
+if [ "$PLATFORM_MAC" = "yes" ] || [ "$XPLATFORM_MAC" = "yes" ]; then
     cat << EOF
 
 Qt/Mac only:
@@ -4982,7 +4984,7 @@ EOF
                 EXTRA_LFLAGS="\$(QMAKE_LFLAGS_RPATH)\"$rpath\" $EXTRA_LFLAGS"
             done
         fi
-        if [ "$BUILD_ON_MAC" = "yes" ]; then
+        if [ "$BUILD_ON_MAC" = "yes" ] || [ "$XPLATFORM_MAC" = "yes" ] ; then
             echo "export MACOSX_DEPLOYMENT_TARGET = 10.5" >> "$mkfile"
             echo "CARBON_LFLAGS =-framework ApplicationServices" >>"$mkfile"
             echo "CARBON_CFLAGS =-fconstant-cfstrings" >>"$mkfile"
