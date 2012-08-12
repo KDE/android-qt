@@ -99,7 +99,8 @@ QString MakefileGenerator::mkdir_p_asstring(const QString &dir, bool escape) con
     else
         ret += dir;
     ret += " ";
-    if(isWindowsShell())
+    if(isWindowsShell() ||
+       (project->values("QMAKE_SH").isEmpty() && project->values("QMAKE_HOST.os").indexOf("Windows") != -1))
         ret += "$(MKDIR)";
     else
         ret += "|| $(MKDIR)";
