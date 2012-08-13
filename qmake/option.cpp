@@ -564,7 +564,11 @@ void Option::applyHostMode()
        Option::dir_sep = "\\";
        Option::obj_ext = ".obj";
    } else {
+#ifdef Q_OS_WIN
+       Option::dir_sep = "\\";
+#else
        Option::dir_sep = "/";
+#endif
        Option::obj_ext = ".o";
    }
 }
