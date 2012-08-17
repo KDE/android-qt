@@ -1344,9 +1344,22 @@ MakefileGenerator::writeInstalls(QTextStream &t, const QString &installs, bool n
                             dst_file += Option::dir_sep;
                         dst_file += fi.fileName();
                     }
-                    QString cmd = QString(fi.isDir() ? "-$(INSTALL_DIR)" : "-$(INSTALL_FILE)") + " " +
-                                  dirstr + file + " " + dst_file + "\n";
-                    target += cmd;
+                    //On Windows, (and assuming COPY_DIR is "xcopy /s /q /y /i") we have a problem.
+                    //The command "xcopy /s /q /y /i src dst"
+                    //will not copy the directory src into the directory dst..
+                    //..instead it will copy the *contents* of src into the directory dst.
+                    //the fix is to use the command "xcopy /s /q /y /i src dst/src" instead.
+                    if(fi.isDir() && (isWindowsShell() ||
+                        (project->values("QMAKE_SH").isEmpty() && project->values("QMAKE_HOST.os").indexOf("Windows") != -1))) {
+                        QString cmd = QString("-$(INSTALL_DIR)") + " " +
+                                      dirstr + file + " " + dst_file + Option::dir_sep + file + "\n";
+                        target += cmd;
+                    }
+                    else {
+                        QString cmd = QString(fi.isDir() ? "-$(INSTALL_DIR)" : "-$(INSTALL_FILE)") + " " +
+                                      dirstr + file + " " + dst_file + "\n";
+                        target += cmd;
+                    }
                     if(!project->isActiveConfig("debug") && !project->isActiveConfig("nostrip") &&
                        !fi.isDir() && fi.isExecutable() && !project->isEmpty("QMAKE_STRIP"))
                         target += QString("\t-") + var("QMAKE_STRIP") + " " +
