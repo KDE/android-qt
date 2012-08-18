@@ -993,6 +993,8 @@ static void createOptionsMenu(JNIEnv *env, jobject /*thiz*/, jobject /*menu*/)
 
 static void addActionToMenu(JNIEnv *env, jobject menu, QAction* action)
 {
+    if (action->isSeparator())
+        return;
     QString txt = action->text();
     jstring str = env->NewString(reinterpret_cast<const jchar*>(txt.data()), txt.length());
     QWeakPointer<QAction> wp(action);
