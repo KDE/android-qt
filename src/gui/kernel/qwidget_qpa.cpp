@@ -83,7 +83,6 @@ void QWidgetPrivate::create_sys(WId window, bool initializeWindow, bool destroyO
     Q_UNUSED(initializeWindow);
     Q_UNUSED(destroyOldWindow);
 
-    Qt::WindowFlags flags = data.window_flags;
 
     if ((!q->testAttribute(Qt::WA_NativeWindow) && !q->isWindow()) || q->windowType() == Qt::Desktop )
         return; // we only care about real toplevels
@@ -803,8 +802,8 @@ void QWidgetPrivate::deleteTLSysExtra()
                 context->deleteQGLContext();
             }
         }
-        delete extra->topextra->platformWindow;
 #endif
+        delete extra->topextra->platformWindow;
         setWinId(0);
         extra->topextra->platformWindow = 0;
     }
