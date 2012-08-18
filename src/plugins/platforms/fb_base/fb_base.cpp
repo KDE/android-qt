@@ -298,10 +298,7 @@ QRegion QFbScreen::doRedraw()
     touchedRegion += repaintRegion;
     repaintRegion = QRegion();
 
-
-
 //    qDebug() << "QFbScreen::doRedraw"  << windowStack.size() << mScreenImage->size() << touchedRegion;
-
 
     return touchedRegion;
 }

@@ -863,14 +863,16 @@ void QApplicationPrivate::processKeyEvent(QWindowSystemInterfacePrivate::KeyEven
         {
             if (e->key == Qt::Key_Menu)
             {
-                QObject * menuObject=focusW;
-                foreach (QObject* obj, focusW->children())
-                    if (obj->inherits("QMenuBar"))
-                    {
-                        menuObject = obj;
-                        break;
-                    }
-                QApplication::sendEvent(menuObject, &ev);
+                if (QObject * menuObject=focusW)
+                {
+                    foreach (QObject* obj, focusW->children())
+                        if (obj->inherits("QMenuBar"))
+                        {
+                            menuObject = obj;
+                            break;
+                        }
+                    QApplication::sendEvent(menuObject, &ev);
+                }
             }
             else
             {
