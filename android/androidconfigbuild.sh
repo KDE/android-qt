@@ -295,7 +295,7 @@ then
 		-nomake demos -no-multimedia -nomake examples -confirm-license \
 		$CFGOPTIONS -prefix $DEST_DIR_QT \
 		-openssl-source $OPENSSL_ROOT \
-                -script -webkit -stl || exit 1
+                -script -no-webkit -stl || exit 1
 fi
 
 # This should loop until make succeeds, Workaround for Cygwin/MSYS
