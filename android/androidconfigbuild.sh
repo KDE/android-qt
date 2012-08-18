@@ -13,7 +13,7 @@ DOWNLOAD_OPENSSL=1
 NDK_PLATFORM=5
 DEST_DIR_QT=$PWD
 PLATFORM="-platform linux-g++"
-NDK_ROOT=~/NecessitasQtSDK/android-ndk
+NDK_ROOT=~/necessitas/android-ndk
 NDK_HOST=linux-x86
 NDK_TOOLCHAIN_VERSION=4.6
 NDK_TOOLCHAIN_PREFIX=arm-linux-androideabi
@@ -285,6 +285,8 @@ then
             HOST_ARCH="i386"
         fi
 
+	cp -f $NDK_ROOT/sources/cxx-stl/gnu-libstdc++/$NDK_TOOLCHAIN_VERSION/libs/$TARGET_ARCH/libgnustl_shared.so $SRC_DIR_QT/lib
+
 	$SRC_DIR_QT/configure -v -opensource -qpa -arch $ANDROID_ARCHITECTURE \
 		-no-phonon -freetype -fast -xplatform android-g++ \
 		-host-arch $HOST_ARCH $PLATFORM -host-little-endian \
@@ -293,7 +295,7 @@ then
 		-nomake demos -no-multimedia -nomake examples -confirm-license \
 		$CFGOPTIONS -prefix $DEST_DIR_QT \
 		-openssl-source $OPENSSL_ROOT \
-		-script -webkit || exit 1
+                -script -webkit -stl || exit 1
 fi
 
 # This should loop until make succeeds, Workaround for Cygwin/MSYS

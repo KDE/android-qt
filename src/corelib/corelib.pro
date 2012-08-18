@@ -47,8 +47,3 @@ symbian: {
     MMP_RULES += pagingBlock
     LIBS += -ltzclient
 }
-
-android: {
-    #add whole gnu_stl library to QtCore
-    LIBS_PRIVATE += -Wl,--whole-archive -lgnustl_static -Wl,--no-whole-archive
-}
