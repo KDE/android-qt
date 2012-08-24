@@ -31,6 +31,7 @@
 #include <QAbstractFileEngineHandler>
 #include <android/asset_manager.h>
 
+class AndroidAssetsDirCache;
 class AndroidAssetsFileEngineHandler: public QAbstractFileEngineHandler
 {
 public:
@@ -42,6 +43,7 @@ private:
     AAssetManager * m_assetManager;
     mutable QByteArray path;
     mutable int m_necessitasApiLevel;
+    mutable AndroidAssetsDirCache *m_androidAssetDir;
 };
 
 #endif // QANDROIDASSETSFILEENGINEHANDLER_H

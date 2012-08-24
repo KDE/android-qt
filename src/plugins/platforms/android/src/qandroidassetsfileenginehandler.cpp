@@ -30,17 +30,78 @@
 
 #include <QCoreApplication>
 #include <QDateTime>
+#include <QMutex>
+#include <QHash>
+#include <QSharedPointer>
+
+struct AndroidAssetDir
+{
+    AndroidAssetDir(AAssetDir* ad = 0)
+    {
+        count = 0;
+        assetDir = ad;
+        mutext = new QMutex();
+    }
+    ~AndroidAssetDir()
+    {
+        if (assetDir)
+            AAssetDir_close(assetDir);
+        delete mutext;
+    }
+    AAssetDir* assetDir;
+    QMutex * mutext;
+    volatile int count;
+};
+
+static const int MaxCachedPaths(10);
+class AndroidAssetsDirCache
+{
+public:
+    QSharedPointer<AndroidAssetDir> insert(const QString &fileName, AAssetDir* assetDir)
+    {
+        QSharedPointer<AndroidAssetDir> ad(new AndroidAssetDir(assetDir));
+        if (m_assetsCache.size() == MaxCachedPaths)
+        {
+            AndroidAssetDirHash::iterator bestMatch = m_assetsCache.begin();
+            for (AndroidAssetDirHash::iterator it = m_assetsCache.begin(); it!=m_assetsCache.end();++it)
+            {
+                if (it.value()->count<bestMatch.value()->count)
+                    bestMatch = it;
+            }
+            m_assetsCache.erase(bestMatch);
+        }
+        m_assetsCache.insert(fileName, ad);
+        return ad;
+    }
+
+    QSharedPointer<AndroidAssetDir> get(const QString &fileName) const
+    {
+        AndroidAssetDirHash::const_iterator it = m_assetsCache.find(fileName);
+        if (it != m_assetsCache.end())
+        {
+            ++it.value()->count;
+            return it.value();
+        }
+        return QSharedPointer<AndroidAssetDir>(0);
+    }
+
+private:
+    typedef QHash<QString, QSharedPointer<AndroidAssetDir> > AndroidAssetDirHash;
+    AndroidAssetDirHash m_assetsCache;
+};
 
 class AndroidAbstractFileEngineIterator: public QAbstractFileEngineIterator
 {
 public:
-    AndroidAbstractFileEngineIterator( QDir::Filters filters, const QStringList & nameFilters, AAssetDir* asset, const QString & path ):
+    AndroidAbstractFileEngineIterator( QDir::Filters filters, const QStringList & nameFilters, QSharedPointer<AndroidAssetDir> asset, const QString & path ):
         QAbstractFileEngineIterator(filters, nameFilters )
     {
-        AAssetDir_rewind(asset);
+        asset->mutext->lock();
+        AAssetDir_rewind(asset->assetDir);
         const char * fileName;
-        while((fileName=AAssetDir_getNextFileName(asset)))
+        while((fileName=AAssetDir_getNextFileName(asset->assetDir)))
             m_items<<fileName;
+        asset->mutext->unlock();
         m_index = -1;
         m_path = path;
     }
@@ -86,16 +147,15 @@ class AndroidAbstractFileEngine : public QAbstractFileEngine
 public:
     explicit AndroidAbstractFileEngine(AAsset* asset, const QString & fileName)
     {
-        m_assetDir = 0;
         m_assetFile = asset;
-        m_fileName =  fileName;
+        m_fileName = fileName;
     }
 
-    explicit AndroidAbstractFileEngine(AAssetDir* asset, const QString & fileName)
+    explicit AndroidAbstractFileEngine(QSharedPointer<AndroidAssetDir> asset, const QString & fileName)
     {
         m_assetFile = 0;
         m_assetDir = asset;
-        m_fileName =  fileName;
+        m_fileName = fileName;
         if (!m_fileName.endsWith(QChar(QLatin1Char('/'))))
             m_fileName+="/";
     }
@@ -103,8 +163,6 @@ public:
     ~AndroidAbstractFileEngine()
     {
         close();
-        if (m_assetDir)
-            AAssetDir_close(m_assetDir);
     }
 
     virtual bool open(QIODevice::OpenMode openMode)
@@ -173,7 +231,7 @@ public:
         FileFlags flags(ReadOwnerPerm|ReadUserPerm|ReadGroupPerm|ReadOtherPerm|ExistsFlag);
         if (m_assetFile)
             flags|=FileType;
-        if(m_assetDir)
+        if(!m_assetDir.isNull())
             flags|=DirectoryType;
         return type&flags;
     }
@@ -216,14 +274,14 @@ public:
 
     virtual Iterator *beginEntryList(QDir::Filters filters, const QStringList &filterNames)
     {
-        if (m_assetDir)
+        if (!m_assetDir.isNull())
             return new AndroidAbstractFileEngineIterator(filters, filterNames, m_assetDir, m_fileName);
         return 0;
     }
 
 private:
     AAsset* m_assetFile;
-    AAssetDir* m_assetDir;
+    QSharedPointer<AndroidAssetDir> m_assetDir;
     QString m_fileName;
 };
 
@@ -232,11 +290,12 @@ AndroidAssetsFileEngineHandler::AndroidAssetsFileEngineHandler()
 {
     m_assetManager = QtAndroid::assetManager();
     m_necessitasApiLevel = -1;
+    m_androidAssetDir = new AndroidAssetsDirCache();
 }
 
 AndroidAssetsFileEngineHandler::~AndroidAssetsFileEngineHandler()
 {
-
+    delete m_androidAssetDir;
 }
 
 QAbstractFileEngine * AndroidAssetsFileEngineHandler::create ( const QString & fileName ) const
@@ -265,14 +324,20 @@ QAbstractFileEngine * AndroidAssetsFileEngineHandler::create ( const QString & f
         if (!path.size())
              path = fileName.left(fileName.length()-1).toUtf8();
 
-        AAssetDir* assetDir=AAssetManager_openDir(m_assetManager, path.constData()+prefixSize);
-        if (assetDir)
+        QSharedPointer<AndroidAssetDir> ad=m_androidAssetDir->get(fileName);
+        if (ad.isNull())
         {
-            if (AAssetDir_getNextFileName(assetDir))
-                return new AndroidAbstractFileEngine(assetDir, fileName);
-            else
-                AAssetDir_close(assetDir);
+            AAssetDir* assetDir=AAssetManager_openDir(m_assetManager, path.constData()+prefixSize);
+            if (assetDir)
+            {
+                if (AAssetDir_getNextFileName(assetDir))
+                    return new AndroidAbstractFileEngine(m_androidAssetDir->insert(fileName, assetDir), fileName);
+                else
+                    AAssetDir_close(assetDir);
+            }
         }
+        else
+            return new AndroidAbstractFileEngine(ad, fileName);
     }
     else
     {
@@ -302,15 +367,20 @@ QAbstractFileEngine * AndroidAssetsFileEngineHandler::create ( const QString & f
                 dirName = fileName.left(fileName.size()-1);
         }
 
-        AAssetDir* assetDir;
-        assetDir=AAssetManager_openDir(m_assetManager, dirName.toUtf8().constData());
-        if (assetDir)
+        QSharedPointer<AndroidAssetDir> ad=m_androidAssetDir->get(fileName);
+        if (ad.isNull())
         {
-            if (AAssetDir_getNextFileName(assetDir))
-                return new AndroidAbstractFileEngine(assetDir, fileName);
-            else
-                AAssetDir_close(assetDir);
+            AAssetDir* assetDir=AAssetManager_openDir(m_assetManager, dirName.toUtf8().constData());
+            if (assetDir)
+            {
+                if (AAssetDir_getNextFileName(assetDir))
+                    return new AndroidAbstractFileEngine(m_androidAssetDir->insert(fileName, assetDir), fileName);
+                else
+                    AAssetDir_close(assetDir);
+            }
         }
+        else
+            return new AndroidAbstractFileEngine(ad, fileName);
     }
     return 0;
 }
