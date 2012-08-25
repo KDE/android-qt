@@ -94,7 +94,7 @@ QString QmlApplicationViewerPrivate::adjustPath(const QString &path)
     if (!QDir::isAbsolutePath(path))
         return QString::fromLatin1("%1/../Resources/%2")
                 .arg(QCoreApplication::applicationDirPath(), path);
-#else
+#elif !defined(Q_OS_ANDROID)
     const QString pathInInstallDir =
             QString::fromLatin1("%1/../%2").arg(QCoreApplication::applicationDirPath(), path);
     if (QFileInfo(pathInInstallDir).exists())
@@ -154,7 +154,11 @@ QmlApplicationViewer *QmlApplicationViewer::create()
 void QmlApplicationViewer::setMainQmlFile(const QString &file)
 {
     d->mainQmlFile = d->adjustPath(file);
-    d->view->setSource(QUrl::fromLocalFile(d->mainQmlFile));
+#ifdef Q_OS_ANDROID
+    setSource(QUrl(QLatin1String("assets:/")+d->mainQmlFile));
+#else
+    setSource(QUrl::fromLocalFile(d->mainQmlFile));
+#endif
 }
 
 void QmlApplicationViewer::addImportPath(const QString &path)
