@@ -146,17 +146,24 @@ public class QtSystemInfo
     private BroadcastReceiver m_generalSystemInfo;
     QtSystemInfo ()
     {
-        QtNative.activity().runOnUiThread(new Runnable() {
+        try
+        {
+            QtNative.activity().runOnUiThread(new Runnable() {
 
-            public void run() {
-//@ANDROID-5
-                m_bluetoothAdapter=BluetoothAdapter.getDefaultAdapter();
-//@ANDROID-5
-            }
-        });
-        m_powerManager = (PowerManager)QtNative.activity().getSystemService(Context.POWER_SERVICE);
-        m_telephonyManager= (TelephonyManager) QtNative.activity().getSystemService(Context.TELEPHONY_SERVICE);
-        disableLock();
+                public void run() {
+    //@ANDROID-5
+                    m_bluetoothAdapter=BluetoothAdapter.getDefaultAdapter();
+    //@ANDROID-5
+                }
+            });
+            m_powerManager = (PowerManager)QtNative.activity().getSystemService(Context.POWER_SERVICE);
+            m_telephonyManager= (TelephonyManager) QtNative.activity().getSystemService(Context.TELEPHONY_SERVICE);
+            disableLock();
+        }
+        catch(Exception e)
+        {
+            e.printStackTrace();
+        }
     }
 
     public void initScreensaver ()
