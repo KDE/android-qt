@@ -132,30 +132,7 @@ template <typename T> Q_INLINE_TEMPLATE bool QBasicAtomicPointer<T>::testAndSetR
 
 template <typename T> Q_INLINE_TEMPLATE T *QBasicAtomicPointer<T>::fetchAndStoreOrdered(T *newValue)
 {
-#ifdef QT_USE_FAST_ATOMICS
-    T *originalValue;
-    asm volatile(
-#if defined(__thumb__) && !defined(thumb2)
-                 "adr r4,1f\n"
-                 "bx r3\n"
-                 ".align\n"
-                 ".arm\n"
-                 "1:\n"
-#endif
-                 "swp %0,%2,[%3]\n"
-#if defined(__thumb__) && !defined(thumb2)
-                 "adr r3, 2f+1\n"
-                 "bx r3\n"
-                 ".thumb\n"
-                 "2:\n"
-#endif
-                 : "=&r"(originalValue), "=m" (_q_value)
-                 : "r"(newValue), "r"(&_q_value)
-                 : "cc", "memory");
-    return originalValue;
-#else
     return __sync_lock_test_and_set(&_q_value, newValue);
-#endif
 }
 
 template <typename T> Q_INLINE_TEMPLATE T *QBasicAtomicPointer<T>::fetchAndStoreRelaxed(T *newValue)

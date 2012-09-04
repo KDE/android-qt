@@ -82,25 +82,10 @@ Q_CORE_EXPORT bool QBasicAtomicInt::testAndSetOrdered(int expectedValue, int new
 
 Q_CORE_EXPORT int QBasicAtomicInt::fetchAndStoreOrdered(int newValue)
 {
-    int originalValue;
-    asm volatile(
-#if defined(__thumb__) && !defined(thumb2)
-                 "adr r4,1f\n"
-                 "bx r3\n"
-                 ".align\n"
-                 ".arm\n"
-                 "1:\n"
-#endif
-                 "swp %0,%2,[%3]\n"
-#if defined(__thumb__) && !defined(thumb2)
-                 "adr r3, 2f+1\n"
-                 "bx r3\n"
-                 ".thumb\n"
-                 "2:\n"
-#endif
-                 : "=&r"(originalValue), "=m" (_q_value)
-                 : "r"(newValue), "r"(&_q_value)
-                 : "cc", "memory");
+    register int originalValue;
+    do {
+      originalValue = _q_value;
+    } while (qt_atomic_eabi_cmpxchg_int(originalValue, newValue, &_q_value) != 0);
     return originalValue;
 }
 
@@ -114,7 +99,6 @@ Q_CORE_EXPORT int QBasicAtomicInt::fetchAndAddOrdered(int valueToAdd)
     } while (qt_atomic_eabi_cmpxchg_int(originalValue, newValue, &_q_value) != 0);
     return originalValue;
 }
-
 
 Q_CORE_EXPORT bool QBasicAtomicInt::testAndSetRelaxed(int expectedValue, int newValue)
 {
