@@ -2103,19 +2103,19 @@ static void android_default_handler(QtMsgType msgType, const char *buf)
     switch(msgType)
     {
     case QtDebugMsg:
-        __android_log_print(ANDROID_LOG_DEBUG,"Qt", buf);
+        __android_log_print(ANDROID_LOG_DEBUG,"Qt", "%s", buf);
         break;
     case QtWarningMsg:
-        __android_log_print(ANDROID_LOG_WARN,"Qt", buf);
+        __android_log_print(ANDROID_LOG_WARN,"Qt", "%s", buf);
         break;
     case QtCriticalMsg:
-        __android_log_print(ANDROID_LOG_ERROR,"Qt", buf);
+        __android_log_print(ANDROID_LOG_ERROR,"Qt", "%s", buf);
         break;
     case QtFatalMsg:
-        __android_log_print(ANDROID_LOG_FATAL,"Qt", buf);
+        __android_log_print(ANDROID_LOG_FATAL,"Qt", "%s", buf);
         break;
     default:
-        __android_log_print(ANDROID_LOG_VERBOSE,"Qt", buf);
+        __android_log_print(ANDROID_LOG_VERBOSE,"Qt", "%s", buf);
         break;
     }
 }
