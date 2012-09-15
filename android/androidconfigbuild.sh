@@ -285,8 +285,6 @@ then
             HOST_ARCH="i386"
         fi
 
-	cp -f $NDK_ROOT/sources/cxx-stl/gnu-libstdc++/$NDK_TOOLCHAIN_VERSION/libs/$TARGET_ARCH/libgnustl_shared.so $SRC_DIR_QT/lib
-
 	$SRC_DIR_QT/configure -v -opensource -qpa -arch $ANDROID_ARCHITECTURE \
 		-no-phonon -freetype -fast -xplatform android-g++ \
 		-host-arch $HOST_ARCH $PLATFORM -host-little-endian \
@@ -300,8 +298,18 @@ fi
 
 # This should loop until make succeeds, Workaround for Cygwin/MSYS
 # couldn't commit heap memory error
+if [ "$OSTYPE_MAJOR" = "linux-gnu" ] ; then
+    JOBS=`cat /proc/cpuinfo | grep processor | wc -l`
+    JOBS=`expr $JOBS + 2`
+elif [ "$OSTYPE_MAJOR" = "darwin" ] ; then
+    JOBS=`sysctl -n hw.ncpu`
+    JOBS=`expr $JOBS + 2`
+else
+    JOBS=`expr $NUMBER_OF_PROCESSORS + 2`
+fi
+
 if [ "$BUILD_QT" = "1" ]; then
-	make -f $MAKEFILE -j 6 all QtJar
+	make -f $MAKEFILE -j$JOBS all QtJar
 	if [ "$OSTYPE" = "msys" ] ; then
 		while [ "$?" != "0" ]
 		do
@@ -310,7 +318,7 @@ if [ "$BUILD_QT" = "1" ]; then
 				rm -f /usr/break-make
 				exit 1
 			fi
-			make -f $MAKEFILE -j 6 all QtJar
+			make -f $MAKEFILE -j$JOBS all QtJar
 		done
 	fi
 fi
