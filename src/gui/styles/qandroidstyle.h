@@ -316,9 +316,6 @@ public:
     virtual QSize sizeFromContents(ContentsType ct, const QStyleOption *opt,
                                    const QSize &contentsSize, const QWidget *w = 0) const;
 
-    virtual int styleHint(StyleHint stylehint, const QStyleOption *opt = 0,
-                          const QWidget *widget = 0, QStyleHintReturn* returnData = 0) const;
-
     virtual QPixmap standardPixmap(StandardPixmap standardPixmap, const QStyleOption *opt = 0,
                                    const QWidget *widget = 0) const;
 

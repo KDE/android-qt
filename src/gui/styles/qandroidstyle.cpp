@@ -542,18 +542,6 @@ QSize QAndroidStyle::sizeFromContents(ContentsType ct, const QStyleOption *opt,
     return sz;
 }
 
-int QAndroidStyle::styleHint(StyleHint stylehint, const QStyleOption *opt,
-                      const QWidget *widget, QStyleHintReturn* returnData) const
-{
-    switch (stylehint)
-    {
-    case SH_RequestSoftwareInputPanel:
-        return RSIP_OnMouseClick;
-    default:
-        return QCommonStyle::styleHint(stylehint, opt, widget, returnData);
-    }
-}
-
 QPixmap QAndroidStyle::standardPixmap(StandardPixmap standardPixmap, const QStyleOption *opt,
                                const QWidget *widget) const
 {

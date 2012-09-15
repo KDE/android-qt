@@ -5148,7 +5148,11 @@ int QCommonStyle::styleHint(StyleHint sh, const QStyleOption *opt, const QWidget
         ret = qt_guiPlatformPlugin()->platformHint(QGuiPlatformPlugin::PH_ToolButtonStyle);
         break;
     case SH_RequestSoftwareInputPanel:
+#ifdef Q_OS_ANDROID
+        ret = RSIP_OnMouseClick;
+#else
         ret = RSIP_OnMouseClickAndAlreadyFocused;
+#endif
         break;
     default:
         ret = 0;
