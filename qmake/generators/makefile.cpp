@@ -94,21 +94,29 @@ bool MakefileGenerator::canExecute(const QStringList &cmdline, int *a) const
 QString MakefileGenerator::mkdir_p_asstring(const QString &dir, bool escape) const
 {
     QString ret =  "@$(CHK_DIR_EXISTS) ";
-    if(escape)
-        ret += escapeFilePath(dir);
-    else
-        ret += dir;
-    ret += " ";
+    QString dirLocalOS = dir;
+    bool isWinCmdExe = false;
     if(isWindowsShell() ||
-       (project->values("QMAKE_SH").isEmpty() && project->values("QMAKE_HOST.os").indexOf("Windows") != -1))
+       (project->values("QMAKE_SH").isEmpty() &&
+        project->values("QMAKE_HOST.os").indexOf("Windows") != -1)) {
+        isWinCmdExe = true;
+        dirLocalOS = Option::fixPathToLocalOS(dir,false,false);
+    }
+
+    if(escape)
+        ret += escapeFilePath(dirLocalOS);
+    else
+        ret += dirLocalOS;
+    ret += " ";
+    if(isWinCmdExe)
         ret += "$(MKDIR)";
     else
         ret += "|| $(MKDIR)";
     ret += " ";
     if(escape)
-        ret += escapeFilePath(dir);
+        ret += escapeFilePath(dirLocalOS);
     else
-        ret += dir;
+        ret += dirLocalOS;
     ret += " ";
     return ret;
 }
