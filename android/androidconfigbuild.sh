@@ -15,7 +15,7 @@ DEST_DIR_QT=$PWD
 PLATFORM="-platform linux-g++"
 NDK_ROOT=~/necessitas/android-ndk
 NDK_HOST=linux-x86
-NDK_TOOLCHAIN_VERSION=4.6
+NDK_TOOLCHAIN_VERSION=4.4.3
 NDK_TOOLCHAIN_PREFIX=arm-linux-androideabi
 NDK_TOOLS_PREFIX=arm-linux-androideabi
 TARGET_ARCH=armeabi-v7a
@@ -309,8 +309,8 @@ else
 fi
 
 if [ "$BUILD_QT" = "1" ]; then
-	make -f $MAKEFILE -j$JOBS all QtJar
-	if [ "$OSTYPE" = "msys" ] ; then
+	make -f $MAKEFILE -j$JOBS all QtJar || exit 1
+#	if [ "$OSTYPE" = "msys" ] ; then
 		while [ "$?" != "0" ]
 		do
 			if [ -f /usr/break-make ]; then
@@ -320,12 +320,12 @@ if [ "$BUILD_QT" = "1" ]; then
 			fi
 			make -f $MAKEFILE -j$JOBS all QtJar
 		done
-	fi
+#	fi
 fi
 
 
 if [ "$INSTALL_QT" = "1" ] ; then
-	make -f $MAKEFILE install
+	make -f $MAKEFILE install || exit 1
 	if [ "$OSTYPE" = "msys" ] ; then
 		while [ "$?" != "0" ]
 		do
