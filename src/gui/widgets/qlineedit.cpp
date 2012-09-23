@@ -1804,6 +1804,10 @@ void QLineEdit::focusInEvent(QFocusEvent *e)
             selectAll();
     } else if (e->reason() == Qt::MouseFocusReason) {
         d->clickCausedFocus = 1;
+#ifdef Q_OS_ANDROID
+        if (!d->control->hasSelectedText())
+            selectAll();
+#endif
     }
 #ifdef QT_KEYPAD_NAVIGATION
     if (!QApplication::keypadNavigationEnabled() || (hasEditFocus() && ( e->reason() == Qt::PopupFocusReason
@@ -2099,6 +2103,11 @@ void QLineEdit::dropEvent(QDropEvent* e)
 */
 void QLineEdit::contextMenuEvent(QContextMenuEvent *event)
 {
+#ifdef Q_OS_ANDROID
+    Q_D(QLineEdit);
+    if (!d->control->hasSelectedText())
+        selectAll();
+#endif
     if (QMenu *menu = createStandardContextMenu()) {
         menu->setAttribute(Qt::WA_DeleteOnClose);
         menu->popup(event->globalPos());
@@ -2177,15 +2186,17 @@ QMenu *QLineEdit::createStandardContextMenu()
     }
 #endif
 
-#if defined(Q_WS_WIN) || defined(Q_WS_X11)
+#ifndef Q_OS_ANDROID
+# if defined(Q_WS_WIN) || defined(Q_WS_X11)
     if (!d->control->isReadOnly() && qt_use_rtl_extensions) {
-#else
+# else
     if (!d->control->isReadOnly()) {
-#endif
+# endif
         popup->addSeparator();
         QUnicodeControlCharacterMenu *ctrlCharacterMenu = new QUnicodeControlCharacterMenu(this, popup);
         popup->addMenu(ctrlCharacterMenu);
     }
+#endif
     return popup;
 }
 #endif // QT_NO_CONTEXTMENU

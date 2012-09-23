@@ -27,13 +27,13 @@
 
 #ifndef ANDROID_APP_H
 #define ANDROID_APP_H
-
 #ifdef ANDROID_PLUGIN_OPENGL
 #include <EGL/eglplatform.h>
 #endif
 
 #include <jni.h>
 #include "native/include/android/asset_manager.h"
+#include <QString>
 
 
 class QImage;
@@ -44,6 +44,7 @@ class QAndroidPlatformIntegration;
 class QMenuBar;
 class QMenu;
 class QWidget;
+class QAndroidPlatformClipboard;
 
 namespace QtAndroid
 {
@@ -71,6 +72,12 @@ namespace QtAndroid
     void hideContextMenu();
     // Menu support
 
+    // Clipboard support
+    void setClipboardListener(QAndroidPlatformClipboard* listener);
+    void setClipboardText(const QString &text);
+    bool hasClipboardText();
+    QString clipboardText();
+    // Clipboard support
 
 #ifndef ANDROID_PLUGIN_OPENGL
     void flushImage(const QPoint & pos, const QImage & image, const QRect & rect);

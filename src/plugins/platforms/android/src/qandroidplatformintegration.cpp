@@ -39,6 +39,7 @@
 #include <QCommonStyle>
 #include "qdesktopwidget.h"
 #include "qandroidplatformdesktopservice.h"
+#include "qandroidplatformclipboard.h"
 
 #ifdef ANDROID_PLUGIN_OPENGL
 #include "qandroideglfsscreen.h"
@@ -125,7 +126,6 @@ QAndroidPlatformIntegration::QAndroidPlatformIntegration()
     qApp->setInputContext( new QAndroidInputContext() );
     m_androidFDB = new QAndroidPlatformFontDatabase();
     m_androidPlatformDesktopService = new QAndroidPlatformDesktopService();
-
 }
 
 bool QAndroidPlatformIntegration::hasCapability(Capability cap) const
@@ -149,6 +149,16 @@ QPlatformFontDatabase *QAndroidPlatformIntegration::fontDatabase() const
 {
     return m_androidFDB;
 }
+
+#ifndef QT_NO_CLIPBOARD
+QPlatformClipboard *QAndroidPlatformIntegration::clipboard() const
+{
+static QAndroidPlatformClipboard * clipboard = 0;
+    if (!clipboard)
+        clipboard = new QAndroidPlatformClipboard;
+    return clipboard;
+}
+#endif
 
 QPlatformNativeInterface *QAndroidPlatformIntegration::nativeInterface() const
 {

@@ -64,6 +64,9 @@ public:
     virtual void setDesktopSize(int width, int height);
     virtual void setDisplayMetrics(int width, int height);
     QPlatformFontDatabase *fontDatabase() const;
+#ifndef QT_NO_CLIPBOARD
+    virtual QPlatformClipboard *clipboard() const;
+#endif
     virtual QPlatformNativeInterface *nativeInterface() const;
     virtual QPlatformDesktopService * platformDesktopService();
     virtual QPlatformMenu * platformMenu();

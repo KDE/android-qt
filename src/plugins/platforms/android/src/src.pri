@@ -13,11 +13,13 @@ SOURCES += $$PWD/androidplatformplugin.cpp \
            $$PWD/qandroidplatformdesktopservice.cpp \
            $$PWD/qandroidassetsfileenginehandler.cpp \
            $$PWD/qandroidinputcontext.cpp \
+           $$PWD/qandroidplatformclipboard.cpp
 
 HEADERS += $$PWD/qandroidplatformintegration.h \
            $$PWD/androidjnimain.h \
            $$PWD/qandroidplatformdesktopservice.h \
            $$PWD/qandroidassetsfileenginehandler.h \
            $$PWD/qandroidinputcontext.h \
+           $$PWD/qandroidplatformclipboard.h
 
 target.path += $$[QT_INSTALL_PLUGINS]/platforms/android

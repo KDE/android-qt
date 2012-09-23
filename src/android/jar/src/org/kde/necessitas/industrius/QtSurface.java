@@ -35,6 +35,7 @@ import android.graphics.Rect;
 import android.graphics.PixelFormat;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -44,6 +45,7 @@ public class QtSurface extends SurfaceView implements SurfaceHolder.Callback
     private Bitmap m_bitmap=null;
     private boolean m_started = false;
     private boolean m_usesGL = false;
+    private GestureDetector m_gestureDetector;
     public QtSurface(Context context, int id)
     {
         super(context);
@@ -51,6 +53,14 @@ public class QtSurface extends SurfaceView implements SurfaceHolder.Callback
         getHolder().addCallback(this);
         getHolder().setType(SurfaceHolder.SURFACE_TYPE_GPU);
         setId(id);
+        m_gestureDetector = new GestureDetector(context, new GestureDetector.SimpleOnGestureListener() {
+                        public void onLongPress(MotionEvent event) {
+                            if (!m_started)
+                                return;
+                            QtNative.longPress(getId(), (int) event.getX(), (int) event.getY());
+                        }
+                });
+        m_gestureDetector.setIsLongpressEnabled(true);
     }
 
     public void applicationStarted(boolean usesGL)
@@ -169,6 +179,7 @@ public class QtSurface extends SurfaceView implements SurfaceHolder.Callback
         if (!m_started)
             return false;
         QtNative.sendTouchEvent(event, getId());
+        m_gestureDetector.onTouchEvent(event);
         return true;
     }
 

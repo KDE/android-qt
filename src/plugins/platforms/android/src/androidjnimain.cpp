@@ -122,9 +122,17 @@ static jmethodID m_showContextMenuMethodID=0;
 static jmethodID m_hideContextMenuMethodID=0;
 // Menu support
 
+// Clipboard support
+static jmethodID m_registerClipboardManagerMethodID=0;
+static jmethodID m_setClipboardTextMethodID=0;
+static jmethodID m_hasClipboardTextMethodID=0;
+static jmethodID m_getClipboardTextMethodID=0;
+// Clipboard support
+
 static jmethodID m_setFullScreenMethodID=0;
 
 static AndroidAssetsFileEngineHandler * m_androidAssetsFileEngineHandler = 0;
+static bool m_ignoreMouseEvents=false;
 
 static inline void checkPauseApplication()
 {
@@ -384,6 +392,62 @@ namespace QtAndroid
         env->CallStaticVoidMethod(m_applicationClass, m_hideContextMenuMethodID);
         m_javaVM->DetachCurrentThread();
     }
+
+    void setClipboardListener(QAndroidPlatformClipboard* listener)
+    {
+        Q_UNUSED(listener);
+        JNIEnv* env;
+        if (m_javaVM->AttachCurrentThread(&env, NULL)<0)
+        {
+            qCritical()<<"AttachCurrentThread failed";
+            return;
+        }
+        env->CallStaticVoidMethod(m_applicationClass, m_registerClipboardManagerMethodID);
+        m_javaVM->DetachCurrentThread();
+    }
+
+    void setClipboardText(const QString &text)
+    {
+        JNIEnv* env;
+        if (m_javaVM->AttachCurrentThread(&env, NULL)<0)
+        {
+            qCritical()<<"AttachCurrentThread failed";
+            return;
+        }
+        jstring jtext = env->NewString(reinterpret_cast<const jchar*>(text.data()), text.length());
+        env->CallStaticVoidMethod(m_applicationClass, m_setClipboardTextMethodID, jtext);
+        env->DeleteLocalRef(jtext);
+        m_javaVM->DetachCurrentThread();
+    }
+
+    bool hasClipboardText()
+    {
+        JNIEnv* env;
+        if (m_javaVM->AttachCurrentThread(&env, NULL)<0)
+        {
+            qCritical()<<"AttachCurrentThread failed";
+            return false;
+        }
+        bool ret=env->CallStaticBooleanMethod(m_applicationClass, m_hasClipboardTextMethodID);
+        m_javaVM->DetachCurrentThread();
+        return ret;
+    }
+
+    QString clipboardText()
+    {
+        JNIEnv* env;
+        if (m_javaVM->AttachCurrentThread(&env, NULL)<0)
+        {
+            qCritical()<<"AttachCurrentThread failed";
+            return QString();
+        }
+        jstring text = reinterpret_cast<jstring>(env->CallStaticObjectMethod(m_applicationClass, m_getClipboardTextMethodID));
+        const jchar * jstr = env->GetStringChars(text, 0);
+        QString str((const QChar*)jstr,  env->GetStringLength(text));
+        env->ReleaseStringChars(text, jstr);
+        m_javaVM->DetachCurrentThread();
+        return str;
+    }
 }
 
 static jboolean startQtAndroidPlugin(JNIEnv* /*env*/, jobject /*object*//*, jobject applicationAssetManager*/)
@@ -428,14 +492,14 @@ static void * startMainMethod(void * /*data*/)
     if (m_javaVM->AttachCurrentThread(&env, NULL)<0)
     {
         qCritical()<<"AttachCurrentThread failed";
-        return false;
+        return 0;
     }
     if (m_applicationClass){
         jmethodID quitApp = env->GetStaticMethodID(m_applicationClass, "quitApp", "()V");
         env->CallStaticVoidMethod(m_applicationClass, quitApp);
     }
     m_javaVM->DetachCurrentThread();
-    return NULL;
+    return 0;
 }
 
 static jboolean startQtApplication(JNIEnv* env, jobject /*object*/, jstring paramsString, jstring environmentString)
@@ -608,6 +672,9 @@ static void setDisplayMetrics(JNIEnv* /*env*/, jclass /*clazz*/,
 
 static void mouseDown(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/, jint x, jint y)
 {
+    if (m_ignoreMouseEvents)
+        return;
+
     QPoint globalPos(x,y);
     QWidget *tlw = m_androidPlatformIntegration?m_androidPlatformIntegration->getPrimaryScreen()->topLevelAt(globalPos):0;
     QPoint localPos=tlw?globalPos-tlw->pos():globalPos;
@@ -622,15 +689,33 @@ static void mouseUp(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/, jint x, j
     QPoint localPos=tlw?globalPos-tlw->pos():globalPos;
     QWindowSystemInterface::handleMouseEvent(tlw, localPos, globalPos
                                             , Qt::MouseButtons(Qt::NoButton));
+    m_ignoreMouseEvents = false;
 }
 
 static void mouseMove(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/, jint x, jint y)
 {
+    if (m_ignoreMouseEvents)
+        return;
+
     QPoint globalPos(x,y);
     QWidget *tlw = m_androidPlatformIntegration?m_androidPlatformIntegration->getPrimaryScreen()->topLevelAt(globalPos):0;
     QPoint localPos=tlw?globalPos-tlw->pos():globalPos;
     QWindowSystemInterface::handleMouseEvent(tlw, localPos, globalPos
                                             , Qt::MouseButtons(Qt::LeftButton));
+}
+
+static void longPress (JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/, jint x, jint y)
+{
+    m_ignoreMouseEvents = true;
+    QPoint globalPos(x,y);
+    QWidget *tlw = m_androidPlatformIntegration?m_androidPlatformIntegration->getPrimaryScreen()->topLevelAt(globalPos):0;
+    QPoint localPos=tlw?globalPos-tlw->pos():globalPos;
+    // Release left button
+    QWindowSystemInterface::handleMouseEvent(tlw, localPos, globalPos
+                                            , Qt::MouseButtons(Qt::NoButton));
+    // Press right button
+    QWindowSystemInterface::handleMouseEvent(tlw, localPos, globalPos
+                                            , Qt::MouseButtons(Qt::RightButton));
 }
 
 static void touchBegin(JNIEnv */*env*/, jobject /*thiz*/, jint /*winId*/)
@@ -1111,6 +1196,7 @@ static JNINativeMethod methods[] = {
     {"mouseDown", "(III)V", (void *)mouseDown},
     {"mouseUp", "(III)V", (void *)mouseUp},
     {"mouseMove", "(III)V", (void *)mouseMove},
+    {"longPress", "(III)V", (void *)longPress},
     {"keyDown", "(III)V", (void *)keyDown},
     {"keyUp", "(III)V", (void *)keyUp},
     {"createOptionsMenu", "(Landroid/view/Menu;)V", (void *)createOptionsMenu},
@@ -1152,6 +1238,10 @@ static int registerNativeMethods(JNIEnv* env, const char* className,
     }
     m_surfaceFieldID = env->GetFieldID(clazz, ANDROID_VIEW_SURFACE_JNI_ID, "I");
 #endif
+    m_registerClipboardManagerMethodID = env->GetStaticMethodID(m_applicationClass, "registerClipboardManager", "()V");
+    m_setClipboardTextMethodID = env->GetStaticMethodID(m_applicationClass, "setClipboardText", "(Ljava/lang/String;)V");
+    m_hasClipboardTextMethodID = env->GetStaticMethodID(m_applicationClass, "hasClipboardText", "()Z");
+    m_getClipboardTextMethodID = env->GetStaticMethodID(m_applicationClass, "getClipboardText", "()Ljava/lang/String;");
 
     jmethodID methodID=env->GetStaticMethodID(m_applicationClass, "activity", "()Landroid/app/Activity;");
     jobject activityObject=env->CallStaticObjectMethod(m_applicationClass, methodID);

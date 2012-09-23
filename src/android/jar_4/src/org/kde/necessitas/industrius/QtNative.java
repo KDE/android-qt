@@ -29,13 +29,16 @@ package org.kde.necessitas.industrius;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.concurrent.Semaphore;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.util.Log;
-import android.view.MotionEvent;
+import android.text.ClipboardManager;
 import android.view.Menu;
+import android.view.MotionEvent;
 
 public class QtNative
 {
@@ -54,6 +57,7 @@ public class QtNative
     private static double m_displayMetricsYDpi = .0;
     private static int m_oldx, m_oldy;
     private static final int m_moveThreshold = 0;
+    private static ClipboardManager m_clipboardManager = null;
 
     private static ClassLoader m_classLoader = null;
     public static ClassLoader classLoader()
@@ -406,6 +410,39 @@ public class QtNative
         });
     }
 
+    private static void registerClipboardManager()
+    {
+        final Semaphore semaphore = new Semaphore(1);
+        runAction(new Runnable() {
+            @Override
+            public void run() {
+                m_clipboardManager = (android.text.ClipboardManager) m_activity.getSystemService(Context.CLIPBOARD_SERVICE);
+                semaphore.release();
+            }
+        });
+        try
+        {
+            semaphore.acquire();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void setClipboardText(String text)
+    {
+        m_clipboardManager.setText(text);
+    }
+
+    private static boolean hasClipboardText()
+    {
+        return m_clipboardManager.hasText();
+    }
+
+    private static String getClipboardText()
+    {
+        return m_clipboardManager.getText().toString();
+    }
+
     // screen methods
     public static native void setDisplayMetrics(int screenWidthPixels,
                     int screenHeightPixels, int desktopWidthPixels,
@@ -419,6 +456,7 @@ public class QtNative
     public static native void touchBegin(int winId);
     public static native void touchAdd(int winId, int pointerId, int action, boolean primary, int x, int y, float size, float pressure);
     public static native void touchEnd(int winId, int action);
+    public static native void longPress(int winId, int x, int y);
     // pointer methods
 
     // keyboard methods
