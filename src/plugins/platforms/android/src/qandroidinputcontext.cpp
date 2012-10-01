@@ -375,7 +375,7 @@ jboolean QAndroidInputContext::finishComposingText()
         return JNI_TRUE;
     QInputMethodEvent event;
     event.setCommitString(m_composingText);
-    QMetaObject::invokeMethod(this, "sendEvent", Qt::AutoConnection, Q_ARG(QInputMethodEvent, event));
+    QMetaObject::invokeMethod(this, "sendEvent", Qt::BlockingQueuedConnection, Q_ARG(QInputMethodEvent, event));
     clear();
     return JNI_TRUE;
 }
@@ -398,14 +398,13 @@ jint QAndroidInputContext::getCursorCapsMode(jint /*reqModes*/)
     return res;
 }
 
-const QAndroidInputContext::ExtractedText & QAndroidInputContext::getExtractedText(jint /*hintMaxChars*/, jint /*hintMaxLines*/, jint /*flags*/)
+const QAndroidInputContext::ExtractedText & QAndroidInputContext::getExtractedText(jint hintMaxChars, jint /*hintMaxLines*/, jint /*flags*/)
 {
     QWidget * w = focusWidget();
     if (!w)
         return m_extractedText;
-    m_extractedText.text = w->inputMethodQuery(Qt::ImSurroundingText).toString();
-    if (!m_extractedText.text.length())
-        return m_extractedText;
+    if (hintMaxChars)
+        m_extractedText.text = w->inputMethodQuery(Qt::ImSurroundingText).toString().right(hintMaxChars);
     m_extractedText.startOffset = w->inputMethodQuery(Qt::ImCursorPosition).toInt();
     const QString & selection = w->inputMethodQuery(Qt::ImCurrentSelection).toString();
     const int selLen=selection.length();
@@ -425,7 +424,7 @@ QString QAndroidInputContext::getSelectedText(jint /*flags*/)
     return w->inputMethodQuery(Qt::ImCurrentSelection).toString();
 }
 
-QString QAndroidInputContext::getTextAfterCursor(jint /*length*/, jint /*flags*/)
+QString QAndroidInputContext::getTextAfterCursor(jint length, jint /*flags*/)
 {
     QWidget * w = focusWidget();
     if (!w)
@@ -434,10 +433,10 @@ QString QAndroidInputContext::getTextAfterCursor(jint /*length*/, jint /*flags*/
     if (!text.length())
         return text;
     int cursorPos = w->inputMethodQuery(Qt::ImCursorPosition).toInt();
-    return text.mid(cursorPos);
+    return text.mid(cursorPos, length);
 }
 
-QString QAndroidInputContext::getTextBeforeCursor(jint /*length*/, jint /*flags*/)
+QString QAndroidInputContext::getTextBeforeCursor(jint length, jint /*flags*/)
 {
     QWidget * w = focusWidget();
     if (!w)
@@ -446,7 +445,8 @@ QString QAndroidInputContext::getTextBeforeCursor(jint /*length*/, jint /*flags*
     if (!text.length())
         return text;
     int cursorPos = w->inputMethodQuery(Qt::ImCursorPosition).toInt();
-    return text.left(cursorPos+1);
+    const int wordLeftPos=cursorPos-length;
+    return text.mid(wordLeftPos>0?wordLeftPos:0, cursorPos);
 }
 
 jboolean QAndroidInputContext::setComposingText(const QString & text, jint newCursorPosition)
@@ -463,20 +463,19 @@ jboolean QAndroidInputContext::setComposingText(const QString & text, jint newCu
                                                 1,
                                                 QVariant()));
     QInputMethodEvent event(m_composingText, attributes);
-    QMetaObject::invokeMethod(this, "sendEvent", Qt::AutoConnection, Q_ARG(QInputMethodEvent, event));
+    QMetaObject::invokeMethod(this, "sendEvent", Qt::BlockingQueuedConnection, Q_ARG(QInputMethodEvent, event));
     return JNI_TRUE;
 }
 
 jboolean QAndroidInputContext::setSelection(jint start, jint end)
 {
-    finishComposingText();
     QList<QInputMethodEvent::Attribute> attributes;
     attributes.append(QInputMethodEvent::Attribute(QInputMethodEvent::Selection,
-                                                end,
                                                 start,
+                                                end-start,
                                                 QVariant()));
     QInputMethodEvent event(QString(), attributes);
-    QMetaObject::invokeMethod(this, "sendEvent", Qt::AutoConnection, Q_ARG(QInputMethodEvent, event));
+    QMetaObject::invokeMethod(this, "sendEvent", Qt::BlockingQueuedConnection, Q_ARG(QInputMethodEvent, event));
     return JNI_TRUE;
 }
 
