@@ -262,6 +262,7 @@ void QAndroidEglFSScreen::updateTLWindows()
 {
     foreach(QWidget * w, qApp->topLevelWidgets())
         w->update();
+    setDirty(geometry());
 }
 
 QRect QAndroidEglFSScreen::geometry() const
