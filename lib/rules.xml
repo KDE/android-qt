@@ -14,6 +14,7 @@
             <version value="14" symlink="9"/>
             <version value="15" symlink="9"/>
             <version value="16" symlink="9"/>
+            <version value="17" symlink="9"/>
         </libs>
         <jars>
             <version value="4"/>
@@ -29,6 +30,7 @@
             <version value="14"/>
             <version value="15" symlink="14"/>
             <version value="16" symlink="14"/>
+            <version value="17" symlink="14"/>
         </jars>
     </platforms>
     <dependencies> <!-- The order is very important -->
