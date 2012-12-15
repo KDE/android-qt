@@ -285,7 +285,11 @@ public class QtActivityDelegate
             necessitasApiLevel=loaderParams.getInt(NECESSITAS_API_LEVEL_KEY);
 
         m_environmentVariables=loaderParams.getString(ENVIRONMENT_VARIABLES_KEY);
-        final String additionalEnvironmentVariables="NECESSITAS_API_LEVEL="+necessitasApiLevel+"\tHOME="+m_activity.getFilesDir().getAbsolutePath()+"\tTMPDIR="+m_activity.getFilesDir().getAbsolutePath();
+        String additionalEnvironmentVariables="QT_ANDROID_FONTS_MONOSPACE=Droid Sans Mono;Droid Sans;Droid Sans Fallback\tNECESSITAS_API_LEVEL="+necessitasApiLevel+"\tHOME="+m_activity.getFilesDir().getAbsolutePath()+"\tTMPDIR="+m_activity.getFilesDir().getAbsolutePath();
+        if (android.os.Build.VERSION.SDK_INT<14)
+            additionalEnvironmentVariables += "\tQT_ANDROID_FONTS=Droid Sans;Droid Sans Fallback";
+        else
+            additionalEnvironmentVariables += "\tQT_ANDROID_FONTS=Roboto;Droid Sans;Droid Sans Fallback";
         if (m_environmentVariables != null && m_environmentVariables.length()>0)
             m_environmentVariables=additionalEnvironmentVariables+"\t"+m_environmentVariables;
         else
