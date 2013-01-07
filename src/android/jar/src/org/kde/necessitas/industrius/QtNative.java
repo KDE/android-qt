@@ -252,6 +252,7 @@ public class QtNative
     public static native boolean startQtAndroidPlugin();
     public static native void quitQtAndroidPlugin();
     public static native void terminateQt();
+    public static native void onNewIntent(String url);
     // application methods
 
     private static void quitApp()

@@ -47,6 +47,7 @@
 #include <QMainWindow>
 #include <QAction>
 #include <QMenu>
+#include <QUrl>
 
 #include <qabstracteventdispatcher.h>
 
@@ -1177,6 +1178,13 @@ static jboolean optionsItemSelected(JNIEnv */*env*/, jobject /*thiz*/, jint grou
     return JNI_FALSE;
 }
 
+static void onNewIntent(JNIEnv * env, jobject thiz, jstring url) {
+    const jchar * jstr = env->GetStringChars(url, 0);
+    QUrl qurl(QString((const QChar*)jstr,  env->GetStringLength(url)));
+    env->ReleaseStringChars(url, jstr);
+    QCoreApplication::postEvent(QApplication::instance(), new QFileOpenEvent(qurl));
+}
+
 static JNINativeMethod methods[] = {
     {"startQtAndroidPlugin", "()Z", (void *)startQtAndroidPlugin},
     {"startQtApplication", "(Ljava/lang/String;Ljava/lang/String;)V", (void *)startQtApplication},
@@ -1201,7 +1209,8 @@ static JNINativeMethod methods[] = {
     {"keyUp", "(III)V", (void *)keyUp},
     {"createOptionsMenu", "(Landroid/view/Menu;)V", (void *)createOptionsMenu},
     {"prepareOptionsMenu", "(Landroid/view/Menu;)Z", (void *)prepareOptionsMenu},
-    {"optionsItemSelected", "(II)Z", (void *)optionsItemSelected}
+    {"optionsItemSelected", "(II)Z", (void *)optionsItemSelected},
+    {"onNewIntent", "(Ljava/lang/String;)V", (void *)onNewIntent}
 };
 
 /*
